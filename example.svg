@@ -10,20 +10,21 @@
 </defs>
 <rect width="100%" height="100%" fill="#ffffff"/>
 <g transform="translate(20,20)">
-<path d="M 70 80 L 70 120" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="41.5" y="89" width="57" height="22" fill="white" rx="3" ry="3"/>
-<text x="70" y="100" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="12">queries</text>
-<path d="M 70 80 L 70 220" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="48.5" y="139" width="43" height="22" fill="white" rx="3" ry="3"/>
-<text x="70" y="150" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="12">reads</text>
+<path d="M 62.5 80 L 62.5 120" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="34" y="89" width="57" height="22" fill="white" rx="3" ry="3"/>
+<text x="62.5" y="100" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="12">queries</text>
+<path d="M 77.5 80 L 77.5 220" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="56" y="139" width="43" height="22" fill="white" rx="3" ry="3"/>
+<text x="77.5" y="150" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="12">reads</text>
 <path d="M 70 220 L 70 180" fill="none" stroke="#333333" stroke-width="2" marker-end="url(#arrow)"/>
 <rect x="38" y="189" width="64" height="22" fill="white" rx="3" ry="3"/>
 <text x="70" y="200" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="12">fallback</text>
 <rect x="20" y="20" width="100" height="60" fill="#ffffff" stroke="#333333" stroke-width="2"/>
 <text x="70" y="50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Server</text>
-<rect x="20" y="120" width="100" height="60" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+<path d="M 20 129 A 50 9 0 1 1 120 129 L 120 171 A 50 9 0 1 1 20 171 Z" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+<ellipse cx="70" cy="129" rx="50" ry="9" fill="#ffffff" stroke="#333333" stroke-width="2"/>
 <text x="70" y="150" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Database</text>
-<rect x="20" y="220" width="100" height="60" fill="#ffffff" stroke="#333333" stroke-width="2"/>
+<ellipse cx="70" cy="250" rx="50" ry="30" fill="#ffffff" stroke="#333333" stroke-width="2"/>
 <text x="70" y="250" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Cache</text>
 </g>
 </svg>

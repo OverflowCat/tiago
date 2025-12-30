@@ -214,27 +214,51 @@ fn position_subtree(
 ///|
 /// Route edges between objects
 fn route_edges(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+  // Group edges by source to compute offsets
+  let edges_by_src : Map[String, Array[@graph.Edge]] = {}
   for edge in graph.edges {
-    route_edge(graph, edge, config)
+    let src_id = edge.get_src_id()
+    match edges_by_src.get(src_id) {
+      Some(arr) => arr.push(edge)
+      None => edges_by_src[src_id] = [edge]
+    }
+  }
+  // Route each edge with offset based on its position in source group
+  for _, edges in edges_by_src {
+    let count = edges.length()
+    for i, edge in edges {
+      route_edge(graph, edge, config, i, count)
+    }
   }
 }
 
 ///|
-/// Route a single edge
+/// Route a single edge with offset for multiple edges from same source
 fn route_edge(
   graph : @graph.Graph,
   edge : @graph.Edge,
   config : LayoutConfig,
+  edge_index : Int,
+  total_edges : Int,
 ) -> Unit {
   // Find source and destination objects
-  let src = graph.find_object(edge.src_id)
-  let dst = graph.find_object(edge.dst_id)
+  let src = graph.find_object(edge.get_src_id())
+  let dst = graph.find_object(edge.get_dst_id())
   match (src, dst) {
     (Some(src_obj), Some(dst_obj)) =>
-      match (src_obj.box, dst_obj.box) {
+      match (src_obj.get_box(), dst_obj.get_box()) {
         (Some(src_box), Some(dst_box)) => {
-          // Simple straight line routing with connection points
-          let points = compute_connection_points(src_box, dst_box, config)
+          // Calculate horizontal offset for multiple edges from same source
+          let offset = if total_edges > 1 {
+            let spacing = 15.0
+            let total_width = (total_edges - 1).to_double() * spacing
+            edge_index.to_double() * spacing - total_width / 2.0
+          } else {
+            0.0
+          }
+          let points = compute_connection_points(
+            src_box, dst_box, config, offset,
+          )
           for point in points {
             edge.add_route_point(point)
           }
@@ -246,14 +270,22 @@ fn route_edge(
 }
 
 ///|
-/// Compute connection points between two boxes
+/// Compute connection points between two boxes with optional horizontal offset
 fn compute_connection_points(
   src : @graph.Box,
   dst : @graph.Box,
   _config : LayoutConfig,
+  offset : Double,
 ) -> Array[@graph.Point] {
-  let src_center = src.center()
-  let dst_center = dst.center()
+  // Apply horizontal offset to centers for edge routing
+  let src_center = @graph.Point::new(
+    src.center().get_x() + offset,
+    src.center().get_y(),
+  )
+  let dst_center = @graph.Point::new(
+    dst.center().get_x() + offset,
+    dst.center().get_y(),
+  )
   // Find edge intersection points
   let src_point = find_edge_intersection(src, src_center, dst_center)
   let dst_point = find_edge_intersection(dst, dst_center, src_center)

@@ -490,3 +490,23 @@ test "shape with label is preserved" {
   inspect(db.get_label(), content="Database")
   inspect(db.get_shape(), content="cylinder")
 }
+
+///|
+test "objects ordered by definition" {
+  let source =
+    #|server
+    #|database
+    #|cache
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let server = graph.find_object("server").unwrap()
+  let database = graph.find_object("database").unwrap()
+  let cache = graph.find_object("cache").unwrap()
+  match (server.get_box(), database.get_box(), cache.get_box()) {
+    (Some(s), Some(d), Some(c)) => {
+      // In Down direction: server should be top, then database, then cache
+      assert_true(s.get_y() < d.get_y(), msg="server should be above database")
+      assert_true(d.get_y() < c.get_y(), msg="database should be above cache")
+    }
+    _ => fail("objects should have boxes")
+  }
+}
