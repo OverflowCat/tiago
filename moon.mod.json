@@ -1,9 +1,14 @@
 {
   "name": "Milky2018/diago",
   "version": "0.1.0",
+  "deps": {
+    "moonbitlang/x": "0.4.38"
+  },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/diago",
   "license": "Apache-2.0",
-  "keywords": ["graph"],
+  "keywords": [
+    "graph"
+  ],
   "description": ""
 }
