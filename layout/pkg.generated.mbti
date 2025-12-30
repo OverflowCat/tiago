@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/layout"
+
+import(
+  "Milky2018/diago/graph"
+)
+
+// Values
+pub fn layout(@graph.Graph, LayoutConfig, Direction) -> Unit
+
+// Errors
+pub(all) suberror LayoutError {
+  InvalidGraph(String)
+  CycleDetected(String)
+}
+pub impl Eq for LayoutError
+pub impl Show for LayoutError
+
+// Types and methods
+pub(all) enum Direction {
+  Down
+  Right
+  Up
+  Left
+}
+pub impl Eq for Direction
+pub impl Show for Direction
+
+pub struct LayoutConfig {
+  horizontal_spacing : Double
+  vertical_spacing : Double
+  container_padding : Double
+  default_width : Double
+  default_height : Double
+  edge_padding : Double
+}
+pub fn LayoutConfig::new() -> Self
+pub fn LayoutConfig::with_spacing(Double, Double) -> Self
+pub impl Show for LayoutConfig
+
+// Type aliases
+
+// Traits
+

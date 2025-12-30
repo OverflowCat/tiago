@@ -1,5 +1,5 @@
 ///|
-/// Integration tests: D2 source to SVG
+/// Integration tests: D2 source to SVG and ASCII
 
 ///|
 /// Compile D2 source to SVG
@@ -14,8 +14,8 @@ fn compile(source : String) -> Result[String, String] {
   }
   let config = @layout.LayoutConfig::new()
   @layout.layout(graph, config, @layout.Direction::Down)
-  let render_config = @svg.RenderConfig::new()
-  Ok(@svg.render(graph, render_config))
+  let render_config = @graph.SvgConfig::new()
+  Ok(@graph.render_svg(graph, render_config))
 }
 
 // =============================================================================
@@ -509,4 +509,62 @@ test "objects ordered by definition" {
     }
     _ => fail("objects should have boxes")
   }
+}
+
+// =============================================================================
+// ASCII output tests
+// =============================================================================
+
+///|
+/// Compile D2 source to ASCII art
+fn compile_ascii(source : String) -> Result[String, String] {
+  let (ast, errors) = @parser.parse(source)
+  if not(errors.is_empty()) {
+    return Err("Parse errors: \{errors}")
+  }
+  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  let graph = @graph.compile("test", ir) catch {
+    e => return Err("Graph error: \{e}")
+  }
+  let config = @layout.LayoutConfig::new()
+  @layout.layout(graph, config, @layout.Direction::Down)
+  let render_config = @graph.AsciiConfig::new()
+  Ok(@graph.render_ascii(graph, render_config))
+}
+
+///|
+test "ascii simple object" {
+  let ascii = compile_ascii("server").unwrap()
+  assert_true(ascii.contains("server"))
+  assert_true(ascii.contains("+"))
+  assert_true(ascii.contains("-"))
+  assert_true(ascii.contains("|"))
+}
+
+///|
+test "ascii multiple objects" {
+  let source =
+    #|a
+    #|b
+    #|c
+  let ascii = compile_ascii(source).unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  assert_true(ascii.contains("c"))
+}
+
+///|
+test "ascii edge" {
+  let ascii = compile_ascii("a -> b").unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  assert_true(ascii.contains("|"))
+}
+
+///|
+test "ascii chain" {
+  let ascii = compile_ascii("a -> b -> c").unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  assert_true(ascii.contains("c"))
 }

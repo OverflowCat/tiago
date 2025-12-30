@@ -1,0 +1,178 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/graph"
+
+import(
+  "Milky2018/diago/ir"
+)
+
+// Values
+pub fn compile(String, @ir.Map) -> Graph raise GraphCompileError
+
+pub fn render_ascii(Graph, AsciiConfig) -> String
+
+pub fn render_svg(Graph, SvgConfig) -> String
+
+// Errors
+pub(all) suberror GraphCompileError {
+  InvalidShape(String)
+  InvalidStyle(String)
+  MissingObject(String)
+}
+pub impl Eq for GraphCompileError
+pub impl Show for GraphCompileError
+
+// Types and methods
+pub struct AsciiConfig {
+  x_scale : Double
+  y_scale : Double
+  min_width : Int
+  min_height : Int
+}
+pub fn AsciiConfig::new() -> Self
+pub impl Show for AsciiConfig
+
+pub struct Box {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+}
+pub fn Box::bottom_left(Self) -> Point
+pub fn Box::bottom_right(Self) -> Point
+pub fn Box::center(Self) -> Point
+pub fn Box::contains(Self, Point) -> Bool
+pub fn Box::get_height(Self) -> Double
+pub fn Box::get_width(Self) -> Double
+pub fn Box::get_x(Self) -> Double
+pub fn Box::get_y(Self) -> Double
+pub fn Box::intersects(Self, Self) -> Bool
+pub fn Box::new(Double, Double, Double, Double) -> Self
+pub fn Box::top_left(Self) -> Point
+pub fn Box::top_right(Self) -> Point
+pub fn Box::zero() -> Self
+pub impl Eq for Box
+pub impl Show for Box
+
+pub struct Edge {
+  index : Int
+  src_id : String
+  dst_id : String
+  src_arrow : Bool
+  dst_arrow : Bool
+  mut label : String
+  style : Style
+  route : Array[Point]
+  is_curve : Bool
+  z_index : Int
+}
+pub fn Edge::add_route_point(Self, Point) -> Unit
+pub fn Edge::arrow_string(Self) -> String
+pub fn Edge::get_dst_id(Self) -> String
+pub fn Edge::get_route(Self) -> Array[Point]
+pub fn Edge::get_src_id(Self) -> String
+pub fn Edge::midpoint(Self) -> Point?
+pub fn Edge::new(Int, String, String, Bool, Bool) -> Self
+pub fn Edge::set_label(Self, String) -> Unit
+pub impl Show for Edge
+
+pub struct Graph {
+  name : String
+  root : Object
+  objects : Array[Object]
+  edges : Array[Edge]
+}
+pub fn Graph::add_edge(Self, Edge) -> Unit
+pub fn Graph::add_object(Self, Object) -> Unit
+pub fn Graph::edges_from(Self, String) -> Array[Edge]
+pub fn Graph::edges_to(Self, String) -> Array[Edge]
+pub fn Graph::find_object(Self, String) -> Object?
+pub fn Graph::get_edges(Self) -> Array[Edge]
+pub fn Graph::get_objects(Self) -> Array[Object]
+pub fn Graph::new(String) -> Self
+pub impl Show for Graph
+
+pub struct Object {
+  id : String
+  mut label : String
+  mut shape : String
+  style : Style
+  mut box : Box?
+  children : Array[Object]
+  z_index : Int
+  mut icon : String?
+  mut tooltip : String?
+  mut link : String?
+  classes : Array[String]
+}
+pub fn Object::add_child(Self, Self) -> Unit
+pub fn Object::center(Self) -> Point?
+pub fn Object::find_child(Self, String) -> Self?
+pub fn Object::get_box(Self) -> Box?
+pub fn Object::get_children(Self) -> Array[Self]
+pub fn Object::get_id(Self) -> String
+pub fn Object::get_label(Self) -> String
+pub fn Object::get_shape(Self) -> String
+pub fn Object::is_container(Self) -> Bool
+pub fn Object::new(String) -> Self
+pub fn Object::set_box(Self, Box) -> Unit
+pub fn Object::set_label(Self, String) -> Unit
+pub fn Object::set_shape(Self, String) -> Unit
+pub fn Object::with_label(String, String) -> Self
+pub impl Show for Object
+
+pub struct Point {
+  x : Double
+  y : Double
+}
+pub fn Point::add(Self, Self) -> Self
+pub fn Point::distance(Self, Self) -> Double
+pub fn Point::get_x(Self) -> Double
+pub fn Point::get_y(Self) -> Double
+pub fn Point::new(Double, Double) -> Self
+pub fn Point::scale(Self, Double) -> Self
+pub fn Point::sub(Self, Self) -> Self
+pub fn Point::zero() -> Self
+pub impl Eq for Point
+pub impl Show for Point
+
+pub struct Style {
+  mut opacity : Double?
+  mut stroke : String?
+  mut fill : String?
+  mut stroke_width : Double?
+  stroke_dash : Double?
+  mut border_radius : Double?
+  mut shadow : Bool?
+  mut three_d : Bool?
+  multiple : Bool?
+  font : String?
+  mut font_size : Int?
+  mut font_color : String?
+  mut bold : Bool?
+  mut italic : Bool?
+  underline : Bool?
+  mut animated : Bool?
+  filled : Bool?
+  double_border : Bool?
+}
+pub fn Style::new() -> Self
+pub impl Eq for Style
+pub impl Show for Style
+
+pub struct SvgConfig {
+  padding : Double
+  font_family : String
+  font_size : Int
+  background : String
+  default_stroke : String
+  default_fill : String
+  default_stroke_width : Double
+  arrow_size : Double
+}
+pub fn SvgConfig::new() -> Self
+pub impl Show for SvgConfig
+
+// Type aliases
+
+// Traits
+

@@ -1,10 +1,8 @@
 {
   "import": [
-    "Milky2018/diago/lexer",
     "Milky2018/diago/parser",
     "Milky2018/diago/ir",
     "Milky2018/diago/graph",
-    "Milky2018/diago/layout",
-    "Milky2018/diago/svg"
+    "Milky2018/diago/layout"
   ]
 }

@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/ascii"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Grid {
+  width : Int
+  height : Int
+  cells : Array[Array[Char]]
+}
+pub fn Grid::fill(Self, Int, Int, Int, Int, Char) -> Unit
+pub fn Grid::get(Self, Int, Int) -> Char
+pub fn Grid::get_height(Self) -> Int
+pub fn Grid::get_width(Self) -> Int
+pub fn Grid::hline(Self, Int, Int, Int, Char) -> Unit
+pub fn Grid::line(Self, Int, Int, Int, Int, Char, Char, Char, Char) -> Unit
+pub fn Grid::new(Int, Int) -> Self
+pub fn Grid::rect(Self, Int, Int, Int, Int, Char, Char, Char) -> Unit
+pub fn Grid::set(Self, Int, Int, Char) -> Unit
+pub fn Grid::text(Self, Int, Int, String) -> Unit
+pub fn Grid::to_string(Self) -> String
+pub fn Grid::vline(Self, Int, Int, Int, Char) -> Unit
+pub impl Show for Grid
+
+// Type aliases
+
+// Traits
+

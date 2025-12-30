@@ -45,10 +45,8 @@ pub impl Eq for Range
 pub impl Show for Range
 
 pub enum StringType {
-  Unquoted
   SingleQuoted
   DoubleQuoted
-  BlockString(String)
 }
 pub impl Eq for StringType
 pub impl Show for StringType
@@ -90,13 +88,10 @@ pub enum TokenKind {
   At
   Dollar
   DollarBrace
-  Hash
   Star
   DoubleStar
   TripleStar
   Newline
-  Indent
-  Dedent
   Eof
   Error(String)
 }

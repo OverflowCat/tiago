@@ -1,0 +1,43 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/parser"
+
+import(
+  "Milky2018/diago/ast"
+  "Milky2018/diago/lexer"
+)
+
+// Values
+pub fn parse(String) -> (@ast.Map, ParseErrors)
+
+// Errors
+
+// Types and methods
+pub struct ParseError {
+  range : @lexer.Range
+  message : String
+}
+pub impl Eq for ParseError
+pub impl Show for ParseError
+
+pub struct ParseErrors {
+  errors : Array[ParseError]
+}
+pub fn ParseErrors::add(Self, @lexer.Range, String) -> Unit
+pub fn ParseErrors::is_empty(Self) -> Bool
+pub fn ParseErrors::new() -> Self
+pub fn ParseErrors::to_string(Self) -> String
+pub impl Eq for ParseErrors
+pub impl Show for ParseErrors
+
+pub struct Parser {
+  tokens : Array[@lexer.Token]
+  mut pos : Int
+  errors : ParseErrors
+}
+pub fn Parser::new(Array[@lexer.Token]) -> Self
+pub impl Show for Parser
+
+// Type aliases
+
+// Traits
+

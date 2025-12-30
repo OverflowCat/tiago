@@ -2,10 +2,54 @@
 package "Milky2018/diago/svg"
 
 // Values
+pub fn arrow_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn background(String) -> String
+
+pub fn circle(Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double) -> String
+
+pub fn ellipse(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double) -> String
+
+pub fn escape_xml(String) -> String
+
+pub fn line(Double, Double, Double, Double, stroke? : String, stroke_width? : Double) -> String
+
+pub fn path(String, fill? : String, stroke? : String, stroke_width? : Double, marker_start? : String, marker_end? : String) -> String
+
+pub fn polygon(Array[(Double, Double)], fill? : String, stroke? : String, stroke_width? : Double) -> String
+
+pub fn polyline(Array[(Double, Double)], fill? : String, stroke? : String, stroke_width? : Double) -> String
+
+pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double, ry? : Double) -> String
+
+pub fn text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String) -> String
 
 // Errors
 
 // Types and methods
+pub struct PathBuilder {
+  commands : Array[String]
+}
+pub fn PathBuilder::arc_to(Self, Double, Double, Double, Double, large_arc? : Bool, sweep? : Bool) -> Self
+pub fn PathBuilder::build(Self) -> String
+pub fn PathBuilder::close(Self) -> Self
+pub fn PathBuilder::line_to(Self, Double, Double) -> Self
+pub fn PathBuilder::move_to(Self, Double, Double) -> Self
+pub fn PathBuilder::new() -> Self
+
+pub struct Svg {
+  width : Double
+  height : Double
+  elements : Array[String]
+  defs : Array[String]
+}
+pub fn Svg::add(Self, String) -> Unit
+pub fn Svg::add_def(Self, String) -> Unit
+pub fn Svg::close_group(Self) -> Unit
+pub fn Svg::new(Double, Double) -> Self
+pub fn Svg::open_group(Self, String) -> Unit
+pub fn Svg::to_string(Self) -> String
+pub impl Show for Svg
 
 // Type aliases
 

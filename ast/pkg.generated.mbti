@@ -1,11 +1,205 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/ast"
 
+import(
+  "Milky2018/diago/lexer"
+)
+
 // Values
+pub let board_keywords : Array[String]
+
+pub let composite_keywords : Array[String]
+
+pub let fill_patterns : Array[String]
+
+pub fn is_board_keyword(String) -> Bool
+
+pub fn is_reserved_keyword(String) -> Bool
+
+pub fn is_style_keyword(String) -> Bool
+
+pub let label_positions : Array[String]
+
+pub let near_constants : Array[String]
+
+pub let simple_reserved_keywords : Array[String]
+
+pub let style_keywords : Array[String]
+
+pub let text_transforms : Array[String]
 
 // Errors
 
 // Types and methods
+pub(all) enum ArrayNode {
+  Comment(@lexer.Range, String)
+  BlockComment(@lexer.Range, String)
+  Substitution(Substitution)
+  Import(Import)
+  Value(Value)
+}
+pub impl Eq for ArrayNode
+pub impl Show for ArrayNode
+
+pub struct ArrayValue {
+  range : @lexer.Range
+  nodes : Array[ArrayNode]
+}
+pub fn ArrayValue::new(@lexer.Range, Array[ArrayNode]) -> Self
+pub impl Eq for ArrayValue
+pub impl Show for ArrayValue
+
+pub struct BlockString {
+  range : @lexer.Range
+  quote : String
+  tag : String
+  value : String
+}
+pub fn BlockString::new(@lexer.Range, String, String, String) -> Self
+pub impl Eq for BlockString
+pub impl Show for BlockString
+
+pub struct DoubleQuotedString {
+  range : @lexer.Range
+  value : Array[Interpolation]
+}
+pub fn DoubleQuotedString::new(@lexer.Range, Array[Interpolation]) -> Self
+pub fn DoubleQuotedString::to_string(Self) -> String
+pub impl Eq for DoubleQuotedString
+pub impl Show for DoubleQuotedString
+
+pub struct Edge {
+  range : @lexer.Range
+  src : KeyPath
+  src_arrow : String
+  dst : KeyPath
+  dst_arrow : String
+}
+pub fn Edge::new(@lexer.Range, KeyPath, KeyPath, String, String) -> Self
+pub impl Eq for Edge
+pub impl Show for Edge
+
+pub struct EdgeIndex {
+  range : @lexer.Range
+  index : Int?
+  glob : Bool
+}
+pub fn EdgeIndex::new(@lexer.Range, Int?, Bool) -> Self
+pub impl Eq for EdgeIndex
+pub impl Show for EdgeIndex
+
+pub struct Import {
+  range : @lexer.Range
+  spread : Bool
+  pre : String
+  path : Array[StringValue]
+}
+pub fn Import::new(@lexer.Range, Bool, String, Array[StringValue]) -> Self
+pub impl Eq for Import
+pub impl Show for Import
+
+pub(all) enum Interpolation {
+  Text(String)
+  Sub(Substitution)
+}
+pub impl Eq for Interpolation
+pub impl Show for Interpolation
+
+pub struct Key {
+  range : @lexer.Range
+  ampersand : Bool
+  not_ampersand : Bool
+  key : KeyPath?
+  edges : Array[Edge]
+  edge_index : EdgeIndex?
+  edge_key : KeyPath?
+  primary : Scalar?
+  value : Value?
+}
+pub fn Key::new(@lexer.Range, Bool, Bool, KeyPath?, Array[Edge], EdgeIndex?, KeyPath?, Scalar?, Value?) -> Self
+pub impl Eq for Key
+pub impl Show for Key
+
+pub struct KeyPath {
+  range : @lexer.Range
+  path : Array[StringValue]
+}
+pub fn KeyPath::has_glob(Self) -> Bool
+pub fn KeyPath::last(Self) -> StringValue?
+pub fn KeyPath::new(@lexer.Range, Array[StringValue]) -> Self
+pub fn KeyPath::to_strings(Self) -> Array[String]
+pub impl Eq for KeyPath
+pub impl Show for KeyPath
+
+pub struct Map {
+  range : @lexer.Range
+  nodes : Array[MapNode]
+}
+pub fn Map::new(@lexer.Range, Array[MapNode]) -> Self
+pub impl Eq for Map
+pub impl Show for Map
+
+pub(all) enum MapNode {
+  Comment(@lexer.Range, String)
+  BlockComment(@lexer.Range, String)
+  Substitution(Substitution)
+  Import(Import)
+  Key(Key)
+}
+pub fn MapNode::range(Self) -> @lexer.Range
+pub impl Eq for MapNode
+pub impl Show for MapNode
+
+pub(all) enum Scalar {
+  Null(@lexer.Range)
+  Boolean(@lexer.Range, Bool)
+  Number(@lexer.Range, String)
+  String(StringValue)
+}
+pub fn Scalar::range(Self) -> @lexer.Range
+pub impl Eq for Scalar
+pub impl Show for Scalar
+
+pub(all) enum StringValue {
+  Unquoted(UnquotedString)
+  SingleQuoted(@lexer.Range, String)
+  DoubleQuoted(DoubleQuotedString)
+  Block(BlockString)
+}
+pub fn StringValue::content(Self) -> String
+pub fn StringValue::range(Self) -> @lexer.Range
+pub impl Eq for StringValue
+pub impl Show for StringValue
+
+pub struct Substitution {
+  range : @lexer.Range
+  spread : Bool
+  path : Array[StringValue]
+}
+pub fn Substitution::new(@lexer.Range, Bool, Array[StringValue]) -> Self
+pub impl Eq for Substitution
+pub impl Show for Substitution
+
+pub struct UnquotedString {
+  range : @lexer.Range
+  value : Array[Interpolation]
+  pattern : Array[String]
+}
+pub fn UnquotedString::new(@lexer.Range, Array[Interpolation], Array[String]) -> Self
+pub fn UnquotedString::to_string(Self) -> String
+pub impl Eq for UnquotedString
+pub impl Show for UnquotedString
+
+pub(all) enum Value {
+  Scalar(Scalar)
+  Array(ArrayValue)
+  Map(Map)
+  Import(Import)
+  BlockScalar(Value, Map)
+}
+pub fn Value::range(Self) -> @lexer.Range
+pub impl Eq for Value
+pub impl Show for Value
 
 // Type aliases
 
