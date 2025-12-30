@@ -61,3 +61,11 @@ See `PRD.md` for full specification. Key syntax:
 - Styles: `server.style.fill: "#f0f0f0"`
 
 Reference implementation: `../d2/` (Go source)
+
+## Layout Algorithm Reference
+
+When facing hard layout problems (graph layout, bin packing, edge routing, nested layouts, sequence diagrams, text measurement, label placement), read `docs/d2analysis.md` for:
+- Theoretical complexity analysis of each problem
+- D2's heuristic solutions (Sugiyama, barycenter, bounded search)
+- Code patterns from the Go reference implementation
+- Trade-offs between quality and performance
