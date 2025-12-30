@@ -1,0 +1,9 @@
+{
+  "import": [
+    "Milky2018/diago/ast"
+  ],
+  "wbtest-import": [
+    "Milky2018/diago/lexer",
+    "Milky2018/diago/parser"
+  ]
+}

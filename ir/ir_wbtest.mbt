@@ -1,0 +1,228 @@
+///|
+test "compile empty map" {
+  let zero = @lexer.Position::zero()
+  let ast = @ast.Map::new(@lexer.Range::new(zero, zero), [])
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 0)
+  assert_eq(ir.edges.length(), 0)
+}
+
+///|
+test "compile simple key" {
+  let (ast, _) = @parser.parse("x")
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 1)
+  assert_eq(ir.fields[0].name, "x")
+}
+
+///|
+test "compile key with value" {
+  let (ast, _) = @parser.parse("x: hello")
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 1)
+  assert_eq(ir.fields[0].name, "x")
+  guard ir.fields[0].primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "hello")
+}
+
+///|
+test "compile nested keys" {
+  let (ast, _) = @parser.parse("a.b.c: value")
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 1)
+  assert_eq(ir.fields[0].name, "a")
+  guard ir.fields[0].composite is Some(Composite::Map(m1)) else {
+    fail("expected map")
+  }
+  assert_eq(m1.fields.length(), 1)
+  assert_eq(m1.fields[0].name, "b")
+  guard m1.fields[0].composite is Some(Composite::Map(m2)) else {
+    fail("expected map")
+  }
+  assert_eq(m2.fields.length(), 1)
+  assert_eq(m2.fields[0].name, "c")
+  guard m2.fields[0].primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "value")
+}
+
+///|
+test "compile edge" {
+  let (ast, _) = @parser.parse("a -> b")
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  assert_eq(ir.edges[0].id.src_path, ["a"])
+  assert_eq(ir.edges[0].id.dst_path, ["b"])
+  assert_false(ir.edges[0].id.src_arrow)
+  assert_true(ir.edges[0].id.dst_arrow)
+  // Source and destination fields should exist
+  assert_true(ir.has_field("a"))
+  assert_true(ir.has_field("b"))
+}
+
+///|
+test "compile edge with label" {
+  let (ast, _) = @parser.parse("a -> b: connection")
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  guard ir.edges[0].primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "connection")
+}
+
+///|
+test "compile reverse edge" {
+  let (ast, _) = @parser.parse("a <- b")
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  assert_true(ir.edges[0].id.src_arrow)
+  assert_false(ir.edges[0].id.dst_arrow)
+}
+
+///|
+test "compile bidirectional edge" {
+  let (ast, _) = @parser.parse("a <-> b")
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  assert_true(ir.edges[0].id.src_arrow)
+  assert_true(ir.edges[0].id.dst_arrow)
+}
+
+///|
+test "compile block" {
+  let source =
+    #|container {
+    #|  child
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 1)
+  assert_eq(ir.fields[0].name, "container")
+  guard ir.fields[0].composite is Some(Composite::Map(m)) else {
+    fail("expected map")
+  }
+  assert_eq(m.fields.length(), 1)
+  assert_eq(m.fields[0].name, "child")
+}
+
+///|
+test "compile array" {
+  let (ast, _) = @parser.parse("x: [1, 2, 3]")
+  let ir = compile(ast)
+  assert_eq(ir.fields.length(), 1)
+  guard ir.fields[0].composite is Some(Composite::Array(arr)) else {
+    fail("expected array")
+  }
+  assert_eq(arr.values.length(), 3)
+}
+
+///|
+test "compile boolean values" {
+  let (ast, _) = @parser.parse("x: true")
+  let ir = compile(ast)
+  guard ir.fields[0].primary is Some(p) else { fail("expected primary") }
+  assert_true(p.is_bool())
+  assert_eq(p.as_bool(), Some(true))
+}
+
+///|
+test "compile null value" {
+  let (ast, _) = @parser.parse("x: null")
+  let ir = compile(ast)
+  guard ir.fields[0].primary is Some(p) else { fail("expected primary") }
+  assert_true(p.is_null())
+}
+
+///|
+test "compile number value" {
+  let (ast, _) = @parser.parse("x: 42")
+  let ir = compile(ast)
+  guard ir.fields[0].primary is Some(p) else { fail("expected primary") }
+  assert_true(p.is_number())
+  assert_eq(p.to_string(), "42")
+}
+
+///|
+test "map operations" {
+  let m = Map::new()
+  m.add_field(Field::simple("a"))
+  m.add_field(Field::simple("b"))
+  assert_eq(m.fields.length(), 2)
+  assert_true(m.has_field("a"))
+  assert_true(m.has_field("A")) // case-insensitive
+  assert_false(m.has_field("c"))
+  // Get field
+  guard m.get_field("a") is Some(f) else { fail("expected field") }
+  assert_eq(f.name, "a")
+  // Ensure field (existing)
+  let f2 = m.ensure_field("a")
+  assert_eq(f2.name, "a")
+  assert_eq(m.fields.length(), 2) // No new field
+  // Ensure field (new)
+  let f3 = m.ensure_field("c")
+  assert_eq(f3.name, "c")
+  assert_eq(m.fields.length(), 3) // New field added
+  // Delete field
+  let deleted = m.delete_field("b")
+  assert_true(deleted is Some(_))
+  assert_eq(m.fields.length(), 2)
+  assert_false(m.has_field("b"))
+}
+
+///|
+test "edge id matching" {
+  let id1 = EdgeID::new(["a"], ["b"], false, true)
+  let id2 = EdgeID::new(["a"], ["b"], false, true)
+  let id3 = EdgeID::new(["a"], ["c"], false, true)
+  let id4 = EdgeID::new(["A"], ["B"], false, true) // case-insensitive
+  assert_true(id1.matches(id2))
+  assert_false(id1.matches(id3))
+  assert_true(id1.matches(id4))
+}
+
+///|
+test "edge id with index" {
+  let id1 = EdgeID::with_index(["a"], ["b"], false, true, 0)
+  let id2 = EdgeID::with_index(["a"], ["b"], false, true, 0)
+  let id3 = EdgeID::with_index(["a"], ["b"], false, true, 1)
+  assert_true(id1.matches(id2))
+  assert_false(id1.matches(id3))
+}
+
+///|
+test "scalar operations" {
+  let s1 = Scalar::null()
+  assert_true(s1.is_null())
+  assert_false(s1.is_bool())
+  assert_eq(s1.to_string(), "null")
+  let s2 = Scalar::bool(true)
+  assert_true(s2.is_bool())
+  assert_eq(s2.as_bool(), Some(true))
+  assert_eq(s2.to_string(), "true")
+  let s3 = Scalar::number("3.14")
+  assert_true(s3.is_number())
+  assert_eq(s3.to_string(), "3.14")
+  let s4 = Scalar::string("hello")
+  assert_true(s4.is_string())
+  assert_eq(s4.to_string(), "hello")
+}
+
+///|
+test "field operations" {
+  let f = Field::simple("test")
+  assert_eq(f.name, "test")
+  assert_false(f.has_primary())
+  assert_false(f.has_composite())
+  assert_true(f.map() is None)
+  assert_true(f.array() is None)
+}
+
+///|
+test "value operations" {
+  let v1 : Value = Value::Scalar(Scalar::string("test"))
+  assert_true(v1.as_scalar() is Some(_))
+  assert_true(v1.as_map() is None)
+  assert_true(v1.as_array() is None)
+  let v2 : Value = Value::Map(Map::new())
+  assert_true(v2.as_map() is Some(_))
+  let v3 : Value = Value::Array(IRArray::new([]))
+  assert_true(v3.as_array() is Some(_))
+}

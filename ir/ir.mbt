@@ -1,0 +1,450 @@
+///|
+/// IR (Intermediate Representation) for D2
+///
+/// The IR is a tree data structure that keeps track of resolved values
+/// of D2 keys after processing variable substitutions, imports, and globs.
+
+///|
+/// A scalar value in the IR
+pub struct Scalar {
+  value : ScalarValue
+} derive(Eq, Show)
+
+///|
+/// Types of scalar values
+pub(all) enum ScalarValue {
+  Null
+  Bool(Bool)
+  Number(String)
+  String(String)
+} derive(Eq, Show)
+
+///|
+/// An IR Map containing fields and edges
+pub struct Map {
+  fields : Array[Field]
+  edges : Array[Edge]
+} derive(Eq, Show)
+
+///|
+/// A field in the IR map
+pub struct Field {
+  name : String
+  mut primary : Scalar?
+  mut composite : Composite?
+  references : Array[FieldReference]
+} derive(Eq, Show)
+
+///|
+/// Composite values (Array or Map)
+pub(all) enum Composite {
+  Array(IRArray)
+  Map(Map)
+} derive(Eq, Show)
+
+///|
+/// An array of values
+pub struct IRArray {
+  values : Array[Value]
+} derive(Eq, Show)
+
+///|
+/// Value types in IR
+pub(all) enum Value {
+  Scalar(Scalar)
+  Array(IRArray)
+  Map(Map)
+} derive(Eq, Show)
+
+///|
+/// An edge in the IR
+pub struct Edge {
+  id : EdgeID
+  mut primary : Scalar?
+  mut map : Map?
+  references : Array[EdgeReference]
+} derive(Eq, Show)
+
+///|
+/// Unique identifier for an edge
+pub struct EdgeID {
+  src_path : Array[String]
+  src_arrow : Bool
+  dst_path : Array[String]
+  dst_arrow : Bool
+  index : Int?
+  glob : Bool
+} derive(Eq, Show)
+
+///|
+/// Reference to a field from the AST
+pub struct FieldReference {
+  string : String
+  key_path_index : Int
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+} derive(Eq, Show)
+
+///|
+/// Reference to an edge from the AST
+pub struct EdgeReference {
+  edge_index : Int
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+} derive(Eq, Show)
+
+// ============================================================================
+// Constructors
+// ============================================================================
+
+///|
+pub fn Scalar::new(value : ScalarValue) -> Scalar {
+  { value, }
+}
+
+///|
+pub fn Scalar::null() -> Scalar {
+  { value: ScalarValue::Null }
+}
+
+///|
+pub fn Scalar::bool(b : Bool) -> Scalar {
+  { value: ScalarValue::Bool(b) }
+}
+
+///|
+pub fn Scalar::number(n : String) -> Scalar {
+  { value: ScalarValue::Number(n) }
+}
+
+///|
+pub fn Scalar::string(s : String) -> Scalar {
+  { value: ScalarValue::String(s) }
+}
+
+///|
+pub fn Map::new() -> Map {
+  { fields: [], edges: [] }
+}
+
+///|
+pub fn Field::new(
+  name : String,
+  primary : Scalar?,
+  composite : Composite?,
+  references : Array[FieldReference],
+) -> Field {
+  { name, primary, composite, references }
+}
+
+///|
+pub fn Field::simple(name : String) -> Field {
+  { name, primary: None, composite: None, references: [] }
+}
+
+///|
+pub fn IRArray::new(values : Array[Value]) -> IRArray {
+  { values, }
+}
+
+///|
+pub fn Edge::new(
+  id : EdgeID,
+  primary : Scalar?,
+  map : Map?,
+  references : Array[EdgeReference],
+) -> Edge {
+  { id, primary, map, references }
+}
+
+///|
+pub fn EdgeID::new(
+  src_path : Array[String],
+  dst_path : Array[String],
+  src_arrow : Bool,
+  dst_arrow : Bool,
+) -> EdgeID {
+  { src_path, src_arrow, dst_path, dst_arrow, index: None, glob: false }
+}
+
+///|
+pub fn EdgeID::with_index(
+  src_path : Array[String],
+  dst_path : Array[String],
+  src_arrow : Bool,
+  dst_arrow : Bool,
+  index : Int,
+) -> EdgeID {
+  { src_path, src_arrow, dst_path, dst_arrow, index: Some(index), glob: false }
+}
+
+///|
+pub fn EdgeID::with_glob(
+  src_path : Array[String],
+  dst_path : Array[String],
+  src_arrow : Bool,
+  dst_arrow : Bool,
+) -> EdgeID {
+  { src_path, src_arrow, dst_path, dst_arrow, index: None, glob: true }
+}
+
+///|
+pub fn FieldReference::new(
+  string : String,
+  key_path_index : Int,
+  primary : Bool,
+) -> FieldReference {
+  {
+    string,
+    key_path_index,
+    primary,
+    due_to_glob: false,
+    due_to_lazy_glob: false,
+  }
+}
+
+///|
+pub fn EdgeReference::new(edge_index : Int, primary : Bool) -> EdgeReference {
+  { edge_index, primary, due_to_glob: false, due_to_lazy_glob: false }
+}
+
+// ============================================================================
+// Map operations
+// ============================================================================
+
+///|
+/// Get a field by name (case-insensitive)
+pub fn Map::get_field(self : Map, name : String) -> Field? {
+  let lower = name.to_lower()
+  for f in self.fields {
+    if f.name.to_lower() == lower {
+      return Some(f)
+    }
+  }
+  None
+}
+
+///|
+/// Check if map has a field with given name
+pub fn Map::has_field(self : Map, name : String) -> Bool {
+  self.get_field(name) is Some(_)
+}
+
+///|
+/// Add a field to the map
+pub fn Map::add_field(self : Map, field : Field) -> Unit {
+  self.fields.push(field)
+}
+
+///|
+/// Add an edge to the map
+pub fn Map::add_edge(self : Map, edge : Edge) -> Unit {
+  self.edges.push(edge)
+}
+
+///|
+/// Get or create a field by name
+pub fn Map::ensure_field(self : Map, name : String) -> Field {
+  match self.get_field(name) {
+    Some(f) => f
+    None => {
+      let f = Field::simple(name)
+      self.fields.push(f)
+      f
+    }
+  }
+}
+
+///|
+/// Delete a field by name, returning it if found
+pub fn Map::delete_field(self : Map, name : String) -> Field? {
+  let lower = name.to_lower()
+  for i, f in self.fields {
+    if f.name.to_lower() == lower {
+      // Remove and return
+      let removed = self.fields.remove(i)
+      return Some(removed)
+    }
+  }
+  None
+}
+
+///|
+/// Find edges matching an EdgeID
+pub fn Map::find_edges(self : Map, id : EdgeID) -> Array[Edge] {
+  let result : Array[Edge] = []
+  for e in self.edges {
+    if e.id.matches(id) {
+      result.push(e)
+    }
+  }
+  result
+}
+
+// ============================================================================
+// EdgeID operations
+// ============================================================================
+
+///|
+/// Check if this EdgeID matches another (for queries)
+pub fn EdgeID::matches(self : EdgeID, other : EdgeID) -> Bool {
+  // Check index if both have it
+  match (self.index, other.index) {
+    (Some(i1), Some(i2)) => if i1 != i2 { return false }
+    _ => ()
+  }
+  // Check arrows
+  if self.src_arrow != other.src_arrow {
+    return false
+  }
+  if self.dst_arrow != other.dst_arrow {
+    return false
+  }
+  // Check paths (case-insensitive)
+  if self.src_path.length() != other.src_path.length() {
+    return false
+  }
+  for i, s in self.src_path {
+    if s.to_lower() != other.src_path[i].to_lower() {
+      return false
+    }
+  }
+  if self.dst_path.length() != other.dst_path.length() {
+    return false
+  }
+  for i, s in self.dst_path {
+    if s.to_lower() != other.dst_path[i].to_lower() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// Create a copy of this EdgeID
+pub fn EdgeID::copy(self : EdgeID) -> EdgeID {
+  {
+    src_path: self.src_path.copy(),
+    src_arrow: self.src_arrow,
+    dst_path: self.dst_path.copy(),
+    dst_arrow: self.dst_arrow,
+    index: self.index,
+    glob: self.glob,
+  }
+}
+
+// ============================================================================
+// Value operations
+// ============================================================================
+
+///|
+/// Get the scalar value if this is a scalar
+pub fn Value::as_scalar(self : Value) -> Scalar? {
+  match self {
+    Scalar(s) => Some(s)
+    _ => None
+  }
+}
+
+///|
+/// Get the map if this is a map
+pub fn Value::as_map(self : Value) -> Map? {
+  match self {
+    Map(m) => Some(m)
+    _ => None
+  }
+}
+
+///|
+/// Get the array if this is an array
+pub fn Value::as_array(self : Value) -> IRArray? {
+  match self {
+    Array(a) => Some(a)
+    _ => None
+  }
+}
+
+// ============================================================================
+// Scalar operations
+// ============================================================================
+
+///|
+/// Get the string representation of a scalar value
+pub fn Scalar::to_string(self : Scalar) -> String {
+  match self.value {
+    Null => "null"
+    Bool(true) => "true"
+    Bool(false) => "false"
+    Number(n) => n
+    String(s) => s
+  }
+}
+
+///|
+/// Check if scalar is null
+pub fn Scalar::is_null(self : Scalar) -> Bool {
+  self.value is Null
+}
+
+///|
+/// Check if scalar is a boolean
+pub fn Scalar::is_bool(self : Scalar) -> Bool {
+  self.value is Bool(_)
+}
+
+///|
+/// Get boolean value if this is a boolean
+pub fn Scalar::as_bool(self : Scalar) -> Bool? {
+  match self.value {
+    Bool(b) => Some(b)
+    _ => None
+  }
+}
+
+///|
+/// Check if scalar is a number
+pub fn Scalar::is_number(self : Scalar) -> Bool {
+  self.value is Number(_)
+}
+
+///|
+/// Check if scalar is a string
+pub fn Scalar::is_string(self : Scalar) -> Bool {
+  self.value is String(_)
+}
+
+// ============================================================================
+// Field operations
+// ============================================================================
+
+///|
+/// Get the map composite if this field has one
+pub fn Field::map(self : Field) -> Map? {
+  match self.composite {
+    Some(Composite::Map(m)) => Some(m)
+    _ => None
+  }
+}
+
+///|
+/// Get the array composite if this field has one
+pub fn Field::array(self : Field) -> IRArray? {
+  match self.composite {
+    Some(Composite::Array(a)) => Some(a)
+    _ => None
+  }
+}
+
+///|
+/// Check if this field has a primary value
+pub fn Field::has_primary(self : Field) -> Bool {
+  self.primary is Some(_)
+}
+
+///|
+/// Check if this field has a composite value
+pub fn Field::has_composite(self : Field) -> Bool {
+  self.composite is Some(_)
+}
