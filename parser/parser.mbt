@@ -650,20 +650,41 @@ fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
 fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
   match self.peek() {
     @lexer.Ident(name) => {
-      let token = self.advance()
+      let start_token = self.advance()
       if name == "null" {
-        Some(@ast.Scalar::Null(token.range))
+        Some(@ast.Scalar::Null(start_token.range))
       } else if name == "true" {
-        Some(@ast.Scalar::Boolean(token.range, true))
+        Some(@ast.Scalar::Boolean(start_token.range, true))
       } else if name == "false" {
-        Some(@ast.Scalar::Boolean(token.range, false))
+        Some(@ast.Scalar::Boolean(start_token.range, false))
       } else {
+        // Collect multi-word unquoted value (e.g., "Web Server")
+        let parts : Array[String] = [name]
+        let mut end_pos = start_token.range.end
+        // Keep consuming identifiers until we hit a delimiter
+        while not(self.is_at_end()) {
+          match self.peek() {
+            @lexer.Ident(next_name) => {
+              let token = self.advance()
+              parts.push(next_name)
+              end_pos = token.range.end
+            }
+            @lexer.Number(n) => {
+              let token = self.advance()
+              parts.push(n)
+              end_pos = token.range.end
+            }
+            // Stop at any delimiter
+            _ => break
+          }
+        }
+        let range = @lexer.Range::new(start_token.range.start, end_pos)
         Some(
           @ast.Scalar::String(
             @ast.StringValue::Unquoted(
               @ast.UnquotedString::new(
-                token.range,
-                [@ast.Interpolation::Text(name)],
+                range,
+                [@ast.Interpolation::Text(parts.join(" "))],
                 [],
               ),
             ),

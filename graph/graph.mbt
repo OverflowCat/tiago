@@ -216,6 +216,18 @@ pub fn Graph::add_object(self : Graph, obj : Object) -> Unit {
 }
 
 ///|
+/// Get all objects in the graph
+pub fn Graph::get_objects(self : Graph) -> Array[Object] {
+  self.objects
+}
+
+///|
+/// Get all edges in the graph
+pub fn Graph::get_edges(self : Graph) -> Array[Edge] {
+  self.edges
+}
+
+///|
 /// Add an edge to the graph
 pub fn Graph::add_edge(self : Graph, edge : Edge) -> Unit {
   self.edges.push(edge)
@@ -302,6 +314,24 @@ pub fn Object::set_label(self : Object, label : String) -> Unit {
 }
 
 ///|
+/// Get the object's ID
+pub fn Object::get_id(self : Object) -> String {
+  self.id
+}
+
+///|
+/// Get the object's box (position and size)
+pub fn Object::get_box(self : Object) -> Box? {
+  self.box
+}
+
+///|
+/// Get the object's children
+pub fn Object::get_children(self : Object) -> Array[Object] {
+  self.children
+}
+
+///|
 /// Get the center point of the object's box
 pub fn Object::center(self : Object) -> Point? {
   match self.box {
@@ -364,6 +394,42 @@ pub fn Box::intersects(self : Box, other : Box) -> Bool {
   )
 }
 
+///|
+/// Get x coordinate
+pub fn Box::get_x(self : Box) -> Double {
+  self.x
+}
+
+///|
+/// Get y coordinate
+pub fn Box::get_y(self : Box) -> Double {
+  self.y
+}
+
+///|
+/// Get width
+pub fn Box::get_width(self : Box) -> Double {
+  self.width
+}
+
+///|
+/// Get height
+pub fn Box::get_height(self : Box) -> Double {
+  self.height
+}
+
+///|
+/// Get x coordinate
+pub fn Point::get_x(self : Point) -> Double {
+  self.x
+}
+
+///|
+/// Get y coordinate
+pub fn Point::get_y(self : Point) -> Double {
+  self.y
+}
+
 // ============================================================================
 // Edge operations
 // ============================================================================
@@ -386,6 +452,24 @@ pub fn Edge::arrow_string(self : Edge) -> String {
 /// Set the label of the edge
 pub fn Edge::set_label(self : Edge, label : String) -> Unit {
   self.label = label
+}
+
+///|
+/// Get the source object ID
+pub fn Edge::get_src_id(self : Edge) -> String {
+  self.src_id
+}
+
+///|
+/// Get the destination object ID
+pub fn Edge::get_dst_id(self : Edge) -> String {
+  self.dst_id
+}
+
+///|
+/// Get the route points
+pub fn Edge::get_route(self : Edge) -> Array[Point] {
+  self.route
 }
 
 ///|

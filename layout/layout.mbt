@@ -156,8 +156,10 @@ fn position_objects(
   for root in roots {
     position_subtree(root, x, y, config, direction)
     match (root.box, direction) {
-      (Some(b), Down | Up) => x = x + b.width + config.horizontal_spacing
-      (Some(b), Right | Left) => y = y + b.height + config.vertical_spacing
+      // Down/Up: stack vertically (same x, different y)
+      (Some(b), Down | Up) => y = y + b.height + config.vertical_spacing
+      // Right/Left: stack horizontally (different x, same y)
+      (Some(b), Right | Left) => x = x + b.width + config.horizontal_spacing
       (None, _) => ()
     }
   }

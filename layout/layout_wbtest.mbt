@@ -40,11 +40,11 @@ test "layout multiple objects horizontally" {
   graph.add_object(obj_a)
   graph.add_object(obj_b)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  layout(graph, config, Direction::Right)
   // Both should have boxes
   guard obj_a.box is Some(box_a) else { fail("expected box a") }
   guard obj_b.box is Some(box_b) else { fail("expected box b") }
-  // B should be to the right of A
+  // B should be to the right of A (horizontal layout with Direction::Right)
   assert_true(box_b.x > box_a.x)
 }
 

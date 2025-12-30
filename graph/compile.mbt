@@ -65,10 +65,10 @@ fn compile_children(
     }
     let id = "\{prefix}.\{field.name}"
     let child = Object::new(id)
-    // Set label
+    // Set label - use field name as default, or primary value if provided
     match field.primary {
       Some(scalar) => child.label = scalar.to_string()
-      None => ()
+      None => child.label = field.name // Use field name, not full path
     }
     // Process nested composites
     match field.composite {
