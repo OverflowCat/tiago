@@ -26,7 +26,7 @@ pub struct Object {
   /// Visual style
   style : Style
   /// Position and size
-  box : Box?
+  mut box : Box?
   /// Child objects (for containers)
   children : Array[Object]
   /// Z-index for layering
@@ -281,6 +281,12 @@ pub fn Object::find_child(self : Object, id : String) -> Object? {
 /// Check if this object is a container (has children)
 pub fn Object::is_container(self : Object) -> Bool {
   self.children.length() > 0
+}
+
+///|
+/// Set the position and size of the object
+pub fn Object::set_box(self : Object, box : Box) -> Unit {
+  self.box = Some(box)
 }
 
 ///|
