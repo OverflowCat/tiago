@@ -1,0 +1,11 @@
+server: Web Server
+database: Database {
+  shape: cylinder
+}
+cache: Cache {
+  shape: oval
+}
+
+server -> database: queries
+server -> cache: reads
+cache -> database: fallback

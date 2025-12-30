@@ -332,6 +332,18 @@ pub fn Object::get_children(self : Object) -> Array[Object] {
 }
 
 ///|
+/// Get the object's shape
+pub fn Object::get_shape(self : Object) -> String {
+  self.shape
+}
+
+///|
+/// Get the object's label
+pub fn Object::get_label(self : Object) -> String {
+  self.label
+}
+
+///|
 /// Get the center point of the object's box
 pub fn Object::center(self : Object) -> Point? {
   match self.box {

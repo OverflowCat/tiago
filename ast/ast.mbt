@@ -77,6 +77,8 @@ pub(all) enum Value {
   Array(ArrayValue)
   Map(Map)
   Import(Import)
+  /// Scalar label followed by a map block: `name: Label { props }`
+  BlockScalar(Value, Map)
 } derive(Eq, Show)
 
 ///|
@@ -297,6 +299,7 @@ pub fn Value::range(self : Value) -> @lexer.Range {
     Array(a) => a.range
     Map(m) => m.range
     Import(i) => i.range
+    BlockScalar(v, m) => @lexer.Range::new(v.range().start, m.range.end)
   }
 }
 

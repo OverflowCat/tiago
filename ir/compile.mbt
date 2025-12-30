@@ -112,6 +112,15 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
               compile_map_nodes(ir_map, m.nodes)
               e.map = Some(ir_map)
             }
+            @ast.Value::BlockScalar(label, m) => {
+              match label {
+                @ast.Value::Scalar(s) => e.primary = Some(compile_scalar(s))
+                _ => ()
+              }
+              let ir_map = Map::new()
+              compile_map_nodes(ir_map, m.nodes)
+              e.map = Some(ir_map)
+            }
             _ => ()
           }
         None => ()
@@ -125,6 +134,15 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
           match value {
             @ast.Value::Scalar(s) => primary = Some(compile_scalar(s))
             @ast.Value::Map(m) => {
+              let ir_map = Map::new()
+              compile_map_nodes(ir_map, m.nodes)
+              edge_map = Some(ir_map)
+            }
+            @ast.Value::BlockScalar(label, m) => {
+              match label {
+                @ast.Value::Scalar(s) => primary = Some(compile_scalar(s))
+                _ => ()
+              }
               let ir_map = Map::new()
               compile_map_nodes(ir_map, m.nodes)
               edge_map = Some(ir_map)
@@ -175,6 +193,16 @@ fn compile_value(field : Field, value : @ast.Value) -> Unit raise CompileError {
       field.composite = Some(Composite::Array(ir_array))
     }
     @ast.Value::Import(_) => () // TODO: handle imports
+    @ast.Value::BlockScalar(label, m) => {
+      // "name: Label { props }" - Label is primary, props is composite
+      match label {
+        @ast.Value::Scalar(s) => field.primary = Some(compile_scalar(s))
+        _ => ()
+      }
+      let ir_map = Map::new()
+      compile_map_nodes(ir_map, m.nodes)
+      field.composite = Some(Composite::Map(ir_map))
+    }
   }
 }
 
@@ -204,6 +232,12 @@ fn compile_ast_value(value : @ast.Value) -> Value raise CompileError {
     }
     @ast.Value::Array(a) => Value::Array(compile_array(a))
     @ast.Value::Import(_) => Value::Scalar(Scalar::null()) // TODO: handle imports
+    @ast.Value::BlockScalar(_, m) => {
+      // For arrays, just use the map part (label is ignored in array context)
+      let ir_map = Map::new()
+      compile_map_nodes(ir_map, m.nodes)
+      Value::Map(ir_map)
+    }
   }
 }
 

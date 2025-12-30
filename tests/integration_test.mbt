@@ -467,3 +467,26 @@ test "label width affects object size" {
     _ => fail("objects should have boxes")
   }
 }
+
+///|
+test "shape is preserved in graph" {
+  let source =
+    #|db {
+    #|  shape: cylinder
+    #|}
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let db = graph.find_object("db").unwrap()
+  inspect(db.get_shape(), content="cylinder")
+}
+
+///|
+test "shape with label is preserved" {
+  let source =
+    #|database: Database {
+    #|  shape: cylinder
+    #|}
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let db = graph.find_object("database").unwrap()
+  inspect(db.get_label(), content="Database")
+  inspect(db.get_shape(), content="cylinder")
+}

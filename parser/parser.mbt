@@ -261,6 +261,18 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
         Some(val) => value = Some(val)
         None => ()
       }
+      // D2 allows "name: label { block }" - check for block after scalar
+      self.skip_whitespace_not_newline()
+      match (value, self.peek()) {
+        (Some(@ast.Value::Scalar(_)), @lexer.LeftBrace) =>
+          match self.parse_block() {
+            Some(block) =>
+              // Merge: keep scalar as label, wrap in BlockScalar
+              value = Some(@ast.Value::BlockScalar(value.unwrap(), block))
+            None => ()
+          }
+        _ => ()
+      }
     }
     @lexer.LeftBrace =>
       match self.parse_block() {
