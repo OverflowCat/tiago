@@ -290,6 +290,18 @@ pub fn Object::set_box(self : Object, box : Box) -> Unit {
 }
 
 ///|
+/// Set the shape of the object
+pub fn Object::set_shape(self : Object, shape : String) -> Unit {
+  self.shape = shape
+}
+
+///|
+/// Set the label of the object
+pub fn Object::set_label(self : Object, label : String) -> Unit {
+  self.label = label
+}
+
+///|
 /// Get the center point of the object's box
 pub fn Object::center(self : Object) -> Point? {
   match self.box {
@@ -368,6 +380,12 @@ pub fn Edge::arrow_string(self : Edge) -> String {
   } else {
     "--"
   }
+}
+
+///|
+/// Set the label of the edge
+pub fn Edge::set_label(self : Edge, label : String) -> Unit {
+  self.label = label
 }
 
 ///|
