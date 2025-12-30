@@ -102,6 +102,118 @@ test "hexagon shape" {
   assert_true(svg.contains("<polygon"))
 }
 
+///|
+test "octagon shape" {
+  let source =
+    #|stop {
+    #|  shape: octagon
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<polygon"))
+}
+
+///|
+test "parallelogram shape" {
+  let source =
+    #|input {
+    #|  shape: parallelogram
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<polygon"))
+}
+
+///|
+test "person shape" {
+  let source =
+    #|user {
+    #|  shape: person
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<circle"))
+  assert_true(svg.contains("<line"))
+}
+
+///|
+test "cloud shape" {
+  let source =
+    #|aws {
+    #|  shape: cloud
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+  assert_true(svg.contains("C ")) // bezier curve
+}
+
+///|
+test "document shape" {
+  let source =
+    #|doc {
+    #|  shape: document
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
+///|
+test "queue shape" {
+  let source =
+    #|queue {
+    #|  shape: queue
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
+///|
+test "stored_data shape" {
+  let source =
+    #|storage {
+    #|  shape: stored_data
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
+///|
+test "page shape" {
+  let source =
+    #|paper {
+    #|  shape: page
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
+///|
+test "package shape" {
+  let source =
+    #|pkg {
+    #|  shape: package
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
+///|
+test "step shape" {
+  let source =
+    #|process {
+    #|  shape: step
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<polygon"))
+}
+
+///|
+test "callout shape" {
+  let source =
+    #|note {
+    #|  shape: callout
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<path"))
+}
+
 // =============================================================================
 // Edge tests
 // =============================================================================

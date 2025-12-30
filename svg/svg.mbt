@@ -310,6 +310,48 @@ pub fn PathBuilder::arc_to(
 }
 
 ///|
+/// Cubic bezier curve (absolute)
+pub fn PathBuilder::cubic_to(
+  self : PathBuilder,
+  cx1 : Double,
+  cy1 : Double,
+  cx2 : Double,
+  cy2 : Double,
+  x : Double,
+  y : Double,
+) -> PathBuilder {
+  self.commands.push("C \{cx1} \{cy1} \{cx2} \{cy2} \{x} \{y}")
+  self
+}
+
+///|
+/// Quadratic bezier curve (absolute)
+pub fn PathBuilder::quad_to(
+  self : PathBuilder,
+  cx : Double,
+  cy : Double,
+  x : Double,
+  y : Double,
+) -> PathBuilder {
+  self.commands.push("Q \{cx} \{cy} \{x} \{y}")
+  self
+}
+
+///|
+/// Horizontal line to (absolute)
+pub fn PathBuilder::h_to(self : PathBuilder, x : Double) -> PathBuilder {
+  self.commands.push("H \{x}")
+  self
+}
+
+///|
+/// Vertical line to (absolute)
+pub fn PathBuilder::v_to(self : PathBuilder, y : Double) -> PathBuilder {
+  self.commands.push("V \{y}")
+  self
+}
+
+///|
 /// Close path
 pub fn PathBuilder::close(self : PathBuilder) -> PathBuilder {
   self.commands.push("Z")
