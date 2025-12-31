@@ -1,0 +1,41 @@
+# D2 grid layout example
+
+grid_container: Dashboard {
+  grid-rows: 2
+  grid-columns: 3
+
+  header: Header {
+    style.fill: "#e3f2fd"
+  }
+
+  nav: Navigation {
+    style.fill: "#fff3e0"
+  }
+
+  search: Search {
+    style.fill: "#f3e5f5"
+  }
+
+  sidebar: Sidebar {
+    style.fill: "#e8f5e9"
+  }
+
+  content: Main Content {
+    style.fill: "#fafafa"
+  }
+
+  footer: Footer {
+    style.fill: "#eceff1"
+  }
+}
+
+# Another grid example
+icons: Icon Grid {
+  grid-rows: 3
+  grid-columns: 4
+  grid-gap: 10
+
+  i1; i2; i3; i4
+  i5; i6; i7; i8
+  i9; i10; i11; i12
+}

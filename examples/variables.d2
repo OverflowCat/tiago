@@ -1,0 +1,28 @@
+# D2 variable substitution example
+
+vars: {
+  primary-color: "#2196F3"
+  secondary-color: "#FF9800"
+  success-color: "#4CAF50"
+  error-color: "#f44336"
+}
+
+header: Header {
+  style.fill: ${primary-color}
+}
+
+sidebar: Sidebar {
+  style.fill: ${secondary-color}
+}
+
+success: Success Message {
+  style.fill: ${success-color}
+}
+
+error: Error Message {
+  style.fill: ${error-color}
+}
+
+header -> sidebar
+sidebar -> success
+sidebar -> error

@@ -1,0 +1,25 @@
+# D2 direction examples
+
+down_flow: Down (default) {
+  direction: down
+  a -> b -> c
+}
+
+right_flow: Right {
+  direction: right
+  a -> b -> c
+}
+
+left_flow: Left {
+  direction: left
+  a -> b -> c
+}
+
+up_flow: Up {
+  direction: up
+  a -> b -> c
+}
+
+down_flow -> right_flow
+right_flow -> left_flow
+left_flow -> up_flow

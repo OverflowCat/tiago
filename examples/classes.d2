@@ -1,0 +1,58 @@
+# D2 classes example
+
+classes: {
+  server: {
+    shape: rectangle
+    style: {
+      fill: "#e3f2fd"
+      stroke: "#1976D2"
+      stroke-width: 2
+    }
+  }
+
+  database: {
+    shape: cylinder
+    style: {
+      fill: "#fff8e1"
+      stroke: "#FFA000"
+      stroke-width: 2
+    }
+  }
+
+  user: {
+    shape: person
+    style: {
+      fill: "#f3e5f5"
+    }
+  }
+}
+
+web1: Web Server 1 {
+  class: server
+}
+
+web2: Web Server 2 {
+  class: server
+}
+
+db1: Primary DB {
+  class: database
+}
+
+db2: Replica DB {
+  class: database
+}
+
+alice: Alice {
+  class: user
+}
+
+bob: Bob {
+  class: user
+}
+
+alice -> web1
+bob -> web2
+web1 -> db1
+web2 -> db1
+db1 -> db2: replication
