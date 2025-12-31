@@ -75,9 +75,11 @@ pub fn layout(
 ) -> Unit {
   // Phase 1: Compute sizes for all objects
   compute_sizes(graph, config)
-  // Phase 2: Position objects - check for grid containers
+  // Phase 2: Position objects - check for special containers
   for obj in graph.objects {
-    if obj.is_grid_diagram() && obj.is_container() {
+    if is_sequence_diagram(obj) && obj.is_container() {
+      layout_sequence(obj, config)
+    } else if obj.is_grid_diagram() && obj.is_container() {
       layout_grid(obj, config)
     }
   }

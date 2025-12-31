@@ -225,3 +225,38 @@ test "sum_with_gap" {
   let multiple = [100.0, 100.0, 100.0]
   assert_eq(sum_with_gap(multiple, 10.0), 320.0) // 100 + 10 + 100 + 10 + 100
 }
+
+///|
+test "is_sequence_diagram" {
+  let obj = @graph.Object::new("test")
+  assert_true(!is_sequence_diagram(obj)) // default is rectangle
+  obj.set_shape("sequence_diagram")
+  assert_true(is_sequence_diagram(obj))
+}
+
+///|
+test "sequence layout basic" {
+  let graph = @graph.Graph::new("test")
+  let container = @graph.Object::new("seq")
+  container.set_shape("sequence_diagram")
+  // Add actors
+  let alice = @graph.Object::new("alice")
+  let bob = @graph.Object::new("bob")
+  container.add_child(alice)
+  container.add_child(bob)
+  graph.add_object(container)
+  graph.add_object(alice)
+  graph.add_object(bob)
+  let config = LayoutConfig::new()
+  // Run sequence layout
+  layout_sequence(container, config)
+  // Container should have a box
+  assert_true(container.get_box() is Some(_))
+  // Actors should have boxes
+  assert_true(alice.get_box() is Some(_))
+  assert_true(bob.get_box() is Some(_))
+  // Alice should be to the left of Bob
+  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
+  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
+  assert_true(bob_box.get_x() > alice_box.get_x())
+}
