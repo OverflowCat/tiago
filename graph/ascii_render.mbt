@@ -340,6 +340,140 @@ fn render_ascii_box(
       grid.hline(x1 + 1, x2 - 1, y2, '─')
       grid.set(x2, y2, '┘')
     }
+    "person" => {
+      // Stick figure:  ╱‾‾╲
+      //                ╲__╱
+      //               ╱‾‾‾‾╲
+      //               ‾‾‾‾‾‾
+      let cx = (x1 + x2) / 2
+      // Head (top)
+      grid.set(cx - 1, y1, '╱')
+      grid.set(cx, y1, '‾')
+      grid.set(cx + 1, y1, '╲')
+      grid.set(cx - 1, y1 + 1, '╲')
+      grid.set(cx, y1 + 1, '_')
+      grid.set(cx + 1, y1 + 1, '╱')
+      // Body (bottom)
+      if y2 > y1 + 2 {
+        grid.set(cx - 2, y1 + 2, '╱')
+        grid.hline(cx - 1, cx + 1, y1 + 2, '‾')
+        grid.set(cx + 2, y1 + 2, '╲')
+        grid.hline(cx - 2, cx + 2, y2, '‾')
+      }
+    }
+    "hexagon" => {
+      // Hexagon:  ╱‾‾‾‾‾╲
+      //          ╲_____╱
+      grid.set(x1, y1, '╱')
+      grid.hline(x1 + 1, x2 - 1, y1, '‾')
+      grid.set(x2, y1, '╲')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╲')
+      grid.hline(x1 + 1, x2 - 1, y2, '_')
+      grid.set(x2, y2, '╱')
+    }
+    "parallelogram" => {
+      // Parallelogram: ╱‾‾‾‾‾╱
+      //               ╱_____╱
+      grid.set(x1, y1, '╱')
+      grid.hline(x1 + 1, x2 - 1, y1, '‾')
+      grid.set(x2, y1, '╱')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╱')
+      grid.hline(x1 + 1, x2 - 1, y2, '_')
+      grid.set(x2, y2, '╱')
+    }
+    "document" => {
+      // Document: box with wavy bottom
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      // Wavy bottom: `-.-`
+      grid.set(x1, y2, '`')
+      grid.set(x1 + 1, y2, '-')
+      grid.set(x1 + 2, y2, '.')
+      grid.set(x1 + 3, y2, '-')
+      grid.set(x1 + 4, y2, '`')
+    }
+    "page" => {
+      // Page: box with folded corner
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 2, y1, '─')
+      grid.set(x2 - 1, y1, '╲')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+    }
+    "package" => {
+      // Package: box with top fold
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 2, y1, '─')
+      grid.set(x2 - 1, y1, '└')
+      grid.set(x2, y1, '─')
+      grid.set(x2 + 1, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+    }
+    "queue" => {
+      // Queue: box with right side extending
+      grid.set(x1, y1, '╱')
+      grid.hline(x1 + 1, x2 - 1, y1, '‾')
+      grid.set(x2, y1, '╱')
+      grid.set(x2 + 1, y1, '╲')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╲')
+      grid.hline(x1 + 1, x2 - 1, y2, '_')
+      grid.set(x2, y2, '╲')
+      grid.set(x2 + 1, y2, '╱')
+    }
+    "step" => {
+      // Step: parallelogram pointing right
+      grid.set(x1, y1, '╲')
+      grid.hline(x1 + 1, x2 - 1, y1, '‾')
+      grid.set(x2, y1, '╲')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╱')
+      grid.hline(x1 + 1, x2 - 1, y2, '_')
+      grid.set(x2, y2, '╱')
+    }
+    "stored_data" => {
+      // Stored data: parallelogram-like cylinder
+      grid.set(x1, y1, '╱')
+      grid.hline(x1 + 1, x2 - 1, y1, '‾')
+      grid.set(x2, y1, '╱')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╲')
+      grid.hline(x1 + 1, x2 - 1, y2, '_')
+      grid.set(x2, y2, '╲')
+    }
+    "callout" => {
+      // Callout: box with arrow pointing down
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+      // Arrow pointing down
+      let cx = (x1 + x2) / 2
+      grid.set(cx, y2 + 1, '│')
+      grid.set(cx, y2 + 2, '╱')
+    }
     _ => grid.unicode_rect(x1, y1, x2, y2)
   }
   // Draw label centered (on first content line, which is y1 + 1)
