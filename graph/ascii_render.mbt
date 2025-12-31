@@ -57,7 +57,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   let grid = @ascii.Grid::new(canvas_width, canvas_height)
   // Render edge lines first (behind objects)
   for edge in graph.edges {
-    render_ascii_edge_new(grid, edge, boxes, config)
+    render_ascii_edge_new(grid, graph, edge, boxes, config)
   }
   // Render objects
   for box in boxes {
@@ -65,11 +65,11 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   }
   // Render edge labels
   for edge in graph.edges {
-    render_ascii_label_new(grid, edge, boxes, config)
+    render_ascii_label_new(grid, graph, edge, boxes, config)
   }
   // Render edge arrows LAST (on top of everything)
   for edge in graph.edges {
-    render_ascii_arrows_new(grid, edge, boxes, config)
+    render_ascii_arrows_new(grid, graph, edge, boxes, config)
   }
   grid.to_string()
 }
@@ -344,6 +344,47 @@ fn render_ascii_box(
 }
 
 ///|
+/// Compute horizontal offset for parallel edges between same node pair
+fn compute_edge_offset(
+  graph : Graph,
+  edge : Edge,
+  _boxes : Array[AsciiBox],
+) -> Int {
+  let src_id = edge.get_src_id()
+  let dst_id = edge.get_dst_id()
+  // Find all edges between same src and dst (in either direction for vertical)
+  let parallel_edges : Array[Edge] = []
+  for e in graph.edges {
+    let e_src = e.get_src_id()
+    let e_dst = e.get_dst_id()
+    // Check if same node pair (considering both directions for overlap)
+    if (e_src == src_id && e_dst == dst_id) ||
+      (e_src == dst_id && e_dst == src_id) {
+      parallel_edges.push(e)
+    }
+  }
+  if parallel_edges.length() <= 1 {
+    return 0
+  }
+  // Find this edge's index in the parallel group
+  let mut edge_index = 0
+  for i, e in parallel_edges {
+    if e.get_src_id() == src_id &&
+      e.get_dst_id() == dst_id &&
+      e.label == edge.label {
+      edge_index = i
+      break
+    }
+  }
+  // Calculate offset: spread edges around center
+  let total = parallel_edges.length()
+  let spacing = 2 // chars between parallel edges
+  let total_width = (total - 1) * spacing
+  let start_offset = -(total_width / 2)
+  start_offset + edge_index * spacing
+}
+
+///|
 /// Find ASCII box by object ID
 fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
   for box in boxes {
@@ -362,56 +403,32 @@ fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
 }
 
 ///|
-/// Render edge lines with orthogonal routing
+/// Render edge lines - straight vertical lines only
 fn render_ascii_edge_new(
   grid : @ascii.Grid,
+  graph : Graph,
   edge : Edge,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
-  // Find source and destination boxes by ID
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
+  let offset = compute_edge_offset(graph, edge, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
-      // Calculate connection points
-      let src_cx = src.x + src.width / 2
-      let src_bottom = src.y + src.height
-      let dst_cx = dst.x + dst.width / 2
-      let dst_top = dst.y - 1
-      // Draw vertical line from source bottom
       if dst.y > src.y + src.height {
-        // Going down
-        if src_cx == dst_cx {
-          // Straight down
-          grid.vline(src_cx, src_bottom, dst_top, '│')
-        } else {
-          // Need orthogonal routing
-          let mid_y = (src_bottom + dst_top) / 2
-          // Down from source
-          grid.vline(src_cx, src_bottom, mid_y, '│')
-          // Horizontal
-          if src_cx < dst_cx {
-            grid.set(src_cx, mid_y, '└')
-            grid.hline(src_cx + 1, dst_cx - 1, mid_y, '─')
-            grid.set(dst_cx, mid_y, '┐')
-          } else {
-            grid.set(src_cx, mid_y, '┘')
-            grid.hline(dst_cx + 1, src_cx - 1, mid_y, '─')
-            grid.set(dst_cx, mid_y, '┌')
-          }
-          // Down to dest
-          grid.vline(dst_cx, mid_y + 1, dst_top, '│')
-        }
+        // Vertical edge going down - use destination center + offset
+        let line_x = dst.x + dst.width / 2 + offset
+        let src_bottom = src.y + src.height
+        let dst_top = dst.y - 1
+        grid.vline(line_x, src_bottom, dst_top, '│')
       } else if dst.x != src.x {
         // Side by side - horizontal connection
-        let src_right = src.x + src.width
-        let dst_left = dst.x - 1
         let cy = src.y + src.height / 2
         if src.x < dst.x {
-          grid.hline(src_right, dst_left, cy, '─')
+          grid.hline(src.x + src.width, dst.x - 1, cy, '─')
         } else {
           grid.hline(dst.x + dst.width, src.x - 1, cy, '─')
         }
@@ -425,6 +442,7 @@ fn render_ascii_edge_new(
 /// Render edge arrows
 fn render_ascii_arrows_new(
   grid : @ascii.Grid,
+  graph : Graph,
   edge : Edge,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
@@ -433,28 +451,35 @@ fn render_ascii_arrows_new(
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
+  let offset = compute_edge_offset(graph, edge, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
-      if edge.dst_arrow {
-        let dst_cx = dst.x + dst.width / 2
-        let dst_top = dst.y - 1
-        if dst.y > src.y + src.height {
-          // Arrow pointing down
-          grid.set(dst_cx, dst_top, '▼')
-        } else if dst.x > src.x {
-          // Arrow pointing right
-          grid.set(dst.x - 1, dst.y + dst.height / 2, '▶')
-        } else {
-          // Arrow pointing left
-          grid.set(dst.x + dst.width, dst.y + dst.height / 2, '◀')
-        }
-      }
-      if edge.src_arrow {
-        let src_cx = src.x + src.width / 2
+      if dst.y > src.y + src.height {
+        // Vertical edge - line is at destination center + offset
+        let line_x = dst.x + dst.width / 2 + offset
         let src_bottom = src.y + src.height
-        if dst.y > src.y + src.height {
-          // Arrow pointing up from source
-          grid.set(src_cx, src_bottom, '▲')
+        let dst_top = dst.y - 1
+        if edge.dst_arrow {
+          grid.set(line_x, dst_top, '▼')
+        }
+        if edge.src_arrow {
+          grid.set(line_x, src_bottom, '▲')
+        }
+      } else if dst.x != src.x {
+        // Horizontal edge
+        if edge.dst_arrow {
+          if dst.x > src.x {
+            grid.set(dst.x - 1, dst.y + dst.height / 2, '▶')
+          } else {
+            grid.set(dst.x + dst.width, dst.y + dst.height / 2, '◀')
+          }
+        }
+        if edge.src_arrow {
+          if dst.x > src.x {
+            grid.set(src.x + src.width, src.y + src.height / 2, '◀')
+          } else {
+            grid.set(src.x - 1, src.y + src.height / 2, '▶')
+          }
         }
       }
     }
@@ -466,6 +491,7 @@ fn render_ascii_arrows_new(
 /// Render edge labels
 fn render_ascii_label_new(
   grid : @ascii.Grid,
+  graph : Graph,
   edge : Edge,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
@@ -477,20 +503,21 @@ fn render_ascii_label_new(
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
+  let offset = compute_edge_offset(graph, edge, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
-      let label = edge.label.replace(old=" ", new="─")
       if dst.y > src.y + src.height {
-        // Vertical edge - place label above the arrow (not at arrow position)
-        let cx = (src.x + src.width / 2 + dst.x + dst.width / 2) / 2
-        // Put label on the line after the source box, not at the midpoint
-        let cy = src.y + src.height + 1
-        grid.text(cx - label.length() / 2, cy, label)
+        // Vertical edge - place label in the MIDDLE of the edge
+        let line_x = dst.x + dst.width / 2 + offset
+        let src_bottom = src.y + src.height
+        let dst_top = dst.y - 1
+        let mid_y = (src_bottom + dst_top) / 2
+        grid.text(line_x - edge.label.length() / 2, mid_y, edge.label)
       } else {
         // Horizontal edge
         let cy = src.y + src.height / 2
         let cx = (src.x + src.width + dst.x) / 2
-        grid.text(cx - label.length() / 2, cy, label)
+        grid.text(cx - edge.label.length() / 2, cy, edge.label)
       }
     }
     _ => ()
