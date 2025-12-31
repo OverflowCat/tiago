@@ -22,20 +22,55 @@ pub struct SvgConfig {
   default_stroke_width : Double
   /// Arrow size
   arrow_size : Double
+  /// Theme ID (0 = default)
+  theme_id : Int
 } derive(Show)
 
 ///|
 pub fn SvgConfig::new() -> SvgConfig {
+  let theme = @themes.get_theme(0)
   {
     padding: 20.0,
     font_family: "Arial, sans-serif",
     font_size: 14,
-    background: "#ffffff",
-    default_stroke: "#333333",
-    default_fill: "#ffffff",
+    background: theme.background_color(),
+    default_stroke: theme.stroke_color(),
+    default_fill: theme.fill_color(),
     default_stroke_width: 2.0,
     arrow_size: 10.0,
+    theme_id: 0,
   }
+}
+
+///|
+/// Create config with a specific theme
+pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
+  let theme = @themes.get_theme(theme_id)
+  let font = if theme.rules.mono { "monospace" } else { "Arial, sans-serif" }
+  {
+    padding: 20.0,
+    font_family: font,
+    font_size: 14,
+    background: theme.background_color(),
+    default_stroke: theme.stroke_color(),
+    default_fill: theme.fill_color(),
+    default_stroke_width: 2.0,
+    arrow_size: 10.0,
+    theme_id,
+  }
+}
+
+///|
+/// Create config with theme by name
+pub fn SvgConfig::with_theme_name(name : String) -> SvgConfig {
+  let theme = @themes.get_theme_by_name(name)
+  SvgConfig::with_theme(theme.get_id())
+}
+
+///|
+/// List all available theme names
+pub fn list_themes() -> Array[String] {
+  @themes.list_themes()
 }
 
 ///|

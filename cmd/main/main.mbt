@@ -2,7 +2,7 @@
 /// Diago - D2 diagram compiler
 ///
 /// A MoonBit implementation of the D2 diagram language.
-/// Usage: diago [--ascii] <input.d2> [output]
+/// Usage: diago [options] <input.d2> [output]
 
 ///|
 fn main {
@@ -13,17 +13,30 @@ fn main {
   }
   // Parse arguments
   let mut ascii_mode = false
+  let mut theme_name : String? = None
   let mut input_path : String? = None
   let mut output_path : String? = None
-  for i in 1..<args.length() {
+  let mut i = 1
+  while i < args.length() {
     let arg = args[i]
     if arg == "--ascii" || arg == "-a" {
       ascii_mode = true
+    } else if arg == "--theme" || arg == "-t" {
+      i = i + 1
+      if i < args.length() {
+        theme_name = Some(args[i])
+      }
+    } else if arg.has_prefix("--theme=") {
+      theme_name = Some(extract_theme_name(arg))
+    } else if arg == "--list-themes" {
+      list_themes()
+      return
     } else if input_path is None {
       input_path = Some(arg)
     } else if output_path is None {
       output_path = Some(arg)
     }
+    i = i + 1
   }
   guard input_path is Some(input) else {
     print_usage()
@@ -42,7 +55,7 @@ fn main {
   let result = if ascii_mode {
     compile_d2_ascii(source)
   } else {
-    compile_d2_svg(source)
+    compile_d2_svg(source, theme_name)
   }
   match result {
     Ok(output) =>
@@ -70,19 +83,50 @@ fn print_usage() -> Unit {
   println("Usage: diago [options] <input.d2> [output]")
   println("")
   println("Options:")
-  println("  --ascii, -a  Output ASCII art instead of SVG")
+  println("  --ascii, -a       Output ASCII art instead of SVG")
+  println("  --theme, -t NAME  Use specified theme (default: Neutral Default)")
+  println("  --list-themes     List all available themes")
   println("")
   println("Arguments:")
-  println("  input.d2     D2 diagram source file")
-  println("  output       Output file (default: stdout)")
+  println("  input.d2          D2 diagram source file")
+  println("  output            Output file (default: stdout)")
+}
+
+///|
+fn list_themes() -> Unit {
+  println("Available themes:")
+  for name in @graph.list_themes() {
+    println("  \{name}")
+  }
+}
+
+///|
+fn extract_theme_name(arg : String) -> String {
+  // Extract value after --theme=
+  let sb = StringBuilder::new()
+  let mut past_eq = false
+  for c in arg {
+    if past_eq {
+      sb.write_char(c)
+    } else if c == '=' {
+      past_eq = true
+    }
+  }
+  sb.to_string()
 }
 
 ///|
 /// Compile D2 source to SVG
-fn compile_d2_svg(source : String) -> Result[String, String] {
+fn compile_d2_svg(
+  source : String,
+  theme_name : String?,
+) -> Result[String, String] {
   match compile_to_graph(source) {
     Ok(graph) => {
-      let render_config = @graph.SvgConfig::new()
+      let render_config = match theme_name {
+        Some(name) => @graph.SvgConfig::with_theme_name(name)
+        None => @graph.SvgConfig::new()
+      }
       Ok(@graph.render_svg(graph, render_config))
     }
     Err(e) => Err(e)

@@ -2,6 +2,7 @@
   "import": [
     "Milky2018/diago/ir",
     "Milky2018/diago/svg",
-    "Milky2018/diago/ascii"
+    "Milky2018/diago/ascii",
+    "Milky2018/diago/themes"
   ]
 }

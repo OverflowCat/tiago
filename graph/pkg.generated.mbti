@@ -8,6 +8,8 @@ import(
 // Values
 pub fn compile(String, @ir.Map) -> Graph raise GraphCompileError
 
+pub fn list_themes() -> Array[String]
+
 pub fn render_ascii(Graph, AsciiConfig) -> String
 
 pub fn render_svg(Graph, SvgConfig) -> String
@@ -168,8 +170,11 @@ pub struct SvgConfig {
   default_fill : String
   default_stroke_width : Double
   arrow_size : Double
+  theme_id : Int
 }
 pub fn SvgConfig::new() -> Self
+pub fn SvgConfig::with_theme(Int) -> Self
+pub fn SvgConfig::with_theme_name(String) -> Self
 pub impl Show for SvgConfig
 
 // Type aliases

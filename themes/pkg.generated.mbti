@@ -1,0 +1,70 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/themes"
+
+// Values
+pub fn get_theme(Int) -> Theme
+
+pub fn get_theme_by_name(String) -> Theme
+
+pub fn list_themes() -> Array[String]
+
+// Errors
+
+// Types and methods
+pub struct ColorPalette {
+  n1 : String
+  n2 : String
+  n3 : String
+  n4 : String
+  n5 : String
+  n6 : String
+  n7 : String
+  b1 : String
+  b2 : String
+  b3 : String
+  b4 : String
+  b5 : String
+  b6 : String
+  aa2 : String
+  aa4 : String
+  aa5 : String
+  ab4 : String
+  ab5 : String
+}
+pub impl Show for ColorPalette
+
+pub struct SpecialRules {
+  mono : Bool
+  no_corner_radius : Bool
+  outer_container_double_border : Bool
+  container_dots : Bool
+  caps_lock : Bool
+  all_paper : Bool
+}
+pub fn SpecialRules::default() -> Self
+pub impl Show for SpecialRules
+
+pub struct Theme {
+  id : Int
+  name : String
+  colors : ColorPalette
+  rules : SpecialRules
+  is_dark : Bool
+}
+pub fn Theme::accent_color(Self) -> String
+pub fn Theme::background_color(Self) -> String
+pub fn Theme::container_fill(Self, Int) -> String
+pub fn Theme::container_stroke(Self) -> String
+pub fn Theme::fill_color(Self) -> String
+pub fn Theme::get_id(Self) -> Int
+pub fn Theme::get_name(Self) -> String
+pub fn Theme::is_dark(Self) -> Bool
+pub fn Theme::resolve(Self, String) -> String
+pub fn Theme::stroke_color(Self) -> String
+pub fn Theme::text_color(Self) -> String
+pub impl Show for Theme
+
+// Type aliases
+
+// Traits
+
