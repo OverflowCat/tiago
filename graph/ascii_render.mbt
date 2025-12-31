@@ -45,6 +45,10 @@ struct AsciiBox {
   height : Int
   label : String
   shape : String
+  /// Whether this is a container with children
+  is_container : Bool
+  /// Child boxes (if container)
+  children : Array[AsciiBox]
 } derive(Show)
 
 ///|
@@ -95,15 +99,28 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
       None => adj[src] = [dst]
     }
   }
+  // Track which object IDs are children (nested inside containers)
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child in obj.children {
+      child_ids[child.id] = true
+    }
+  }
   // Layout objects level by level (BFS)
   let placed : Map[String, AsciiBox] = {}
   let mut current_y = 1
   // First pass: place roots
   let mut current_x = 1
   for obj in roots {
-    let box = create_ascii_box(obj, current_x, current_y, config)
+    let box = if obj.is_container() {
+      create_container_box(obj, current_x, current_y, config)
+    } else {
+      create_ascii_box(obj, current_x, current_y, config)
+    }
     boxes.push(box)
     placed[obj.id] = box
+    // Also register children in placed map
+    register_children(box, placed)
     current_x = current_x + box.width + config.h_spacing
   }
   current_y = current_y + config.box_height + config.v_spacing
@@ -127,7 +144,10 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
               visited[dst_id] = true
               match graph.find_object(dst_id) {
                 Some(obj) => {
-                  level_objs.push(obj)
+                  // Skip if this is a child of a container (already placed)
+                  if not(child_ids.contains(obj.id)) {
+                    level_objs.push(obj)
+                  }
                   next_frontier.push(dst_id)
                 }
                 None => ()
@@ -140,48 +160,182 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
     // Place objects in this level
     if level_objs.length() > 0 {
       // Center this level under its parents
-      let level_width = compute_level_width(level_objs, config)
+      let level_width = compute_level_width_with_containers(level_objs, config)
       let parent_center = compute_parent_center(frontier, placed)
       let start_x = max_i(1, parent_center - level_width / 2)
       let mut x = start_x
       for obj in level_objs {
-        let box = create_ascii_box(obj, x, current_y, config)
+        let box = if obj.is_container() {
+          create_container_box(obj, x, current_y, config)
+        } else {
+          create_ascii_box(obj, x, current_y, config)
+        }
         boxes.push(box)
         placed[obj.id] = box
+        // Register children
+        register_children(box, placed)
         x = x + box.width + config.h_spacing
       }
-      current_y = current_y + config.box_height + config.v_spacing
+      // Update y based on max height of this level
+      let max_height = level_objs.fold(init=config.box_height, fn(acc, obj) {
+        if obj.is_container() {
+          max_i(acc, compute_container_height(obj, config))
+        } else {
+          acc
+        }
+      })
+      current_y = current_y + max_height + config.v_spacing
     }
     frontier = next_frontier
   }
-  // Add any unplaced objects (disconnected)
+  // Add any unplaced objects (disconnected, non-children)
   for obj in graph.objects {
-    if not(placed.contains(obj.id)) {
-      let box = create_ascii_box(obj, 1, current_y, config)
+    if not(placed.contains(obj.id)) && not(child_ids.contains(obj.id)) {
+      let box = if obj.is_container() {
+        create_container_box(obj, 1, current_y, config)
+      } else {
+        create_ascii_box(obj, 1, current_y, config)
+      }
       boxes.push(box)
       placed[obj.id] = box
-      current_y = current_y + config.box_height + config.v_spacing
+      register_children(box, placed)
+      current_y = current_y + box.height + config.v_spacing
     }
   }
-  boxes
+  // Flatten all boxes including children for rendering
+  flatten_boxes(boxes)
+}
+
+///|
+/// Register container children in the placed map
+fn register_children(box : AsciiBox, placed : Map[String, AsciiBox]) -> Unit {
+  for child in box.children {
+    placed[child.id] = child
+    register_children(child, placed)
+  }
+}
+
+///|
+/// Flatten nested boxes into a single array for rendering
+fn flatten_boxes(boxes : Array[AsciiBox]) -> Array[AsciiBox] {
+  let result : Array[AsciiBox] = []
+  for box in boxes {
+    result.push(box)
+    for child in box.children {
+      flatten_children(child, result)
+    }
+  }
+  result
+}
+
+///|
+fn flatten_children(box : AsciiBox, result : Array[AsciiBox]) -> Unit {
+  result.push(box)
+  for child in box.children {
+    flatten_children(child, result)
+  }
+}
+
+///|
+/// Compute container height
+fn compute_container_height(obj : Object, config : AsciiConfig) -> Int {
+  if obj.children.length() == 0 {
+    return config.box_height
+  }
+  let title_height = 2
+  let padding = 2
+  let max_child_height = obj.children.fold(init=config.box_height, fn(
+    acc,
+    child,
+  ) {
+    if child.is_container() {
+      max_i(acc, compute_container_height(child, config))
+    } else {
+      acc
+    }
+  })
+  title_height + max_child_height + padding
+}
+
+///|
+/// Compute level width accounting for containers
+fn compute_level_width_with_containers(
+  objs : Array[Object],
+  config : AsciiConfig,
+) -> Int {
+  let mut width = 0
+  for obj in objs {
+    let box_width = if obj.is_container() {
+      compute_container_width(obj, config)
+    } else {
+      max_i(config.min_box_width, obj.label.length() + config.h_padding * 2 + 2)
+    }
+    width = width + box_width + config.h_spacing
+  }
+  if width > 0 {
+    width - config.h_spacing
+  } else {
+    0
+  }
+}
+
+///|
+/// Compute container width
+fn compute_container_width(obj : Object, config : AsciiConfig) -> Int {
+  if obj.children.length() == 0 {
+    return max_i(
+      config.min_box_width,
+      obj.label.length() + config.h_padding * 2 + 2,
+    )
+  }
+  let padding = 2
+  let mut children_width = padding
+  for child in obj.children {
+    let child_width = if child.is_container() {
+      compute_container_width(child, config)
+    } else {
+      max_i(
+        config.min_box_width,
+        child.label.length() + config.h_padding * 2 + 2,
+      )
+    }
+    children_width = children_width + child_width + config.h_spacing
+  }
+  if obj.children.length() > 0 {
+    children_width = children_width - config.h_spacing + padding
+  }
+  max_i(children_width, obj.label.length() + config.h_padding * 2 + 2)
 }
 
 ///|
 fn find_ascii_roots(graph : Graph) -> Array[Object] {
-  // Objects that are not targets of any edge
+  // Track which objects are children of containers
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child in obj.children {
+      child_ids[child.id] = true
+    }
+  }
+  // Objects that are not targets of any edge and not children
   let targets : Map[String, Bool] = {}
   for edge in graph.edges {
     targets[edge.get_dst_id()] = true
   }
   let roots : Array[Object] = []
   for obj in graph.objects {
-    if not(targets.contains(obj.id)) && not(obj.is_container()) {
+    // Include object if it's not a target and not a child of a container
+    if not(targets.contains(obj.id)) && not(child_ids.contains(obj.id)) {
       roots.push(obj)
     }
   }
-  // If no roots found, use first object
-  if roots.length() == 0 && graph.objects.length() > 0 {
-    roots.push(graph.objects[0])
+  // If no roots found, use first non-child object
+  if roots.length() == 0 {
+    for obj in graph.objects {
+      if not(child_ids.contains(obj.id)) {
+        roots.push(obj)
+        break
+      }
+    }
   }
   roots
 }
@@ -193,6 +347,7 @@ fn create_ascii_box(
   y : Int,
   config : AsciiConfig,
 ) -> AsciiBox {
+  let is_container = obj.is_container()
   let width = max_i(
     config.min_box_width,
     obj.label.length() + config.h_padding * 2 + 2,
@@ -205,23 +360,65 @@ fn create_ascii_box(
     height: config.box_height,
     label: obj.label,
     shape: obj.shape,
+    is_container,
+    children: [],
   }
 }
 
 ///|
-fn compute_level_width(objs : Array[Object], config : AsciiConfig) -> Int {
-  let mut width = 0
-  for obj in objs {
-    let box_width = max_i(
-      config.min_box_width,
-      obj.label.length() + config.h_padding * 2 + 2,
-    )
-    width = width + box_width + config.h_spacing
+/// Create a container box with its children laid out inside
+fn create_container_box(
+  obj : Object,
+  x : Int,
+  y : Int,
+  config : AsciiConfig,
+) -> AsciiBox {
+  // Layout children horizontally inside the container
+  let children : Array[AsciiBox] = []
+  let padding = 2 // Padding inside container
+  let title_height = 2 // Space for container title
+  let mut child_x = x + padding
+  let child_y = y + title_height
+  for child in obj.children {
+    let child_box = if child.is_container() {
+      create_container_box(child, child_x, child_y, config)
+    } else {
+      create_ascii_box(child, child_x, child_y, config)
+    }
+    child_x = child_x + child_box.width + config.h_spacing
+    children.push(child_box)
   }
-  if width > 0 {
-    width - config.h_spacing
+  // Calculate container width to fit all children
+  let children_width = if children.length() > 0 {
+    let last = children[children.length() - 1]
+    last.x + last.width - x + padding
   } else {
-    0
+    config.min_box_width
+  }
+  // Calculate container height
+  let children_height = if children.length() > 0 {
+    let max_child_height = children.fold(init=0, fn(acc, c) {
+      max_i(acc, c.height)
+    })
+    max_child_height
+  } else {
+    config.box_height
+  }
+  let container_width = max_i(
+    children_width,
+    obj.label.length() + config.h_padding * 2 + 2,
+  )
+  let container_height = title_height + children_height + padding
+  {
+    id: obj.id,
+    x,
+    y,
+    width: container_width,
+    height: container_height,
+    label: obj.label,
+    shape: "container",
+    is_container: true,
+    children,
   }
 }
 
@@ -473,6 +670,27 @@ fn render_ascii_box(
       let cx = (x1 + x2) / 2
       grid.set(cx, y2 + 1, '│')
       grid.set(cx, y2 + 2, '╱')
+    }
+    "container" => {
+      // Container: box with title at top, children inside
+      // Draw the border
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+      // Draw title centered at top
+      let label_x = x1 + (box.width - box.label.length()) / 2
+      grid.text(label_x, y1 + 1, box.label)
+      // Draw horizontal line under title
+      grid.hline(x1 + 1, x2 - 1, y1 + 2, '─')
+      grid.set(x1, y1 + 2, '├')
+      grid.set(x2, y1 + 2, '┤')
+      // Note: children are rendered separately since they're in the flattened boxes list
+      return
     }
     _ => grid.unicode_rect(x1, y1, x2, y2)
   }
