@@ -70,6 +70,12 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   for box in boxes {
     render_ascii_box(grid, box, config)
   }
+  // Re-render container borders on top of edges
+  for box in boxes {
+    if box.is_container {
+      render_container_border(grid, box)
+    }
+  }
   // Render edge labels (only for first reference which has the label)
   for edge in graph.edges {
     render_ascii_label_new(grid, graph, edge, 0, boxes, config)
@@ -694,6 +700,26 @@ fn render_ascii_box(
   let label_x = x1 + (box.width - box.label.length()) / 2
   let label_y = y1 + 1
   grid.text(label_x, label_y, box.label)
+}
+
+///|
+/// Render only the container border (called after edges to ensure clean borders)
+fn render_container_border(grid : @ascii.Grid, box : AsciiBox) -> Unit {
+  let x1 = box.x
+  let y1 = box.y
+  let x2 = box.x + box.width - 1
+  let y2 = box.y + box.height - 1
+  // Draw corners
+  grid.set(x1, y1, '┌')
+  grid.set(x2, y1, '┐')
+  grid.set(x1, y2, '└')
+  grid.set(x2, y2, '┘')
+  // Draw top and bottom edges
+  grid.hline(x1 + 1, x2 - 1, y1, '─')
+  grid.hline(x1 + 1, x2 - 1, y2, '─')
+  // Draw left and right edges
+  grid.vline(x1, y1 + 1, y2 - 1, '│')
+  grid.vline(x2, y1 + 1, y2 - 1, '│')
 }
 
 ///|
