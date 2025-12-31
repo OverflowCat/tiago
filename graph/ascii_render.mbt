@@ -359,15 +359,20 @@ fn compute_edge_offset(
 ) -> Int {
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
-  // Count total parallel lines: sum of reference_count for all edges between same nodes
+  // Count total parallel lines and find max label length
   let mut total_lines = 0
   let mut line_index = 0
+  let mut max_label_len = 0
   for e in graph.edges {
     let e_src = e.get_src_id()
     let e_dst = e.get_dst_id()
     // Check if same node pair (considering both directions)
     if (e_src == src_id && e_dst == dst_id) ||
       (e_src == dst_id && e_dst == src_id) {
+      // Track max label length for spacing
+      if e.label.length() > max_label_len {
+        max_label_len = e.label.length()
+      }
       // Is this the current edge?
       if e_src == edge.get_src_id() &&
         e_dst == edge.get_dst_id() &&
@@ -382,8 +387,8 @@ fn compute_edge_offset(
   if total_lines <= 1 {
     return 0
   }
-  // Calculate offset: spread lines around center
-  let spacing = 2 // chars between parallel lines
+  // Calculate spacing: at least 2 chars, or label width + 2 for gaps
+  let spacing = max_i(2, max_label_len + 2)
   let total_width = (total_lines - 1) * spacing
   let start_offset = -(total_width / 2)
   start_offset + line_index * spacing
@@ -516,12 +521,14 @@ fn render_ascii_label_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
-        // Vertical edge - place label in the MIDDLE of the edge
+        // Vertical edge - place label to the RIGHT of the line (between parallel lines)
         let line_x = dst.x + dst.width / 2 + offset
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
         let mid_y = (src_bottom + dst_top) / 2
-        grid.text(line_x - edge.label.length() / 2, mid_y, edge.label)
+        // Position label starting 1 char after the line
+        let label_start_x = line_x + 1
+        grid.text(label_start_x, mid_y, edge.label)
       } else {
         // Horizontal edge
         let cy = src.y + src.height / 2
