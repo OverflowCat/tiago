@@ -215,6 +215,240 @@ test "callout shape" {
 }
 
 // =============================================================================
+// Class tests
+// =============================================================================
+
+///|
+test "class applies shape" {
+  let source =
+    #|classes: {
+    #|  user: {
+    #|    shape: person
+    #|  }
+    #|}
+    #|alice: Alice { class: user }
+  let svg = compile(source).unwrap()
+  // Person shape uses path element
+  assert_true(svg.contains("<path"))
+  assert_true(svg.contains("Alice"))
+}
+
+///|
+test "class applies style" {
+  let source =
+    #|classes: {
+    #|  styled: {
+    #|    style: {
+    #|      fill: "#ff0000"
+    #|    }
+    #|  }
+    #|}
+    #|box: Box { class: styled }
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("fill=\"#ff0000\""))
+}
+
+///|
+test "multiple classes" {
+  let source =
+    #|classes: {
+    #|  user: {
+    #|    shape: person
+    #|  }
+    #|  server: {
+    #|    shape: rectangle
+    #|  }
+    #|}
+    #|alice: Alice { class: user }
+    #|web: Web Server { class: server }
+  let svg = compile(source).unwrap()
+  // Should have both shapes
+  assert_true(svg.contains("Alice"))
+  assert_true(svg.contains("Web Server"))
+}
+
+///|
+test "class applies cylinder shape" {
+  let source =
+    #|classes: {
+    #|  db: {
+    #|    shape: cylinder
+    #|  }
+    #|}
+    #|postgres: PostgreSQL { class: db }
+  let svg = compile(source).unwrap()
+  // Cylinder uses ellipse for top
+  assert_true(svg.contains("<ellipse"))
+  assert_true(svg.contains("PostgreSQL"))
+}
+
+///|
+test "class applies multiple style properties" {
+  let source =
+    #|classes: {
+    #|  styled: {
+    #|    style: {
+    #|      fill: "#e3f2fd"
+    #|      stroke: "#1976D2"
+    #|      stroke-width: 3
+    #|    }
+    #|  }
+    #|}
+    #|box: Box { class: styled }
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("fill=\"#e3f2fd\""))
+  assert_true(svg.contains("stroke=\"#1976D2\""))
+  assert_true(svg.contains("stroke-width=\"3\""))
+}
+
+///|
+test "object property overrides class property" {
+  let source =
+    #|classes: {
+    #|  default: {
+    #|    shape: circle
+    #|    style: {
+    #|      fill: "#ff0000"
+    #|    }
+    #|  }
+    #|}
+    #|obj: Object {
+    #|  class: default
+    #|  shape: rectangle
+    #|  style: {
+    #|    fill: "#00ff00"
+    #|  }
+    #|}
+  let svg = compile(source).unwrap()
+  // Object's own properties should override class properties
+  assert_true(svg.contains("<rect"))
+  assert_true(svg.contains("fill=\"#00ff00\""))
+}
+
+///|
+test "class with hexagon shape" {
+  let source =
+    #|classes: {
+    #|  decision: {
+    #|    shape: hexagon
+    #|  }
+    #|}
+    #|choice: Decision Point { class: decision }
+  let svg = compile(source).unwrap()
+  // Hexagon uses polygon
+  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("Decision Point"))
+}
+
+///|
+test "class with diamond shape" {
+  let source =
+    #|classes: {
+    #|  condition: {
+    #|    shape: diamond
+    #|  }
+    #|}
+    #|check: Check Condition { class: condition }
+  let svg = compile(source).unwrap()
+  // Diamond uses polygon
+  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("Check Condition"))
+}
+
+///|
+test "nonexistent class does not crash" {
+  let source =
+    #|classes: {
+    #|  existing: {
+    #|    shape: circle
+    #|  }
+    #|}
+    #|obj: Object { class: nonexistent }
+  let svg = compile(source).unwrap()
+  // Should fall back to default rectangle
+  assert_true(svg.contains("<rect"))
+  assert_true(svg.contains("Object"))
+}
+
+///|
+test "class applies to nested objects" {
+  let source =
+    #|classes: {
+    #|  user: {
+    #|    shape: person
+    #|  }
+    #|}
+    #|team: {
+    #|  alice: Alice { class: user }
+    #|  bob: Bob { class: user }
+    #|}
+  let svg = compile(source).unwrap()
+  // Both nested objects should have person shape (uses path)
+  assert_true(svg.contains("Alice"))
+  assert_true(svg.contains("Bob"))
+}
+
+///|
+test "class with oval shape" {
+  let source =
+    #|classes: {
+    #|  start: {
+    #|    shape: oval
+    #|  }
+    #|}
+    #|begin: Start { class: start }
+  let svg = compile(source).unwrap()
+  // Oval uses ellipse
+  assert_true(svg.contains("<ellipse"))
+  assert_true(svg.contains("Start"))
+}
+
+///|
+test "class applies border-radius" {
+  let source =
+    #|classes: {
+    #|  rounded: {
+    #|    style: {
+    #|      border-radius: 10
+    #|    }
+    #|  }
+    #|}
+    #|box: Rounded Box { class: rounded }
+  let svg = compile(source).unwrap()
+  // border-radius is applied as rx/ry on rect
+  assert_true(svg.contains("rx=\"10\""))
+}
+
+///|
+test "class with cloud shape" {
+  let source =
+    #|classes: {
+    #|  service: {
+    #|    shape: cloud
+    #|  }
+    #|}
+    #|aws: AWS Cloud { class: service }
+  let svg = compile(source).unwrap()
+  // Cloud uses path
+  assert_true(svg.contains("<path"))
+  assert_true(svg.contains("AWS Cloud"))
+}
+
+///|
+test "classes block not rendered as object" {
+  let source =
+    #|classes: {
+    #|  user: {
+    #|    shape: person
+    #|  }
+    #|}
+    #|alice: Alice { class: user }
+  let svg = compile(source).unwrap()
+  // "classes" should not appear as a rendered object label
+  assert_true(!svg.contains(">classes<"))
+}
+
+// =============================================================================
 // Edge tests
 // =============================================================================
 

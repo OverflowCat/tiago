@@ -580,7 +580,7 @@ fn render_ascii_edge_new(
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
-    (Some(src), Some(dst)) => {
+    (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
         // Vertical edge going down - use narrower box's center + offset
         let center_x = if src.width < dst.width {
@@ -601,7 +601,6 @@ fn render_ascii_edge_new(
           grid.hline(dst.x + dst.width, src.x - 1, cy, '─')
         }
       }
-    }
     _ => ()
   }
 }
@@ -622,7 +621,7 @@ fn render_ascii_arrows_new(
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
-    (Some(src), Some(dst)) => {
+    (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
         // Vertical edge - use narrower box's center + offset
         let center_x = if src.width < dst.width {
@@ -657,7 +656,6 @@ fn render_ascii_arrows_new(
           }
         }
       }
-    }
     _ => ()
   }
 }
@@ -681,7 +679,7 @@ fn render_ascii_label_new(
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
-    (Some(src), Some(dst)) => {
+    (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
         // Vertical edge - use narrower box's center + offset
         let center_x = if src.width < dst.width {
@@ -702,7 +700,6 @@ fn render_ascii_label_new(
         let cx = (src.x + src.width + dst.x) / 2
         grid.text(cx - edge.label.length() / 2, cy, edge.label)
       }
-    }
     _ => ()
   }
 }

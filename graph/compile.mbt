@@ -16,11 +16,35 @@ pub(all) suberror GraphCompileError {
 /// Compile an IR Map to Graph
 pub fn compile(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
   let graph = Graph::new(name)
+  // Extract class definitions
+  let classes = extract_classes(ir)
   // First pass: create all objects
-  compile_objects(graph, ir, "")
+  compile_objects(graph, ir, "", classes)
   // Second pass: create all edges
   compile_edges(graph, ir)
   graph
+}
+
+///|
+/// Extract class definitions from the IR
+fn extract_classes(ir : @ir.Map) -> Map[String, @ir.Map] {
+  let classes : Map[String, @ir.Map] = {}
+  match ir.get_field("classes") {
+    Some(f) =>
+      match f.composite {
+        Some(@ir.Composite::Map(classes_map)) =>
+          for field in classes_map.fields {
+            match field.composite {
+              Some(@ir.Composite::Map(class_def)) =>
+                classes[field.name] = class_def
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    None => ()
+  }
+  classes
 }
 
 ///|
@@ -28,6 +52,7 @@ fn compile_objects(
   graph : Graph,
   ir : @ir.Map,
   prefix : String,
+  classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
     // Skip reserved keywords (like 'classes', 'vars', etc.)
@@ -44,14 +69,37 @@ fn compile_objects(
     // Process composite (nested objects)
     match field.composite {
       Some(@ir.Composite::Map(inner)) => {
-        // Check for special fields
+        // Apply class properties first (if specified)
+        apply_class(obj, inner, classes)
+        // Check for special fields (can override class)
         process_special_fields(obj, inner)
         // Recursively compile children
-        compile_children(graph, obj, inner, id)
+        compile_children(graph, obj, inner, id, classes)
       }
       _ => ()
     }
     graph.add_object(obj)
+  }
+}
+
+///|
+/// Apply class properties to an object
+fn apply_class(
+  obj : Object,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit {
+  match ir.get_field("class") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match classes.get(s.to_string()) {
+            Some(class_def) => process_special_fields(obj, class_def)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
   }
 }
 
@@ -61,6 +109,7 @@ fn compile_children(
   parent : Object,
   ir : @ir.Map,
   prefix : String,
+  classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
     // Skip reserved keywords
@@ -77,8 +126,12 @@ fn compile_children(
     // Process nested composites
     match field.composite {
       Some(@ir.Composite::Map(inner)) => {
+        // Apply class properties first (if specified)
+        apply_class(child, inner, classes)
+        // Check for special fields (can override class)
         process_special_fields(child, inner)
-        compile_children(graph, child, inner, id)
+        // Recursively compile children
+        compile_children(graph, child, inner, id, classes)
       }
       _ => ()
     }

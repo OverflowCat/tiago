@@ -72,6 +72,7 @@ pub(all) struct Edge {
   route : Array[Point]
   is_curve : Bool
   z_index : Int
+  mut reference_count : Int
 }
 pub fn Edge::add_route_point(Self, Point) -> Unit
 pub fn Edge::arrow_string(Self) -> String
