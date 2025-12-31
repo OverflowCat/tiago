@@ -30,6 +30,10 @@ fn compile_objects(
   prefix : String,
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
+    // Skip reserved keywords (like 'classes', 'vars', etc.)
+    if is_reserved_keyword(field.name) {
+      continue
+    }
     let id = if prefix == "" { field.name } else { "\{prefix}.\{field.name}" }
     let obj = Object::new(id)
     // Set label from primary value
@@ -376,8 +380,8 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
 fn is_reserved_keyword(name : String) -> Bool {
   let keywords = [
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
-    "direction", "constraint", "class", "vars", "grid-rows", "grid-columns", "grid-gap",
-    "horizontal-gap", "vertical-gap",
+    "direction", "constraint", "class", "classes", "vars", "grid-rows", "grid-columns",
+    "grid-gap", "horizontal-gap", "vertical-gap",
   ]
   keywords.contains(name.to_lower())
 }
