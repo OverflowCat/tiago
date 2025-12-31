@@ -60,7 +60,6 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   let (canvas_width, canvas_height) = compute_canvas_size(boxes, config)
   let grid = @ascii.Grid::new(canvas_width, canvas_height)
   // Render edge lines first (behind objects)
-  // Each edge may have multiple references, render each as a separate line
   for edge in graph.edges {
     for ref_idx = 0; ref_idx < edge.reference_count; ref_idx = ref_idx + 1 {
       render_ascii_edge_new(grid, graph, edge, ref_idx, boxes, config)
@@ -115,21 +114,35 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
   // Layout objects level by level (BFS)
   let placed : Map[String, AsciiBox] = {}
   let mut current_y = 1
-  // First pass: place roots
+  // First pass: place roots - containers get their own rows, non-containers grouped
   let mut current_x = 1
+  let mut max_row_height = config.box_height
   for obj in roots {
-    let box = if obj.is_container() {
-      create_container_box(obj, current_x, current_y, config)
+    // Containers go on their own row for cleaner layout
+    if obj.is_container() {
+      // If we have pending non-containers, finish that row first
+      if current_x > 1 {
+        current_y = current_y + max_row_height + config.v_spacing
+        current_x = 1
+        max_row_height = config.box_height
+      }
+      let box = create_container_box(obj, current_x, current_y, config)
+      boxes.push(box)
+      placed[obj.id] = box
+      register_children(box, placed)
+      current_y = current_y + box.height + config.v_spacing
     } else {
-      create_ascii_box(obj, current_x, current_y, config)
+      let box = create_ascii_box(obj, current_x, current_y, config)
+      boxes.push(box)
+      placed[obj.id] = box
+      current_x = current_x + box.width + config.h_spacing
+      max_row_height = max_i(max_row_height, box.height)
     }
-    boxes.push(box)
-    placed[obj.id] = box
-    // Also register children in placed map
-    register_children(box, placed)
-    current_x = current_x + box.width + config.h_spacing
   }
-  current_y = current_y + config.box_height + config.v_spacing
+  // Finish any pending row
+  if current_x > 1 {
+    current_y = current_y + max_row_height + config.v_spacing
+  }
   // BFS for remaining levels
   let mut frontier : Array[String] = []
   for obj in roots {
@@ -867,7 +880,7 @@ fn render_ascii_edge_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
-        // Destination is below source
+        // Destination is below source - draw downward
         let src_center_x = src.x + src.width / 2
         let dst_center_x = dst.x + dst.width / 2
         let src_bottom = src.y + src.height
@@ -904,6 +917,38 @@ fn render_ascii_edge_new(
           }
           // Draw vertical line to destination
           grid.vline(dst_center_x, mid_y + 1, dst_top, '│')
+        }
+      } else if src.y > dst.y + dst.height {
+        // Destination is above source - draw upward
+        let src_center_x = src.x + src.width / 2
+        let dst_center_x = dst.x + dst.width / 2
+        let src_top = src.y - 1
+        let dst_bottom = dst.y + dst.height
+        // Check horizontal overlap
+        let src_left = src.x
+        let src_right = src.x + src.width
+        let dst_left = dst.x
+        let dst_right = dst.x + dst.width
+        let overlaps = src_right > dst_left && dst_right > src_left
+        if overlaps {
+          // Straight vertical line upward
+          let line_x = dst_center_x + offset
+          grid.vline(line_x, dst_bottom, src_top, '│')
+        } else {
+          // L-shaped routing upward
+          let line_x = src_center_x + offset
+          let mid_y = (dst_bottom + src_top) / 2
+          grid.vline(line_x, mid_y, src_top, '│')
+          if dst_center_x > line_x {
+            grid.set(line_x, mid_y, '┌')
+            grid.hline(line_x + 1, dst_center_x - 1, mid_y, '─')
+            grid.set(dst_center_x, mid_y, '┘')
+          } else {
+            grid.set(line_x, mid_y, '┐')
+            grid.hline(dst_center_x + 1, line_x - 1, mid_y, '─')
+            grid.set(dst_center_x, mid_y, '└')
+          }
+          grid.vline(dst_center_x, dst_bottom, mid_y - 1, '│')
         }
       } else if dst.x != src.x {
         // Side by side - horizontal connection
@@ -964,6 +1009,33 @@ fn render_ascii_arrows_new(
           if edge.src_arrow && ref_idx == 0 {
             let line_x = src_center_x + offset
             grid.set(line_x, src_bottom, '▲')
+          }
+        }
+      } else if src.y > dst.y + dst.height {
+        // Destination is above source - upward arrows
+        let src_center_x = src.x + src.width / 2
+        let dst_center_x = dst.x + dst.width / 2
+        let src_top = src.y - 1
+        let dst_bottom = dst.y + dst.height
+        let src_right = src.x + src.width
+        let dst_left = dst.x
+        let dst_right = dst.x + dst.width
+        let overlaps = src_right > dst_left && dst_right > src.x
+        if overlaps {
+          let line_x = dst_center_x + offset
+          if edge.dst_arrow {
+            grid.set(line_x, dst_bottom, '▼')
+          }
+          if edge.src_arrow && ref_idx == 0 {
+            grid.set(line_x, src_top, '▲')
+          }
+        } else {
+          if edge.dst_arrow {
+            grid.set(dst_center_x, dst_bottom, '▼')
+          }
+          if edge.src_arrow && ref_idx == 0 {
+            let line_x = src_center_x + offset
+            grid.set(line_x, src_top, '▲')
           }
         }
       } else if dst.x != src.x {
