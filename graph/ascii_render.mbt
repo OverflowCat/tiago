@@ -691,8 +691,9 @@ fn render_ascii_label_new(
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
         let mid_y = (src_bottom + dst_top) / 2
-        // Position label starting 1 char after the line
-        let label_start_x = line_x + 1
+        // Position label centered on the line position
+        // The label replaces/overlaps the line character on that row
+        let label_start_x = line_x - edge.label.length() / 2
         grid.text(label_start_x, mid_y, edge.label)
       } else {
         // Horizontal edge
