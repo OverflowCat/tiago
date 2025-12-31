@@ -355,7 +355,7 @@ fn compute_edge_offset(
   graph : Graph,
   edge : Edge,
   ref_idx : Int,
-  _boxes : Array[AsciiBox],
+  boxes : Array[AsciiBox],
 ) -> Int {
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
@@ -388,7 +388,25 @@ fn compute_edge_offset(
     return 0
   }
   // Calculate spacing: at least 2 chars, or label width + 2 for gaps
-  let spacing = max_i(2, max_label_len + 2)
+  let mut spacing = max_i(2, max_label_len + 2)
+  // Constrain spacing to fit within the narrower box
+  let src_box = find_ascii_box(boxes, src_id)
+  let dst_box = find_ascii_box(boxes, dst_id)
+  match (src_box, dst_box) {
+    (Some(src), Some(dst)) => {
+      let min_width = if src.width < dst.width { src.width } else { dst.width }
+      // Max total spread should fit within box (with 2 char margin on each side)
+      let max_spread = min_width - 4
+      let needed_spread = (total_lines - 1) * spacing
+      if needed_spread > max_spread && total_lines > 1 {
+        spacing = max_spread / (total_lines - 1)
+        if spacing < 1 {
+          spacing = 1
+        }
+      }
+    }
+    _ => ()
+  }
   let total_width = (total_lines - 1) * spacing
   let start_offset = -(total_width / 2)
   start_offset + line_index * spacing
@@ -430,8 +448,13 @@ fn render_ascii_edge_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
-        // Vertical edge going down - use destination center + offset
-        let line_x = dst.x + dst.width / 2 + offset
+        // Vertical edge going down - use narrower box's center + offset
+        let center_x = if src.width < dst.width {
+          src.x + src.width / 2
+        } else {
+          dst.x + dst.width / 2
+        }
+        let line_x = center_x + offset
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
         grid.vline(line_x, src_bottom, dst_top, '│')
@@ -467,8 +490,13 @@ fn render_ascii_arrows_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
-        // Vertical edge - line is at destination center + offset
-        let line_x = dst.x + dst.width / 2 + offset
+        // Vertical edge - use narrower box's center + offset
+        let center_x = if src.width < dst.width {
+          src.x + src.width / 2
+        } else {
+          dst.x + dst.width / 2
+        }
+        let line_x = center_x + offset
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
         if edge.dst_arrow {
@@ -521,8 +549,13 @@ fn render_ascii_label_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
-        // Vertical edge - place label to the RIGHT of the line (between parallel lines)
-        let line_x = dst.x + dst.width / 2 + offset
+        // Vertical edge - use narrower box's center + offset
+        let center_x = if src.width < dst.width {
+          src.x + src.width / 2
+        } else {
+          dst.x + dst.width / 2
+        }
+        let line_x = center_x + offset
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
         let mid_y = (src_bottom + dst_top) / 2
