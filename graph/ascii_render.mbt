@@ -56,20 +56,25 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   let (canvas_width, canvas_height) = compute_canvas_size(boxes, config)
   let grid = @ascii.Grid::new(canvas_width, canvas_height)
   // Render edge lines first (behind objects)
+  // Each edge may have multiple references, render each as a separate line
   for edge in graph.edges {
-    render_ascii_edge_new(grid, graph, edge, boxes, config)
+    for ref_idx = 0; ref_idx < edge.reference_count; ref_idx = ref_idx + 1 {
+      render_ascii_edge_new(grid, graph, edge, ref_idx, boxes, config)
+    }
   }
   // Render objects
   for box in boxes {
     render_ascii_box(grid, box, config)
   }
-  // Render edge labels
+  // Render edge labels (only for first reference which has the label)
   for edge in graph.edges {
-    render_ascii_label_new(grid, graph, edge, boxes, config)
+    render_ascii_label_new(grid, graph, edge, 0, boxes, config)
   }
   // Render edge arrows LAST (on top of everything)
   for edge in graph.edges {
-    render_ascii_arrows_new(grid, graph, edge, boxes, config)
+    for ref_idx = 0; ref_idx < edge.reference_count; ref_idx = ref_idx + 1 {
+      render_ascii_arrows_new(grid, graph, edge, ref_idx, boxes, config)
+    }
   }
   grid.to_string()
 }
@@ -345,43 +350,43 @@ fn render_ascii_box(
 
 ///|
 /// Compute horizontal offset for parallel edges between same node pair
+/// ref_idx: which reference of this edge (0..reference_count-1)
 fn compute_edge_offset(
   graph : Graph,
   edge : Edge,
+  ref_idx : Int,
   _boxes : Array[AsciiBox],
 ) -> Int {
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
-  // Find all edges between same src and dst (in either direction for vertical)
-  let parallel_edges : Array[Edge] = []
+  // Count total parallel lines: sum of reference_count for all edges between same nodes
+  let mut total_lines = 0
+  let mut line_index = 0
   for e in graph.edges {
     let e_src = e.get_src_id()
     let e_dst = e.get_dst_id()
-    // Check if same node pair (considering both directions for overlap)
+    // Check if same node pair (considering both directions)
     if (e_src == src_id && e_dst == dst_id) ||
       (e_src == dst_id && e_dst == src_id) {
-      parallel_edges.push(e)
+      // Is this the current edge?
+      if e_src == edge.get_src_id() &&
+        e_dst == edge.get_dst_id() &&
+        e.label == edge.label &&
+        e.src_arrow == edge.src_arrow &&
+        e.dst_arrow == edge.dst_arrow {
+        line_index = total_lines + ref_idx
+      }
+      total_lines = total_lines + e.reference_count
     }
   }
-  if parallel_edges.length() <= 1 {
+  if total_lines <= 1 {
     return 0
   }
-  // Find this edge's index in the parallel group
-  let mut edge_index = 0
-  for i, e in parallel_edges {
-    if e.get_src_id() == src_id &&
-      e.get_dst_id() == dst_id &&
-      e.label == edge.label {
-      edge_index = i
-      break
-    }
-  }
-  // Calculate offset: spread edges around center
-  let total = parallel_edges.length()
-  let spacing = 2 // chars between parallel edges
-  let total_width = (total - 1) * spacing
+  // Calculate offset: spread lines around center
+  let spacing = 2 // chars between parallel lines
+  let total_width = (total_lines - 1) * spacing
   let start_offset = -(total_width / 2)
-  start_offset + edge_index * spacing
+  start_offset + line_index * spacing
 }
 
 ///|
@@ -408,6 +413,7 @@ fn render_ascii_edge_new(
   grid : @ascii.Grid,
   graph : Graph,
   edge : Edge,
+  ref_idx : Int,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
@@ -415,7 +421,7 @@ fn render_ascii_edge_new(
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
-  let offset = compute_edge_offset(graph, edge, boxes)
+  let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
@@ -444,6 +450,7 @@ fn render_ascii_arrows_new(
   grid : @ascii.Grid,
   graph : Graph,
   edge : Edge,
+  ref_idx : Int,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
@@ -451,7 +458,7 @@ fn render_ascii_arrows_new(
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
-  let offset = compute_edge_offset(graph, edge, boxes)
+  let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {
@@ -462,7 +469,8 @@ fn render_ascii_arrows_new(
         if edge.dst_arrow {
           grid.set(line_x, dst_top, '▼')
         }
-        if edge.src_arrow {
+        // Only draw src_arrow on first reference to avoid duplicates
+        if edge.src_arrow && ref_idx == 0 {
           grid.set(line_x, src_bottom, '▲')
         }
       } else if dst.x != src.x {
@@ -474,7 +482,7 @@ fn render_ascii_arrows_new(
             grid.set(dst.x + dst.width, dst.y + dst.height / 2, '◀')
           }
         }
-        if edge.src_arrow {
+        if edge.src_arrow && ref_idx == 0 {
           if dst.x > src.x {
             grid.set(src.x + src.width, src.y + src.height / 2, '◀')
           } else {
@@ -493,6 +501,7 @@ fn render_ascii_label_new(
   grid : @ascii.Grid,
   graph : Graph,
   edge : Edge,
+  ref_idx : Int,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
@@ -503,7 +512,7 @@ fn render_ascii_label_new(
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
-  let offset = compute_edge_offset(graph, edge, boxes)
+  let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if dst.y > src.y + src.height {

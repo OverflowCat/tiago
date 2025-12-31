@@ -347,6 +347,8 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
       edge.id.src_arrow,
       edge.id.dst_arrow,
     )
+    // Set reference count from IR edge references
+    graph_edge.reference_count = edge.references.length()
     // Set label
     match edge.primary {
       Some(s) => graph_edge.label = s.to_string()

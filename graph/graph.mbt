@@ -74,6 +74,8 @@ pub(all) struct Edge {
   is_curve : Bool
   /// Z-index for layering
   z_index : Int
+  /// Number of times this edge is declared (for parallel rendering)
+  mut reference_count : Int
 } derive(Show)
 
 ///|
@@ -173,6 +175,7 @@ pub fn Edge::new(
     route: [],
     is_curve: false,
     z_index: 0,
+    reference_count: 1,
   }
 }
 
