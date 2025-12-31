@@ -11,7 +11,13 @@ fn main {
     print_usage()
     @sys.exit(1)
   }
-  // Parse arguments
+  // Check for subcommands
+  let first_arg = args[1]
+  if first_arg == "validate" {
+    run_validate(args)
+    return
+  }
+  // Parse arguments for compile
   let mut ascii_mode = false
   let mut theme_name : String? = None
   let mut input_path : String? = None
@@ -30,6 +36,9 @@ fn main {
       theme_name = Some(extract_theme_name(arg))
     } else if arg == "--list-themes" {
       list_themes()
+      return
+    } else if arg == "--help" || arg == "-h" {
+      print_usage()
       return
     } else if input_path is None {
       input_path = Some(arg)
@@ -80,16 +89,64 @@ fn main {
 
 ///|
 fn print_usage() -> Unit {
-  println("Usage: diago [options] <input.d2> [output]")
+  println("Usage: diago [command] [options] <input.d2> [output]")
+  println("")
+  println("Commands:")
+  println("  validate          Check D2 source for errors")
   println("")
   println("Options:")
   println("  --ascii, -a       Output ASCII art instead of SVG")
   println("  --theme, -t NAME  Use specified theme (default: Neutral Default)")
   println("  --list-themes     List all available themes")
+  println("  --help, -h        Show this help message")
   println("")
   println("Arguments:")
   println("  input.d2          D2 diagram source file")
   println("  output            Output file (default: stdout)")
+}
+
+///|
+/// Run the validate subcommand
+fn run_validate(args : Array[String]) -> Unit {
+  if args.length() < 3 {
+    println("Usage: diago validate <input.d2>")
+    @sys.exit(1)
+    return
+  }
+  let input_path = args[2]
+  // Read input file
+  let source = @fs.read_file_to_string(input_path) catch {
+    e => {
+      println("Error reading file '\{input_path}': \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  // Parse
+  let (ast, parse_errors) = @parser.parse(source)
+  if !parse_errors.is_empty() {
+    println("Parse errors in \{input_path}:")
+    println("  \{parse_errors}")
+    @sys.exit(1)
+    return
+  }
+  // Compile to IR
+  let ir = @ir.compile(ast) catch {
+    e => {
+      println("Semantic error in \{input_path}: \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  // Compile to graph
+  let _ = @graph.compile("diagram", ir) catch {
+    e => {
+      println("Graph error in \{input_path}: \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  println("\{input_path}: OK")
 }
 
 ///|
