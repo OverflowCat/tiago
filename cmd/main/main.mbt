@@ -17,6 +17,10 @@ fn main {
     run_validate(args)
     return
   }
+  if first_arg == "fmt" {
+    run_fmt(args)
+    return
+  }
   // Parse arguments for compile
   let mut ascii_mode = false
   let mut theme_name : String? = None
@@ -93,6 +97,7 @@ fn print_usage() -> Unit {
   println("")
   println("Commands:")
   println("  validate          Check D2 source for errors")
+  println("  fmt               Format D2 source file")
   println("")
   println("Options:")
   println("  --ascii, -a       Output ASCII art instead of SVG")
@@ -103,6 +108,59 @@ fn print_usage() -> Unit {
   println("Arguments:")
   println("  input.d2          D2 diagram source file")
   println("  output            Output file (default: stdout)")
+}
+
+///|
+/// Run the fmt subcommand
+fn run_fmt(args : Array[String]) -> Unit {
+  let mut write_in_place = false
+  let mut input_path : String? = None
+  let mut i = 2
+  while i < args.length() {
+    let arg = args[i]
+    if arg == "-w" || arg == "--write" {
+      write_in_place = true
+    } else if input_path is None {
+      input_path = Some(arg)
+    }
+    i = i + 1
+  }
+  guard input_path is Some(input) else {
+    println("Usage: diago fmt [-w] <input.d2>")
+    @sys.exit(1)
+    return
+  }
+  // Read input file
+  let source = @fs.read_file_to_string(input) catch {
+    e => {
+      println("Error reading file '\{input}': \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  // Parse
+  let (ast, parse_errors) = @parser.parse(source)
+  if !parse_errors.is_empty() {
+    println("Parse errors in \{input}:")
+    println("  \{parse_errors}")
+    @sys.exit(1)
+    return
+  }
+  // Format
+  let config = @formatter.FormatConfig::new()
+  let formatted = @formatter.format(ast, config)
+  if write_in_place {
+    @fs.write_string_to_file(input, formatted) catch {
+      e => {
+        println("Error writing file '\{input}': \{e}")
+        @sys.exit(1)
+        return
+      }
+    }
+    println("Formatted \{input}")
+  } else {
+    println(formatted)
+  }
 }
 
 ///|

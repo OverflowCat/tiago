@@ -5,6 +5,7 @@
     "Milky2018/diago/ir",
     "Milky2018/diago/graph",
     "Milky2018/diago/layout",
+    "Milky2018/diago/formatter",
     "moonbitlang/x/fs",
     "moonbitlang/x/sys"
   ]

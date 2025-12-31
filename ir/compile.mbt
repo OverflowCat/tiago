@@ -21,6 +21,8 @@ pub(all) suberror CompileError {
 pub fn compile(ast : @ast.Map) -> Map raise CompileError {
   let ir = Map::new()
   compile_map_nodes(ir, ast.nodes)
+  // Resolve variable substitutions
+  ir.resolve_substitutions()
   ir
 }
 
@@ -42,6 +44,12 @@ fn compile_map_nodes(
 
 ///|
 fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
+  // Handle ampersand filters (they are evaluated during glob expansion)
+  if key.ampersand || key.not_ampersand {
+    // Filters are collected and applied during glob expansion
+    // They don't create fields themselves
+    return
+  }
   // Handle edges first
   if key.edges.length() > 0 {
     compile_edges(ir, key)
@@ -49,6 +57,11 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
   }
   // Handle regular key
   guard key.key is Some(key_path) else { return }
+  // Check for glob pattern
+  if key_path.has_glob() {
+    compile_glob_key(ir, key_path, key)
+    return
+  }
   let path = key_path.to_strings()
   if path.length() == 0 {
     return
@@ -83,6 +96,96 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
     Some(value) => compile_value(field, value)
     None => ()
   }
+}
+
+///|
+/// Compile a key with glob pattern
+fn compile_glob_key(ir : Map, key_path : @ast.KeyPath, key : @ast.Key) -> Unit {
+  // Extract glob pattern from the last path element
+  let pattern = extract_glob_pattern(key_path)
+  // Collect filters from the value map if present
+  let filters = collect_filters_from_value(key)
+  // Build properties map from value
+  let properties = build_properties_map(key)
+  // Apply glob pattern with filters
+  ir.apply_glob_properties(pattern, properties, filters)
+}
+
+///|
+/// Extract glob pattern from key path
+fn extract_glob_pattern(key_path : @ast.KeyPath) -> Array[String] {
+  // For now, just get pattern from the last element
+  guard key_path.path.length() > 0 else { return [] }
+  let last = key_path.path[key_path.path.length() - 1]
+  match last {
+    @ast.StringValue::Unquoted(us) => us.pattern
+    _ => []
+  }
+}
+
+///|
+/// Collect filter conditions from the key's value map
+fn collect_filters_from_value(key : @ast.Key) -> Array[(Bool, String, String)] {
+  let filters : Array[(Bool, String, String)] = []
+  match key.value {
+    Some(@ast.Value::Map(m)) =>
+      for node in m.nodes {
+        match node {
+          @ast.MapNode::Key(filter_key) =>
+            if filter_key.ampersand || filter_key.not_ampersand {
+              // This is a filter
+              match (filter_key.key, filter_key.value) {
+                (Some(fk), Some(@ast.Value::Scalar(sv))) => {
+                  let filter_name = fk.to_strings().last().unwrap_or("")
+                  let filter_value = compile_scalar(sv).to_string()
+                  filters.push(
+                    (filter_key.not_ampersand, filter_name, filter_value),
+                  )
+                }
+                _ => ()
+              }
+            }
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  filters
+}
+
+///|
+/// Build a properties map from the key's value (excluding filters)
+fn build_properties_map(key : @ast.Key) -> Map {
+  let props = Map::new()
+  match key.value {
+    Some(@ast.Value::Map(m)) =>
+      for node in m.nodes {
+        match node {
+          @ast.MapNode::Key(prop_key) =>
+            if !prop_key.ampersand && !prop_key.not_ampersand {
+              // This is a regular property, not a filter
+              match prop_key.key {
+                Some(pk) => {
+                  let prop_names = pk.to_strings()
+                  if prop_names.length() > 0 {
+                    let prop_field = Field::simple(prop_names[0])
+                    match prop_key.value {
+                      Some(@ast.Value::Scalar(sv)) =>
+                        prop_field.primary = Some(compile_scalar(sv))
+                      _ => ()
+                    }
+                    props.add_field(prop_field)
+                  }
+                }
+                None => ()
+              }
+            }
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  props
 }
 
 ///|

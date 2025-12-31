@@ -8,6 +8,20 @@ import(
 // Values
 pub fn compile(@ast.Map) -> Map raise CompileError
 
+pub fn compile_with_imports(@ast.Map, ImportResolver) -> Map raise CompileError
+
+pub fn evaluate_filter(FilterContext, String, String) -> Bool
+
+pub fn is_board_keyword(String) -> Bool
+
+pub fn is_double_glob(Array[String]) -> Bool
+
+pub fn is_reserved_keyword(String) -> Bool
+
+pub fn is_triple_glob(Array[String]) -> Bool
+
+pub fn match_pattern(String, Array[String]) -> Bool
+
 // Errors
 pub(all) suberror CompileError {
   InvalidKey(String)
@@ -89,6 +103,12 @@ pub fn FieldReference::new(String, Int, Bool) -> Self
 pub impl Eq for FieldReference
 pub impl Show for FieldReference
 
+pub struct FilterContext {
+  field : Field
+  parent_map : Map
+}
+pub fn FilterContext::new(Field, Map) -> Self
+
 pub struct IRArray {
   values : Array[Value]
 }
@@ -96,18 +116,28 @@ pub fn IRArray::new(Array[Value]) -> Self
 pub impl Eq for IRArray
 pub impl Show for IRArray
 
+pub struct ImportResolver((String) -> String?)
+#deprecated
+pub fn ImportResolver::inner(Self) -> (String) -> String?
+
 pub struct Map {
   fields : Array[Field]
   edges : Array[Edge]
 }
 pub fn Map::add_edge(Self, Edge) -> Unit
 pub fn Map::add_field(Self, Field) -> Unit
+pub fn Map::apply_glob_properties(Self, Array[String], Self, Array[(Bool, String, String)]) -> Unit
 pub fn Map::delete_field(Self, String) -> Field?
+pub fn Map::double_glob(Self) -> Array[Field]
 pub fn Map::ensure_field(Self, String) -> Field
 pub fn Map::find_edges(Self, EdgeID) -> Array[Edge]
 pub fn Map::get_field(Self, String) -> Field?
 pub fn Map::has_field(Self, String) -> Bool
+pub fn Map::multi_glob(Self, Array[String]) -> (Array[Field], Bool)
 pub fn Map::new() -> Self
+pub fn Map::resolve_substitutions(Self) -> Unit
+pub fn Map::single_glob(Self, Array[String]) -> Array[Field]
+pub fn Map::triple_glob(Self) -> Array[Field]
 pub impl Eq for Map
 pub impl Show for Map
 
