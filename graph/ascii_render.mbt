@@ -242,7 +242,7 @@ fn compute_container_height(obj : Object, config : AsciiConfig) -> Int {
   if obj.children.length() == 0 {
     return config.box_height
   }
-  let title_height = 2
+  let title_height = 2 // Title row + 1 row gap
   let padding = 2
   let max_child_height = obj.children.fold(init=config.box_height, fn(
     acc,
@@ -376,7 +376,7 @@ fn create_container_box(
   // Layout children horizontally inside the container
   let children : Array[AsciiBox] = []
   let padding = 2 // Padding inside container
-  let title_height = 2 // Space for container title
+  let title_height = 2 // Title row + 1 row gap
   let mut child_x = x + padding
   let child_y = y + title_height
   for child in obj.children {
@@ -685,10 +685,6 @@ fn render_ascii_box(
       // Draw title centered at top
       let label_x = x1 + (box.width - box.label.length()) / 2
       grid.text(label_x, y1 + 1, box.label)
-      // Draw horizontal line under title
-      grid.hline(x1 + 1, x2 - 1, y1 + 2, '─')
-      grid.set(x1, y1 + 2, '├')
-      grid.set(x2, y1 + 2, '┤')
       // Note: children are rendered separately since they're in the flattened boxes list
       return
     }
