@@ -75,9 +75,15 @@ pub fn layout(
 ) -> Unit {
   // Phase 1: Compute sizes for all objects
   compute_sizes(graph, config)
-  // Phase 2: Position objects based on hierarchy
+  // Phase 2: Position objects - check for grid containers
+  for obj in graph.objects {
+    if obj.is_grid_diagram() && obj.is_container() {
+      layout_grid(obj, config)
+    }
+  }
+  // Phase 3: Position remaining objects based on hierarchy
   position_objects(graph, config, direction)
-  // Phase 3: Route edges
+  // Phase 4: Route edges
   route_edges(graph, config)
 }
 
@@ -322,4 +328,189 @@ fn find_edge_intersection(
     }
   }
   @graph.Point::new(center.x + dx * t, center.y + dy * t)
+}
+
+// ============================================================================
+// Grid Layout
+// ============================================================================
+
+///|
+/// Layout children of a container in a grid pattern
+fn layout_grid(container : @graph.Object, config : LayoutConfig) -> Unit {
+  let children = container.get_children()
+  if children.length() == 0 {
+    return
+  }
+  let h_gap = container.get_horizontal_gap()
+  let v_gap = container.get_vertical_gap()
+  // Determine rows and columns
+  let (rows, columns, row_directed) = compute_grid_dimensions(
+    container,
+    children.length(),
+  )
+  // Compute column widths and row heights
+  let col_widths = compute_column_widths(
+    children, rows, columns, row_directed, config,
+  )
+  let row_heights = compute_row_heights(
+    children, rows, columns, row_directed, config,
+  )
+  // Position children in the grid
+  position_grid_children(
+    children, rows, columns, row_directed, col_widths, row_heights, h_gap, v_gap,
+    config,
+  )
+  // Update container size
+  let total_width = sum_with_gap(col_widths, h_gap) +
+    config.container_padding * 2.0
+  let total_height = sum_with_gap(row_heights, v_gap) +
+    config.container_padding * 2.0
+  container.set_box(
+    @graph.Box::new(0.0, 0.0, max(total_width, 100.0), max(total_height, 60.0)),
+  )
+}
+
+///|
+/// Compute grid dimensions (rows, columns, row_directed)
+fn compute_grid_dimensions(
+  container : @graph.Object,
+  child_count : Int,
+) -> (Int, Int, Bool) {
+  match (container.get_grid_rows(), container.get_grid_columns()) {
+    (Some(r), Some(c)) => (r, c, true)
+    (Some(r), None) => {
+      let columns = (child_count + r - 1) / r
+      (r, columns, true)
+    }
+    (None, Some(c)) => {
+      let rows = (child_count + c - 1) / c
+      (rows, c, false)
+    }
+    (None, None) =>
+      // Should not happen for grid diagrams, but default to single column
+      (child_count, 1, true)
+  }
+}
+
+///|
+/// Compute width for each column
+fn compute_column_widths(
+  children : Array[@graph.Object],
+  rows : Int,
+  columns : Int,
+  row_directed : Bool,
+  config : LayoutConfig,
+) -> Array[Double] {
+  let widths : Array[Double] = []
+  for _ in 0..<columns {
+    widths.push(0.0)
+  }
+  for i, child in children {
+    let (_, col) = get_grid_position(i, rows, columns, row_directed)
+    if col < columns {
+      let child_width = match child.get_box() {
+        Some(b) => b.get_width()
+        None => config.default_width
+      }
+      if child_width > widths[col] {
+        widths[col] = child_width
+      }
+    }
+  }
+  widths
+}
+
+///|
+/// Compute height for each row
+fn compute_row_heights(
+  children : Array[@graph.Object],
+  rows : Int,
+  columns : Int,
+  row_directed : Bool,
+  config : LayoutConfig,
+) -> Array[Double] {
+  let heights : Array[Double] = []
+  for _ in 0..<rows {
+    heights.push(0.0)
+  }
+  for i, child in children {
+    let (row, _) = get_grid_position(i, rows, columns, row_directed)
+    if row < rows {
+      let child_height = match child.get_box() {
+        Some(b) => b.get_height()
+        None => config.default_height
+      }
+      if child_height > heights[row] {
+        heights[row] = child_height
+      }
+    }
+  }
+  heights
+}
+
+///|
+/// Get (row, column) position for an index
+fn get_grid_position(
+  index : Int,
+  rows : Int,
+  columns : Int,
+  row_directed : Bool,
+) -> (Int, Int) {
+  if row_directed {
+    let row = index / columns
+    let col = index % columns
+    (row, col)
+  } else {
+    let col = index / rows
+    let row = index % rows
+    (row, col)
+  }
+}
+
+///|
+/// Position children in grid cells
+fn position_grid_children(
+  children : Array[@graph.Object],
+  rows : Int,
+  columns : Int,
+  row_directed : Bool,
+  col_widths : Array[Double],
+  row_heights : Array[Double],
+  h_gap : Double,
+  v_gap : Double,
+  config : LayoutConfig,
+) -> Unit {
+  for i, child in children {
+    let (row, col) = get_grid_position(i, rows, columns, row_directed)
+    if row >= rows || col >= columns {
+      continue
+    }
+    // Calculate x position
+    let mut x = config.container_padding
+    for j in 0..<col {
+      x = x + col_widths[j] + h_gap
+    }
+    // Calculate y position
+    let mut y = config.container_padding
+    for j in 0..<row {
+      y = y + row_heights[j] + v_gap
+    }
+    // Set child size to cell size and position
+    let width = col_widths[col]
+    let height = row_heights[row]
+    child.set_box(@graph.Box::new(x, y, width, height))
+  }
+}
+
+///|
+/// Sum array values with gap between them
+fn sum_with_gap(values : Array[Double], gap : Double) -> Double {
+  if values.length() == 0 {
+    return 0.0
+  }
+  let mut total = 0.0
+  for v in values {
+    total = total + v + gap
+  }
+  total - gap
 }

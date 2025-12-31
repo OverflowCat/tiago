@@ -105,18 +105,31 @@ pub struct Object {
   mut tooltip : String?
   mut link : String?
   classes : Array[String]
+  mut grid_rows : Int?
+  mut grid_columns : Int?
+  mut grid_gap : Double?
+  mut horizontal_gap : Double?
+  mut vertical_gap : Double?
 }
 pub fn Object::add_child(Self, Self) -> Unit
 pub fn Object::center(Self) -> Point?
 pub fn Object::find_child(Self, String) -> Self?
 pub fn Object::get_box(Self) -> Box?
 pub fn Object::get_children(Self) -> Array[Self]
+pub fn Object::get_grid_columns(Self) -> Int?
+pub fn Object::get_grid_rows(Self) -> Int?
+pub fn Object::get_horizontal_gap(Self) -> Double
 pub fn Object::get_id(Self) -> String
 pub fn Object::get_label(Self) -> String
 pub fn Object::get_shape(Self) -> String
+pub fn Object::get_vertical_gap(Self) -> Double
 pub fn Object::is_container(Self) -> Bool
+pub fn Object::is_grid_diagram(Self) -> Bool
 pub fn Object::new(String) -> Self
 pub fn Object::set_box(Self, Box) -> Unit
+pub fn Object::set_grid_columns(Self, Int) -> Unit
+pub fn Object::set_grid_gap(Self, Double) -> Unit
+pub fn Object::set_grid_rows(Self, Int) -> Unit
 pub fn Object::set_label(Self, String) -> Unit
 pub fn Object::set_shape(Self, String) -> Unit
 pub fn Object::with_label(String, String) -> Self

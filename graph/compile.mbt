@@ -140,6 +140,71 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Process grid-rows
+  match ir.get_field("grid-rows") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_int(s.to_string()) {
+            Some(v) => obj.grid_rows = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process grid-columns
+  match ir.get_field("grid-columns") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_int(s.to_string()) {
+            Some(v) => obj.grid_columns = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process grid-gap
+  match ir.get_field("grid-gap") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => obj.grid_gap = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process horizontal-gap
+  match ir.get_field("horizontal-gap") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => obj.horizontal_gap = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process vertical-gap
+  match ir.get_field("vertical-gap") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => obj.vertical_gap = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|
@@ -309,7 +374,8 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
 fn is_reserved_keyword(name : String) -> Bool {
   let keywords = [
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
-    "direction", "constraint", "class", "vars",
+    "direction", "constraint", "class", "vars", "grid-rows", "grid-columns", "grid-gap",
+    "horizontal-gap", "vertical-gap",
   ]
   keywords.contains(name.to_lower())
 }

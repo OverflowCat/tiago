@@ -120,3 +120,108 @@ test "max helper" {
   assert_eq(max(10.0, 5.0), 10.0)
   assert_eq(max(5.0, 5.0), 5.0)
 }
+
+///|
+test "grid layout with rows" {
+  let graph = @graph.Graph::new("test")
+  let container = @graph.Object::new("grid")
+  container.set_grid_rows(2)
+  // Add 4 children
+  for i in 0..<4 {
+    let child = @graph.Object::new("c\{i}")
+    container.add_child(child)
+    graph.add_object(child)
+  }
+  graph.add_object(container)
+  let config = LayoutConfig::new()
+  layout(graph, config, Direction::Down)
+  // Container should be a grid
+  assert_true(container.is_grid_diagram())
+  // Children should have boxes
+  for child in container.children {
+    assert_true(child.box is Some(_))
+  }
+}
+
+///|
+test "grid layout with columns" {
+  let graph = @graph.Graph::new("test")
+  let container = @graph.Object::new("grid")
+  container.set_grid_columns(3)
+  // Add 6 children
+  for i in 0..<6 {
+    let child = @graph.Object::new("c\{i}")
+    container.add_child(child)
+    graph.add_object(child)
+  }
+  graph.add_object(container)
+  let config = LayoutConfig::new()
+  layout(graph, config, Direction::Down)
+  // Should have 2 rows (6 children / 3 columns)
+  let (rows, cols, _) = compute_grid_dimensions(container, 6)
+  assert_eq(rows, 2)
+  assert_eq(cols, 3)
+}
+
+///|
+test "grid dimensions calculation" {
+  // Test grid-rows only
+  let obj1 = @graph.Object::new("test1")
+  obj1.set_grid_rows(2)
+  let (rows1, cols1, dir1) = compute_grid_dimensions(obj1, 5)
+  assert_eq(rows1, 2)
+  assert_eq(cols1, 3) // ceil(5/2) = 3
+  assert_true(dir1) // row directed
+  // Test grid-columns only
+  let obj2 = @graph.Object::new("test2")
+  obj2.set_grid_columns(3)
+  let (rows2, cols2, dir2) = compute_grid_dimensions(obj2, 5)
+  assert_eq(rows2, 2) // ceil(5/3) = 2
+  assert_eq(cols2, 3)
+  assert_true(!dir2) // column directed
+  // Test both rows and columns
+  let obj3 = @graph.Object::new("test3")
+  obj3.set_grid_rows(2)
+  obj3.set_grid_columns(3)
+  let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
+  assert_eq(rows3, 2)
+  assert_eq(cols3, 3)
+  assert_true(dir3) // row directed when both specified
+}
+
+///|
+test "grid position calculation" {
+  // Row directed: fills left to right, then top to bottom
+  let (r0, c0) = get_grid_position(0, 2, 3, true)
+  assert_eq(r0, 0)
+  assert_eq(c0, 0)
+  let (r1, c1) = get_grid_position(1, 2, 3, true)
+  assert_eq(r1, 0)
+  assert_eq(c1, 1)
+  let (r3, c3) = get_grid_position(3, 2, 3, true)
+  assert_eq(r3, 1)
+  assert_eq(c3, 0)
+  // Column directed: fills top to bottom, then left to right
+  let (r0c, c0c) = get_grid_position(0, 2, 3, false)
+  assert_eq(r0c, 0)
+  assert_eq(c0c, 0)
+  let (r1c, c1c) = get_grid_position(1, 2, 3, false)
+  assert_eq(r1c, 1)
+  assert_eq(c1c, 0)
+  let (r2c, c2c) = get_grid_position(2, 2, 3, false)
+  assert_eq(r2c, 0)
+  assert_eq(c2c, 1)
+}
+
+///|
+test "sum_with_gap" {
+  // Empty array
+  let empty : Array[Double] = []
+  assert_eq(sum_with_gap(empty, 10.0), 0.0)
+  // Single value
+  let single = [100.0]
+  assert_eq(sum_with_gap(single, 10.0), 100.0)
+  // Multiple values
+  let multiple = [100.0, 100.0, 100.0]
+  assert_eq(sum_with_gap(multiple, 10.0), 320.0) // 100 + 10 + 100 + 10 + 100
+}

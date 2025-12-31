@@ -39,6 +39,16 @@ pub struct Object {
   mut link : String?
   /// CSS classes
   classes : Array[String]
+  /// Grid layout: number of rows
+  mut grid_rows : Int?
+  /// Grid layout: number of columns
+  mut grid_columns : Int?
+  /// Grid layout: gap between cells
+  mut grid_gap : Double?
+  /// Grid layout: horizontal gap between cells
+  mut horizontal_gap : Double?
+  /// Grid layout: vertical gap between cells
+  mut vertical_gap : Double?
 } derive(Show)
 
 ///|
@@ -129,6 +139,11 @@ pub fn Object::new(id : String) -> Object {
     tooltip: None,
     link: None,
     classes: [],
+    grid_rows: None,
+    grid_columns: None,
+    grid_gap: None,
+    horizontal_gap: None,
+    vertical_gap: None,
   }
 }
 
@@ -293,6 +308,68 @@ pub fn Object::find_child(self : Object, id : String) -> Object? {
 /// Check if this object is a container (has children)
 pub fn Object::is_container(self : Object) -> Bool {
   self.children.length() > 0
+}
+
+///|
+/// Check if this object is a grid diagram (has grid-rows or grid-columns)
+pub fn Object::is_grid_diagram(self : Object) -> Bool {
+  self.grid_rows is Some(_) || self.grid_columns is Some(_)
+}
+
+///|
+/// Get grid rows count
+pub fn Object::get_grid_rows(self : Object) -> Int? {
+  self.grid_rows
+}
+
+///|
+/// Get grid columns count
+pub fn Object::get_grid_columns(self : Object) -> Int? {
+  self.grid_columns
+}
+
+///|
+/// Get horizontal gap (uses grid_gap as default)
+pub fn Object::get_horizontal_gap(self : Object) -> Double {
+  match self.horizontal_gap {
+    Some(v) => v
+    None =>
+      match self.grid_gap {
+        Some(v) => v
+        None => 40.0 // Default gap
+      }
+  }
+}
+
+///|
+/// Get vertical gap (uses grid_gap as default)
+pub fn Object::get_vertical_gap(self : Object) -> Double {
+  match self.vertical_gap {
+    Some(v) => v
+    None =>
+      match self.grid_gap {
+        Some(v) => v
+        None => 40.0 // Default gap
+      }
+  }
+}
+
+///|
+/// Set grid rows
+pub fn Object::set_grid_rows(self : Object, rows : Int) -> Unit {
+  self.grid_rows = Some(rows)
+}
+
+///|
+/// Set grid columns
+pub fn Object::set_grid_columns(self : Object, columns : Int) -> Unit {
+  self.grid_columns = Some(columns)
+}
+
+///|
+/// Set grid gap
+pub fn Object::set_grid_gap(self : Object, gap : Double) -> Unit {
+  self.grid_gap = Some(gap)
 }
 
 ///|
