@@ -33,7 +33,7 @@ pub struct AsciiConfig {
 pub fn AsciiConfig::new() -> Self
 pub impl Show for AsciiConfig
 
-pub struct Box {
+pub(all) struct Box {
   x : Double
   y : Double
   width : Double
@@ -55,7 +55,7 @@ pub fn Box::zero() -> Self
 pub impl Eq for Box
 pub impl Show for Box
 
-pub struct Edge {
+pub(all) struct Edge {
   index : Int
   src_id : String
   dst_id : String
@@ -77,7 +77,7 @@ pub fn Edge::new(Int, String, String, Bool, Bool) -> Self
 pub fn Edge::set_label(Self, String) -> Unit
 pub impl Show for Edge
 
-pub struct Graph {
+pub(all) struct Graph {
   name : String
   root : Object
   objects : Array[Object]
@@ -93,7 +93,7 @@ pub fn Graph::get_objects(Self) -> Array[Object]
 pub fn Graph::new(String) -> Self
 pub impl Show for Graph
 
-pub struct Object {
+pub(all) struct Object {
   id : String
   mut label : String
   mut shape : String
@@ -135,7 +135,7 @@ pub fn Object::set_shape(Self, String) -> Unit
 pub fn Object::with_label(String, String) -> Self
 pub impl Show for Object
 
-pub struct Point {
+pub(all) struct Point {
   x : Double
   y : Double
 }
@@ -150,7 +150,7 @@ pub fn Point::zero() -> Self
 pub impl Eq for Point
 pub impl Show for Point
 
-pub struct Style {
+pub(all) struct Style {
   mut opacity : Double?
   mut stroke : String?
   mut fill : String?

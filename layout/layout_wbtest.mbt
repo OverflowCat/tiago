@@ -125,7 +125,7 @@ test "max helper" {
 test "grid layout with rows" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("grid")
-  container.set_grid_rows(2)
+  container.grid_rows = Some(2)
   // Add 4 children
   for i in 0..<4 {
     let child = @graph.Object::new("c\{i}")
@@ -147,7 +147,7 @@ test "grid layout with rows" {
 test "grid layout with columns" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("grid")
-  container.set_grid_columns(3)
+  container.grid_columns = Some(3)
   // Add 6 children
   for i in 0..<6 {
     let child = @graph.Object::new("c\{i}")
@@ -167,22 +167,22 @@ test "grid layout with columns" {
 test "grid dimensions calculation" {
   // Test grid-rows only
   let obj1 = @graph.Object::new("test1")
-  obj1.set_grid_rows(2)
+  obj1.grid_rows = Some(2)
   let (rows1, cols1, dir1) = compute_grid_dimensions(obj1, 5)
   assert_eq(rows1, 2)
   assert_eq(cols1, 3) // ceil(5/2) = 3
   assert_true(dir1) // row directed
   // Test grid-columns only
   let obj2 = @graph.Object::new("test2")
-  obj2.set_grid_columns(3)
+  obj2.grid_columns = Some(3)
   let (rows2, cols2, dir2) = compute_grid_dimensions(obj2, 5)
   assert_eq(rows2, 2) // ceil(5/3) = 2
   assert_eq(cols2, 3)
   assert_true(!dir2) // column directed
   // Test both rows and columns
   let obj3 = @graph.Object::new("test3")
-  obj3.set_grid_rows(2)
-  obj3.set_grid_columns(3)
+  obj3.grid_rows = Some(2)
+  obj3.grid_columns = Some(3)
   let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
   assert_eq(rows3, 2)
   assert_eq(cols3, 3)
@@ -230,7 +230,7 @@ test "sum_with_gap" {
 test "is_sequence_diagram" {
   let obj = @graph.Object::new("test")
   assert_true(!is_sequence_diagram(obj)) // default is rectangle
-  obj.set_shape("sequence_diagram")
+  obj.shape = "sequence_diagram"
   assert_true(is_sequence_diagram(obj))
 }
 
@@ -238,7 +238,7 @@ test "is_sequence_diagram" {
 test "sequence layout basic" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.set_shape("sequence_diagram")
+  container.shape = "sequence_diagram"
   // Add actors
   let alice = @graph.Object::new("alice")
   let bob = @graph.Object::new("bob")
@@ -251,12 +251,12 @@ test "sequence layout basic" {
   // Run sequence layout
   layout_sequence(container, config)
   // Container should have a box
-  assert_true(container.get_box() is Some(_))
+  assert_true(container.box is Some(_))
   // Actors should have boxes
-  assert_true(alice.get_box() is Some(_))
-  assert_true(bob.get_box() is Some(_))
+  assert_true(alice.box is Some(_))
+  assert_true(bob.box is Some(_))
   // Alice should be to the left of Bob
-  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
-  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
-  assert_true(bob_box.get_x() > alice_box.get_x())
+  guard alice.box is Some(alice_box) else { fail("expected alice box") }
+  guard bob.box is Some(bob_box) else { fail("expected bob box") }
+  assert_true(bob_box.x > alice_box.x)
 }

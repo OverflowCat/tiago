@@ -7,7 +7,7 @@
 
 ///|
 /// The main graph structure
-pub struct Graph {
+pub(all) struct Graph {
   name : String
   root : Object
   objects : Array[Object]
@@ -16,7 +16,7 @@ pub struct Graph {
 
 ///|
 /// A node/shape in the diagram
-pub struct Object {
+pub(all) struct Object {
   /// Unique identifier
   id : String
   /// Display label
@@ -53,7 +53,7 @@ pub struct Object {
 
 ///|
 /// An edge/connection between objects
-pub struct Edge {
+pub(all) struct Edge {
   /// Index in the graph's edge list
   index : Int
   /// Source object ID
@@ -78,7 +78,7 @@ pub struct Edge {
 
 ///|
 /// Bounding box for positioning
-pub struct Box {
+pub(all) struct Box {
   x : Double
   y : Double
   width : Double
@@ -87,14 +87,14 @@ pub struct Box {
 
 ///|
 /// A 2D point
-pub struct Point {
+pub(all) struct Point {
   x : Double
   y : Double
 } derive(Eq, Show)
 
 ///|
 /// Visual styling properties
-pub struct Style {
+pub(all) struct Style {
   mut opacity : Double?
   mut stroke : String?
   mut fill : String?
