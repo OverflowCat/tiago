@@ -24,9 +24,15 @@ pub impl Eq for GraphCompileError
 pub impl Show for GraphCompileError
 
 // Types and methods
+type AsciiBox
+pub impl Show for AsciiBox
+
 pub struct AsciiConfig {
-  x_scale : Double
-  y_scale : Double
+  min_box_width : Int
+  box_height : Int
+  h_padding : Int
+  v_spacing : Int
+  h_spacing : Int
   min_width : Int
   min_height : Int
 }

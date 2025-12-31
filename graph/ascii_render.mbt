@@ -6,99 +6,256 @@
 ///|
 /// ASCII rendering configuration
 pub struct AsciiConfig {
-  /// Pixels per character (horizontal)
-  x_scale : Double
-  /// Pixels per character (vertical)
-  y_scale : Double
-  /// Minimum width in characters
+  /// Minimum box width in characters
+  min_box_width : Int
+  /// Box height in lines
+  box_height : Int
+  /// Horizontal padding inside box
+  h_padding : Int
+  /// Vertical spacing between boxes
+  v_spacing : Int
+  /// Horizontal spacing between boxes
+  h_spacing : Int
+  /// Minimum canvas width
   min_width : Int
-  /// Minimum height in characters
+  /// Minimum canvas height
   min_height : Int
 } derive(Show)
 
 ///|
 pub fn AsciiConfig::new() -> AsciiConfig {
-  // More compact scaling to match d2's output
-  { x_scale: 10.0, y_scale: 20.0, min_width: 40, min_height: 10 }
+  {
+    min_box_width: 6,
+    box_height: 4,
+    h_padding: 1,
+    v_spacing: 2,
+    h_spacing: 2,
+    min_width: 40,
+    min_height: 10,
+  }
 }
+
+///|
+/// ASCII box position and size in character coordinates
+struct AsciiBox {
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+  label : String
+  shape : String
+} derive(Show)
 
 ///|
 /// Render a graph to ASCII string
 pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
-  // Calculate grid dimensions
-  let (max_x, max_y) = compute_graph_bounds(graph)
-  let width = max_int((max_x + 40.0) / config.x_scale, config.min_width)
-  let height = max_int((max_y + 20.0) / config.y_scale, config.min_height)
-  let grid = @ascii.Grid::new(width, height)
+  // Compute ASCII layout for all objects
+  let boxes = compute_ascii_layout(graph, config)
+  // Calculate canvas dimensions
+  let (canvas_width, canvas_height) = compute_canvas_size(boxes, config)
+  let grid = @ascii.Grid::new(canvas_width, canvas_height)
   // Render edge lines first (behind objects)
   for edge in graph.edges {
-    render_ascii_edge_lines(grid, edge, config)
+    render_ascii_edge_new(grid, edge, boxes, config)
   }
   // Render objects
-  for obj in graph.objects {
-    render_ascii_object(grid, obj, config)
+  for box in boxes {
+    render_ascii_box(grid, box, config)
   }
   // Render edge arrows last (on top of objects)
   for edge in graph.edges {
-    render_ascii_edge_arrows(grid, edge, config)
+    render_ascii_arrows_new(grid, edge, boxes, config)
   }
   // Render edge labels
   for edge in graph.edges {
-    render_ascii_edge_label(grid, edge, config)
+    render_ascii_label_new(grid, edge, boxes, config)
   }
   grid.to_string()
 }
 
 ///|
-fn max_int(a : Double, b : Int) -> Int {
-  let ai = a.to_int()
-  if ai > b {
-    ai
-  } else {
-    b
+/// Compute ASCII layout positions for all objects
+fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] {
+  let boxes : Array[AsciiBox] = []
+  // Find root objects and their edge targets for layout
+  let roots = find_ascii_roots(graph)
+  // Build adjacency list for topological ordering
+  let adj : Map[String, Array[String]] = {}
+  for edge in graph.edges {
+    let src = edge.get_src_id()
+    let dst = edge.get_dst_id()
+    match adj.get(src) {
+      Some(arr) => arr.push(dst)
+      None => adj[src] = [dst]
+    }
   }
+  // Layout objects level by level (BFS)
+  let placed : Map[String, AsciiBox] = {}
+  let mut current_y = 1
+  // First pass: place roots
+  let mut current_x = 1
+  for obj in roots {
+    let box = create_ascii_box(obj, current_x, current_y, config)
+    boxes.push(box)
+    placed[obj.id] = box
+    current_x = current_x + box.width + config.h_spacing
+  }
+  current_y = current_y + config.box_height + config.v_spacing
+  // BFS for remaining levels
+  let mut frontier : Array[String] = []
+  for obj in roots {
+    frontier.push(obj.id)
+  }
+  let visited : Map[String, Bool] = {}
+  for obj in roots {
+    visited[obj.id] = true
+  }
+  while frontier.length() > 0 {
+    let next_frontier : Array[String] = []
+    let level_objs : Array[Object] = []
+    for src_id in frontier {
+      match adj.get(src_id) {
+        Some(targets) =>
+          for dst_id in targets {
+            if not(visited.contains(dst_id)) {
+              visited[dst_id] = true
+              match graph.find_object(dst_id) {
+                Some(obj) => {
+                  level_objs.push(obj)
+                  next_frontier.push(dst_id)
+                }
+                None => ()
+              }
+            }
+          }
+        None => ()
+      }
+    }
+    // Place objects in this level
+    if level_objs.length() > 0 {
+      // Center this level under its parents
+      let level_width = compute_level_width(level_objs, config)
+      let parent_center = compute_parent_center(frontier, placed)
+      let start_x = max_i(1, parent_center - level_width / 2)
+      let mut x = start_x
+      for obj in level_objs {
+        let box = create_ascii_box(obj, x, current_y, config)
+        boxes.push(box)
+        placed[obj.id] = box
+        x = x + box.width + config.h_spacing
+      }
+      current_y = current_y + config.box_height + config.v_spacing
+    }
+    frontier = next_frontier
+  }
+  // Add any unplaced objects (disconnected)
+  for obj in graph.objects {
+    if not(placed.contains(obj.id)) {
+      let box = create_ascii_box(obj, 1, current_y, config)
+      boxes.push(box)
+      placed[obj.id] = box
+      current_y = current_y + config.box_height + config.v_spacing
+    }
+  }
+  boxes
 }
 
 ///|
-fn render_ascii_object(
-  grid : @ascii.Grid,
+fn find_ascii_roots(graph : Graph) -> Array[Object] {
+  // Objects that are not targets of any edge
+  let targets : Map[String, Bool] = {}
+  for edge in graph.edges {
+    targets[edge.get_dst_id()] = true
+  }
+  let roots : Array[Object] = []
+  for obj in graph.objects {
+    if not(targets.contains(obj.id)) && not(obj.is_container()) {
+      roots.push(obj)
+    }
+  }
+  // If no roots found, use first object
+  if roots.length() == 0 && graph.objects.length() > 0 {
+    roots.push(graph.objects[0])
+  }
+  roots
+}
+
+///|
+fn create_ascii_box(
   obj : Object,
+  x : Int,
+  y : Int,
   config : AsciiConfig,
-) -> Unit {
-  guard obj.box is Some(box) else { return }
-  // Convert to grid coordinates
-  let x1 = (box.x / config.x_scale).to_int()
-  let y1 = (box.y / config.y_scale).to_int()
-  let x2 = ((box.x + box.width) / config.x_scale).to_int()
-  let y2 = ((box.y + box.height) / config.y_scale).to_int()
-  // Draw shape
-  match obj.shape {
-    "circle" => draw_unicode_circle(grid, x1, y1, x2, y2)
-    "oval" => draw_unicode_oval(grid, x1, y1, x2, y2)
-    "diamond" => draw_unicode_diamond(grid, x1, y1, x2, y2)
-    "cylinder" => draw_unicode_cylinder(grid, x1, y1, x2, y2)
-    "hexagon" => draw_unicode_hexagon(grid, x1, y1, x2, y2)
-    "parallelogram" => draw_unicode_parallelogram(grid, x1, y1, x2, y2)
-    "queue" => draw_unicode_queue(grid, x1, y1, x2, y2)
-    "document" => draw_unicode_document(grid, x1, y1, x2, y2)
-    "stored_data" => draw_unicode_stored_data(grid, x1, y1, x2, y2)
-    "page" => draw_unicode_page(grid, x1, y1, x2, y2)
-    "package" => draw_unicode_package(grid, x1, y1, x2, y2)
-    "step" => draw_unicode_step(grid, x1, y1, x2, y2)
-    "callout" => draw_unicode_callout(grid, x1, y1, x2, y2)
-    "cloud" => draw_unicode_cloud(grid, x1, y1, x2, y2)
-    "person" => draw_unicode_person(grid, x1, y1, x2, y2)
-    _ => grid.unicode_rect(x1, y1, x2, y2)
-  }
-  // Draw label centered
-  let label = truncate_label(obj.label, x2 - x1 - 2)
-  let label_x = x1 + (x2 - x1 - label.length()) / 2
-  let label_y = y1 + (y2 - y1) / 2
-  grid.text(max(label_x, x1 + 1), label_y, label)
+) -> AsciiBox {
+  let width = max_i(
+    config.min_box_width,
+    obj.label.length() + config.h_padding * 2 + 2,
+  )
+  { x, y, width, height: config.box_height, label: obj.label, shape: obj.shape }
 }
 
 ///|
-fn max(a : Int, b : Int) -> Int {
+fn compute_level_width(objs : Array[Object], config : AsciiConfig) -> Int {
+  let mut width = 0
+  for obj in objs {
+    let box_width = max_i(
+      config.min_box_width,
+      obj.label.length() + config.h_padding * 2 + 2,
+    )
+    width = width + box_width + config.h_spacing
+  }
+  if width > 0 {
+    width - config.h_spacing
+  } else {
+    0
+  }
+}
+
+///|
+fn compute_parent_center(
+  parent_ids : Array[String],
+  placed : Map[String, AsciiBox],
+) -> Int {
+  let mut sum_x = 0
+  let mut count = 0
+  for id in parent_ids {
+    match placed.get(id) {
+      Some(box) => {
+        sum_x = sum_x + box.x + box.width / 2
+        count = count + 1
+      }
+      None => ()
+    }
+  }
+  if count > 0 {
+    sum_x / count
+  } else {
+    20
+  }
+}
+
+///|
+fn compute_canvas_size(
+  boxes : Array[AsciiBox],
+  config : AsciiConfig,
+) -> (Int, Int) {
+  let mut max_x = config.min_width
+  let mut max_y = config.min_height
+  for box in boxes {
+    let right = box.x + box.width + 2
+    let bottom = box.y + box.height + 2
+    if right > max_x {
+      max_x = right
+    }
+    if bottom > max_y {
+      max_y = bottom
+    }
+  }
+  (max_x, max_y)
+}
+
+///|
+fn max_i(a : Int, b : Int) -> Int {
   if a > b {
     a
   } else {
@@ -107,481 +264,248 @@ fn max(a : Int, b : Int) -> Int {
 }
 
 ///|
-fn truncate_label(s : String, max_len : Int) -> String {
-  if max_len <= 0 {
-    ""
-  } else if s.length() <= max_len {
-    s
-  } else if max_len <= 3 {
-    (try! s[:max_len]).to_string()
-  } else {
-    (try! s[:max_len - 2]).to_string() + ".."
+/// Render a single ASCII box
+fn render_ascii_box(
+  grid : @ascii.Grid,
+  box : AsciiBox,
+  _config : AsciiConfig,
+) -> Unit {
+  let x1 = box.x
+  let y1 = box.y
+  let x2 = box.x + box.width - 1
+  let y2 = box.y + box.height - 1
+  // Draw box shape
+  match box.shape {
+    "circle" | "oval" => {
+      grid.set(x1, y1, '┌')
+      grid.set(x1 + 1, y1, '⬭')
+      grid.hline(x1 + 2, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+    }
+    "cylinder" => {
+      // Top: .-‾‾-.
+      grid.set(x1, y1, '.')
+      grid.set(x1 + 1, y1, '-')
+      grid.hline(x1 + 2, x2 - 2, y1, '‾')
+      grid.set(x2 - 1, y1, '-')
+      grid.set(x2, y1, '.')
+      // Sides
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      // Bottom: ╲-__-╱
+      grid.set(x1, y2, ' ')
+      grid.set(x1 + 1, y2, '╲')
+      grid.set(x1 + 2, y2, '-')
+      grid.hline(x1 + 3, x2 - 3, y2, '_')
+      grid.set(x2 - 2, y2, '-')
+      grid.set(x2 - 1, y2, '╱')
+    }
+    "diamond" => {
+      let cx = (x1 + x2) / 2
+      for x in x1..=x2 {
+        for y in y1..=y2 {
+          grid.set(x, y, '*')
+        }
+      }
+      grid.set(cx, y1, '*')
+      grid.set(cx, y2, '*')
+    }
+    "cloud" => {
+      grid.set(x1, y1, '┌')
+      grid.set(x1 + 1, y1, '☁')
+      grid.hline(x1 + 2, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+    }
+    _ => grid.unicode_rect(x1, y1, x2, y2)
   }
+  // Draw label centered (on first content line, which is y1 + 1)
+  let label_x = x1 + (box.width - box.label.length()) / 2
+  let label_y = y1 + 1
+  grid.text(label_x, label_y, box.label)
 }
 
 ///|
-/// Draw circle with Unicode (uses ┌⬭ marker at top-left)
-fn draw_unicode_circle(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Draw oval with circle marker
-  grid.set(x1, y1, '┌')
-  grid.set(x1 + 1, y1, '⬭')
-  grid.hline(x1 + 2, x2 - 1, y1, '─')
-  grid.set(x2, y1, '┐')
-  grid.set(x1, y2, '└')
-  grid.hline(x1 + 1, x2 - 1, y2, '─')
-  grid.set(x2, y2, '┘')
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2, y1 + 1, y2 - 1, '│')
+/// Find ASCII box by object ID
+fn find_ascii_box(boxes : Array[AsciiBox], label : String) -> AsciiBox? {
+  for box in boxes {
+    if box.label == label {
+      return Some(box)
+    }
+  }
+  None
 }
 
 ///|
-/// Draw oval with Unicode (uses ┌⬭ marker at top-left)
-fn draw_unicode_oval(
+/// Render edge lines with orthogonal routing
+fn render_ascii_edge_new(
   grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
+  edge : Edge,
+  boxes : Array[AsciiBox],
+  _config : AsciiConfig,
 ) -> Unit {
-  // Similar to circle but for oval
-  grid.set(x1, y1, '┌')
-  grid.set(x1 + 1, y1, '⬭')
-  grid.hline(x1 + 2, x2 - 1, y1, '─')
-  grid.set(x2, y1, '┐')
-  grid.set(x1, y2, '└')
-  grid.hline(x1 + 1, x2 - 1, y2, '─')
-  grid.set(x2, y2, '┘')
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2, y1 + 1, y2 - 1, '│')
-}
-
-///|
-/// Draw diamond shape with Unicode
-fn draw_unicode_diamond(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  let cx = (x1 + x2) / 2
-  let half_w = (x2 - x1) / 2
-  let half_h = (y2 - y1) / 2
-  // Draw asterisks for diamond shape
-  grid.set(cx, y1, '*')
-  grid.set(cx, y2, '*')
-  for i in 0..=half_h {
-    let dx = i * half_w / max(half_h, 1)
-    for j in -dx..=dx {
-      if i == 0 || i == half_h || j == -dx || j == dx {
-        grid.set(cx + j, y1 + i, '*')
-        grid.set(cx + j, y2 - i, '*')
+  // Find source and destination boxes by label (since we don't have direct ID mapping)
+  let src_label = edge
+    .get_src_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_src_id())
+    .to_string()
+  let dst_label = edge
+    .get_dst_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_dst_id())
+    .to_string()
+  let src_box = find_ascii_box(boxes, src_label)
+  let dst_box = find_ascii_box(boxes, dst_label)
+  match (src_box, dst_box) {
+    (Some(src), Some(dst)) => {
+      // Calculate connection points
+      let src_cx = src.x + src.width / 2
+      let src_bottom = src.y + src.height
+      let dst_cx = dst.x + dst.width / 2
+      let dst_top = dst.y - 1
+      // Draw vertical line from source bottom
+      if dst.y > src.y + src.height {
+        // Going down
+        if src_cx == dst_cx {
+          // Straight down
+          grid.vline(src_cx, src_bottom, dst_top, '│')
+        } else {
+          // Need orthogonal routing
+          let mid_y = (src_bottom + dst_top) / 2
+          // Down from source
+          grid.vline(src_cx, src_bottom, mid_y, '│')
+          // Horizontal
+          if src_cx < dst_cx {
+            grid.set(src_cx, mid_y, '└')
+            grid.hline(src_cx + 1, dst_cx - 1, mid_y, '─')
+            grid.set(dst_cx, mid_y, '┐')
+          } else {
+            grid.set(src_cx, mid_y, '┘')
+            grid.hline(dst_cx + 1, src_cx - 1, mid_y, '─')
+            grid.set(dst_cx, mid_y, '┌')
+          }
+          // Down to dest
+          grid.vline(dst_cx, mid_y + 1, dst_top, '│')
+        }
+      } else if dst.x != src.x {
+        // Side by side - horizontal connection
+        let src_right = src.x + src.width
+        let dst_left = dst.x - 1
+        let cy = src.y + src.height / 2
+        if src.x < dst.x {
+          grid.hline(src_right, dst_left, cy, '─')
+        } else {
+          grid.hline(dst.x + dst.width, src.x - 1, cy, '─')
+        }
       }
     }
+    _ => ()
   }
 }
 
 ///|
-/// Draw cylinder shape with Unicode (database-like)
-fn draw_unicode_cylinder(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top ellipse: .-‾‾‾-.
-  grid.set(x1, y1, '.')
-  grid.set(x1 + 1, y1, '-')
-  grid.hline(x1 + 2, x2 - 2, y1, '‾')
-  grid.set(x2 - 1, y1, '-')
-  grid.set(x2, y1, '.')
-  // Second line with top curve: │╲-____-╱│
-  if y2 - y1 > 2 {
-    grid.set(x1, y1 + 1, '│')
-    grid.set(x1 + 1, y1 + 1, '╲')
-    grid.set(x1 + 2, y1 + 1, '-')
-    grid.hline(x1 + 3, x2 - 3, y1 + 1, '_')
-    grid.set(x2 - 2, y1 + 1, '-')
-    grid.set(x2 - 1, y1 + 1, '╱')
-    grid.set(x2, y1 + 1, '│')
-  }
-  // Sides
-  grid.vline(x1, y1 + 2, y2 - 1, '│')
-  grid.vline(x2, y1 + 2, y2 - 1, '│')
-  // Bottom ellipse: ╲-____-╱
-  grid.set(x1, y2, ' ')
-  grid.set(x1 + 1, y2, '╲')
-  grid.set(x1 + 2, y2, '-')
-  grid.hline(x1 + 3, x2 - 3, y2, '_')
-  grid.set(x2 - 2, y2, '-')
-  grid.set(x2 - 1, y2, '╱')
-}
-
-///|
-/// Draw hexagon shape with Unicode
-fn draw_unicode_hexagon(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  let w = x2 - x1
-  let indent = max(w / 4, 1)
-  // Top edge
-  grid.set(x1 + indent, y1, '╱')
-  grid.hline(x1 + indent + 1, x2 - indent - 1, y1, '‾')
-  grid.set(x2 - indent, y1, '╲')
-  // Top slants
-  grid.set(x1, y1 + 1, '╱')
-  grid.set(x2, y1 + 1, '╲')
-  // Sides
-  let mid_start = y1 + 2
-  let mid_end = y2 - 2
-  if mid_end >= mid_start {
-    grid.hline(x1, x1, mid_start, ' ')
-    grid.hline(x2, x2, mid_end, ' ')
-  }
-  // Bottom slants
-  grid.set(x1, y2 - 1, '╲')
-  grid.set(x2, y2 - 1, '╱')
-  // Bottom edge
-  grid.set(x1 + indent, y2, '╲')
-  grid.hline(x1 + indent + 1, x2 - indent - 1, y2, '_')
-  grid.set(x2 - indent, y2, '╱')
-}
-
-///|
-/// Draw parallelogram shape with Unicode
-fn draw_unicode_parallelogram(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  let indent = max((x2 - x1) / 4, 1)
-  // Top edge: ╱‾‾‾‾╱
-  grid.set(x1 + indent, y1, '╱')
-  grid.hline(x1 + indent + 1, x2, y1, '‾')
-  grid.set(x2 + 1, y1, '╱')
-  // Sides
-  grid.set(x1 + indent, y2, '╱')
-  // Bottom edge
-  grid.hline(x1, x2 - indent, y2, '_')
-  grid.set(x2 - indent + 1, y2, '╱')
-}
-
-///|
-/// Draw queue shape with Unicode (cylinder-like)
-fn draw_unicode_queue(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top: ╱‾‾‾‾‾╱╲
-  grid.set(x1, y1, '╱')
-  grid.hline(x1 + 1, x2 - 2, y1, '‾')
-  grid.set(x2 - 1, y1, '╱')
-  grid.set(x2, y1, '╲')
-  // Sides
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2 - 1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2, y1 + 1, y2 - 1, ' ')
-  // Bottom: ╲________╲╱
-  grid.set(x1, y2, ' ')
-  grid.set(x1 + 1, y2, '╲')
-  grid.hline(x1 + 2, x2 - 2, y2, '_')
-  grid.set(x2 - 1, y2, '╲')
-  grid.set(x2, y2, '╱')
-}
-
-///|
-/// Draw document shape with Unicode
-fn draw_unicode_document(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Standard rectangle top and sides
-  grid.unicode_rect(x1, y1, x2, y2)
-  // Wavy bottom: `-.-`
-  grid.set(x1, y2, ' ')
-  grid.set(x1 + 1, y2, '`')
-  grid.set(x1 + 2, y2, '-')
-  grid.set(x1 + 3, y2, '.')
-  grid.set(x1 + 4, y2, '-')
-  grid.set(x1 + 5, y2, '`')
-}
-
-///|
-/// Draw stored_data shape with Unicode (slanted cylinder)
-fn draw_unicode_stored_data(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top: ╱‾‾‾‾‾‾‾╱
-  grid.set(x1, y1, '╱')
-  grid.hline(x1 + 1, x2, y1, '‾')
-  grid.set(x2 + 1, y1, '╱')
-  // Sides
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  // Bottom: ╲___________╲
-  grid.set(x1, y2, ' ')
-  grid.set(x1 + 1, y2, '╲')
-  grid.hline(x1 + 2, x2, y2, '_')
-  grid.set(x2 + 1, y2, '╲')
-}
-
-///|
-/// Draw page shape with Unicode (folded corner)
-fn draw_unicode_page(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top with fold
-  grid.set(x1, y1, '┌')
-  grid.hline(x1 + 1, x2 - 2, y1, '─')
-  grid.set(x2 - 1, y1, '╲')
-  grid.set(x2, y1, '┐')
-  // Fold indicator
-  grid.set(x2, y1 + 1, '│')
-  // Sides
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2, y1 + 2, y2 - 1, '│')
-  // Bottom
-  grid.set(x1, y2, '└')
-  grid.hline(x1 + 1, x2 - 1, y2, '─')
-  grid.set(x2, y2, '┘')
-}
-
-///|
-/// Draw package shape with Unicode
-fn draw_unicode_package(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top with tab
-  grid.set(x1, y1, '┌')
-  grid.hline(x1 + 1, x1 + 3, y1, '─')
-  grid.set(x1 + 4, y1, '┐')
-  // Tab extension
-  grid.set(x1, y1 + 1, '│')
-  grid.set(x1 + 4, y1 + 1, '└')
-  grid.hline(x1 + 5, x2 - 1, y1 + 1, '─')
-  grid.set(x2, y1 + 1, '┐')
-  // Sides
-  grid.vline(x1, y1 + 2, y2 - 1, '│')
-  grid.vline(x2, y1 + 2, y2 - 1, '│')
-  // Bottom
-  grid.set(x1, y2, '└')
-  grid.hline(x1 + 1, x2 - 1, y2, '─')
-  grid.set(x2, y2, '┘')
-}
-
-///|
-/// Draw step shape with Unicode (ribbon-like)
-fn draw_unicode_step(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Top: ╲‾‾‾‾‾╲
-  grid.set(x1, y1, '╲')
-  grid.hline(x1 + 1, x2, y1, '‾')
-  grid.set(x2 + 1, y1, '╲')
-  // Sides
-  grid.set(x1, y1 + 1, ' ')
-  grid.set(x1 + 1, y1 + 1, '╲')
-  grid.vline(x2 + 1, y1 + 1, y2 - 1, '╲')
-  // Bottom: ╱_______╱
-  grid.set(x1 + 1, y2, '╱')
-  grid.hline(x1 + 2, x2, y2, '_')
-  grid.set(x2 + 1, y2, '╱')
-}
-
-///|
-/// Draw callout shape with Unicode (box with tail)
-fn draw_unicode_callout(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Standard box
-  grid.unicode_rect(x1, y1, x2, y2)
-  // Tail pointing down-left
-  grid.set(x1 + 2, y2 + 1, '│')
-  grid.set(x1 + 1, y2 + 2, '╱')
-}
-
-///|
-/// Draw cloud shape with Unicode
-fn draw_unicode_cloud(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  // Cloud marker at top-left
-  grid.set(x1, y1, '┌')
-  grid.set(x1 + 1, y1, '☁')
-  grid.hline(x1 + 2, x2 - 1, y1, '─')
-  grid.set(x2, y1, '┐')
-  // Sides
-  grid.vline(x1, y1 + 1, y2 - 1, '│')
-  grid.vline(x2, y1 + 1, y2 - 1, '│')
-  // Bottom
-  grid.set(x1, y2, '└')
-  grid.hline(x1 + 1, x2 - 1, y2, '─')
-  grid.set(x2, y2, '┘')
-}
-
-///|
-/// Draw person shape with Unicode (stick figure)
-fn draw_unicode_person(
-  grid : @ascii.Grid,
-  x1 : Int,
-  y1 : Int,
-  x2 : Int,
-  y2 : Int,
-) -> Unit {
-  let cx = (x1 + x2) / 2
-  // Head: ╱‾‾╲
-  grid.set(cx - 1, y1, '╱')
-  grid.set(cx, y1, '‾')
-  grid.set(cx + 1, y1, '‾')
-  grid.set(cx + 2, y1, '╲')
-  // Neck: ╲__╱
-  grid.set(cx - 1, y1 + 1, '╲')
-  grid.set(cx, y1 + 1, '_')
-  grid.set(cx + 1, y1 + 1, '_')
-  grid.set(cx + 2, y1 + 1, '╱')
-  // Body: ╱‾‾‾‾╲
-  if y2 - y1 > 3 {
-    grid.set(cx - 1, y1 + 2, '╱')
-    grid.set(cx, y1 + 2, '‾')
-    grid.set(cx + 1, y1 + 2, '‾')
-    grid.set(cx + 2, y1 + 2, '╲')
-    // Bottom: ‾‾‾‾‾‾
-    grid.hline(cx - 1, cx + 2, y1 + 3, '‾')
-  }
-}
-
-///|
-/// Draw edge lines (without arrows)
-fn render_ascii_edge_lines(
+/// Render edge arrows
+fn render_ascii_arrows_new(
   grid : @ascii.Grid,
   edge : Edge,
-  config : AsciiConfig,
+  boxes : Array[AsciiBox],
+  _config : AsciiConfig,
 ) -> Unit {
-  let route = edge.route
-  if route.length() < 2 {
-    return
-  }
-  // Draw line segments using Unicode: ─ │
-  for i in 0..<(route.length() - 1) {
-    let p1 = route[i]
-    let p2 = route[i + 1]
-    let x1 = (p1.x / config.x_scale).to_int()
-    let y1 = (p1.y / config.y_scale).to_int()
-    let x2 = (p2.x / config.x_scale).to_int()
-    let y2 = (p2.y / config.y_scale).to_int()
-    grid.line(x1, y1, x2, y2, '─', '│', '\\', '/')
-  }
-}
-
-///|
-/// Draw edge arrows (called after objects are rendered)
-fn render_ascii_edge_arrows(
-  grid : @ascii.Grid,
-  edge : Edge,
-  config : AsciiConfig,
-) -> Unit {
-  let route = edge.route
-  if route.length() < 2 {
-    return
-  }
-  // Draw arrow at end using Unicode arrows: ▼ ▲ ◀ ▶
-  if edge.dst_arrow {
-    let last = route[route.length() - 1]
-    let prev = route[route.length() - 2]
-    let lx = (last.x / config.x_scale).to_int()
-    let ly = (last.y / config.y_scale).to_int()
-    let px = (prev.x / config.x_scale).to_int()
-    let py = (prev.y / config.y_scale).to_int()
-    let arrow = if lx > px {
-      '▶'
-    } else if lx < px {
-      '◀'
-    } else if ly > py {
-      '▼'
-    } else {
-      '▲'
-    }
-    grid.set(lx, ly, arrow)
-  }
-  // Draw arrow at start for bidirectional edges
-  if edge.src_arrow {
-    let first = route[0]
-    let second = route[1]
-    let fx = (first.x / config.x_scale).to_int()
-    let fy = (first.y / config.y_scale).to_int()
-    let sx = (second.x / config.x_scale).to_int()
-    let sy = (second.y / config.y_scale).to_int()
-    let arrow = if fx > sx {
-      '▶'
-    } else if fx < sx {
-      '◀'
-    } else if fy > sy {
-      '▼'
-    } else {
-      '▲'
-    }
-    grid.set(fx, fy, arrow)
-  }
-}
-
-///|
-/// Draw edge labels
-fn render_ascii_edge_label(
-  grid : @ascii.Grid,
-  edge : Edge,
-  config : AsciiConfig,
-) -> Unit {
-  if edge.label.length() > 0 {
-    match edge.midpoint() {
-      Some(mid) => {
-        let mx = (mid.x / config.x_scale).to_int()
-        let my = (mid.y / config.y_scale).to_int()
-        let label = edge.label.replace(old=" ", new="─")
-        grid.text(mx - label.length() / 2, my, label)
+  let src_label = edge
+    .get_src_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_src_id())
+    .to_string()
+  let dst_label = edge
+    .get_dst_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_dst_id())
+    .to_string()
+  let src_box = find_ascii_box(boxes, src_label)
+  let dst_box = find_ascii_box(boxes, dst_label)
+  match (src_box, dst_box) {
+    (Some(src), Some(dst)) => {
+      if edge.dst_arrow {
+        let dst_cx = dst.x + dst.width / 2
+        let dst_top = dst.y - 1
+        if dst.y > src.y + src.height {
+          // Arrow pointing down
+          grid.set(dst_cx, dst_top, '▼')
+        } else if dst.x > src.x {
+          // Arrow pointing right
+          grid.set(dst.x - 1, dst.y + dst.height / 2, '▶')
+        } else {
+          // Arrow pointing left
+          grid.set(dst.x + dst.width, dst.y + dst.height / 2, '◀')
+        }
       }
-      None => ()
+      if edge.src_arrow {
+        let src_cx = src.x + src.width / 2
+        let src_bottom = src.y + src.height
+        if dst.y > src.y + src.height {
+          // Arrow pointing up from source
+          grid.set(src_cx, src_bottom, '▲')
+        }
+      }
     }
+    _ => ()
+  }
+}
+
+///|
+/// Render edge labels
+fn render_ascii_label_new(
+  grid : @ascii.Grid,
+  edge : Edge,
+  boxes : Array[AsciiBox],
+  _config : AsciiConfig,
+) -> Unit {
+  if edge.label.length() == 0 {
+    return
+  }
+  let src_label = edge
+    .get_src_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_src_id())
+    .to_string()
+  let dst_label = edge
+    .get_dst_id()
+    .split(".")
+    .last()
+    .unwrap_or(edge.get_dst_id())
+    .to_string()
+  let src_box = find_ascii_box(boxes, src_label)
+  let dst_box = find_ascii_box(boxes, dst_label)
+  match (src_box, dst_box) {
+    (Some(src), Some(dst)) => {
+      let label = edge.label.replace(old=" ", new="─")
+      if dst.y > src.y + src.height {
+        // Vertical edge - place label in the middle
+        let cx = (src.x + src.width / 2 + dst.x + dst.width / 2) / 2
+        let cy = (src.y + src.height + dst.y) / 2
+        grid.text(cx - label.length() / 2, cy, label)
+      } else {
+        // Horizontal edge
+        let cy = src.y + src.height / 2
+        let cx = (src.x + src.width + dst.x) / 2
+        grid.text(cx - label.length() / 2, cy, label)
+      }
+    }
+    _ => ()
   }
 }
