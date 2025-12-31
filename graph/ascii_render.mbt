@@ -28,7 +28,7 @@ pub fn AsciiConfig::new() -> AsciiConfig {
     min_box_width: 6,
     box_height: 4,
     h_padding: 1,
-    v_spacing: 2,
+    v_spacing: 4,
     h_spacing: 2,
     min_width: 40,
     min_height: 10,
@@ -38,6 +38,7 @@ pub fn AsciiConfig::new() -> AsciiConfig {
 ///|
 /// ASCII box position and size in character coordinates
 struct AsciiBox {
+  id : String
   x : Int
   y : Int
   width : Int
@@ -62,13 +63,13 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   for box in boxes {
     render_ascii_box(grid, box, config)
   }
-  // Render edge arrows last (on top of objects)
-  for edge in graph.edges {
-    render_ascii_arrows_new(grid, edge, boxes, config)
-  }
   // Render edge labels
   for edge in graph.edges {
     render_ascii_label_new(grid, edge, boxes, config)
+  }
+  // Render edge arrows LAST (on top of everything)
+  for edge in graph.edges {
+    render_ascii_arrows_new(grid, edge, boxes, config)
   }
   grid.to_string()
 }
@@ -191,7 +192,15 @@ fn create_ascii_box(
     config.min_box_width,
     obj.label.length() + config.h_padding * 2 + 2,
   )
-  { x, y, width, height: config.box_height, label: obj.label, shape: obj.shape }
+  {
+    id: obj.id,
+    x,
+    y,
+    width,
+    height: config.box_height,
+    label: obj.label,
+    shape: obj.shape,
+  }
 }
 
 ///|
@@ -336,9 +345,16 @@ fn render_ascii_box(
 
 ///|
 /// Find ASCII box by object ID
-fn find_ascii_box(boxes : Array[AsciiBox], label : String) -> AsciiBox? {
+fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
   for box in boxes {
-    if box.label == label {
+    // Match by ID (handles nested IDs like "container.child")
+    if box.id == id || box.id.has_suffix("." + id) {
+      return Some(box)
+    }
+  }
+  // Fallback: try matching by label
+  for box in boxes {
+    if box.label == id {
       return Some(box)
     }
   }
@@ -353,21 +369,11 @@ fn render_ascii_edge_new(
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
-  // Find source and destination boxes by label (since we don't have direct ID mapping)
-  let src_label = edge
-    .get_src_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_src_id())
-    .to_string()
-  let dst_label = edge
-    .get_dst_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_dst_id())
-    .to_string()
-  let src_box = find_ascii_box(boxes, src_label)
-  let dst_box = find_ascii_box(boxes, dst_label)
+  // Find source and destination boxes by ID
+  let src_id = edge.get_src_id()
+  let dst_id = edge.get_dst_id()
+  let src_box = find_ascii_box(boxes, src_id)
+  let dst_box = find_ascii_box(boxes, dst_id)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       // Calculate connection points
@@ -423,20 +429,10 @@ fn render_ascii_arrows_new(
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
 ) -> Unit {
-  let src_label = edge
-    .get_src_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_src_id())
-    .to_string()
-  let dst_label = edge
-    .get_dst_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_dst_id())
-    .to_string()
-  let src_box = find_ascii_box(boxes, src_label)
-  let dst_box = find_ascii_box(boxes, dst_label)
+  let src_id = edge.get_src_id()
+  let dst_id = edge.get_dst_id()
+  let src_box = find_ascii_box(boxes, src_id)
+  let dst_box = find_ascii_box(boxes, dst_id)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       if edge.dst_arrow {
@@ -477,27 +473,18 @@ fn render_ascii_label_new(
   if edge.label.length() == 0 {
     return
   }
-  let src_label = edge
-    .get_src_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_src_id())
-    .to_string()
-  let dst_label = edge
-    .get_dst_id()
-    .split(".")
-    .last()
-    .unwrap_or(edge.get_dst_id())
-    .to_string()
-  let src_box = find_ascii_box(boxes, src_label)
-  let dst_box = find_ascii_box(boxes, dst_label)
+  let src_id = edge.get_src_id()
+  let dst_id = edge.get_dst_id()
+  let src_box = find_ascii_box(boxes, src_id)
+  let dst_box = find_ascii_box(boxes, dst_id)
   match (src_box, dst_box) {
     (Some(src), Some(dst)) => {
       let label = edge.label.replace(old=" ", new="─")
       if dst.y > src.y + src.height {
-        // Vertical edge - place label in the middle
+        // Vertical edge - place label above the arrow (not at arrow position)
         let cx = (src.x + src.width / 2 + dst.x + dst.width / 2) / 2
-        let cy = (src.y + src.height + dst.y) / 2
+        // Put label on the line after the source box, not at the midpoint
+        let cy = src.y + src.height + 1
         grid.text(cx - label.length() / 2, cy, label)
       } else {
         // Horizontal edge

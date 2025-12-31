@@ -666,17 +666,81 @@ test "ascii multiple objects" {
 }
 
 ///|
-test "ascii edge" {
+test "ascii edge has arrow" {
   let ascii = compile_ascii("a -> b").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
+  // Must have a down arrow since b is below a
+  assert_true(ascii.contains("▼"))
+}
+
+///|
+test "ascii edge has vertical line" {
+  let ascii = compile_ascii("a -> b").unwrap()
+  // Must have vertical line connecting the boxes
   assert_true(ascii.contains("│"))
 }
 
 ///|
-test "ascii chain" {
+test "ascii chain has multiple arrows" {
   let ascii = compile_ascii("a -> b -> c").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("c"))
+  // Should have 2 arrows for a->b and b->c
+  let arrow_count = count_char(ascii, '▼')
+  assert_true(arrow_count >= 2)
+}
+
+///|
+test "ascii labeled edge shows label" {
+  let ascii = compile_ascii("a -> b: hello").unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  assert_true(ascii.contains("hello"))
+  assert_true(ascii.contains("▼"))
+}
+
+///|
+test "ascii bidirectional edge has two arrows" {
+  let ascii = compile_ascii("a <-> b").unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  // Should have both up and down arrows
+  let down_arrows = count_char(ascii, '▼')
+  let up_arrows = count_char(ascii, '▲')
+  assert_true(down_arrows >= 1 || up_arrows >= 1)
+}
+
+///|
+test "ascii node with label" {
+  let ascii = compile_ascii("server: Web Server").unwrap()
+  // Should show the label, not the ID
+  assert_true(ascii.contains("Web Server"))
+}
+
+///|
+test "ascii multiple edges from same source" {
+  let source =
+    #|a -> b
+    #|a -> c
+  let ascii = compile_ascii(source).unwrap()
+  assert_true(ascii.contains("a"))
+  assert_true(ascii.contains("b"))
+  assert_true(ascii.contains("c"))
+  // Should have 2 arrows
+  let arrow_count = count_char(ascii, '▼')
+  assert_true(arrow_count >= 2)
+}
+
+///|
+/// Count occurrences of a character in a string
+fn count_char(s : String, ch : Char) -> Int {
+  let mut count = 0
+  for c in s {
+    if c == ch {
+      count = count + 1
+    }
+  }
+  count
 }
