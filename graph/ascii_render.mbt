@@ -547,6 +547,51 @@ fn compute_edge_offset(
 }
 
 ///|
+/// Compute horizontal offset for edges from different sources to same destination
+/// This ensures multiple incoming edges don't overlap at the destination
+fn compute_destination_offset(
+  graph : Graph,
+  edge : Edge,
+  boxes : Array[AsciiBox],
+) -> Int {
+  let dst_id = edge.get_dst_id()
+  // Count edges going to the same destination from different sources
+  let mut total_incoming = 0
+  let mut edge_index = 0
+  for e in graph.edges {
+    if e.get_dst_id() == dst_id {
+      if e.get_src_id() == edge.get_src_id() &&
+        e.get_dst_id() == edge.get_dst_id() {
+        edge_index = total_incoming
+      }
+      total_incoming = total_incoming + 1
+    }
+  }
+  if total_incoming <= 1 {
+    return 0
+  }
+  // Use spacing of 4 characters between incoming edges
+  let spacing = 4
+  let dst_box = find_ascii_box(boxes, dst_id)
+  match dst_box {
+    Some(dst) => {
+      // Constrain to destination box width
+      let max_spread = dst.width - 4
+      let needed_spread = (total_incoming - 1) * spacing
+      let actual_spacing = if needed_spread > max_spread && total_incoming > 1 {
+        max_i(1, max_spread / (total_incoming - 1))
+      } else {
+        spacing
+      }
+      let total_width = (total_incoming - 1) * actual_spacing
+      let start_offset = -(total_width / 2)
+      start_offset + edge_index * actual_spacing
+    }
+    None => 0
+  }
+}
+
+///|
 /// Find ASCII box by object ID
 fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
   for box in boxes {
@@ -565,7 +610,7 @@ fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
 }
 
 ///|
-/// Render edge lines - straight vertical lines only
+/// Render edge lines with L-shaped routing when needed
 fn render_ascii_edge_new(
   grid : @ascii.Grid,
   graph : Graph,
@@ -582,16 +627,44 @@ fn render_ascii_edge_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
-        // Vertical edge going down - use narrower box's center + offset
-        let center_x = if src.width < dst.width {
-          src.x + src.width / 2
-        } else {
-          dst.x + dst.width / 2
-        }
-        let line_x = center_x + offset
+        // Destination is below source
+        let src_center_x = src.x + src.width / 2
+        let dst_center_x = dst.x + dst.width / 2
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
-        grid.vline(line_x, src_bottom, dst_top, '│')
+        // Check if source and destination are roughly aligned (within box overlap)
+        let src_left = src.x
+        let src_right = src.x + src.width
+        let dst_left = dst.x
+        let dst_right = dst.x + dst.width
+        let overlaps = src_right > dst_left && dst_right > src_left
+        if overlaps {
+          // Boxes overlap horizontally - use straight vertical line
+          // Apply destination offset for multiple incoming edges
+          let dst_offset = compute_destination_offset(graph, edge, boxes)
+          let line_x = dst_center_x + offset + dst_offset
+          grid.vline(line_x, src_bottom, dst_top, '│')
+        } else {
+          // L-shaped routing needed
+          let line_x = src_center_x + offset
+          // Draw vertical line from source
+          let mid_y = (src_bottom + dst_top) / 2
+          grid.vline(line_x, src_bottom, mid_y, '│')
+          // Draw corner
+          if dst_center_x > line_x {
+            grid.set(line_x, mid_y, '└')
+            // Draw horizontal line
+            grid.hline(line_x + 1, dst_center_x - 1, mid_y, '─')
+            grid.set(dst_center_x, mid_y, '┐')
+          } else {
+            grid.set(line_x, mid_y, '┘')
+            // Draw horizontal line
+            grid.hline(dst_center_x + 1, line_x - 1, mid_y, '─')
+            grid.set(dst_center_x, mid_y, '┌')
+          }
+          // Draw vertical line to destination
+          grid.vline(dst_center_x, mid_y + 1, dst_top, '│')
+        }
       } else if dst.x != src.x {
         // Side by side - horizontal connection
         let cy = src.y + src.height / 2
@@ -623,21 +696,35 @@ fn render_ascii_arrows_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
-        // Vertical edge - use narrower box's center + offset
-        let center_x = if src.width < dst.width {
-          src.x + src.width / 2
-        } else {
-          dst.x + dst.width / 2
-        }
-        let line_x = center_x + offset
+        // Destination is below source
+        let src_center_x = src.x + src.width / 2
+        let dst_center_x = dst.x + dst.width / 2
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
-        if edge.dst_arrow {
-          grid.set(line_x, dst_top, '▼')
-        }
-        // Only draw src_arrow on first reference to avoid duplicates
-        if edge.src_arrow && ref_idx == 0 {
-          grid.set(line_x, src_bottom, '▲')
+        // Check if boxes overlap horizontally
+        let src_right = src.x + src.width
+        let dst_left = dst.x
+        let dst_right = dst.x + dst.width
+        let overlaps = src_right > dst_left && dst_right > src.x
+        if overlaps {
+          // Straight vertical line with destination offset
+          let dst_offset = compute_destination_offset(graph, edge, boxes)
+          let line_x = dst_center_x + offset + dst_offset
+          if edge.dst_arrow {
+            grid.set(line_x, dst_top, '▼')
+          }
+          if edge.src_arrow && ref_idx == 0 {
+            grid.set(line_x, src_bottom, '▲')
+          }
+        } else {
+          // L-shaped routing - arrow at destination center
+          if edge.dst_arrow {
+            grid.set(dst_center_x, dst_top, '▼')
+          }
+          if edge.src_arrow && ref_idx == 0 {
+            let line_x = src_center_x + offset
+            grid.set(line_x, src_bottom, '▲')
+          }
         }
       } else if dst.x != src.x {
         // Horizontal edge
@@ -681,18 +768,25 @@ fn render_ascii_label_new(
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
-        // Vertical edge - use narrower box's center + offset
-        let center_x = if src.width < dst.width {
-          src.x + src.width / 2
-        } else {
-          dst.x + dst.width / 2
-        }
-        let line_x = center_x + offset
+        // Vertical edge
+        let dst_center_x = dst.x + dst.width / 2
         let src_bottom = src.y + src.height
         let dst_top = dst.y - 1
+        // Check if boxes overlap horizontally
+        let src_right = src.x + src.width
+        let dst_left = dst.x
+        let dst_right = dst.x + dst.width
+        let overlaps = src_right > dst_left && dst_right > src.x
+        let line_x = if overlaps {
+          // Use destination center with offset
+          let dst_offset = compute_destination_offset(graph, edge, boxes)
+          dst_center_x + offset + dst_offset
+        } else {
+          // L-shaped: use source center
+          src.x + src.width / 2 + offset
+        }
         let mid_y = (src_bottom + dst_top) / 2
         // Position label centered on the line position
-        // The label replaces/overlaps the line character on that row
         let label_start_x = line_x - edge.label.length() / 2
         grid.text(label_start_x, mid_y, edge.label)
       } else {
