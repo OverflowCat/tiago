@@ -22,6 +22,7 @@ pub fn Grid::rect(Self, Int, Int, Int, Int, Char, Char, Char) -> Unit
 pub fn Grid::set(Self, Int, Int, Char) -> Unit
 pub fn Grid::text(Self, Int, Int, String) -> Unit
 pub fn Grid::to_string(Self) -> String
+pub fn Grid::unicode_rect(Self, Int, Int, Int, Int) -> Unit
 pub fn Grid::vline(Self, Int, Int, Int, Char) -> Unit
 pub impl Show for Grid
 

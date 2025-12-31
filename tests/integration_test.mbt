@@ -648,9 +648,9 @@ fn compile_ascii(source : String) -> Result[String, String] {
 test "ascii simple object" {
   let ascii = compile_ascii("server").unwrap()
   assert_true(ascii.contains("server"))
-  assert_true(ascii.contains("+"))
-  assert_true(ascii.contains("-"))
-  assert_true(ascii.contains("|"))
+  assert_true(ascii.contains("┌"))
+  assert_true(ascii.contains("─"))
+  assert_true(ascii.contains("│"))
 }
 
 ///|
@@ -670,7 +670,7 @@ test "ascii edge" {
   let ascii = compile_ascii("a -> b").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
-  assert_true(ascii.contains("|"))
+  assert_true(ascii.contains("│"))
 }
 
 ///|

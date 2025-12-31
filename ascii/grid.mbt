@@ -110,6 +110,28 @@ pub fn Grid::rect(
 }
 
 ///|
+/// Draw a rectangle with Unicode box-drawing characters
+/// Uses: ┌ ─ ┐ │ └ ┘
+pub fn Grid::unicode_rect(
+  self : Grid,
+  x1 : Int,
+  y1 : Int,
+  x2 : Int,
+  y2 : Int,
+) -> Unit {
+  // Corners: ┌ ┐ └ ┘
+  self.set(x1, y1, '┌')
+  self.set(x2, y1, '┐')
+  self.set(x1, y2, '└')
+  self.set(x2, y2, '┘')
+  // Edges: ─ │
+  self.hline(x1 + 1, x2 - 1, y1, '─')
+  self.hline(x1 + 1, x2 - 1, y2, '─')
+  self.vline(x1, y1 + 1, y2 - 1, '│')
+  self.vline(x2, y1 + 1, y2 - 1, '│')
+}
+
+///|
 /// Draw a line between two points (handles vertical, horizontal, diagonal)
 pub fn Grid::line(
   self : Grid,
