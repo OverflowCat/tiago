@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diago - D2 Diagram Renderer</title>
+  <title>Diago Playground - D2 Diagram Editor</title>
   <style>
     * {
       box-sizing: border-box;
@@ -14,57 +14,88 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #eee;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
     }
     header {
       background: #16213e;
-      padding: 1rem 2rem;
+      padding: 0.75rem 1.5rem;
       border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
     header h1 {
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       font-weight: 600;
     }
     header h1 span {
       color: #e94560;
     }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .header-right a {
+      color: #888;
+      text-decoration: none;
+      font-size: 0.875rem;
+    }
+    .header-right a:hover {
+      color: #fff;
+    }
     .container {
       display: flex;
-      height: calc(100vh - 60px);
+      height: calc(100vh - 52px);
     }
     .editor-pane {
       width: 40%;
+      min-width: 300px;
       display: flex;
       flex-direction: column;
       border-right: 1px solid #0f3460;
     }
     .preview-pane {
-      width: 60%;
+      flex: 1;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
     .pane-header {
       background: #16213e;
-      padding: 0.75rem 1rem;
-      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
       font-weight: 500;
       color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .editor-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     textarea {
       flex: 1;
       background: #0f0f23;
-      color: #ccc;
+      color: #e0e0e0;
       border: none;
       padding: 1rem;
-      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
       font-size: 14px;
       line-height: 1.6;
       resize: none;
       outline: none;
+      tab-size: 2;
     }
     textarea::placeholder {
-      color: #555;
+      color: #444;
     }
     .preview-content {
       flex: 1;
@@ -75,22 +106,30 @@
       overflow: auto;
       background: #fff;
     }
+    .preview-content.dark {
+      background: #0f0f23;
+    }
     .preview-content svg {
       max-width: 100%;
       max-height: 100%;
     }
     .ascii-output {
       background: #0f0f23;
-      color: #0f0;
-      font-family: monospace;
+      color: #00ff88;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.4;
       white-space: pre;
       padding: 1rem;
       overflow: auto;
+      text-align: left;
+      display: block;
     }
     .toolbar {
       background: #16213e;
       padding: 0.5rem 1rem;
       display: flex;
+      align-items: center;
       gap: 0.5rem;
       border-bottom: 1px solid #0f3460;
     }
@@ -98,13 +137,18 @@
       background: #e94560;
       color: white;
       border: none;
-      padding: 0.5rem 1rem;
+      padding: 0.4rem 0.75rem;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
+      font-weight: 500;
     }
     button:hover {
       background: #ff6b6b;
+    }
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
     }
     button.secondary {
       background: #0f3460;
@@ -120,39 +164,95 @@
       background: transparent;
       border-radius: 0;
       color: #888;
+      padding: 0.4rem 1rem;
+    }
+    .tab:hover {
+      background: #0f3460;
+      color: #fff;
     }
     .tab.active {
       background: #0f3460;
       color: #fff;
     }
-    .error {
-      color: #e94560;
-      padding: 1rem;
-      font-family: monospace;
+    .spacer {
+      flex: 1;
     }
-    .loading {
-      color: #888;
+    .error-banner {
+      background: #3d1a1a;
+      color: #ff6b6b;
+      padding: 0.75rem 1rem;
+      font-family: monospace;
+      font-size: 0.8rem;
+      border-bottom: 1px solid #5a2a2a;
+    }
+    .status {
+      font-size: 0.75rem;
+      color: #666;
+    }
+    .status.ready {
+      color: #00ff88;
+    }
+    .status.loading {
+      color: #ffaa00;
+    }
+    .status.error {
+      color: #ff6b6b;
+    }
+    select {
+      background: #0f3460;
+      color: #fff;
+      border: none;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    select:focus {
+      outline: 1px solid #e94560;
+    }
+    .resize-handle {
+      width: 4px;
+      background: #0f3460;
+      cursor: col-resize;
+      transition: background 0.2s;
+    }
+    .resize-handle:hover {
+      background: #e94560;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1><span>Diago</span> - D2 Diagram Renderer</h1>
+    <h1><span>Diago</span> Playground</h1>
+    <div class="header-right">
+      <span id="status" class="status loading">Loading WASM...</span>
+      <a href="https://github.com/nichdiem/diago" target="_blank">GitHub</a>
+    </div>
   </header>
 
   <div class="container">
-    <div class="editor-pane">
-      <div class="pane-header">D2 Source</div>
-      <textarea id="editor" placeholder="# Enter your D2 diagram code here
+    <div class="editor-pane" id="editor-pane">
+      <div class="pane-header">
+        <span>D2 Source</span>
+        <select id="example-select">
+          <option value="">Load Example...</option>
+          <option value="simple">Simple Flow</option>
+          <option value="aws">AWS Architecture</option>
+          <option value="shapes">Shape Types</option>
+          <option value="styles">Styled Diagram</option>
+        </select>
+      </div>
+      <div class="editor-wrapper">
+        <textarea id="editor" spellcheck="false" placeholder="# Enter D2 diagram code here
 
 server: Web Server
 database: Database
-cache: Redis Cache
 
-server -> database: queries
-server -> cache: caches
-database -> cache: syncs"></textarea>
+server -> database: queries"></textarea>
+      </div>
     </div>
+
+    <div class="resize-handle" id="resize-handle"></div>
 
     <div class="preview-pane">
       <div class="toolbar">
@@ -160,38 +260,34 @@ database -> cache: syncs"></textarea>
           <button class="tab active" data-view="svg">SVG</button>
           <button class="tab" data-view="ascii">ASCII</button>
         </div>
+        <div class="spacer"></div>
         <button id="render-btn">Render</button>
-        <button id="example-btn" class="secondary">Load Example</button>
+        <button id="copy-btn" class="secondary">Copy Output</button>
       </div>
+      <div id="error-banner" class="error-banner" style="display: none;"></div>
       <div id="preview" class="preview-content">
-        <div class="loading">Loading WASM module...</div>
+        <div class="status loading">Initializing...</div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    let wasmModule = null;
-    let currentView = 'svg';
-
-    const editor = document.getElementById('editor');
-    const preview = document.getElementById('preview');
-    const renderBtn = document.getElementById('render-btn');
-    const exampleBtn = document.getElementById('example-btn');
-    const tabs = document.querySelectorAll('.tab');
-
-    const examples = [
-      `# Simple flow
+    // Examples
+    const examples = {
+      simple: `# Simple flow diagram
 a: Node A
 b: Node B
 c: Node C
 
-a -> b -> c`,
-      `# AWS Architecture
+a -> b: step 1
+b -> c: step 2`,
+
+      aws: `# AWS Architecture
 aws: AWS Cloud {
   vpc: VPC {
     subnet: Private Subnet {
       ec2: EC2 Instance
-      rds: RDS
+      rds: RDS Database
     }
   }
   cf: CloudFront
@@ -199,25 +295,67 @@ aws: AWS Cloud {
 }
 user: User
 
-user -> aws.cf
+user -> aws.cf: HTTPS
 aws.cf <-> aws.s3
 aws.vpc.subnet.ec2 <-> aws.vpc.subnet.rds`,
-      `# System Components
+
+      shapes: `# Different shapes
 server: Web Server {
   shape: rectangle
 }
 database: Database {
   shape: cylinder
 }
-cache: Redis {
+cache: Cache {
   shape: hexagon
 }
+queue: Queue {
+  shape: queue
+}
+cloud: Cloud Service {
+  shape: cloud
+}
 
-server -> database: SQL
-server -> cache: get/set
-database -> cache: sync`
-    ];
-    let exampleIndex = 0;
+server -> database
+server -> cache
+server -> queue
+queue -> cloud`,
+
+      styles: `# Styled diagram
+frontend: Frontend {
+  style.fill: "#e3f2fd"
+  style.stroke: "#1976d2"
+}
+backend: Backend API {
+  style.fill: "#e8f5e9"
+  style.stroke: "#388e3c"
+}
+database: PostgreSQL {
+  shape: cylinder
+  style.fill: "#fff3e0"
+  style.stroke: "#f57c00"
+}
+
+frontend -> backend: REST API
+backend -> database: SQL`
+    };
+
+    // State
+    let wasmModule = null;
+    let currentView = 'svg';
+    let renderTimeout = null;
+
+    // DOM elements
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const errorBanner = document.getElementById('error-banner');
+    const renderBtn = document.getElementById('render-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const exampleSelect = document.getElementById('example-select');
+    const statusEl = document.getElementById('status');
+    const tabs = document.querySelectorAll('.tab');
+    const editorPane = document.getElementById('editor-pane');
+    const resizeHandle = document.getElementById('resize-handle');
 
     // Tab switching
     tabs.forEach(tab => {
@@ -229,73 +367,181 @@ database -> cache: sync`
       });
     });
 
-    // Load example
-    exampleBtn.addEventListener('click', () => {
-      editor.value = examples[exampleIndex];
-      exampleIndex = (exampleIndex + 1) % examples.length;
-      render();
+    // Example loading
+    exampleSelect.addEventListener('change', () => {
+      const key = exampleSelect.value;
+      if (key && examples[key]) {
+        editor.value = examples[key];
+        exampleSelect.value = '';
+        render();
+      }
     });
 
     // Render button
     renderBtn.addEventListener('click', render);
 
-    // Auto-render on input (debounced)
-    let timeout;
-    editor.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(render, 500);
+    // Copy button
+    copyBtn.addEventListener('click', () => {
+      const content = currentView === 'ascii'
+        ? preview.textContent
+        : preview.innerHTML;
+      navigator.clipboard.writeText(content).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => copyBtn.textContent = 'Copy Output', 1500);
+      });
     });
 
+    // Auto-render on input (debounced)
+    editor.addEventListener('input', () => {
+      clearTimeout(renderTimeout);
+      renderTimeout = setTimeout(render, 300);
+    });
+
+    // Resize handle
+    let isResizing = false;
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const containerRect = document.querySelector('.container').getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      const minWidth = 250;
+      const maxWidth = containerRect.width - 300;
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        editorPane.style.width = newWidth + 'px';
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+
+    // WASM loading
     async function loadWasm() {
       try {
-        // TODO: Load the actual WASM module when built
-        // const response = await fetch('./diago.wasm');
-        // wasmModule = await WebAssembly.instantiateStreaming(response);
-        preview.innerHTML = '<div class="loading">WASM module not yet available. Build with: moon build --target wasm</div>';
+        statusEl.textContent = 'Loading WASM...';
+        statusEl.className = 'status loading';
+
+        const response = await fetch('./wasm.wasm');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch WASM: ${response.status}`);
+        }
+
+        const wasmBytes = await response.arrayBuffer();
+        const result = await WebAssembly.instantiate(wasmBytes, {
+          spectest: {
+            print_char: (c) => console.log(String.fromCharCode(c)),
+            print_i32: (i) => console.log(i),
+            print_f64: (f) => console.log(f),
+          }
+        });
+
+        wasmModule = result.instance.exports;
+        statusEl.textContent = 'Ready';
+        statusEl.className = 'status ready';
+        render();
       } catch (e) {
-        preview.innerHTML = `<div class="error">Failed to load WASM: ${e.message}</div>`;
+        console.error('WASM load error:', e);
+        statusEl.textContent = 'WASM not available';
+        statusEl.className = 'status error';
+        showPlaceholder();
       }
+    }
+
+    function showPlaceholder() {
+      preview.className = 'preview-content dark';
+      preview.innerHTML = `
+        <div style="text-align: center; color: #666;">
+          <p style="margin-bottom: 1rem;">WASM module not loaded.</p>
+          <p style="font-size: 0.8rem;">Build with: <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">moon build --target wasm</code></p>
+          <p style="font-size: 0.8rem; margin-top: 0.5rem;">Then copy <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">target/wasm/release/build/cmd/wasm/wasm.wasm</code> to <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">web/</code></p>
+        </div>
+      `;
+    }
+
+    function setInput(str) {
+      const len = str.length;
+      wasmModule.set_input(len);
+      for (let i = 0; i < len; i++) {
+        wasmModule.write_input_byte(i, str.charCodeAt(i));
+      }
+    }
+
+    function getOutput() {
+      const len = wasmModule.get_output_len();
+      let result = '';
+      for (let i = 0; i < len; i++) {
+        result += String.fromCharCode(wasmModule.read_output_byte(i));
+      }
+      return result;
     }
 
     function render() {
       const source = editor.value;
+      errorBanner.style.display = 'none';
+
       if (!source.trim()) {
-        preview.innerHTML = '<div class="loading">Enter D2 code to render</div>';
+        preview.className = 'preview-content dark';
+        preview.innerHTML = '<div style="color: #666;">Enter D2 code to see the diagram</div>';
         return;
       }
 
       if (!wasmModule) {
-        // Placeholder rendering until WASM is available
-        if (currentView === 'ascii') {
-          preview.className = 'ascii-output';
-          preview.textContent = `[ASCII Preview - WASM not loaded]
-
-${source}`;
-        } else {
-          preview.className = 'preview-content';
-          preview.innerHTML = `<div class="loading">WASM module needed for rendering.<br>Build with: moon build --target wasm</div>`;
-        }
+        showPlaceholder();
         return;
       }
 
       try {
-        // TODO: Call WASM render function
-        // const result = wasmModule.exports.render(source, currentView);
+        setInput(source);
+
+        let status;
         if (currentView === 'ascii') {
-          preview.className = 'ascii-output';
-          // preview.textContent = result;
+          status = wasmModule.render_ascii();
+        } else {
+          status = wasmModule.render_svg();
+        }
+
+        const output = getOutput();
+
+        if (status !== 0) {
+          errorBanner.textContent = output;
+          errorBanner.style.display = 'block';
+          return;
+        }
+
+        if (currentView === 'ascii') {
+          preview.className = 'preview-content dark ascii-output';
+          preview.textContent = output;
         } else {
           preview.className = 'preview-content';
-          // preview.innerHTML = result;
+          preview.innerHTML = output;
         }
       } catch (e) {
-        preview.innerHTML = `<div class="error">Render error: ${e.message}</div>`;
+        errorBanner.textContent = 'Render error: ' + e.message;
+        errorBanner.style.display = 'block';
       }
     }
 
+    // Handle Tab key in editor
+    editor.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+        editor.selectionStart = editor.selectionEnd = start + 2;
+      }
+    });
+
     // Initialize
+    editor.value = examples.simple;
     loadWasm();
-    editor.value = examples[0];
   </script>
 </body>
 </html>

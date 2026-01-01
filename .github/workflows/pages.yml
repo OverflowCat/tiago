@@ -34,8 +34,8 @@ jobs:
       - name: Build WASM
         run: |
           moon build --target wasm
-          # Copy WASM artifacts to web directory
-          cp -r target/wasm/release/build/* web/ 2>/dev/null || true
+          # Copy WASM file to web directory
+          cp target/wasm/release/build/cmd/wasm/wasm.wasm web/wasm.wasm
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

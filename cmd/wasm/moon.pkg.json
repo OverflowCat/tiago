@@ -1,0 +1,21 @@
+{
+  "is-main": true,
+  "import": [
+    "Milky2018/diago/parser",
+    "Milky2018/diago/ir",
+    "Milky2018/diago/graph",
+    "Milky2018/diago/layout"
+  ],
+  "link": {
+    "wasm": {
+      "exports": [
+        "set_input:set_input",
+        "write_input_byte:write_input_byte",
+        "get_output_len:get_output_len",
+        "read_output_byte:read_output_byte",
+        "render_svg:render_svg",
+        "render_ascii:render_ascii"
+      ]
+    }
+  }
+}
