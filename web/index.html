@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diago - D2 Diagram Renderer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+    header {
+      background: #16213e;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid #0f3460;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    header h1 span {
+      color: #e94560;
+    }
+    .container {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+    .editor-pane {
+      width: 40%;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #0f3460;
+    }
+    .preview-pane {
+      width: 60%;
+      display: flex;
+      flex-direction: column;
+    }
+    .pane-header {
+      background: #16213e;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #888;
+      border-bottom: 1px solid #0f3460;
+    }
+    textarea {
+      flex: 1;
+      background: #0f0f23;
+      color: #ccc;
+      border: none;
+      padding: 1rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+    }
+    textarea::placeholder {
+      color: #555;
+    }
+    .preview-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      overflow: auto;
+      background: #fff;
+    }
+    .preview-content svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    .ascii-output {
+      background: #0f0f23;
+      color: #0f0;
+      font-family: monospace;
+      white-space: pre;
+      padding: 1rem;
+      overflow: auto;
+    }
+    .toolbar {
+      background: #16213e;
+      padding: 0.5rem 1rem;
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid #0f3460;
+    }
+    button {
+      background: #e94560;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    button:hover {
+      background: #ff6b6b;
+    }
+    button.secondary {
+      background: #0f3460;
+    }
+    button.secondary:hover {
+      background: #1a4a7a;
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+    }
+    .tab {
+      background: transparent;
+      border-radius: 0;
+      color: #888;
+    }
+    .tab.active {
+      background: #0f3460;
+      color: #fff;
+    }
+    .error {
+      color: #e94560;
+      padding: 1rem;
+      font-family: monospace;
+    }
+    .loading {
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><span>Diago</span> - D2 Diagram Renderer</h1>
+  </header>
+
+  <div class="container">
+    <div class="editor-pane">
+      <div class="pane-header">D2 Source</div>
+      <textarea id="editor" placeholder="# Enter your D2 diagram code here
+
+server: Web Server
+database: Database
+cache: Redis Cache
+
+server -> database: queries
+server -> cache: caches
+database -> cache: syncs"></textarea>
+    </div>
+
+    <div class="preview-pane">
+      <div class="toolbar">
+        <div class="tabs">
+          <button class="tab active" data-view="svg">SVG</button>
+          <button class="tab" data-view="ascii">ASCII</button>
+        </div>
+        <button id="render-btn">Render</button>
+        <button id="example-btn" class="secondary">Load Example</button>
+      </div>
+      <div id="preview" class="preview-content">
+        <div class="loading">Loading WASM module...</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    let wasmModule = null;
+    let currentView = 'svg';
+
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const renderBtn = document.getElementById('render-btn');
+    const exampleBtn = document.getElementById('example-btn');
+    const tabs = document.querySelectorAll('.tab');
+
+    const examples = [
+      `# Simple flow
+a: Node A
+b: Node B
+c: Node C
+
+a -> b -> c`,
+      `# AWS Architecture
+aws: AWS Cloud {
+  vpc: VPC {
+    subnet: Private Subnet {
+      ec2: EC2 Instance
+      rds: RDS
+    }
+  }
+  cf: CloudFront
+  s3: S3 Bucket
+}
+user: User
+
+user -> aws.cf
+aws.cf <-> aws.s3
+aws.vpc.subnet.ec2 <-> aws.vpc.subnet.rds`,
+      `# System Components
+server: Web Server {
+  shape: rectangle
+}
+database: Database {
+  shape: cylinder
+}
+cache: Redis {
+  shape: hexagon
+}
+
+server -> database: SQL
+server -> cache: get/set
+database -> cache: sync`
+    ];
+    let exampleIndex = 0;
+
+    // Tab switching
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentView = tab.dataset.view;
+        render();
+      });
+    });
+
+    // Load example
+    exampleBtn.addEventListener('click', () => {
+      editor.value = examples[exampleIndex];
+      exampleIndex = (exampleIndex + 1) % examples.length;
+      render();
+    });
+
+    // Render button
+    renderBtn.addEventListener('click', render);
+
+    // Auto-render on input (debounced)
+    let timeout;
+    editor.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(render, 500);
+    });
+
+    async function loadWasm() {
+      try {
+        // TODO: Load the actual WASM module when built
+        // const response = await fetch('./diago.wasm');
+        // wasmModule = await WebAssembly.instantiateStreaming(response);
+        preview.innerHTML = '<div class="loading">WASM module not yet available. Build with: moon build --target wasm</div>';
+      } catch (e) {
+        preview.innerHTML = `<div class="error">Failed to load WASM: ${e.message}</div>`;
+      }
+    }
+
+    function render() {
+      const source = editor.value;
+      if (!source.trim()) {
+        preview.innerHTML = '<div class="loading">Enter D2 code to render</div>';
+        return;
+      }
+
+      if (!wasmModule) {
+        // Placeholder rendering until WASM is available
+        if (currentView === 'ascii') {
+          preview.className = 'ascii-output';
+          preview.textContent = `[ASCII Preview - WASM not loaded]
+
+${source}`;
+        } else {
+          preview.className = 'preview-content';
+          preview.innerHTML = `<div class="loading">WASM module needed for rendering.<br>Build with: moon build --target wasm</div>`;
+        }
+        return;
+      }
+
+      try {
+        // TODO: Call WASM render function
+        // const result = wasmModule.exports.render(source, currentView);
+        if (currentView === 'ascii') {
+          preview.className = 'ascii-output';
+          // preview.textContent = result;
+        } else {
+          preview.className = 'preview-content';
+          // preview.innerHTML = result;
+        }
+      } catch (e) {
+        preview.innerHTML = `<div class="error">Render error: ${e.message}</div>`;
+      }
+    }
+
+    // Initialize
+    loadWasm();
+    editor.value = examples[0];
+  </script>
+</body>
+</html>
