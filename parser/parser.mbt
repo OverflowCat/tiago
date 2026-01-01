@@ -670,7 +670,7 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
       } else if name == "false" {
         Some(@ast.Scalar::Boolean(start_token.range, false))
       } else {
-        // Collect multi-word unquoted value (e.g., "Web Server")
+        // Collect multi-word unquoted value (e.g., "Web Server", "Down (default)")
         let parts : Array[String] = [name]
         let mut end_pos = start_token.range.end
         // Keep consuming identifiers until we hit a delimiter
@@ -685,6 +685,32 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
               let token = self.advance()
               parts.push(n)
               end_pos = token.range.end
+            }
+            @lexer.LeftParen => {
+              // Handle parenthesized content like "(default)"
+              let _ = self.advance()
+              let paren_parts : Array[String] = ["("]
+              // Collect until closing paren
+              while not(self.is_at_end()) {
+                match self.peek() {
+                  @lexer.RightParen => {
+                    let close = self.advance()
+                    paren_parts.push(")")
+                    end_pos = close.range.end
+                    break
+                  }
+                  @lexer.Ident(pname) => {
+                    let _ = self.advance()
+                    paren_parts.push(pname)
+                  }
+                  @lexer.Number(pnum) => {
+                    let _ = self.advance()
+                    paren_parts.push(pnum)
+                  }
+                  _ => break
+                }
+              }
+              parts.push(paren_parts.join(""))
             }
             // Stop at any delimiter
             _ => break
