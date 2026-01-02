@@ -7,6 +7,7 @@
 /// Shared buffer for input/output string passing
 let input_buffer : Array[Byte] = []
 
+///|
 let output_buffer : Array[Byte] = []
 
 ///|
@@ -101,7 +102,7 @@ fn string_to_bytes(s : String, out : Array[Byte]) -> Unit {
 /// Compile D2 source to SVG
 fn compile_d2_svg(
   source : String,
-  theme_name : String?
+  theme_name : String?,
 ) -> Result[String, String] {
   match compile_to_graph(source) {
     Ok(graph) => {

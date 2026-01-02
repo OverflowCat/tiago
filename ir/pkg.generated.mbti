@@ -119,6 +119,7 @@ pub impl Show for IRArray
 pub struct ImportResolver((String) -> String?)
 #deprecated
 pub fn ImportResolver::inner(Self) -> (String) -> String?
+pub fn ImportResolver::new((String) -> String?) -> Self
 
 pub struct Map {
   fields : Array[Field]

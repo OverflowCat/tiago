@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/cmd/wasm"
+
+// Values
+pub fn get_input_ptr() -> Int
+
+pub fn get_output_len() -> Int
+
+pub fn read_output_byte(Int) -> Int
+
+pub fn render_ascii() -> Int
+
+pub fn render_svg() -> Int
+
+pub fn set_input(Int) -> Int
+
+pub fn write_input_byte(Int, Int) -> Unit
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

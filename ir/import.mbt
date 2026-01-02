@@ -10,6 +10,12 @@
 pub struct ImportResolver((String) -> String?)
 
 ///|
+/// Create a new import resolver from a function
+pub fn ImportResolver::new(f : (String) -> String?) -> ImportResolver {
+  ImportResolver(f)
+}
+
+///|
 /// Compile an AST Map with import resolution
 pub fn compile_with_imports(
   ast : @ast.Map,

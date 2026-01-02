@@ -75,9 +75,13 @@ pub fn layout(
 ) -> Unit {
   // Phase 0: Break cycles using greedy DFS (Feedback Arc Set)
   let cycle_result = break_cycles(graph)
-  // Phase 1: Compute sizes for all objects
+  // Phase 1: Assign layers using network simplex
+  let layer_result = assign_layers(graph, cycle_result)
+  // Phase 2: Minimize edge crossings using Barycenter heuristic
+  let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
+  // Phase 3: Compute sizes for all objects
   compute_sizes(graph, config)
-  // Phase 2: Position objects - check for special containers
+  // Phase 4: Position objects - check for special containers
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
       layout_sequence(obj, config)
@@ -85,10 +89,11 @@ pub fn layout(
       layout_grid(obj, config)
     }
   }
-  // Phase 3: Position remaining objects based on hierarchy
-  // Uses cycle_result to treat reversed edges correctly
-  position_objects_dag(graph, config, direction, cycle_result)
-  // Phase 4: Route edges
+  // Phase 5: Position remaining objects based on layers with optimized ordering
+  position_objects_layered(
+    graph, config, direction, layer_result, crossing_result, cycle_result,
+  )
+  // Phase 6: Route edges
   route_edges(graph, config)
 }
 
@@ -153,30 +158,6 @@ fn estimate_label_width(label : String, config : LayoutConfig) -> Double {
 }
 
 ///|
-/// Position objects in the graph
-fn position_objects(
-  graph : @graph.Graph,
-  config : LayoutConfig,
-  direction : Direction,
-) -> Unit {
-  // Find root objects (objects without parents)
-  let roots = find_root_objects(graph)
-  // Position each root and its subtree
-  let mut x = config.container_padding
-  let mut y = config.container_padding
-  for root in roots {
-    position_subtree(root, x, y, config, direction)
-    match (root.box, direction) {
-      // Down/Up: stack vertically (same x, different y)
-      (Some(b), Down | Up) => y = y + b.height + config.vertical_spacing
-      // Right/Left: stack horizontally (different x, same y)
-      (Some(b), Right | Left) => x = x + b.width + config.horizontal_spacing
-      (None, _) => ()
-    }
-  }
-}
-
-///|
 /// Find objects that are not children of any other object
 fn find_root_objects(graph : @graph.Graph) -> Array[@graph.Object] {
   let child_ids : Array[String] = []
@@ -223,153 +204,96 @@ fn position_subtree(
 }
 
 ///|
-/// Position objects using DAG-aware topological ordering
-/// This ensures that edge sources come before destinations (respecting reversed edges)
-fn position_objects_dag(
+/// Position objects using layer assignment with crossing-minimized ordering
+/// Uses Brandes-Köpf coordinate assignment for optimal node placement
+fn position_objects_layered(
   graph : @graph.Graph,
   config : LayoutConfig,
   direction : Direction,
+  layer_result : LayerAssignment,
+  crossing_result : CrossingResult,
   cycle_result : CycleBreakResult,
 ) -> Unit {
-  // Build adjacency for topological sort (using effective edge directions)
-  let adj : Map[String, Array[String]] = {}
-  let in_degree : Map[String, Int] = {}
-  // Initialize all nodes
-  for obj in graph.objects {
-    init_node_degrees(obj, adj, in_degree)
+  // If only one layer (no edges create dependencies), fall back to sequential layout
+  if layer_result.layer_count <= 1 {
+    position_objects_sequential(graph, config, direction)
+    return
   }
-  // Add edges (accounting for reversed edges)
-  for edge in graph.edges {
-    let src = get_effective_src(edge, cycle_result)
-    let dst = get_effective_dst(edge, cycle_result)
-    match adj.get(src) {
-      Some(neighbors) => neighbors.push(dst)
-      None => adj[src] = [dst]
-    }
-    match in_degree.get(dst) {
-      Some(d) => in_degree[dst] = d + 1
-      None => in_degree[dst] = 1
-    }
-  }
-  // Kahn's algorithm for topological sort
-  let sorted = topological_sort(graph, adj, in_degree)
-  // Position nodes in topological order
-  position_in_topo_order(graph, sorted, config, direction)
-}
-
-///|
-/// Initialize node degrees for topological sort
-fn init_node_degrees(
-  obj : @graph.Object,
-  adj : Map[String, Array[String]],
-  in_degree : Map[String, Int],
-) -> Unit {
-  adj[obj.id] = []
-  match in_degree.get(obj.id) {
-    None => in_degree[obj.id] = 0
-    Some(_) => ()
-  }
-  for child in obj.children {
-    init_node_degrees(child, adj, in_degree)
-  }
-}
-
-///|
-/// Topological sort using Kahn's algorithm
-fn topological_sort(
-  graph : @graph.Graph,
-  adj : Map[String, Array[String]],
-  in_degree : Map[String, Int],
-) -> Array[String] {
-  let result : Array[String] = []
-  let queue : Array[String] = []
-  // Find all nodes with in-degree 0
-  for node, degree in in_degree {
-    if degree == 0 {
-      queue.push(node)
+  // Collect node dimensions
+  let node_widths : Map[String, Double] = {}
+  let node_heights : Map[String, Double] = {}
+  for layer in crossing_result.ordered_layers {
+    for node_id in layer {
+      match graph.find_object(node_id) {
+        Some(obj) =>
+          match obj.box {
+            Some(b) => {
+              node_widths[node_id] = b.width
+              node_heights[node_id] = b.height
+            }
+            None => {
+              node_widths[node_id] = config.default_width
+              node_heights[node_id] = config.default_height
+            }
+          }
+        None => ()
+      }
     }
   }
-  // Process queue
-  while queue.length() > 0 {
-    let node = queue.remove(0)
-    result.push(node)
-    // Reduce in-degree of neighbors
-    match adj.get(node) {
-      Some(neighbors) =>
-        for neighbor in neighbors {
-          match in_degree.get(neighbor) {
-            Some(d) => {
-              let new_degree = d - 1
-              in_degree[neighbor] = new_degree
-              if new_degree == 0 {
-                queue.push(neighbor)
+  // Assign coordinates using Brandes-Köpf algorithm
+  let coords = assign_coordinates(
+    graph,
+    crossing_result,
+    cycle_result,
+    node_widths,
+    node_heights,
+    config.horizontal_spacing,
+    config.vertical_spacing,
+  )
+  // Apply coordinates to objects
+  for layer in crossing_result.ordered_layers {
+    for node_id in layer {
+      match graph.find_object(node_id) {
+        Some(obj) =>
+          match obj.box {
+            Some(b) => {
+              let x = coords.x_coords.get(node_id).unwrap_or(0.0) +
+                config.container_padding
+              let y = coords.y_coords.get(node_id).unwrap_or(0.0) +
+                config.container_padding
+              match direction {
+                Down | Up =>
+                  obj.set_box(@graph.Box::new(x, y, b.width, b.height))
+                Right | Left =>
+                  // Swap x and y for horizontal layouts
+                  obj.set_box(@graph.Box::new(y, x, b.width, b.height))
               }
             }
             None => ()
           }
-        }
-      None => ()
+        None => ()
+      }
     }
   }
-  // If result doesn't contain all nodes, there's still a cycle
-  // (shouldn't happen after cycle breaking, but fall back to original order)
-  if result.length() < count_all_nodes(graph) {
-    // Fall back: add remaining nodes
-    for obj in graph.objects {
-      add_missing_nodes(obj, result)
-    }
-  }
-  result
-}
-
-///|
-/// Count total nodes in graph
-fn count_all_nodes(graph : @graph.Graph) -> Int {
-  let mut count = 0
+  // Position children within containers
   for obj in graph.objects {
-    count = count + count_subtree_nodes(obj)
-  }
-  count
-}
-
-///|
-/// Count nodes in subtree
-fn count_subtree_nodes(obj : @graph.Object) -> Int {
-  let mut count = 1
-  for child in obj.children {
-    count = count + count_subtree_nodes(child)
-  }
-  count
-}
-
-///|
-/// Add missing nodes to result
-fn add_missing_nodes(obj : @graph.Object, result : Array[String]) -> Unit {
-  if not(result.contains(obj.id)) {
-    result.push(obj.id)
-  }
-  for child in obj.children {
-    add_missing_nodes(child, result)
+    if obj.is_container() {
+      position_container_children(obj, config, direction)
+    }
   }
 }
 
 ///|
-/// Position nodes according to topological order
-fn position_in_topo_order(
+/// Position objects sequentially (for graphs without dependencies)
+fn position_objects_sequential(
   graph : @graph.Graph,
-  topo_order : Array[String],
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
-  // For now, use the simple approach: position root objects in topo order
-  // More sophisticated: assign layers based on longest path
   let roots = find_root_objects(graph)
-  // Sort roots by their position in topo_order
-  let sorted_roots = sort_by_topo_order(roots, topo_order)
-  // Position each root and its subtree
   let mut x = config.container_padding
   let mut y = config.container_padding
-  for root in sorted_roots {
+  for root in roots {
     position_subtree(root, x, y, config, direction)
     match (root.box, direction) {
       (Some(b), Down | Up) => y = y + b.height + config.vertical_spacing
@@ -380,37 +304,37 @@ fn position_in_topo_order(
 }
 
 ///|
-/// Sort objects by their position in topological order
-fn sort_by_topo_order(
-  objects : Array[@graph.Object],
-  topo_order : Array[String],
-) -> Array[@graph.Object] {
-  // Create position map
-  let pos : Map[String, Int] = {}
-  for i, id in topo_order {
-    pos[id] = i
-  }
-  // Sort objects by position (bubble sort for simplicity)
-  let result = objects.copy()
-  let n = result.length()
-  for i in 0..<n {
-    for j in 0..<(n - i - 1) {
-      let pos_j = match pos.get(result[j].id) {
-        Some(p) => p
-        None => n // Put unknown at end
-      }
-      let pos_j1 = match pos.get(result[j + 1].id) {
-        Some(p) => p
-        None => n
-      }
-      if pos_j > pos_j1 {
-        let tmp = result[j]
-        result[j] = result[j + 1]
-        result[j + 1] = tmp
+/// Position children within a container
+fn position_container_children(
+  container : @graph.Object,
+  config : LayoutConfig,
+  direction : Direction,
+) -> Unit {
+  match container.box {
+    Some(parent_box) => {
+      let mut child_x = parent_box.x + config.container_padding
+      let mut child_y = parent_box.y + config.container_padding
+      for child in container.children {
+        match child.box {
+          Some(b) => {
+            child.set_box(@graph.Box::new(child_x, child_y, b.width, b.height))
+            match direction {
+              Down | Up =>
+                child_y = child_y + b.height + config.vertical_spacing
+              Right | Left =>
+                child_x = child_x + b.width + config.horizontal_spacing
+            }
+            // Recursively position nested children
+            if child.is_container() {
+              position_container_children(child, config, direction)
+            }
+          }
+          None => ()
+        }
       }
     }
+    None => ()
   }
-  result
 }
 
 ///|
