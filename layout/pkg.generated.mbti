@@ -6,6 +6,14 @@ import(
 )
 
 // Values
+pub fn break_cycles(@graph.Graph) -> CycleBreakResult
+
+pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
+
+pub fn get_effective_src(@graph.Edge, CycleBreakResult) -> String
+
+pub fn is_edge_reversed(CycleBreakResult, Int) -> Bool
+
 pub fn is_sequence_diagram(@graph.Object) -> Bool
 
 pub fn layout(@graph.Graph, LayoutConfig, Direction) -> Unit
@@ -21,6 +29,11 @@ pub impl Eq for LayoutError
 pub impl Show for LayoutError
 
 // Types and methods
+pub(all) struct CycleBreakResult {
+  reversed_edges : Array[Int]
+  had_cycles : Bool
+}
+
 pub(all) enum Direction {
   Down
   Right

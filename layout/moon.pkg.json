@@ -1,5 +1,9 @@
 {
   "import": [
     "Milky2018/diago/graph"
+  ],
+  "test-import": [
+    "Milky2018/diago/parser",
+    "Milky2018/diago/ir"
   ]
 }

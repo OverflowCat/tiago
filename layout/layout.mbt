@@ -73,6 +73,8 @@ pub fn layout(
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
+  // Phase 0: Break cycles using greedy DFS (Feedback Arc Set)
+  let cycle_result = break_cycles(graph)
   // Phase 1: Compute sizes for all objects
   compute_sizes(graph, config)
   // Phase 2: Position objects - check for special containers
@@ -84,7 +86,8 @@ pub fn layout(
     }
   }
   // Phase 3: Position remaining objects based on hierarchy
-  position_objects(graph, config, direction)
+  // Uses cycle_result to treat reversed edges correctly
+  position_objects_dag(graph, config, direction, cycle_result)
   // Phase 4: Route edges
   route_edges(graph, config)
 }
@@ -217,6 +220,197 @@ fn position_subtree(
       }
     }
   }
+}
+
+///|
+/// Position objects using DAG-aware topological ordering
+/// This ensures that edge sources come before destinations (respecting reversed edges)
+fn position_objects_dag(
+  graph : @graph.Graph,
+  config : LayoutConfig,
+  direction : Direction,
+  cycle_result : CycleBreakResult,
+) -> Unit {
+  // Build adjacency for topological sort (using effective edge directions)
+  let adj : Map[String, Array[String]] = {}
+  let in_degree : Map[String, Int] = {}
+  // Initialize all nodes
+  for obj in graph.objects {
+    init_node_degrees(obj, adj, in_degree)
+  }
+  // Add edges (accounting for reversed edges)
+  for edge in graph.edges {
+    let src = get_effective_src(edge, cycle_result)
+    let dst = get_effective_dst(edge, cycle_result)
+    match adj.get(src) {
+      Some(neighbors) => neighbors.push(dst)
+      None => adj[src] = [dst]
+    }
+    match in_degree.get(dst) {
+      Some(d) => in_degree[dst] = d + 1
+      None => in_degree[dst] = 1
+    }
+  }
+  // Kahn's algorithm for topological sort
+  let sorted = topological_sort(graph, adj, in_degree)
+  // Position nodes in topological order
+  position_in_topo_order(graph, sorted, config, direction)
+}
+
+///|
+/// Initialize node degrees for topological sort
+fn init_node_degrees(
+  obj : @graph.Object,
+  adj : Map[String, Array[String]],
+  in_degree : Map[String, Int],
+) -> Unit {
+  adj[obj.id] = []
+  match in_degree.get(obj.id) {
+    None => in_degree[obj.id] = 0
+    Some(_) => ()
+  }
+  for child in obj.children {
+    init_node_degrees(child, adj, in_degree)
+  }
+}
+
+///|
+/// Topological sort using Kahn's algorithm
+fn topological_sort(
+  graph : @graph.Graph,
+  adj : Map[String, Array[String]],
+  in_degree : Map[String, Int],
+) -> Array[String] {
+  let result : Array[String] = []
+  let queue : Array[String] = []
+  // Find all nodes with in-degree 0
+  for node, degree in in_degree {
+    if degree == 0 {
+      queue.push(node)
+    }
+  }
+  // Process queue
+  while queue.length() > 0 {
+    let node = queue.remove(0)
+    result.push(node)
+    // Reduce in-degree of neighbors
+    match adj.get(node) {
+      Some(neighbors) =>
+        for neighbor in neighbors {
+          match in_degree.get(neighbor) {
+            Some(d) => {
+              let new_degree = d - 1
+              in_degree[neighbor] = new_degree
+              if new_degree == 0 {
+                queue.push(neighbor)
+              }
+            }
+            None => ()
+          }
+        }
+      None => ()
+    }
+  }
+  // If result doesn't contain all nodes, there's still a cycle
+  // (shouldn't happen after cycle breaking, but fall back to original order)
+  if result.length() < count_all_nodes(graph) {
+    // Fall back: add remaining nodes
+    for obj in graph.objects {
+      add_missing_nodes(obj, result)
+    }
+  }
+  result
+}
+
+///|
+/// Count total nodes in graph
+fn count_all_nodes(graph : @graph.Graph) -> Int {
+  let mut count = 0
+  for obj in graph.objects {
+    count = count + count_subtree_nodes(obj)
+  }
+  count
+}
+
+///|
+/// Count nodes in subtree
+fn count_subtree_nodes(obj : @graph.Object) -> Int {
+  let mut count = 1
+  for child in obj.children {
+    count = count + count_subtree_nodes(child)
+  }
+  count
+}
+
+///|
+/// Add missing nodes to result
+fn add_missing_nodes(obj : @graph.Object, result : Array[String]) -> Unit {
+  if not(result.contains(obj.id)) {
+    result.push(obj.id)
+  }
+  for child in obj.children {
+    add_missing_nodes(child, result)
+  }
+}
+
+///|
+/// Position nodes according to topological order
+fn position_in_topo_order(
+  graph : @graph.Graph,
+  topo_order : Array[String],
+  config : LayoutConfig,
+  direction : Direction,
+) -> Unit {
+  // For now, use the simple approach: position root objects in topo order
+  // More sophisticated: assign layers based on longest path
+  let roots = find_root_objects(graph)
+  // Sort roots by their position in topo_order
+  let sorted_roots = sort_by_topo_order(roots, topo_order)
+  // Position each root and its subtree
+  let mut x = config.container_padding
+  let mut y = config.container_padding
+  for root in sorted_roots {
+    position_subtree(root, x, y, config, direction)
+    match (root.box, direction) {
+      (Some(b), Down | Up) => y = y + b.height + config.vertical_spacing
+      (Some(b), Right | Left) => x = x + b.width + config.horizontal_spacing
+      (None, _) => ()
+    }
+  }
+}
+
+///|
+/// Sort objects by their position in topological order
+fn sort_by_topo_order(
+  objects : Array[@graph.Object],
+  topo_order : Array[String],
+) -> Array[@graph.Object] {
+  // Create position map
+  let pos : Map[String, Int] = {}
+  for i, id in topo_order {
+    pos[id] = i
+  }
+  // Sort objects by position (bubble sort for simplicity)
+  let result = objects.copy()
+  let n = result.length()
+  for i in 0..<n {
+    for j in 0..<(n - i - 1) {
+      let pos_j = match pos.get(result[j].id) {
+        Some(p) => p
+        None => n // Put unknown at end
+      }
+      let pos_j1 = match pos.get(result[j + 1].id) {
+        Some(p) => p
+        None => n
+      }
+      if pos_j > pos_j1 {
+        let tmp = result[j]
+        result[j] = result[j + 1]
+        result[j + 1] = tmp
+      }
+    }
+  }
+  result
 }
 
 ///|
