@@ -42,7 +42,9 @@ pub fn Element::attr_num(Self, String, Double) -> Self
 pub fn Element::attr_num_if(Self, String, Double, Bool) -> Self
 pub fn Element::build(Self) -> String
 pub fn Element::child(Self, String) -> Self
+pub fn Element::close_tag(Self) -> String
 pub fn Element::new(String) -> Self
+pub fn Element::open_tag(Self) -> String
 pub fn Element::raw(Self, String) -> Self
 pub fn Element::self_close(Self) -> Self
 pub fn Element::text(Self, String) -> Self

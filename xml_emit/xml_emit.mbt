@@ -148,6 +148,29 @@ pub fn Element::build(self : Element) -> String {
 }
 
 ///|
+/// Build just the opening tag (for streaming/incremental building)
+pub fn Element::open_tag(self : Element) -> String {
+  let sb = StringBuilder::new()
+  sb.write_char('<')
+  sb.write_string(self.tag)
+  for attr in self.attrs {
+    sb.write_char(' ')
+    sb.write_string(attr.0)
+    sb.write_string("=\"")
+    sb.write_string(escape_attr(attr.1))
+    sb.write_char('"')
+  }
+  sb.write_char('>')
+  sb.to_string()
+}
+
+///|
+/// Build just the closing tag
+pub fn Element::close_tag(self : Element) -> String {
+  "</\{self.tag}>"
+}
+
+///|
 pub impl Show for Element with output(self, logger) {
   logger.write_string(self.build())
 }

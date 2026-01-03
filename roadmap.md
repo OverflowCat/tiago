@@ -107,7 +107,7 @@ This document tracks features from the D2 reference implementation that are not 
 ### 🟢 Low Priority
 - [ ] **Icons** - Icon embedding and positioning
 - [ ] **LaTeX** - Mathematical formula rendering
-- [ ] **Tooltips** - Interactive hover tooltips
+- [x] **Tooltips** - Interactive hover tooltips
 
 ---
 

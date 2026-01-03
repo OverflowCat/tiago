@@ -31,25 +31,34 @@ pub fn Svg::add_def(self : Svg, def : String) -> Unit {
 }
 
 ///|
-/// Open a group with transform
+/// Open a group with optional transform
 pub fn Svg::open_group(self : Svg, transform : String) -> Unit {
-  if transform == "" {
-    self.elements.push("<g>")
-  } else {
-    self.elements.push("<g transform=\"\{transform}\">")
-  }
+  self.elements.push(
+    @xml_emit.Element::new("g").attr_if("transform", transform).open_tag(),
+  )
 }
 
 ///|
 /// Open a group with filter
 pub fn Svg::open_group_with_filter(self : Svg, filter_id : String) -> Unit {
-  self.elements.push("<g filter=\"url(#\{filter_id})\">")
+  let filter_url = "url(#\{filter_id})"
+  self.elements.push(
+    @xml_emit.Element::new("g").attr("filter", filter_url).open_tag(),
+  )
+}
+
+///|
+/// Open a group with tooltip (adds title element)
+pub fn Svg::open_group_with_tooltip(self : Svg, tooltip : String) -> Unit {
+  let title_elem = @xml_emit.Element::new("title").text(tooltip).build()
+  let group_open = @xml_emit.Element::new("g").open_tag()
+  self.elements.push(group_open + title_elem)
 }
 
 ///|
 /// Close a group
 pub fn Svg::close_group(self : Svg) -> Unit {
-  self.elements.push("</g>")
+  self.elements.push(@xml_emit.Element::new("g").close_tag())
 }
 
 ///|

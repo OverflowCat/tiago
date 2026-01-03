@@ -347,6 +347,19 @@ test "animated edge" {
   assert_true(svg.contains("repeatCount=\"indefinite\""))
 }
 
+///|
+test "tooltip on object" {
+  let source =
+    #|box {
+    #|  tooltip: "This is a helpful tooltip"
+    #|}
+  let svg = compile(source).unwrap()
+  // Should have title element for tooltip
+  assert_true(svg.contains("<title>"))
+  assert_true(svg.contains("This is a helpful tooltip"))
+  assert_true(svg.contains("</title>"))
+}
+
 // =============================================================================
 // Error handling tests
 // =============================================================================

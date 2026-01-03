@@ -87,6 +87,7 @@ pub fn Svg::close_group(Self) -> Unit
 pub fn Svg::new(Double, Double) -> Self
 pub fn Svg::open_group(Self, String) -> Unit
 pub fn Svg::open_group_with_filter(Self, String) -> Unit
+pub fn Svg::open_group_with_tooltip(Self, String) -> Unit
 pub fn Svg::to_string(Self) -> String
 pub impl Show for Svg
 

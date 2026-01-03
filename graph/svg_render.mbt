@@ -299,6 +299,11 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
 ///|
 fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
   guard obj.box is Some(box) else { return }
+  // Apply tooltip if present
+  let has_tooltip = obj.tooltip is Some(_)
+  if has_tooltip {
+    svg.open_group_with_tooltip(obj.tooltip.unwrap())
+  }
   // Apply sketch filter if enabled
   let use_sketch = obj.style.sketch is Some(true)
   if use_sketch {
@@ -513,6 +518,10 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
   }
   // Close sketch filter group if opened
   if use_sketch {
+    svg.close_group()
+  }
+  // Close tooltip group if opened
+  if has_tooltip {
     svg.close_group()
   }
 }
