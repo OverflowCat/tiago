@@ -101,7 +101,7 @@ This document tracks features from the D2 reference implementation that are not 
 - [ ] **Steps** - Incremental diagram building (`steps: { ... }`)
 - [ ] **Grid Layout** - Explicit grid-based positioning (`grid-rows`, `grid-columns`)
   - [x] Basic grid layout
-  - [ ] Grid gaps
+  - [x] Grid gaps
   - [ ] Cell spanning
 
 ### 🟢 Low Priority
@@ -143,8 +143,8 @@ This document tracks features from the D2 reference implementation that are not 
 All core themes implemented. Missing specialty themes:
 
 ### 🟢 Low Priority
-- [ ] Terminal theme
-- [ ] Terminal Grayscale theme
+- [x] Terminal theme
+- [x] Terminal Grayscale theme
 - [ ] Additional dark theme variants
 
 ---

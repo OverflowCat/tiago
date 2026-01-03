@@ -82,6 +82,8 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   let height = max_y + config.padding * 2.0
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
+  // Get theme for special rules
+  let theme = @themes.get_theme(config.theme_id)
   // Add arrow markers for all arrowhead types
   add_arrowhead_markers(svg, config)
   // Add fill patterns
@@ -94,11 +96,11 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   svg.open_group("translate(\{config.padding},\{config.padding})")
   // Render edges first (behind objects)
   for edge in graph.edges {
-    render_svg_edge(svg, edge, config)
+    render_svg_edge(svg, edge, config, theme)
   }
   // Render objects
   for obj in graph.objects {
-    render_svg_object(svg, obj, config)
+    render_svg_object(svg, obj, config, theme)
   }
   svg.close_group()
   svg.to_string()
@@ -297,7 +299,12 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
 }
 
 ///|
-fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
+fn render_svg_object(
+  svg : @svg.Svg,
+  obj : Object,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> Unit {
   guard obj.box is Some(box) else { return }
   // Apply tooltip if present
   let has_tooltip = obj.tooltip is Some(_)
@@ -334,9 +341,14 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
     Some(w) => w
     None => config.default_stroke_width
   }
-  let border_radius = match obj.style.border_radius {
-    Some(r) => r
-    None => 0.0
+  // Apply no_corner_radius special rule
+  let border_radius = if theme.rules.no_corner_radius {
+    0.0
+  } else {
+    match obj.style.border_radius {
+      Some(r) => r
+      None => 0.0
+    }
   }
   // Render shape based on type
   match obj.shape {
@@ -474,8 +486,11 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
         ),
       )
   }
-  // Add double border if specified
-  if obj.style.double_border is Some(true) {
+  // Add double border if specified by style or theme rule for outer containers
+  let is_outer_container = obj.is_container() && not(obj.id.contains("."))
+  let needs_double_border = obj.style.double_border is Some(true) ||
+    (theme.rules.outer_container_double_border && is_outer_container)
+  if needs_double_border {
     let inset = 4.0 // Gap between inner and outer border
     svg.add(
       @svg.rect(
@@ -491,6 +506,48 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
       ),
     )
   }
+  // Add container dots if theme rule is enabled
+  if theme.rules.container_dots && obj.is_container() {
+    let dot_r = 2.5
+    let dot_offset = 8.0
+    // Dots at each corner
+    svg.add(
+      @svg.circle(
+        box.x + dot_offset,
+        box.y + dot_offset,
+        dot_r,
+        fill=stroke,
+        stroke="none",
+      ),
+    )
+    svg.add(
+      @svg.circle(
+        box.x + box.width - dot_offset,
+        box.y + dot_offset,
+        dot_r,
+        fill=stroke,
+        stroke="none",
+      ),
+    )
+    svg.add(
+      @svg.circle(
+        box.x + dot_offset,
+        box.y + box.height - dot_offset,
+        dot_r,
+        fill=stroke,
+        stroke="none",
+      ),
+    )
+    svg.add(
+      @svg.circle(
+        box.x + box.width - dot_offset,
+        box.y + box.height - dot_offset,
+        dot_r,
+        fill=stroke,
+        stroke="none",
+      ),
+    )
+  }
   // Render label
   if obj.label != "" {
     let cx = box.x + box.width / 2.0
@@ -500,10 +557,14 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
       Some(f) => f
       None => config.font_family
     }
-    // Get text-transform if specified
-    let text_transform = match obj.style.text_transform {
-      Some(t) => t
-      None => ""
+    // Get text-transform if specified, or apply caps_lock rule
+    let text_transform = if theme.rules.caps_lock {
+      "uppercase"
+    } else {
+      match obj.style.text_transform {
+        Some(t) => t
+        None => ""
+      }
     }
     svg.add(
       @svg.styled_text(
@@ -1184,7 +1245,14 @@ fn render_svg_callout(
 }
 
 ///|
-fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
+fn render_svg_edge(
+  svg : @svg.Svg,
+  edge : Edge,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> Unit {
+  // Suppress unused variable warning
+  let _ = theme
   if edge.route.length() < 2 {
     return
   }

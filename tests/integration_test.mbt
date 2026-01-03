@@ -360,6 +360,121 @@ test "tooltip on object" {
   assert_true(svg.contains("</title>"))
 }
 
+///|
+test "grid gaps" {
+  let source =
+    #|container {
+    #|  grid-rows: 2
+    #|  grid-gap: 20
+    #|  a
+    #|  b
+    #|  c
+    #|  d
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "grid horizontal and vertical gaps" {
+  let source =
+    #|container {
+    #|  grid-rows: 2
+    #|  horizontal-gap: 30
+    #|  vertical-gap: 15
+    #|  a
+    #|  b
+    #|  c
+    #|  d
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+// =============================================================================
+// Theme tests
+// =============================================================================
+
+///|
+/// Compile D2 source to SVG with a specific theme
+fn compile_with_theme(
+  source : String,
+  theme_id : Int,
+) -> Result[String, String] {
+  let (ast, errors) = @parser.parse(source)
+  if not(errors.is_empty()) {
+    return Err("Parse errors: \{errors}")
+  }
+  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  let graph = @graph.compile("test", ir) catch {
+    e => return Err("Graph error: \{e}")
+  }
+  let config = @layout.LayoutConfig::new()
+  @layout.layout(graph, config, @layout.Direction::Down)
+  let render_config = @graph.SvgConfig::with_theme(theme_id)
+  Ok(@graph.render_svg(graph, render_config))
+}
+
+///|
+test "terminal theme monospace font" {
+  let source = "box"
+  let svg = compile_with_theme(source, 300).unwrap()
+  // Terminal theme should use monospace font
+  assert_true(svg.contains("monospace"))
+}
+
+///|
+test "terminal theme uppercase text" {
+  let source = "mybox"
+  let svg = compile_with_theme(source, 300).unwrap()
+  // Terminal theme caps_lock rule should transform text to uppercase
+  assert_true(svg.contains("text-transform: uppercase"))
+}
+
+///|
+test "terminal theme no corner radius" {
+  let source =
+    #|box {
+    #|  style.border-radius: 10
+    #|}
+  let svg = compile_with_theme(source, 300).unwrap()
+  // Terminal theme no_corner_radius should override border-radius to 0
+  // Check that there's no rx="10" in the output
+  assert_true(not(svg.contains("rx=\"10\"")))
+}
+
+///|
+test "terminal theme container dots" {
+  let source =
+    #|container {
+    #|  child
+    #|}
+  let svg = compile_with_theme(source, 300).unwrap()
+  // Terminal theme container_dots should add circle elements at corners
+  // Count circle elements - should have 4 for the container corners
+  let circle_count = svg.split("<circle").collect().length() - 1
+  assert_true(
+    circle_count >= 4,
+    msg="Expected at least 4 circles for container dots, got \{circle_count}",
+  )
+}
+
+///|
+test "terminal theme outer container double border" {
+  let source =
+    #|container {
+    #|  child
+    #|}
+  let svg = compile_with_theme(source, 300).unwrap()
+  // Terminal theme outer_container_double_border should add inner border
+  let rect_count = svg.split("<rect").collect().length() - 1
+  // At least 3 rects: background, container outer border, container inner border
+  assert_true(
+    rect_count >= 3,
+    msg="Expected at least 3 rects for double border, got \{rect_count}",
+  )
+}
+
 // =============================================================================
 // Error handling tests
 // =============================================================================
