@@ -279,412 +279,27 @@ server -> database: queries"></textarea>
   </div>
 
   <script type="module">
-    // Examples
-    const examples = {
-      hello: `# Basic D2 example - Hello World
-# Simple nodes and connections
+    // Example cache
+    const exampleCache = {};
 
-x -> y`,
-
-      basic: `# Basic D2 features
-
-# Nodes with labels
-server: Web Server
-database: PostgreSQL
-
-# Connections
-server -> database: queries
-
-# Bidirectional
-client <-> server: HTTP
-
-# Chain connections
-user -> client -> server -> database`,
-
-      shapes: `# All D2 shape types
-
-rectangle.shape: rectangle
-square.shape: square
-page.shape: page
-parallelogram.shape: parallelogram
-document.shape: document
-cylinder.shape: cylinder
-queue.shape: queue
-package.shape: package
-step.shape: step
-callout.shape: callout
-stored_data.shape: stored_data
-person.shape: person
-diamond.shape: diamond
-oval.shape: oval
-circle.shape: circle
-hexagon.shape: hexagon
-cloud.shape: cloud
-
-# Connections between shapes
-rectangle -> square -> page
-parallelogram -> document -> cylinder
-queue -> package -> step
-callout -> stored_data -> person
-diamond -> oval -> circle
-hexagon -> cloud`,
-
-      styles: `# D2 styling examples
-
-# Colors and fills
-server: Web Server {
-  style: {
-    fill: "#e8f4f8"
-    stroke: "#2196F3"
-    stroke-width: 2
-  }
-}
-
-database: Database {
-  shape: cylinder
-  style: {
-    fill: "#fff3e0"
-    stroke: "#FF9800"
-    stroke-width: 2
-    shadow: true
-  }
-}
-
-# Font styling
-important: Important Node {
-  style: {
-    fill: "#ffebee"
-    stroke: red
-    bold: true
-    font-size: 18
-  }
-}
-
-# Dashed connections
-server -> database: queries {
-  style: {
-    stroke-dash: 5
-    stroke: "#666"
-  }
-}
-
-# Multiple/stacked appearance
-queue: Task Queue {
-  shape: queue
-  style: {
-    multiple: true
-    fill: "#e8f5e9"
-  }
-}
-
-# 3D effect
-box3d: 3D Box {
-  style: {
-    3d: true
-    fill: "#f3e5f5"
-  }
-}
-
-server -> queue -> important
-database -> box3d`,
-
-      containers: `# D2 containers (nested structures)
-
-aws: AWS Cloud {
-  vpc: VPC {
-    subnet: Private Subnet {
-      server: EC2 Instance
-      database: RDS
+    // Load example from examples/ folder
+    async function loadExample(name) {
+      if (exampleCache[name]) {
+        return exampleCache[name];
+      }
+      try {
+        const response = await fetch(`./examples/${name}.d2`);
+        if (!response.ok) {
+          throw new Error(`Failed to load example: ${response.status}`);
+        }
+        const content = await response.text();
+        exampleCache[name] = content;
+        return content;
+      } catch (e) {
+        console.error(`Error loading example ${name}:`, e);
+        return `# Failed to load example: ${name}\n# ${e.message}`;
+      }
     }
-  }
-
-  cdn: CloudFront
-  s3: S3 Bucket
-}
-
-# Connection from outside to inside
-user -> aws.cdn
-aws.cdn -> aws.vpc.subnet.server
-
-# Connection inside container
-aws.vpc.subnet.server -> aws.vpc.subnet.database
-aws.vpc.subnet.server -> aws.s3`,
-
-      classes: `# D2 classes example
-
-classes: {
-  server: {
-    shape: rectangle
-    style: {
-      fill: "#e3f2fd"
-      stroke: "#1976D2"
-      stroke-width: 2
-    }
-  }
-
-  database: {
-    shape: cylinder
-    style: {
-      fill: "#fff8e1"
-      stroke: "#FFA000"
-      stroke-width: 2
-    }
-  }
-
-  user: {
-    shape: person
-    style: {
-      fill: "#f3e5f5"
-    }
-  }
-}
-
-web1: Web Server 1 {
-  class: server
-}
-
-web2: Web Server 2 {
-  class: server
-}
-
-db1: Primary DB {
-  class: database
-}
-
-db2: Replica DB {
-  class: database
-}
-
-alice: Alice {
-  class: user
-}
-
-bob: Bob {
-  class: user
-}
-
-alice -> web1
-bob -> web2
-web1 -> db1
-web2 -> db1
-db1 -> db2: replication`,
-
-      variables: `# D2 variable substitution example
-
-vars: {
-  primary-color: "#2196F3"
-  secondary-color: "#FF9800"
-  success-color: "#4CAF50"
-  error-color: "#f44336"
-}
-
-header: Header {
-  style.fill: \${primary-color}
-}
-
-sidebar: Sidebar {
-  style.fill: \${secondary-color}
-}
-
-success: Success Message {
-  style.fill: \${success-color}
-}
-
-error: Error Message {
-  style.fill: \${error-color}
-}
-
-header -> sidebar
-sidebar -> success
-sidebar -> error`,
-
-      directions: `# D2 direction examples
-
-down_flow: Down (default) {
-  direction: down
-  a -> b -> c
-}
-
-right_flow: Right {
-  direction: right
-  a -> b -> c
-}
-
-left_flow: Left {
-  direction: left
-  a -> b -> c
-}
-
-up_flow: Up {
-  direction: up
-  a -> b -> c
-}
-
-down_flow -> right_flow
-right_flow -> left_flow
-left_flow -> up_flow`,
-
-      grid: `# D2 grid layout example
-
-grid_container: Dashboard {
-  grid-rows: 2
-  grid-columns: 3
-
-  header: Header {
-    style.fill: "#e3f2fd"
-  }
-
-  nav: Navigation {
-    style.fill: "#fff3e0"
-  }
-
-  search: Search {
-    style.fill: "#f3e5f5"
-  }
-
-  sidebar: Sidebar {
-    style.fill: "#e8f5e9"
-  }
-
-  content: Main Content {
-    style.fill: "#fafafa"
-  }
-
-  footer: Footer {
-    style.fill: "#eceff1"
-  }
-}
-
-# Another grid example
-icons: Icon Grid {
-  grid-rows: 3
-  grid-columns: 4
-  grid-gap: 10
-
-  i1; i2; i3; i4
-  i5; i6; i7; i8
-  i9; i10; i11; i12
-}`,
-
-      sequence: `# D2 sequence diagram example
-
-shape: sequence_diagram
-
-alice: Alice
-bob: Bob
-server: Server
-
-alice -> bob: Hello
-bob -> alice: "Hi there!"
-alice -> server: Request data
-server -> alice: Response
-bob -> server: Another request
-server -> bob: Another response`,
-
-      architecture: `# D2 architecture diagram example
-
-title: Web Application Architecture {
-  style: {
-    font-size: 24
-    bold: true
-  }
-}
-
-users: Users {
-  shape: person
-  style.multiple: true
-}
-
-cdn: CDN {
-  shape: cloud
-  style.fill: "#e3f2fd"
-}
-
-load_balancer: Load Balancer {
-  shape: hexagon
-  style.fill: "#fff3e0"
-}
-
-web_tier: Web Tier {
-  style.fill: "#e8f5e9"
-
-  web1: Web Server 1
-  web2: Web Server 2
-  web3: Web Server 3
-}
-
-app_tier: Application Tier {
-  style.fill: "#f3e5f5"
-
-  app1: App Server 1
-  app2: App Server 2
-}
-
-cache: Redis Cache {
-  shape: cylinder
-  style.fill: "#ffebee"
-}
-
-database: Database Cluster {
-  style.fill: "#fff8e1"
-
-  primary: Primary DB {
-    shape: cylinder
-  }
-  replica1: Replica 1 {
-    shape: cylinder
-  }
-  replica2: Replica 2 {
-    shape: cylinder
-  }
-
-  primary -> replica1: sync
-  primary -> replica2: sync
-}
-
-queue: Message Queue {
-  shape: queue
-  style.fill: "#e0f2f1"
-}
-
-workers: Background Workers {
-  style.fill: "#fce4ec"
-
-  worker1: Worker 1
-  worker2: Worker 2
-}
-
-storage: Object Storage {
-  shape: stored_data
-  style.fill: "#f5f5f5"
-}
-
-# Connections
-users -> cdn
-cdn -> load_balancer
-load_balancer -> web_tier.web1
-load_balancer -> web_tier.web2
-load_balancer -> web_tier.web3
-
-web_tier.web1 -> app_tier.app1
-web_tier.web2 -> app_tier.app1
-web_tier.web2 -> app_tier.app2
-web_tier.web3 -> app_tier.app2
-
-app_tier.app1 -> cache
-app_tier.app2 -> cache
-app_tier.app1 -> database.primary
-app_tier.app2 -> database.primary
-
-app_tier.app1 -> queue
-app_tier.app2 -> queue
-queue -> workers.worker1
-queue -> workers.worker2
-
-workers.worker1 -> storage
-workers.worker2 -> storage
-workers.worker1 -> database.primary`
-    };
 
     // State
     let wasmModule = null;
@@ -714,10 +329,11 @@ workers.worker1 -> database.primary`
     });
 
     // Example loading
-    exampleSelect.addEventListener('change', () => {
+    exampleSelect.addEventListener('change', async () => {
       const key = exampleSelect.value;
-      if (key && examples[key]) {
-        editor.value = examples[key];
+      if (key) {
+        const content = await loadExample(key);
+        editor.value = content;
         exampleSelect.value = '';
         render();
       }
@@ -886,8 +502,11 @@ workers.worker1 -> database.primary`
     });
 
     // Initialize
-    editor.value = examples.hello;
-    loadWasm();
+    async function init() {
+      editor.value = await loadExample('hello');
+      loadWasm();
+    }
+    init();
   </script>
 </body>
 </html>

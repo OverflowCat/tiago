@@ -36,6 +36,8 @@ jobs:
           moon build --target wasm
           # Copy WASM file to web directory
           cp target/wasm/release/build/cmd/wasm/wasm.wasm web/wasm.wasm
+          # Copy examples to web directory
+          cp -r examples web/examples
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
