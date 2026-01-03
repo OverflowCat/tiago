@@ -288,6 +288,15 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Process near positioning
+  match ir.get_field("near") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => obj.near = Some(s.to_string())
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|

@@ -217,3 +217,39 @@ test "compile object with icon" {
   assert_eq(graph.objects.length(), 1)
   assert_eq(graph.objects[0].icon, Some("test-icon.png"))
 }
+
+///|
+test "compile object with near" {
+  // Create IR with near field
+  let inner = @ir.Map::new()
+  inner.add_field(
+    @ir.Field::new("near", Some(@ir.Scalar::string("top-left")), None, []),
+  )
+  let ir = @ir.Map::new()
+  ir.add_field(
+    @ir.Field::new("title", None, Some(@ir.Composite::Map(inner)), []),
+  )
+  let graph = compile("test", ir)
+  assert_eq(graph.objects.length(), 1)
+  assert_eq(graph.objects[0].near, Some("top-left"))
+}
+
+///|
+test "compile object with near object reference" {
+  let inner = @ir.Map::new()
+  inner.add_field(
+    @ir.Field::new("near", Some(@ir.Scalar::string("server")), None, []),
+  )
+  let ir = @ir.Map::new()
+  ir.add_field(@ir.Field::simple("server"))
+  ir.add_field(
+    @ir.Field::new("info", None, Some(@ir.Composite::Map(inner)), []),
+  )
+  let graph = compile("test", ir)
+  assert_eq(graph.objects.length(), 2)
+  if graph.find_object("info") is Some(info) {
+    assert_eq(info.near, Some("server"))
+  } else {
+    fail("expected info object")
+  }
+}

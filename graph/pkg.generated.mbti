@@ -126,6 +126,7 @@ pub(all) struct Object {
   mut vertical_gap : Double?
   mut grid_column_span : Int?
   mut grid_row_span : Int?
+  mut near : String?
 }
 pub fn Object::add_child(Self, Self) -> Unit
 pub fn Object::center(Self) -> Point?
@@ -139,8 +140,10 @@ pub fn Object::get_grid_rows(Self) -> Int?
 pub fn Object::get_horizontal_gap(Self) -> Double
 pub fn Object::get_id(Self) -> String
 pub fn Object::get_label(Self) -> String
+pub fn Object::get_near(Self) -> String?
 pub fn Object::get_shape(Self) -> String
 pub fn Object::get_vertical_gap(Self) -> Double
+pub fn Object::has_near(Self) -> Bool
 pub fn Object::is_container(Self) -> Bool
 pub fn Object::is_grid_diagram(Self) -> Bool
 pub fn Object::new(String) -> Self
@@ -151,6 +154,7 @@ pub fn Object::set_grid_gap(Self, Double) -> Unit
 pub fn Object::set_grid_row_span(Self, Int) -> Unit
 pub fn Object::set_grid_rows(Self, Int) -> Unit
 pub fn Object::set_label(Self, String) -> Unit
+pub fn Object::set_near(Self, String) -> Unit
 pub fn Object::set_shape(Self, String) -> Unit
 pub fn Object::with_label(String, String) -> Self
 pub impl Show for Object

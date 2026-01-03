@@ -53,6 +53,8 @@ pub(all) struct Object {
   mut grid_column_span : Int?
   /// Grid cell spanning: number of rows this cell spans
   mut grid_row_span : Int?
+  /// Near positioning: object ID or constant position (top-left, center, etc.)
+  mut near : String?
 } derive(Show)
 
 ///|
@@ -172,6 +174,7 @@ pub fn Object::new(id : String) -> Object {
     vertical_gap: None,
     grid_column_span: None,
     grid_row_span: None,
+    near: None,
   }
 }
 
@@ -447,6 +450,24 @@ pub fn Object::set_grid_column_span(self : Object, span : Int) -> Unit {
 /// Set row span
 pub fn Object::set_grid_row_span(self : Object, span : Int) -> Unit {
   self.grid_row_span = Some(span)
+}
+
+///|
+/// Get near positioning target
+pub fn Object::get_near(self : Object) -> String? {
+  self.near
+}
+
+///|
+/// Set near positioning target
+pub fn Object::set_near(self : Object, near : String) -> Unit {
+  self.near = Some(near)
+}
+
+///|
+/// Check if this object uses near positioning
+pub fn Object::has_near(self : Object) -> Bool {
+  self.near is Some(_)
 }
 
 ///|
