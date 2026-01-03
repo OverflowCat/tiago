@@ -86,6 +86,8 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   add_arrowhead_markers(svg, config)
   // Add fill patterns
   add_fill_patterns(svg, graph, config)
+  // Add sketch filter if needed
+  add_sketch_filter(svg, graph)
   // Background
   svg.add(@svg.background(config.background))
   // Main content group with padding offset
@@ -226,6 +228,31 @@ fn add_fill_patterns(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit 
 }
 
 ///|
+/// Add sketch filter if any object uses sketch mode
+fn add_sketch_filter(svg : @svg.Svg, graph : Graph) -> Unit {
+  // Check if any object uses sketch mode
+  let mut needs_sketch = false
+  for obj in graph.objects {
+    if obj.style.sketch is Some(true) {
+      needs_sketch = true
+      break
+    }
+  }
+  // Also check edges
+  if not(needs_sketch) {
+    for edge in graph.edges {
+      if edge.style.sketch is Some(true) {
+        needs_sketch = true
+        break
+      }
+    }
+  }
+  if needs_sketch {
+    svg.add_def(@svg.sketch_filter("sketch-filter"))
+  }
+}
+
+///|
 /// Get the marker URL for an arrowhead type
 fn get_marker_url(arrowhead : String, reverse : Bool) -> String {
   let base = match arrowhead.to_lower() {
@@ -272,6 +299,11 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
 ///|
 fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
   guard obj.box is Some(box) else { return }
+  // Apply sketch filter if enabled
+  let use_sketch = obj.style.sketch is Some(true)
+  if use_sketch {
+    svg.open_group_with_filter("sketch-filter")
+  }
   // Get style values
   let base_fill = match obj.style.fill {
     Some(f) => f
@@ -478,6 +510,10 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
         text_transform~,
       ),
     )
+  }
+  // Close sketch filter group if opened
+  if use_sketch {
+    svg.close_group()
   }
 }
 
@@ -1143,6 +1179,11 @@ fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
   if edge.route.length() < 2 {
     return
   }
+  // Apply sketch filter if enabled
+  let use_sketch = edge.style.sketch is Some(true)
+  if use_sketch {
+    svg.open_group_with_filter("sketch-filter")
+  }
   // Get style values
   let stroke = match edge.style.stroke {
     Some(s) => s
@@ -1201,6 +1242,10 @@ fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
       }
       None => ()
     }
+  }
+  // Close sketch filter group if opened
+  if use_sketch {
+    svg.close_group()
   }
 }
 

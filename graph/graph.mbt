@@ -125,6 +125,8 @@ pub(all) struct Style {
   mut font_family : String?
   /// Fill pattern: dots, lines, cross-hatch, grain
   mut fill_pattern : String?
+  /// Sketch mode: hand-drawn appearance
+  mut sketch : Bool?
 } derive(Eq, Show)
 
 // ============================================================================
@@ -243,6 +245,7 @@ pub fn Style::new() -> Style {
     text_transform: None,
     font_family: None,
     fill_pattern: None,
+    sketch: None,
   }
 }
 

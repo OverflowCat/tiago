@@ -426,6 +426,15 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Sketch mode
+  match ir.get_field("sketch") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.sketch = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|

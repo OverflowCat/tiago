@@ -130,7 +130,7 @@ This document tracks features from the D2 reference implementation that are not 
 
 ### 🟡 Missing Styles
 - [x] **fill-pattern** - Pattern fills (dots, lines, cross-hatch, grain)
-- [ ] **sketch mode** - Hand-drawn appearance (`style.sketch: true`)
+- [x] **sketch mode** - Hand-drawn appearance (`style.sketch: true`)
 - [x] **double-border** - Double border lines
 - [x] **text-transform** - uppercase, lowercase, capitalize
 - [x] **font-family** - Custom font selection

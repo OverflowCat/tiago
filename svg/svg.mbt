@@ -41,6 +41,12 @@ pub fn Svg::open_group(self : Svg, transform : String) -> Unit {
 }
 
 ///|
+/// Open a group with filter
+pub fn Svg::open_group_with_filter(self : Svg, filter_id : String) -> Unit {
+  self.elements.push("<g filter=\"url(#\{filter_id})\">")
+}
+
+///|
 /// Close a group
 pub fn Svg::close_group(self : Svg) -> Unit {
   self.elements.push("</g>")
@@ -950,6 +956,41 @@ pub fn PathBuilder::close(self : PathBuilder) -> PathBuilder {
 /// Build the path string
 pub fn PathBuilder::build(self : PathBuilder) -> String {
   self.commands.join(" ")
+}
+
+// =============================================================================
+// Filters
+// =============================================================================
+
+///|
+/// Build a sketch filter definition for hand-drawn appearance
+pub fn sketch_filter(id : String) -> String {
+  // Create turbulence effect for randomness
+  let turbulence = @xml_emit.Element::new("feTurbulence")
+    .attr("type", "turbulence")
+    .attr("baseFrequency", "0.02")
+    .attr("numOctaves", "3")
+    .attr("seed", "1")
+    .attr("result", "noise")
+    .self_close()
+    .build()
+  // Create displacement map to distort paths
+  let displacement = @xml_emit.Element::new("feDisplacementMap")
+    .attr("in", "SourceGraphic")
+    .attr("in2", "noise")
+    .attr("scale", "2")
+    .attr("xChannelSelector", "R")
+    .attr("yChannelSelector", "G")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("filter")
+  .attr("id", id)
+  .attr("x", "-5%")
+  .attr("y", "-5%")
+  .attr("width", "110%")
+  .attr("height", "110%")
+  .raw(turbulence + displacement)
+  .build()
 }
 
 // =============================================================================

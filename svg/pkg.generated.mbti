@@ -50,6 +50,8 @@ pub fn polyline(Array[(Double, Double)], fill? : String, stroke? : String, strok
 
 pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double, ry? : Double) -> String
 
+pub fn sketch_filter(String) -> String
+
 pub fn styled_text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String, text_transform? : String, extra_style? : String) -> String
 
 pub fn text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String) -> String
@@ -82,6 +84,7 @@ pub fn Svg::add_def(Self, String) -> Unit
 pub fn Svg::close_group(Self) -> Unit
 pub fn Svg::new(Double, Double) -> Self
 pub fn Svg::open_group(Self, String) -> Unit
+pub fn Svg::open_group_with_filter(Self, String) -> Unit
 pub fn Svg::to_string(Self) -> String
 pub impl Show for Svg
 

@@ -306,6 +306,33 @@ test "double-border style" {
   )
 }
 
+///|
+test "sketch mode style" {
+  let source =
+    #|box {
+    #|  style.sketch: true
+    #|}
+  let svg = compile(source).unwrap()
+  // Should have sketch filter definition
+  assert_true(svg.contains("sketch-filter"))
+  assert_true(svg.contains("feTurbulence"))
+  assert_true(svg.contains("feDisplacementMap"))
+  // Should apply filter to element
+  assert_true(svg.contains("filter=\"url(#sketch-filter)\""))
+}
+
+///|
+test "sketch mode on edge" {
+  let source =
+    #|a -> b {
+    #|  style.sketch: true
+    #|}
+  let svg = compile(source).unwrap()
+  // Should have sketch filter definition and apply it
+  assert_true(svg.contains("sketch-filter"))
+  assert_true(svg.contains("filter=\"url(#sketch-filter)\""))
+}
+
 // =============================================================================
 // Error handling tests
 // =============================================================================
