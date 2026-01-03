@@ -89,11 +89,11 @@ This document tracks features from the D2 reference implementation that are not 
 ## Diagrams & Special Features
 
 ### 🔴 High Priority
-- [ ] **Sequence Diagrams** - Full sequence diagram support with actors, messages, lifelines
+- [x] **Sequence Diagrams** - Full sequence diagram support with actors, messages, lifelines
   - [ ] Spans (activation boxes)
   - [ ] Notes
   - [ ] Groups/fragments
-  - [ ] Self-referential messages
+  - [x] Self-referential messages
 
 ### 🟡 Medium Priority
 - [ ] **Layers** - Multiple diagram layers (`layers: { ... }`)

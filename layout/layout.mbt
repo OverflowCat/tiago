@@ -91,7 +91,8 @@ pub fn layout(
   // Phase 4: Position objects - check for special containers
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
-      layout_sequence(obj, config)
+      // Use full sequence layout with message routing
+      layout_sequence_with_messages(obj, graph, config)
     } else if obj.is_grid_diagram() && obj.is_container() {
       layout_grid(obj, config)
     }

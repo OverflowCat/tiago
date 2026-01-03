@@ -268,3 +268,54 @@ test "sequence layout basic" {
   guard bob.box is Some(bob_box) else { fail("expected bob box") }
   assert_true(bob_box.x > alice_box.x)
 }
+
+///|
+test "sequence layout with messages" {
+  let graph = @graph.Graph::new("test")
+  let container = @graph.Object::new("seq")
+  container.shape = "sequence_diagram"
+  // Add actors as children of container
+  let alice = @graph.Object::new("seq.alice")
+  let bob = @graph.Object::new("seq.bob")
+  container.add_child(alice)
+  container.add_child(bob)
+  graph.add_object(container)
+  graph.add_object(alice)
+  graph.add_object(bob)
+  // Add a message edge from alice to bob
+  let msg = @graph.Edge::new(0, "seq.alice", "seq.bob", false, true)
+  graph.add_edge(msg)
+  let config = LayoutConfig::new()
+  // Run sequence layout with messages
+  layout_sequence_with_messages(container, graph, config)
+  // Container should have a box
+  assert_true(container.box is Some(_))
+  // Message should have route points
+  let route = msg.get_route()
+  assert_true(route.length() >= 2)
+  // Route should be horizontal (same y for start and end)
+  if route.length() >= 2 {
+    assert_eq(route[0].get_y(), route[1].get_y())
+  }
+}
+
+///|
+test "sequence layout self-referential message" {
+  let graph = @graph.Graph::new("test")
+  let container = @graph.Object::new("seq")
+  container.shape = "sequence_diagram"
+  // Add single actor
+  let alice = @graph.Object::new("seq.alice")
+  container.add_child(alice)
+  graph.add_object(container)
+  graph.add_object(alice)
+  // Add a self-referential message
+  let msg = @graph.Edge::new(0, "seq.alice", "seq.alice", false, true)
+  graph.add_edge(msg)
+  let config = LayoutConfig::new()
+  // Run sequence layout with messages
+  layout_sequence_with_messages(container, graph, config)
+  // Message should have 4 route points (forming a loop)
+  let route = msg.get_route()
+  assert_true(route.length() == 4)
+}
