@@ -95,6 +95,8 @@ pub fn layout(
   )
   // Phase 6: Route edges
   route_edges(graph, config)
+  // Phase 7: Position edge labels to avoid overlaps
+  position_edge_labels(graph, config)
 }
 
 ///|
@@ -682,4 +684,128 @@ fn sum_with_gap(values : Array[Double], gap : Double) -> Double {
     total = total + v + gap
   }
   total - gap
+}
+
+// ============================================================================
+// Edge Label Positioning
+// ============================================================================
+
+///|
+/// Position edge labels to avoid overlaps with nodes and other labels
+fn position_edge_labels(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+  // Collect all node bounding boxes for overlap detection
+  let node_boxes : Array[@graph.Box] = []
+  for obj in graph.objects {
+    match obj.get_box() {
+      Some(b) => node_boxes.push(b)
+      None => ()
+    }
+  }
+  // Collect already-placed label boxes for inter-label collision detection
+  let label_boxes : Array[@graph.Box] = []
+  // Process each edge with a label
+  for edge in graph.edges {
+    if edge.label == "" {
+      continue
+    }
+    match edge.midpoint() {
+      Some(mid) => {
+        // Estimate label dimensions (similar to SVG render)
+        let padding = 4.0
+        let char_width = 7.0
+        let font_size = 12.0
+        let label_width = edge.label.length().to_double() * char_width +
+          padding * 2.0
+        let label_height = font_size + padding * 2.0
+        // Initial label box centered at midpoint
+        let mut label_x = mid.x - label_width / 2.0
+        let mut label_y = mid.y - label_height / 2.0
+        let mut label_box = @graph.Box::new(
+          label_x, label_y, label_width, label_height,
+        )
+        // Calculate perpendicular direction to the edge
+        let (perp_x, perp_y) = compute_perpendicular_direction(edge)
+        // Try to find a non-overlapping position
+        // Check up to 5 positions: center, then alternating offsets
+        let offsets = [
+          0.0,
+          config.edge_padding,
+          -config.edge_padding,
+          config.edge_padding * 2.0,
+          -config.edge_padding * 2.0,
+        ]
+        for offset in offsets {
+          label_x = mid.x - label_width / 2.0 + perp_x * offset
+          label_y = mid.y - label_height / 2.0 + perp_y * offset
+          label_box = @graph.Box::new(
+            label_x, label_y, label_width, label_height,
+          )
+          // Check for overlaps with nodes
+          let mut overlaps = false
+          for node_box in node_boxes {
+            if boxes_overlap(label_box, node_box) {
+              overlaps = true
+              break
+            }
+          }
+          // Check for overlaps with other labels
+          if not(overlaps) {
+            for other_box in label_boxes {
+              if boxes_overlap(label_box, other_box) {
+                overlaps = true
+                break
+              }
+            }
+          }
+          if not(overlaps) {
+            break // Found a good position
+          }
+        }
+        // Store the computed label box
+        edge.set_label_box(label_box)
+        label_boxes.push(label_box)
+      }
+      None => ()
+    }
+  }
+}
+
+///|
+/// Compute the perpendicular direction to an edge for label offset
+fn compute_perpendicular_direction(edge : @graph.Edge) -> (Double, Double) {
+  let route = edge.get_route()
+  if route.length() < 2 {
+    return (0.0, 1.0) // Default to vertical offset
+  }
+  // Get direction at midpoint
+  let mid_idx = route.length() / 2
+  let p1 = if mid_idx > 0 { route[mid_idx - 1] } else { route[0] }
+  let p2 = if mid_idx < route.length() {
+    route[mid_idx]
+  } else {
+    route[mid_idx - 1]
+  }
+  // Direction vector
+  let dx = p2.x - p1.x
+  let dy = p2.y - p1.y
+  let len = (dx * dx + dy * dy).sqrt()
+  if len < 0.001 {
+    return (0.0, 1.0) // Fallback
+  }
+  // Perpendicular direction (rotated 90 degrees)
+  let perp_x = -dy / len
+  let perp_y = dx / len
+  (perp_x, perp_y)
+}
+
+///|
+/// Check if two boxes overlap (with small margin)
+fn boxes_overlap(a : @graph.Box, b : @graph.Box) -> Bool {
+  let margin = 2.0
+  not(
+    a.x + a.width + margin < b.x ||
+    b.x + b.width + margin < a.x ||
+    a.y + a.height + margin < b.y ||
+    b.y + b.height + margin < a.y,
+  )
 }

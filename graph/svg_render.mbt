@@ -1383,18 +1383,19 @@ fn render_svg_edge(
   }
   // Render edge label
   if edge.label != "" {
-    match edge.midpoint() {
-      Some(mid) => {
-        // Background for label
-        let padding = 4.0
-        let label_width = edge.label.length().to_double() * 7.0 + padding * 2.0
-        let label_height = config.font_size.to_double() + padding * 2.0
+    // Use computed label_box if available (from automatic positioning)
+    // Otherwise fall back to midpoint
+    match edge.get_label_box() {
+      Some(label_box) => {
+        // Use pre-computed label position
+        let cx = label_box.x + label_box.width / 2.0
+        let cy = label_box.y + label_box.height / 2.0
         svg.add(
           @svg.rect(
-            mid.x - label_width / 2.0,
-            mid.y - label_height / 2.0,
-            label_width,
-            label_height,
+            label_box.x,
+            label_box.y,
+            label_box.width,
+            label_box.height,
             fill="white",
             stroke="none",
             rx=3.0,
@@ -1403,15 +1404,46 @@ fn render_svg_edge(
         )
         svg.add(
           @svg.text(
-            mid.x,
-            mid.y,
+            cx,
+            cy,
             edge.label,
             font_family=config.font_family,
             font_size=config.font_size - 2,
           ),
         )
       }
-      None => ()
+      None =>
+        // Fallback to midpoint positioning
+        match edge.midpoint() {
+          Some(mid) => {
+            let padding = 4.0
+            let label_width = edge.label.length().to_double() * 7.0 +
+              padding * 2.0
+            let label_height = config.font_size.to_double() + padding * 2.0
+            svg.add(
+              @svg.rect(
+                mid.x - label_width / 2.0,
+                mid.y - label_height / 2.0,
+                label_width,
+                label_height,
+                fill="white",
+                stroke="none",
+                rx=3.0,
+                ry=3.0,
+              ),
+            )
+            svg.add(
+              @svg.text(
+                mid.x,
+                mid.y,
+                edge.label,
+                font_family=config.font_family,
+                font_size=config.font_size - 2,
+              ),
+            )
+          }
+          None => ()
+        }
     }
   }
   // Close sketch filter group if opened

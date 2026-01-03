@@ -77,15 +77,18 @@ pub(all) struct Edge {
   is_curve : Bool
   z_index : Int
   mut reference_count : Int
+  mut label_box : Box?
 }
 pub fn Edge::add_route_point(Self, Point) -> Unit
 pub fn Edge::arrow_string(Self) -> String
 pub fn Edge::get_dst_id(Self) -> String
+pub fn Edge::get_label_box(Self) -> Box?
 pub fn Edge::get_route(Self) -> Array[Point]
 pub fn Edge::get_src_id(Self) -> String
 pub fn Edge::midpoint(Self) -> Point?
 pub fn Edge::new(Int, String, String, Bool, Bool) -> Self
 pub fn Edge::set_label(Self, String) -> Unit
+pub fn Edge::set_label_box(Self, Box) -> Unit
 pub impl Show for Edge
 
 pub(all) struct Graph {

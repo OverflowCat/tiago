@@ -22,7 +22,7 @@ This document tracks features from the D2 reference implementation that are not 
 ### 🟡 Medium Priority
 - [x] **Curved Edges** - Spline-based edge routing with configurable curvature
 - [ ] **Edge Bend Points** - Manual control points for edge routing
-- [ ] **Label Positioning** - Automatic label placement avoiding overlaps
+- [x] **Label Positioning** - Automatic label placement avoiding overlaps
 - [x] **Connection Anchors** - Control edge connection points on shapes
 
 ### 🟢 Low Priority

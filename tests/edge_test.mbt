@@ -266,3 +266,44 @@ test "corner anchors" {
   let result = compile(source)
   assert_true(result is Ok(_))
 }
+
+// =============================================================================
+// Automatic label positioning tests
+// =============================================================================
+
+///|
+test "edge label has computed position" {
+  let source =
+    #|a -> b: test label
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  // The edge should have a label_box set by automatic positioning
+  assert_eq(graph.edges.length(), 1)
+  let edge = graph.edges[0]
+  assert_true(edge.get_label_box() is Some(_))
+}
+
+///|
+test "multiple edge labels are positioned" {
+  let source =
+    #|a -> b: first
+    #|b -> c: second
+    #|c -> d: third
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  // All edges with labels should have label_box set
+  for edge in graph.edges {
+    if edge.label != "" {
+      assert_true(edge.get_label_box() is Some(_))
+    }
+  }
+}
+
+///|
+test "label positioning renders in svg" {
+  let source =
+    #|a -> b: my label
+  let svg = compile(source).unwrap()
+  // The label should be rendered
+  assert_true(svg.contains("my label"))
+  // And should have a background rect
+  assert_true(svg.contains("fill=\"white\""))
+}

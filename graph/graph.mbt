@@ -84,6 +84,8 @@ pub(all) struct Edge {
   z_index : Int
   /// Number of times this edge is declared (for parallel rendering)
   mut reference_count : Int
+  /// Computed label bounding box (for automatic label positioning)
+  mut label_box : Box?
 } derive(Show)
 
 ///|
@@ -206,6 +208,7 @@ pub fn Edge::new(
     is_curve: false,
     z_index: 0,
     reference_count: 1,
+    label_box: None,
   }
 }
 
@@ -624,6 +627,18 @@ pub fn Edge::midpoint(self : Edge) -> Point? {
   } else {
     Some(self.route[mid])
   }
+}
+
+///|
+/// Set the computed label bounding box
+pub fn Edge::set_label_box(self : Edge, box : Box) -> Unit {
+  self.label_box = Some(box)
+}
+
+///|
+/// Get the computed label bounding box
+pub fn Edge::get_label_box(self : Edge) -> Box? {
+  self.label_box
 }
 
 // ============================================================================
