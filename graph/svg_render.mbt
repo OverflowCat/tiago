@@ -1245,6 +1245,61 @@ fn render_svg_callout(
 }
 
 ///|
+/// Build a smooth curved path through waypoints using Catmull-Rom to Bezier conversion
+fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
+  if points.length() < 2 {
+    return
+  }
+  // Move to first point
+  let _ = pb.move_to(points[0].x, points[0].y)
+  if points.length() == 2 {
+    // Only two points - create a subtle curve using quadratic bezier
+    // Control point is offset perpendicular to the line
+    let p0 = points[0]
+    let p1 = points[1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    // Mid-point
+    let mx = (p0.x + p1.x) / 2.0
+    let my = (p0.y + p1.y) / 2.0
+    // Perpendicular offset (10% of length, perpendicular to line direction)
+    let len = (dx * dx + dy * dy).sqrt()
+    let offset = len * 0.1
+    // Control point offset perpendicular to line
+    let cx = mx - dy / len * offset
+    let cy = my + dx / len * offset
+    let _ = pb.quad_to(cx, cy, p1.x, p1.y)
+    return
+  }
+  // Tension factor for Catmull-Rom (0.5 is typical)
+  let tension = 0.5
+  // For each segment, calculate cubic bezier control points
+  for i = 0; i < points.length() - 1; i = i + 1 {
+    // Get the four points for Catmull-Rom (p0, p1, p2, p3)
+    // Clamp to valid indices
+    let p0 = if i == 0 { points[0] } else { points[i - 1] }
+    let p1 = points[i]
+    let p2 = points[i + 1]
+    let p3 = if i + 2 >= points.length() {
+      points[i + 1]
+    } else {
+      points[i + 2]
+    }
+    // Convert Catmull-Rom to Bezier control points
+    // The formulas for control points:
+    // cp1 = p1 + (p2 - p0) / 6 * tension
+    // cp2 = p2 - (p3 - p1) / 6 * tension
+    let cp1_x = p1.x + (p2.x - p0.x) * tension / 3.0
+    let cp1_y = p1.y + (p2.y - p0.y) * tension / 3.0
+    let cp2_x = p2.x - (p3.x - p1.x) * tension / 3.0
+    let cp2_y = p2.y - (p3.y - p1.y) * tension / 3.0
+    // Draw cubic bezier
+    let _ = pb.cubic_to(cp1_x, cp1_y, cp2_x, cp2_y, p2.x, p2.y)
+
+  }
+}
+
+///|
 fn render_svg_edge(
   svg : @svg.Svg,
   edge : Edge,
@@ -1270,15 +1325,21 @@ fn render_svg_edge(
     Some(w) => w
     None => config.default_stroke_width
   }
-  // Build path
+  // Build path - check if curved style is enabled
+  let use_curved = edge.style.curved is Some(true)
   let pb = @svg.PathBuilder::new()
-  for i, point in edge.route {
-    if i == 0 {
-      let _ = pb.move_to(point.x, point.y)
+  if use_curved && edge.route.length() >= 2 {
+    // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
+    build_curved_path(pb, edge.route)
+  } else {
+    for i, point in edge.route {
+      if i == 0 {
+        let _ = pb.move_to(point.x, point.y)
 
-    } else {
-      let _ = pb.line_to(point.x, point.y)
+      } else {
+        let _ = pb.line_to(point.x, point.y)
 
+      }
     }
   }
   // Determine markers based on arrowhead types

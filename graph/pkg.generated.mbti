@@ -182,6 +182,7 @@ pub(all) struct Style {
   mut font_family : String?
   mut fill_pattern : String?
   mut sketch : Bool?
+  mut curved : Bool?
 }
 pub fn Style::new() -> Self
 pub impl Eq for Style

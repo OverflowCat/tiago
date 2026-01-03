@@ -435,6 +435,15 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Curved edges
+  match ir.get_field("curved") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.curved = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|

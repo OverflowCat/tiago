@@ -14,7 +14,7 @@ pub let simple_reserved_keywords : Array[String] = [
 pub let style_keywords : Array[String] = [
   "opacity", "stroke", "fill", "fill-pattern", "stroke-width", "stroke-dash", "border-radius",
   "font", "font-size", "font-color", "bold", "italic", "underline", "text-transform",
-  "shadow", "multiple", "double-border", "3d", "animated", "filled", "sketch",
+  "shadow", "multiple", "double-border", "3d", "animated", "filled", "sketch", "curved",
 ]
 
 ///|

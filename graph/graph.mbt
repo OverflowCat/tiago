@@ -127,6 +127,8 @@ pub(all) struct Style {
   mut fill_pattern : String?
   /// Sketch mode: hand-drawn appearance
   mut sketch : Bool?
+  /// Curved edges: use smooth bezier curves instead of straight lines
+  mut curved : Bool?
 } derive(Eq, Show)
 
 // ============================================================================
@@ -246,6 +248,7 @@ pub fn Style::new() -> Style {
     font_family: None,
     fill_pattern: None,
     sketch: None,
+    curved: None,
   }
 }
 

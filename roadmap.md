@@ -20,7 +20,7 @@ This document tracks features from the D2 reference implementation that are not 
 - [ ] **Constant Near Positions** - `near: top-left`, `near: center`, etc. for label positioning
 
 ### 🟡 Medium Priority
-- [ ] **Curved Edges** - Spline-based edge routing with configurable curvature
+- [x] **Curved Edges** - Spline-based edge routing with configurable curvature
 - [ ] **Edge Bend Points** - Manual control points for edge routing
 - [ ] **Label Positioning** - Automatic label placement avoiding overlaps
 - [ ] **Connection Anchors** - Control edge connection points on shapes

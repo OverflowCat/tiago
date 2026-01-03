@@ -195,3 +195,28 @@ test "open arrowhead" {
   let svg = compile(source).unwrap()
   assert_true(svg.contains("arrow-open"))
 }
+
+// =============================================================================
+// Edge style tests
+// =============================================================================
+
+///|
+test "curved edge" {
+  let source =
+    #|a -> b {
+    #|  style.curved: true
+    #|}
+  let svg = compile(source).unwrap()
+  // Curved edges use bezier curves (Q for quadratic or C for cubic)
+  // Simple 2-point edges use Q (quadratic bezier) for a subtle curve
+  assert_true(svg.contains(" Q") || svg.contains(" C"))
+}
+
+///|
+test "straight edge default" {
+  let source = "a -> b"
+  let svg = compile(source).unwrap()
+  // Straight edges use line commands (L in path), not cubic beziers
+  // The path should contain L command for straight lines
+  assert_true(svg.contains(" L"))
+}
