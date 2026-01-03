@@ -69,6 +69,8 @@ pub(all) struct Edge {
   dst_arrow : Bool
   mut src_arrowhead : String
   mut dst_arrowhead : String
+  mut src_anchor : String?
+  mut dst_anchor : String?
   mut label : String
   style : Style
   route : Array[Point]

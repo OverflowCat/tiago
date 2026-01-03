@@ -504,6 +504,18 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
             graph_edge.dst_arrowhead = s.to_string()
           }
         }
+        // Process source-anchor
+        if m.get_field("source-anchor") is Some(f) {
+          if f.primary is Some(s) {
+            graph_edge.src_anchor = Some(s.to_string())
+          }
+        }
+        // Process target-anchor
+        if m.get_field("target-anchor") is Some(f) {
+          if f.primary is Some(s) {
+            graph_edge.dst_anchor = Some(s.to_string())
+          }
+        }
       }
       None => ()
     }

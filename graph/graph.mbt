@@ -68,6 +68,10 @@ pub(all) struct Edge {
   mut src_arrowhead : String
   /// Destination arrowhead type (triangle, diamond, circle, cf-one, cf-many, none)
   mut dst_arrowhead : String
+  /// Source anchor position (top, bottom, left, right, center)
+  mut src_anchor : String?
+  /// Destination anchor position (top, bottom, left, right, center)
+  mut dst_anchor : String?
   /// Edge label
   mut label : String
   /// Visual style
@@ -194,6 +198,8 @@ pub fn Edge::new(
     } else {
       "none"
     },
+    src_anchor: None,
+    dst_anchor: None,
     label: "",
     style: Style::new(),
     route: [],

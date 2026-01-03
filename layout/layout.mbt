@@ -383,7 +383,12 @@ fn route_edge(
             0.0
           }
           let points = compute_connection_points(
-            src_box, dst_box, config, offset,
+            src_box,
+            dst_box,
+            config,
+            offset,
+            edge.src_anchor,
+            edge.dst_anchor,
           )
           for point in points {
             edge.add_route_point(point)
@@ -396,26 +401,70 @@ fn route_edge(
 }
 
 ///|
-/// Compute connection points between two boxes with optional horizontal offset
+/// Compute connection points between two boxes with optional anchors
 fn compute_connection_points(
   src : @graph.Box,
   dst : @graph.Box,
   _config : LayoutConfig,
   offset : Double,
+  src_anchor : String?,
+  dst_anchor : String?,
 ) -> Array[@graph.Point] {
-  // Apply horizontal offset to centers for edge routing
-  let src_center = @graph.Point::new(
-    src.center().get_x() + offset,
-    src.center().get_y(),
-  )
-  let dst_center = @graph.Point::new(
-    dst.center().get_x() + offset,
-    dst.center().get_y(),
-  )
-  // Find edge intersection points
-  let src_point = find_edge_intersection(src, src_center, dst_center)
-  let dst_point = find_edge_intersection(dst, dst_center, src_center)
+  // If anchors are specified, use them directly
+  let src_point = match src_anchor {
+    Some(anchor) => get_anchor_point(src, anchor, offset)
+    None => {
+      // Default: apply horizontal offset to centers for edge routing
+      let src_center = @graph.Point::new(
+        src.center().get_x() + offset,
+        src.center().get_y(),
+      )
+      let dst_center = @graph.Point::new(
+        dst.center().get_x() + offset,
+        dst.center().get_y(),
+      )
+      find_edge_intersection(src, src_center, dst_center)
+    }
+  }
+  let dst_point = match dst_anchor {
+    Some(anchor) => get_anchor_point(dst, anchor, offset)
+    None => {
+      // Default: apply horizontal offset to centers for edge routing
+      let src_center = @graph.Point::new(
+        src.center().get_x() + offset,
+        src.center().get_y(),
+      )
+      let dst_center = @graph.Point::new(
+        dst.center().get_x() + offset,
+        dst.center().get_y(),
+      )
+      find_edge_intersection(dst, dst_center, src_center)
+    }
+  }
   [src_point, dst_point]
+}
+
+///|
+/// Get the connection point for a specific anchor position on a box
+fn get_anchor_point(
+  box : @graph.Box,
+  anchor : String,
+  offset : Double,
+) -> @graph.Point {
+  let cx = box.center().get_x() + offset
+  let cy = box.center().get_y()
+  match anchor.to_lower() {
+    "top" => @graph.Point::new(cx, box.y)
+    "bottom" => @graph.Point::new(cx, box.y + box.height)
+    "left" => @graph.Point::new(box.x, cy)
+    "right" => @graph.Point::new(box.x + box.width, cy)
+    "center" => @graph.Point::new(cx, cy)
+    "top-left" => @graph.Point::new(box.x, box.y)
+    "top-right" => @graph.Point::new(box.x + box.width, box.y)
+    "bottom-left" => @graph.Point::new(box.x, box.y + box.height)
+    "bottom-right" => @graph.Point::new(box.x + box.width, box.y + box.height)
+    _ => @graph.Point::new(cx, cy) // Default to center
+  }
 }
 
 ///|

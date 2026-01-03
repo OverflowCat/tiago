@@ -220,3 +220,49 @@ test "straight edge default" {
   // The path should contain L command for straight lines
   assert_true(svg.contains(" L"))
 }
+
+// =============================================================================
+// Connection anchor tests
+// =============================================================================
+
+///|
+test "source anchor top" {
+  let source =
+    #|a -> b {
+    #|  source-anchor: top
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "target anchor bottom" {
+  let source =
+    #|a -> b {
+    #|  target-anchor: bottom
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "both anchors" {
+  let source =
+    #|a -> b {
+    #|  source-anchor: right
+    #|  target-anchor: left
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "corner anchors" {
+  let source =
+    #|a -> b {
+    #|  source-anchor: top-right
+    #|  target-anchor: bottom-left
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
