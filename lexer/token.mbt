@@ -49,6 +49,7 @@ pub enum TokenKind {
 
   // Special
   At // @ for imports
+  DotDotDot // ... for spread imports
   Dollar // $ for substitutions
   DollarBrace // ${ for substitutions
   Star // * for glob patterns

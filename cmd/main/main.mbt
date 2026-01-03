@@ -65,10 +65,11 @@ fn main {
     }
   }
   // Compile the diagram
+  let base_path = get_dir_path(input)
   let result = if ascii_mode {
-    compile_d2_ascii(source)
+    compile_d2_ascii(source, base_path)
   } else {
-    compile_d2_svg(source, theme_name)
+    compile_d2_svg(source, theme_name, base_path)
   }
   match result {
     Ok(output) =>
@@ -235,8 +236,9 @@ fn extract_theme_name(arg : String) -> String {
 fn compile_d2_svg(
   source : String,
   theme_name : String?,
+  base_path : String?,
 ) -> Result[String, String] {
-  match compile_to_graph(source) {
+  match compile_to_graph(source, base_path) {
     Ok(graph) => {
       let render_config = match theme_name {
         Some(name) => @graph.SvgConfig::with_theme_name(name)
@@ -250,8 +252,11 @@ fn compile_d2_svg(
 
 ///|
 /// Compile D2 source to ASCII art
-fn compile_d2_ascii(source : String) -> Result[String, String] {
-  match compile_to_graph(source) {
+fn compile_d2_ascii(
+  source : String,
+  base_path : String?,
+) -> Result[String, String] {
+  match compile_to_graph(source, base_path) {
     Ok(graph) => {
       let render_config = @graph.AsciiConfig::new()
       Ok(@graph.render_ascii(graph, render_config))
@@ -262,16 +267,60 @@ fn compile_d2_ascii(source : String) -> Result[String, String] {
 
 ///|
 /// Compile D2 source to laid-out graph
-fn compile_to_graph(source : String) -> Result[@graph.Graph, String] {
+fn compile_to_graph(
+  source : String,
+  base_path : String?,
+) -> Result[@graph.Graph, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
-  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  // Create import resolver based on base path
+  let resolver = create_import_resolver(base_path)
+  let ir = @ir.compile_with_imports(ast, resolver) catch {
+    e => return Err("IR error: \{e}")
+  }
   let graph = @graph.compile("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
   @layout.layout(graph, config, @layout.Direction::Down)
   Ok(graph)
+}
+
+///|
+/// Create an import resolver that reads files relative to base path
+fn create_import_resolver(base_path : String?) -> @ir.ImportResolver {
+  @ir.ImportResolver::new(fn(import_path) {
+    // Build full path
+    let full_path = match base_path {
+      Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()
+      None => import_path
+    }
+    // Add .d2 extension if not present
+    let path_with_ext = if full_path.has_suffix(".d2") {
+      full_path
+    } else {
+      full_path + ".d2"
+    }
+    Some(
+      // Try to read the file
+      @fs.read_file_to_string(path_with_ext),
+    ) catch {
+      _ => None
+    }
+  })
+}
+
+///|
+/// Get directory of a file path
+fn get_dir_path(file_path : String) -> String? {
+  let path = @path.Path(file_path)
+  let dir = path.dirname()
+  let dir_str = dir.to_string()
+  if dir_str.length() > 0 {
+    Some(dir_str)
+  } else {
+    None
+  }
 }

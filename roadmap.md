@@ -152,7 +152,7 @@ All core themes implemented. Missing specialty themes:
 ## Language Features
 
 ### 🔴 High Priority
-- [ ] **Imports** - `...@import` for modular diagrams
+- [x] **Imports** - `...@import` for modular diagrams
 - [x] **Globs** - Wildcard patterns for bulk styling (`*.style.fill: red`)
 
 ### 🟡 Medium Priority

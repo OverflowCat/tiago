@@ -86,6 +86,7 @@ pub enum TokenKind {
   Comment(String)
   BlockComment(String)
   At
+  DotDotDot
   Dollar
   DollarBrace
   Star

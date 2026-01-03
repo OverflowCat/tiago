@@ -148,6 +148,27 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
       let token = self.advance()
       Some(@ast.MapNode::BlockComment(token.range, content))
     }
+    @lexer.At =>
+      // Import statement: @path
+      match self.parse_import(false) {
+        Some(imp) => Some(@ast.MapNode::Import(imp))
+        None => None
+      }
+    @lexer.DotDotDot => {
+      // Spread import: ...@path
+      let _ = self.advance() // consume ...
+      match self.peek() {
+        @lexer.At =>
+          match self.parse_import(true) {
+            Some(imp) => Some(@ast.MapNode::Import(imp))
+            None => None
+          }
+        _ => {
+          self.error("expected @ after ...")
+          None
+        }
+      }
+    }
     _ =>
       match self.parse_key() {
         Some(key) => Some(@ast.MapNode::Key(key))
@@ -588,10 +609,25 @@ fn Parser::parse_value(self : Parser) -> @ast.Value? {
         None => None
       }
     @lexer.At =>
-      match self.parse_import() {
+      match self.parse_import(false) {
         Some(imp) => Some(@ast.Value::Import(imp))
         None => None
       }
+    @lexer.DotDotDot => {
+      // Spread import: ...@path
+      let _ = self.advance() // consume ...
+      match self.peek() {
+        @lexer.At =>
+          match self.parse_import(true) {
+            Some(imp) => Some(@ast.Value::Import(imp))
+            None => None
+          }
+        _ => {
+          self.error("expected @ after ...")
+          None
+        }
+      }
+    }
     _ =>
       match self.parse_scalar() {
         Some(s) => Some(@ast.Value::Scalar(s))
@@ -826,7 +862,7 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
 }
 
 ///|
-fn Parser::parse_import(self : Parser) -> @ast.Import? {
+fn Parser::parse_import(self : Parser, spread : Bool) -> @ast.Import? {
   let start = self.current().range.start
   let _ = self.advance() // consume @
   let path : Array[@ast.StringValue] = []
@@ -838,5 +874,5 @@ fn Parser::parse_import(self : Parser) -> @ast.Import? {
     }
   }
   let end = self.current().range.end
-  Some(@ast.Import::new(@lexer.Range::new(start, end), false, "", path))
+  Some(@ast.Import::new(@lexer.Range::new(start, end), spread, "", path))
 }

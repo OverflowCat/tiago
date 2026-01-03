@@ -113,7 +113,7 @@ fn Lexer::scan_token(self : Lexer) -> Unit {
     // Single character tokens
     ':' => self.add_token(Colon, start)
     ';' => self.add_token(Semicolon, start)
-    '.' => self.add_token(Dot, start)
+    '.' => self.scan_dots(start)
     ',' => self.add_token(Comma, start)
     '{' => self.add_token(LeftBrace, start)
     '}' => self.add_token(RightBrace, start)
@@ -189,6 +189,18 @@ fn Lexer::scan_stars(self : Lexer, start : Position) -> Unit {
     }
   } else {
     self.add_token(Star, start)
+  }
+}
+
+///|
+fn Lexer::scan_dots(self : Lexer, start : Position) -> Unit {
+  // Could be . or ...
+  if self.peek() == '.' && self.peek_next() == '.' {
+    let _ = self.advance()
+    let _ = self.advance()
+    self.add_token(DotDotDot, start)
+  } else {
+    self.add_token(Dot, start)
   }
 }
 

@@ -295,3 +295,57 @@ test "double glob applies to nested fields" {
   guard opacity.primary is Some(p) else { fail("opacity has no value") }
   assert_eq(p.to_string(), "0.5")
 }
+
+///|
+test "compile with imports - basic" {
+  let source = "@common"
+  let (ast, _) = @parser.parse(source)
+  // Create a resolver that returns content for "common.d2"
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "common" || path == "common.d2" {
+      Some("server\ndatabase")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  // Should have a "common" field with "server" and "database" inside
+  guard ir.get_field("common") is Some(common) else { fail("no common field") }
+  guard common.composite is Some(Composite::Map(common_map)) else {
+    fail("common has no map")
+  }
+  assert_true(common_map.has_field("server"))
+  assert_true(common_map.has_field("database"))
+}
+
+///|
+test "compile with imports - spread" {
+  let source = "...@common"
+  let (ast, _) = @parser.parse(source)
+  // Create a resolver that returns content for "common.d2"
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "common" || path == "common.d2" {
+      Some("server\ndatabase")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  // Should have "server" and "database" directly at the root level
+  assert_true(ir.has_field("server"))
+  assert_true(ir.has_field("database"))
+}
+
+///|
+test "compile with imports - missing import" {
+  let source = "@nonexistent"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(_) { None })
+  // Should raise an error
+  let result : Result[Map, CompileError] = Ok(
+    compile_with_imports(ast, resolver),
+  ) catch {
+    e => Err(e)
+  }
+  assert_true(result is Err(_))
+}

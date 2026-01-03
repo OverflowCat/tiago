@@ -7,6 +7,7 @@
     "Milky2018/diago/layout",
     "Milky2018/diago/formatter",
     "moonbitlang/x/fs",
-    "moonbitlang/x/sys"
+    "moonbitlang/x/sys",
+    "moonbitlang/x/path"
   ]
 }
