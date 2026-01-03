@@ -20,15 +20,23 @@ pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
 
 pub fn get_effective_src(@graph.Edge, CycleBreakResult) -> String
 
+pub fn get_virtual_edge_index(String) -> Int?
+
+pub fn insert_virtual_nodes(@graph.Graph, LayerAssignment, CycleBreakResult) -> VirtualNodeResult
+
 pub fn is_edge_reversed(CycleBreakResult, Int) -> Bool
 
 pub fn is_sequence_diagram(@graph.Object) -> Bool
+
+pub fn is_virtual_node(String) -> Bool
 
 pub fn layout(@graph.Graph, LayoutConfig, Direction) -> Unit
 
 pub fn layout_sequence(@graph.Object, LayoutConfig) -> Unit
 
 pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> CrossingResult
+
+pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
 
 // Errors
 pub(all) suberror LayoutError {
@@ -79,6 +87,12 @@ pub struct LayoutConfig {
 pub fn LayoutConfig::new() -> Self
 pub fn LayoutConfig::with_spacing(Double, Double) -> Self
 pub impl Show for LayoutConfig
+
+pub(all) struct VirtualNodeResult {
+  layer_assignment : LayerAssignment
+  edge_virtual_nodes : Map[Int, Array[String]]
+  virtual_nodes : Map[String, Bool]
+}
 
 // Type aliases
 

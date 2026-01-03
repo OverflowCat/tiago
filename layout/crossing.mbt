@@ -283,3 +283,106 @@ pub fn count_crossings(
   }
   crossings
 }
+
+///|
+/// Minimize edge crossings with virtual node support
+/// Virtual nodes are included in the layer ordering but need special handling
+/// for neighbor computation (they connect to virtual chain neighbors)
+pub fn minimize_crossings_with_virtual(
+  graph : @graph.Graph,
+  layer_result : LayerAssignment,
+  cycle_result : CycleBreakResult,
+  _virtual_nodes : Map[String, Bool],
+) -> CrossingResult {
+  // Build adjacency lists including virtual node chains
+  let (upper_neighbors, lower_neighbors) = build_layer_adjacency_with_virtual(
+    graph, layer_result, cycle_result, _virtual_nodes,
+  )
+  // Build original order map
+  let original_order : Map[String, Int] = {}
+  let mut order_idx = 0
+  for layer in layer_result.nodes_by_layer {
+    for node in layer {
+      original_order[node] = order_idx
+      order_idx = order_idx + 1
+    }
+  }
+  // Copy initial layer ordering
+  let layers : Array[Array[String]] = []
+  for layer in layer_result.nodes_by_layer {
+    layers.push(layer.copy())
+  }
+  // Perform multiple sweeps
+  let max_iterations = 24
+  for iter = 0; iter < max_iterations; iter = iter + 1 {
+    if iter % 2 == 0 {
+      sweep_down(layers, upper_neighbors, original_order)
+    } else {
+      sweep_up(layers, lower_neighbors, original_order)
+    }
+  }
+  { ordered_layers: layers }
+}
+
+///|
+/// Build adjacency lists including virtual node chains
+fn build_layer_adjacency_with_virtual(
+  graph : @graph.Graph,
+  layer_result : LayerAssignment,
+  cycle_result : CycleBreakResult,
+  _virtual_nodes : Map[String, Bool],
+) -> (Map[String, Array[String]], Map[String, Array[String]]) {
+  let upper : Map[String, Array[String]] = {}
+  let lower : Map[String, Array[String]] = {}
+  // Initialize empty neighbor lists for all nodes (including virtual)
+  for layer in layer_result.nodes_by_layer {
+    for node in layer {
+      upper[node] = []
+      lower[node] = []
+    }
+  }
+  // Process each edge
+  for edge in graph.edges {
+    let src = get_effective_src(edge, cycle_result)
+    let dst = get_effective_dst(edge, cycle_result)
+    let src_layer = layer_result.layers.get(src).unwrap_or(0)
+    let dst_layer = layer_result.layers.get(dst).unwrap_or(0)
+    if src_layer < dst_layer {
+      let span = dst_layer - src_layer
+      if span == 1 {
+        // Direct edge
+        if upper.get(dst) is Some(neighbors) {
+          neighbors.push(src)
+        }
+        if lower.get(src) is Some(neighbors) {
+          neighbors.push(dst)
+        }
+      } else {
+        // Long edge with virtual nodes
+        // Chain: src -> v1 -> v2 -> ... -> dst
+        let mut prev = src
+        for layer_idx = src_layer + 1
+            layer_idx < dst_layer
+            layer_idx = layer_idx + 1 {
+          let virtual_id = "__virtual_\{edge.index}_\{layer_idx}"
+          // prev -> virtual_id connection
+          if lower.get(prev) is Some(neighbors) {
+            neighbors.push(virtual_id)
+          }
+          if upper.get(virtual_id) is Some(neighbors) {
+            neighbors.push(prev)
+          }
+          prev = virtual_id
+        }
+        // Last virtual -> dst connection
+        if lower.get(prev) is Some(neighbors) {
+          neighbors.push(dst)
+        }
+        if upper.get(dst) is Some(neighbors) {
+          neighbors.push(prev)
+        }
+      }
+    }
+  }
+  (upper, lower)
+}

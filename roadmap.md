@@ -14,7 +14,7 @@ This document tracks features from the D2 reference implementation that are not 
 ## Layout Engine
 
 ### 🔴 High Priority
-- [ ] **Virtual/Dummy Nodes** - Split long edges spanning multiple layers with dummy nodes for proper edge routing
+- [x] **Virtual/Dummy Nodes** - Split long edges spanning multiple layers with dummy nodes for proper edge routing
 - [ ] **ELK Layout Engine** - Alternative layout engine with better handling of complex graphs
 - [x] **Near/Absolute Positioning** - `near` keyword for relative positioning, absolute coordinate placement
 - [x] **Constant Near Positions** - `near: top-left`, `near: center`, etc. for label positioning

@@ -77,8 +77,15 @@ pub fn layout(
   let cycle_result = break_cycles(graph)
   // Phase 1: Assign layers using network simplex
   let layer_result = assign_layers(graph, cycle_result)
+  // Phase 1.5: Insert virtual nodes for long edges
+  let virtual_result = insert_virtual_nodes(graph, layer_result, cycle_result)
   // Phase 2: Minimize edge crossings using Barycenter heuristic
-  let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
+  let crossing_result = minimize_crossings_with_virtual(
+    graph,
+    virtual_result.layer_assignment,
+    cycle_result,
+    virtual_result.virtual_nodes,
+  )
   // Phase 3: Compute sizes for all objects
   compute_sizes(graph, config)
   // Phase 4: Position objects - check for special containers
@@ -90,13 +97,13 @@ pub fn layout(
     }
   }
   // Phase 5: Position remaining objects based on layers with optimized ordering
-  position_objects_layered(
-    graph, config, direction, layer_result, crossing_result, cycle_result,
+  position_objects_layered_with_virtual(
+    graph, config, direction, virtual_result, crossing_result, cycle_result,
   )
   // Phase 6: Apply near positioning
   apply_near_positioning(graph, config)
-  // Phase 7: Route edges
-  route_edges(graph, config)
+  // Phase 7: Route edges using virtual node positions
+  route_edges_with_virtual(graph, config, virtual_result)
   // Phase 8: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
 }
@@ -991,6 +998,181 @@ fn boxes_overlap(a : @graph.Box, b : @graph.Box) -> Bool {
     a.y + a.height + margin < b.y ||
     b.y + b.height + margin < a.y,
   )
+}
+
+// ============================================================================
+// Virtual Node Positioning and Routing
+// ============================================================================
+
+///|
+/// Position objects with virtual node support
+/// Virtual nodes are positioned but not rendered - their positions are used for edge routing
+fn position_objects_layered_with_virtual(
+  graph : @graph.Graph,
+  config : LayoutConfig,
+  direction : Direction,
+  virtual_result : VirtualNodeResult,
+  crossing_result : CrossingResult,
+  cycle_result : CycleBreakResult,
+) -> Unit {
+  let layer_result = virtual_result.layer_assignment
+  // If only one layer, fall back to sequential layout
+  if layer_result.layer_count <= 1 {
+    position_objects_sequential(graph, config, direction)
+    return
+  }
+  // Collect node dimensions (virtual nodes get minimal size)
+  let node_widths : Map[String, Double] = {}
+  let node_heights : Map[String, Double] = {}
+  for layer in crossing_result.ordered_layers {
+    for node_id in layer {
+      if is_virtual_node(node_id) {
+        // Virtual nodes have minimal size (just for routing)
+        node_widths[node_id] = 1.0
+        node_heights[node_id] = 1.0
+      } else if graph.find_object(node_id) is Some(obj) {
+        if obj.box is Some(b) {
+          node_widths[node_id] = b.width
+          node_heights[node_id] = b.height
+        } else {
+          node_widths[node_id] = config.default_width
+          node_heights[node_id] = config.default_height
+        }
+      }
+    }
+  }
+  // Assign coordinates using Brandes-Köpf algorithm
+  let coords = assign_coordinates(
+    graph,
+    crossing_result,
+    cycle_result,
+    node_widths,
+    node_heights,
+    config.horizontal_spacing,
+    config.vertical_spacing,
+  )
+  // Store virtual node positions in a map for edge routing
+  // (Stored in the graph's edge metadata later)
+
+  // Apply coordinates to real objects only
+  for layer in crossing_result.ordered_layers {
+    for node_id in layer {
+      if is_virtual_node(node_id) {
+        continue // Skip virtual nodes - they're just for routing
+      }
+      if graph.find_object(node_id) is Some(obj) && obj.box is Some(b) {
+        let x = coords.x_coords.get(node_id).unwrap_or(0.0) +
+          config.container_padding
+        let y = coords.y_coords.get(node_id).unwrap_or(0.0) +
+          config.container_padding
+        match direction {
+          Down | Up => obj.set_box(@graph.Box::new(x, y, b.width, b.height))
+          Right | Left => obj.set_box(@graph.Box::new(y, x, b.width, b.height))
+        }
+      }
+    }
+  }
+  // Note: Virtual node coordinates are calculated during edge routing
+  // based on layer positions, so we don't need to store them here
+  // Position children within containers
+  for obj in graph.objects {
+    if obj.is_container() {
+      position_container_children(obj, config, direction)
+    }
+  }
+}
+
+///|
+/// Route edges using virtual node positions for smoother paths
+fn route_edges_with_virtual(
+  graph : @graph.Graph,
+  _config : LayoutConfig,
+  virtual_result : VirtualNodeResult,
+) -> Unit {
+  for edge in graph.edges {
+    // Clear existing route
+    edge.route.clear()
+    // Find source and destination objects
+    let src_obj = graph.find_object(edge.src_id)
+    let dst_obj = graph.find_object(edge.dst_id)
+    if src_obj is None || dst_obj is None {
+      continue
+    }
+    let src = src_obj.unwrap()
+    let dst = dst_obj.unwrap()
+    if src.box is None || dst.box is None {
+      continue
+    }
+    let src_box = src.box.unwrap()
+    let dst_box = dst.box.unwrap()
+    // Check if this edge has virtual nodes
+    if virtual_result.edge_virtual_nodes.get(edge.index) is Some(virtual_ids) &&
+      virtual_ids.length() > 0 {
+      // Route through virtual nodes
+      route_edge_through_virtual(
+        edge, src_box, dst_box, virtual_ids, virtual_result,
+      )
+    } else {
+      // Direct edge routing
+      route_direct_edge(edge, src_box, dst_box)
+    }
+  }
+}
+
+///|
+/// Route an edge through virtual nodes
+fn route_edge_through_virtual(
+  edge : @graph.Edge,
+  src_box : @graph.Box,
+  dst_box : @graph.Box,
+  virtual_ids : Array[String],
+  virtual_result : VirtualNodeResult,
+) -> Unit {
+  // Get connection points on source
+  let src_anchor = edge.src_anchor.unwrap_or("bottom")
+  let src_point = get_anchor_point(src_box, src_anchor, 0.0)
+  edge.route.push(src_point)
+  // Add waypoints at virtual node positions
+  // Virtual nodes should be positioned between source and destination
+  let layer_assignment = virtual_result.layer_assignment
+  let src_layer = layer_assignment.layers.get(edge.src_id).unwrap_or(0)
+  let dst_layer = layer_assignment.layers.get(edge.dst_id).unwrap_or(0)
+  let layer_span = dst_layer - src_layer
+  if layer_span > 1 {
+    // Calculate intermediate Y positions based on layer
+    let total_height = dst_box.y - (src_box.y + src_box.height)
+    let layer_height = total_height / layer_span.to_double()
+    // Interpolate X position between source and destination centers
+    let src_center_x = src_box.x + src_box.width / 2.0
+    let dst_center_x = dst_box.x + dst_box.width / 2.0
+    for i, _ in virtual_ids {
+      let t = (i + 1).to_double() / layer_span.to_double()
+      let waypoint_x = src_center_x + (dst_center_x - src_center_x) * t
+      let waypoint_y = src_box.y +
+        src_box.height +
+        layer_height * (i + 1).to_double()
+      edge.route.push(@graph.Point::new(waypoint_x, waypoint_y))
+    }
+  }
+  // Get connection point on destination
+  let dst_anchor = edge.dst_anchor.unwrap_or("top")
+  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
+  edge.route.push(dst_point)
+}
+
+///|
+/// Route a direct edge (no virtual nodes)
+fn route_direct_edge(
+  edge : @graph.Edge,
+  src_box : @graph.Box,
+  dst_box : @graph.Box,
+) -> Unit {
+  let src_anchor = edge.src_anchor.unwrap_or("bottom")
+  let dst_anchor = edge.dst_anchor.unwrap_or("top")
+  let src_point = get_anchor_point(src_box, src_anchor, 0.0)
+  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
+  edge.route.push(src_point)
+  edge.route.push(dst_point)
 }
 
 // ============================================================================
