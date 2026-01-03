@@ -333,6 +333,20 @@ test "sketch mode on edge" {
   assert_true(svg.contains("filter=\"url(#sketch-filter)\""))
 }
 
+///|
+test "animated edge" {
+  let source =
+    #|a -> b {
+    #|  style.animated: true
+    #|}
+  let svg = compile(source).unwrap()
+  // Should have animated elements
+  assert_true(svg.contains("stroke-dasharray"))
+  assert_true(svg.contains("<animate"))
+  assert_true(svg.contains("stroke-dashoffset"))
+  assert_true(svg.contains("repeatCount=\"indefinite\""))
+}
+
 // =============================================================================
 // Error handling tests
 // =============================================================================

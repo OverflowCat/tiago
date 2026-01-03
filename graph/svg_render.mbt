@@ -1207,9 +1207,22 @@ fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
   // Determine markers based on arrowhead types
   let marker_end = get_marker_url(edge.dst_arrowhead, false)
   let marker_start = get_marker_url(edge.src_arrowhead, true)
-  svg.add(
-    @svg.path(pb.build(), stroke~, stroke_width~, marker_start~, marker_end~),
-  )
+  // Use animated path if animated style is enabled
+  if edge.style.animated is Some(true) {
+    svg.add(
+      @svg.animated_path(
+        pb.build(),
+        stroke~,
+        stroke_width~,
+        marker_start~,
+        marker_end~,
+      ),
+    )
+  } else {
+    svg.add(
+      @svg.path(pb.build(), stroke~, stroke_width~, marker_start~, marker_end~),
+    )
+  }
   // Render edge label
   if edge.label != "" {
     match edge.midpoint() {

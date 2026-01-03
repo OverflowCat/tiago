@@ -2,6 +2,8 @@
 package "Milky2018/diago/svg"
 
 // Values
+pub fn animated_path(String, fill? : String, stroke? : String, stroke_width? : Double, marker_start? : String, marker_end? : String) -> String
+
 pub fn arrow_marker(String, Double, String, reverse? : Bool) -> String
 
 pub fn background(String) -> String

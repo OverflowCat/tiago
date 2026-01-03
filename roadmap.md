@@ -26,7 +26,7 @@ This document tracks features from the D2 reference implementation that are not 
 - [ ] **Connection Anchors** - Control edge connection points on shapes
 
 ### 🟢 Low Priority
-- [ ] **Animated Edges** - CSS animations for edges (`animated: true`)
+- [x] **Animated Edges** - CSS animations for edges (`animated: true`)
 
 ---
 

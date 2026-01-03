@@ -250,6 +250,37 @@ pub fn path(
 }
 
 ///|
+/// Build an animated path element with marching ants effect
+pub fn animated_path(
+  d : String,
+  fill? : String = "none",
+  stroke? : String = "black",
+  stroke_width? : Double = 1.0,
+  marker_start? : String = "",
+  marker_end? : String = "",
+) -> String {
+  // Create path with animation
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("fill", fill)
+    .attr("stroke", stroke)
+    .attr_num("stroke-width", stroke_width)
+    .attr("stroke-dasharray", "5,5")
+    .attr_if("marker-start", marker_start)
+    .attr_if("marker-end", marker_end)
+  // Add animate element for marching ants effect
+  let animate = @xml_emit.Element::new("animate")
+    .attr("attributeName", "stroke-dashoffset")
+    .attr("from", "10")
+    .attr("to", "0")
+    .attr("dur", "0.5s")
+    .attr("repeatCount", "indefinite")
+    .self_close()
+    .build()
+  path_elem.raw(animate).build()
+}
+
+///|
 /// Build a text element
 pub fn text(
   x : Double,
