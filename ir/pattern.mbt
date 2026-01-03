@@ -46,14 +46,38 @@ pub fn is_board_keyword(name : String) -> Bool {
 
 ///|
 /// Check if pattern represents a double glob (**)
+/// Parser stores ** as ["*", "", "*"]
 pub fn is_double_glob(pattern : Array[String]) -> Bool {
-  pattern.length() == 1 && pattern[0] == "**"
+  if pattern.length() == 1 && pattern[0] == "**" {
+    return true
+  }
+  // Parser format: ["*", "", "*"]
+  if pattern.length() == 3 &&
+    pattern[0] == "*" &&
+    pattern[1] == "" &&
+    pattern[2] == "*" {
+    return true
+  }
+  false
 }
 
 ///|
 /// Check if pattern represents a triple glob (***)
+/// Parser stores *** as ["*", "", "*", "", "*"]
 pub fn is_triple_glob(pattern : Array[String]) -> Bool {
-  pattern.length() == 1 && pattern[0] == "***"
+  if pattern.length() == 1 && pattern[0] == "***" {
+    return true
+  }
+  // Parser format: ["*", "", "*", "", "*"]
+  if pattern.length() == 5 &&
+    pattern[0] == "*" &&
+    pattern[1] == "" &&
+    pattern[2] == "*" &&
+    pattern[3] == "" &&
+    pattern[4] == "*" {
+    return true
+  }
+  false
 }
 
 ///|

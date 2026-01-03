@@ -573,3 +573,43 @@ test "empty input" {
   let result = compile("")
   assert_true(result is Ok(_))
 }
+
+// =============================================================================
+// Glob pattern tests
+// =============================================================================
+
+///|
+test "single glob style" {
+  let source =
+    #|a
+    #|b
+    #|c
+    #|*.style.fill: red
+  let svg = compile(source).unwrap()
+  // All objects should have red fill
+  assert_true(svg.contains("fill=\"red\""))
+}
+
+///|
+test "double glob style" {
+  let source =
+    #|container {
+    #|  child1
+    #|  child2
+    #|}
+    #|**.style.fill: blue
+  let svg = compile(source).unwrap()
+  // All nested objects should have blue fill
+  assert_true(svg.contains("fill=\"blue\""))
+}
+
+///|
+test "glob with pattern" {
+  let source =
+    #|server1
+    #|server2
+    #|client
+    #|server*.style.fill: green
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}

@@ -226,3 +226,72 @@ test "value operations" {
   let v3 : Value = Value::Array(IRArray::new([]))
   assert_true(v3.as_array() is Some(_))
 }
+
+///|
+test "glob style.fill applies to all fields" {
+  let source =
+    #|a
+    #|b
+    #|*.style.fill: red
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  // Both a and b should have style.fill: red
+  for field_name in ["a", "b"] {
+    guard ir.get_field(field_name) is Some(field) else {
+      fail("no field \{field_name}")
+    }
+    guard field.composite is Some(Composite::Map(m)) else {
+      fail("field \{field_name} has no map")
+    }
+    guard m.get_field("style") is Some(style_field) else {
+      fail("field \{field_name} has no style")
+    }
+    guard style_field.composite is Some(Composite::Map(style_map)) else {
+      fail("field \{field_name} style has no map")
+    }
+    guard style_map.get_field("fill") is Some(fill_field) else {
+      fail("field \{field_name} style has no fill")
+    }
+    guard fill_field.primary is Some(p) else {
+      fail("field \{field_name} fill has no value")
+    }
+    assert_eq(p.to_string(), "red")
+  }
+}
+
+///|
+test "double glob applies to nested fields" {
+  let source =
+    #|container {
+    #|  child1
+    #|  child2
+    #|}
+    #|**.style.opacity: 0.5
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  // container, child1, and child2 should all have style.opacity: 0.5
+  guard ir.get_field("container") is Some(container) else {
+    fail("no container")
+  }
+  guard container.composite is Some(Composite::Map(container_map)) else {
+    fail("container has no map")
+  }
+  // Check child1 has opacity
+  guard container_map.get_field("child1") is Some(child1) else {
+    fail("no child1")
+  }
+  guard child1.composite is Some(Composite::Map(child1_map)) else {
+    fail("child1 has no map")
+  }
+  guard child1_map.get_field("style") is Some(style) else {
+    fail("child1 has no style")
+  }
+  guard style.composite is Some(Composite::Map(style_map)) else {
+    fail("child1 style has no map")
+  }
+  guard style_map.get_field("opacity") is Some(opacity) else {
+    fail("child1 has no opacity")
+  }
+  guard opacity.primary is Some(p) else { fail("opacity has no value") }
+  assert_eq(p.to_string(), "0.5")
+}

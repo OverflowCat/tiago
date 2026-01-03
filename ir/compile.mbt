@@ -101,26 +101,116 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
 ///|
 /// Compile a key with glob pattern
 fn compile_glob_key(ir : Map, key_path : @ast.KeyPath, key : @ast.Key) -> Unit {
-  // Extract glob pattern from the last path element
-  let pattern = extract_glob_pattern(key_path)
+  // Find the glob element and extract pattern
+  let (pattern, remaining_path) = extract_glob_and_path(key_path)
+  if pattern.length() == 0 {
+    return // No valid glob pattern
+  }
   // Collect filters from the value map if present
   let filters = collect_filters_from_value(key)
-  // Build properties map from value
-  let properties = build_properties_map(key)
+  // Build properties map from the remaining path and value
+  let properties = build_nested_properties(remaining_path, key)
   // Apply glob pattern with filters
   ir.apply_glob_properties(pattern, properties, filters)
 }
 
 ///|
-/// Extract glob pattern from key path
-fn extract_glob_pattern(key_path : @ast.KeyPath) -> Array[String] {
-  // For now, just get pattern from the last element
-  guard key_path.path.length() > 0 else { return [] }
-  let last = key_path.path[key_path.path.length() - 1]
-  match last {
-    @ast.StringValue::Unquoted(us) => us.pattern
-    _ => []
+/// Extract glob pattern and remaining path from key path
+/// Returns (pattern, remaining_path) where pattern is from the glob element
+/// and remaining_path is the rest of the key path after the glob
+fn extract_glob_and_path(
+  key_path : @ast.KeyPath,
+) -> (Array[String], Array[String]) {
+  let path = key_path.path
+  let mut glob_index = -1
+  let mut pattern : Array[String] = []
+  // Find the first element with a glob pattern
+  for i, elem in path {
+    match elem {
+      @ast.StringValue::Unquoted(us) =>
+        if us.pattern.length() > 0 {
+          pattern = us.pattern
+          glob_index = i
+          break
+        }
+      _ => ()
+    }
   }
+  if glob_index < 0 {
+    return ([], [])
+  }
+  // Collect remaining path elements after the glob
+  let remaining : Array[String] = []
+  for i = glob_index + 1; i < path.length(); i = i + 1 {
+    remaining.push(path[i].content())
+  }
+  (pattern, remaining)
+}
+
+///|
+/// Build nested properties map from remaining path and key value
+fn build_nested_properties(
+  remaining_path : Array[String],
+  key : @ast.Key,
+) -> Map {
+  let props = Map::new()
+  if remaining_path.length() == 0 {
+    // No remaining path, use value directly
+    match key.value {
+      Some(@ast.Value::Map(m)) =>
+        for node in m.nodes {
+          match node {
+            @ast.MapNode::Key(prop_key) =>
+              if !prop_key.ampersand && !prop_key.not_ampersand {
+                match prop_key.key {
+                  Some(pk) => {
+                    let prop_names = pk.to_strings()
+                    if prop_names.length() > 0 {
+                      let prop_field = Field::simple(prop_names[0])
+                      match prop_key.value {
+                        Some(@ast.Value::Scalar(sv)) =>
+                          prop_field.primary = Some(compile_scalar(sv))
+                        _ => ()
+                      }
+                      props.add_field(prop_field)
+                    }
+                  }
+                  None => ()
+                }
+              }
+            _ => ()
+          }
+        }
+      _ => ()
+    }
+  } else {
+    // Build nested structure: style.fill: red -> { style: { fill: red } }
+    let mut current = props
+    for i = 0; i < remaining_path.length() - 1; i = i + 1 {
+      let name = remaining_path[i]
+      let field = Field::simple(name)
+      let inner = Map::new()
+      field.composite = Some(Composite::Map(inner))
+      current.add_field(field)
+      current = inner
+    }
+    // Set the final value
+    let final_name = remaining_path[remaining_path.length() - 1]
+    let final_field = Field::simple(final_name)
+    // Try key.primary first, then key.value for scalar
+    match key.primary {
+      Some(scalar) => final_field.primary = Some(compile_scalar(scalar))
+      None =>
+        // Check if value is a scalar
+        match key.value {
+          Some(@ast.Value::Scalar(sv)) =>
+            final_field.primary = Some(compile_scalar(sv))
+          _ => ()
+        }
+    }
+    current.add_field(final_field)
+  }
+  props
 }
 
 ///|
@@ -151,41 +241,6 @@ fn collect_filters_from_value(key : @ast.Key) -> Array[(Bool, String, String)] {
     _ => ()
   }
   filters
-}
-
-///|
-/// Build a properties map from the key's value (excluding filters)
-fn build_properties_map(key : @ast.Key) -> Map {
-  let props = Map::new()
-  match key.value {
-    Some(@ast.Value::Map(m)) =>
-      for node in m.nodes {
-        match node {
-          @ast.MapNode::Key(prop_key) =>
-            if !prop_key.ampersand && !prop_key.not_ampersand {
-              // This is a regular property, not a filter
-              match prop_key.key {
-                Some(pk) => {
-                  let prop_names = pk.to_strings()
-                  if prop_names.length() > 0 {
-                    let prop_field = Field::simple(prop_names[0])
-                    match prop_key.value {
-                      Some(@ast.Value::Scalar(sv)) =>
-                        prop_field.primary = Some(compile_scalar(sv))
-                      _ => ()
-                    }
-                    props.add_field(prop_field)
-                  }
-                }
-                None => ()
-              }
-            }
-          _ => ()
-        }
-      }
-    _ => ()
-  }
-  props
 }
 
 ///|

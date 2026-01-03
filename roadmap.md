@@ -153,7 +153,7 @@ All core themes implemented. Missing specialty themes:
 
 ### 🔴 High Priority
 - [ ] **Imports** - `...@import` for modular diagrams
-- [ ] **Globs** - Wildcard patterns for bulk styling (`*.style.fill: red`)
+- [x] **Globs** - Wildcard patterns for bulk styling (`*.style.fill: red`)
 
 ### 🟡 Medium Priority
 - [ ] **Nested Variable Substitution** - `${parent.child}` syntax
