@@ -2,6 +2,46 @@
 /// Tests for layer assignment algorithm
 
 ///|
+test "layer assignment classes.d2 - alice and bob at top" {
+  // alice -> web1, bob -> web2, web1 -> db1, web2 -> db1, db1 -> db2
+  // Expected layers: [alice, bob] -> [web1, web2] -> [db1] -> [db2]
+  let source =
+    #|alice: Alice
+    #|bob: Bob
+    #|web1: Web Server 1
+    #|web2: Web Server 2
+    #|db1: Primary DB
+    #|db2: Replica DB
+    #|alice -> web1
+    #|bob -> web2
+    #|web1 -> db1
+    #|web2 -> db1
+    #|db1 -> db2
+  let (ast, _) = @parser.parse(source)
+  let ir = @ir.compile(ast)
+  let graph = @graph.compile("test", ir)
+  let cycle_result = break_cycles(graph)
+
+  // Should have no reversed edges (no cycles)
+  inspect(cycle_result.reversed_edges.length(), content="0")
+  let layer_result = assign_layers(graph, cycle_result)
+
+  // alice and bob should be at layer 0 (sources)
+  inspect(layer_result.layers.get("alice"), content="Some(0)")
+  inspect(layer_result.layers.get("bob"), content="Some(0)")
+
+  // web1 and web2 should be at layer 1
+  inspect(layer_result.layers.get("web1"), content="Some(1)")
+  inspect(layer_result.layers.get("web2"), content="Some(1)")
+
+  // db1 should be at layer 2
+  inspect(layer_result.layers.get("db1"), content="Some(2)")
+
+  // db2 should be at layer 3
+  inspect(layer_result.layers.get("db2"), content="Some(3)")
+}
+
+///|
 test "assign_layers simple chain" {
   // a -> b -> c should be layers 0, 1, 2
   let source = "a -> b\nb -> c"

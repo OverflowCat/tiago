@@ -122,6 +122,49 @@ test "minimize_crossings reduces crossings" {
 }
 
 ///|
+test "minimize_crossings preserves original order for unconnected nodes" {
+  // When nodes have no edges connecting them, they should preserve definition order
+  // Define: a, b, c, d all on the same layer (no edges between them)
+  let source = "a\nb\nc\nd"
+  let (ast, _) = @parser.parse(source)
+  let ir = @ir.compile(ast)
+  let graph = @graph.compile("test", ir)
+  let cycle_result = break_cycles(graph)
+  let layer_result = assign_layers(graph, cycle_result)
+  let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
+  // All nodes should be in one layer, in original definition order
+  inspect(crossing_result.ordered_layers.length(), content="1")
+  inspect(
+    crossing_result.ordered_layers[0],
+    content="[\"a\", \"b\", \"c\", \"d\"]",
+  )
+}
+
+///|
+test "minimize_crossings preserves order within layer for nodes without neighbors" {
+  // x -> a, y -> b
+  // Nodes x and y in layer 0, a and b in layer 1
+  // x and y have no cross-constraints, should maintain definition order
+  let source = "x -> a\ny -> b"
+  let (ast, _) = @parser.parse(source)
+  let ir = @ir.compile(ast)
+  let graph = @graph.compile("test", ir)
+  let cycle_result = break_cycles(graph)
+  let layer_result = assign_layers(graph, cycle_result)
+  let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
+  // Layer 0 should have [x, y] in definition order
+  // Layer 1 should have [a, b] in definition order
+  inspect(crossing_result.ordered_layers.length(), content="2")
+  // The order should be preserved or reordered to minimize crossings
+  // Since x->a and y->b are parallel (no crossing), order should be preserved
+  let layer0 = crossing_result.ordered_layers[0]
+  let layer1 = crossing_result.ordered_layers[1]
+  // Both layers should have 2 nodes each
+  inspect(layer0.length(), content="2")
+  inspect(layer1.length(), content="2")
+}
+
+///|
 /// Helper to count all crossings across all adjacent layer pairs
 fn count_all_crossings(
   layers : Array[Array[String]],

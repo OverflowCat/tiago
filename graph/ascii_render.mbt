@@ -90,7 +90,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
 
 ///|
 /// Compute ASCII layout positions for all objects
-/// Uses vertical stacking with centered children (D2 reference style)
+/// Uses the y-coordinates from the layout phase for ordering
 fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] {
   // Track which object IDs are children (nested inside containers)
   let child_ids : Map[String, Bool] = {}
@@ -100,51 +100,77 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
     }
   }
   // Find root objects (not children of any container)
-  // Order by: non-containers first (user), then containers (AWS Cloud)
   let roots : Array[Object] = []
-  // First add non-containers
   for obj in graph.objects {
-    if not(child_ids.contains(obj.id)) && not(obj.is_container()) {
+    if not(child_ids.contains(obj.id)) {
       roots.push(obj)
     }
   }
-  // Then add containers
-  for obj in graph.objects {
-    if not(child_ids.contains(obj.id)) && obj.is_container() {
-      roots.push(obj)
-    }
-  }
+  // Sort roots by their y-coordinate from the layout phase (top to bottom)
+  // This respects the order computed by the Sugiyama algorithm
+  sort_objects_by_y(roots)
   // First pass: compute sizes for all objects (bottom-up)
   let sizes : Map[String, (Int, Int)] = {} // id -> (width, height)
   for obj in graph.objects {
     compute_object_size(obj, config, sizes) |> ignore
   }
-  // Find the total width needed (max of all root widths)
-  let mut total_width = 0
-  for obj in roots {
-    match sizes.get(obj.id) {
-      Some((w, _)) => total_width = max_i(total_width, w)
-      None => ()
+  // Group objects by layer (same y-coordinate = same layer)
+  let layers = group_by_layer(roots)
+  // Compute total width needed for each layer (sum of widths + spacing)
+  let mut max_layer_width = config.min_width
+  for layer in layers {
+    let mut layer_width = 0
+    for obj in layer {
+      match sizes.get(obj.id) {
+        Some((w, _)) => layer_width = layer_width + w + config.h_spacing
+        None => ()
+      }
     }
+    if layer_width > 0 {
+      layer_width = layer_width - config.h_spacing // Remove last spacing
+    }
+    max_layer_width = max_i(max_layer_width, layer_width)
   }
-  total_width = max_i(total_width, config.min_width)
-  // Second pass: position objects (top-down), centered
+  // Second pass: position objects by layer
   let boxes : Array[AsciiBox] = []
   let placed : Map[String, AsciiBox] = {}
-  let center_x = total_width / 2
   let mut current_y = 1
-  for obj in roots {
-    match sizes.get(obj.id) {
-      Some((w, h)) => {
-        let x = center_x - w / 2
-        let box = create_positioned_box(obj, x, current_y, w, h, config, sizes)
-        boxes.push(box)
-        placed[obj.id] = box
-        register_children(box, placed)
-        current_y = current_y + h + config.v_spacing
+  for layer in layers {
+    // Sort objects within layer by x-coordinate
+    sort_objects_by_x(layer)
+    // Compute layer width and height
+    let mut layer_width = 0
+    let mut max_height = 0
+    for obj in layer {
+      match sizes.get(obj.id) {
+        Some((w, h)) => {
+          layer_width = layer_width + w + config.h_spacing
+          max_height = max_i(max_height, h)
+        }
+        None => ()
       }
-      None => ()
     }
+    if layer_width > 0 {
+      layer_width = layer_width - config.h_spacing
+    }
+    // Center the layer horizontally
+    let start_x = (max_layer_width - layer_width) / 2
+    let mut x = start_x
+    for obj in layer {
+      match sizes.get(obj.id) {
+        Some((w, h)) => {
+          let box = create_positioned_box(
+            obj, x, current_y, w, h, config, sizes,
+          )
+          boxes.push(box)
+          placed[obj.id] = box
+          register_children(box, placed)
+          x = x + w + config.h_spacing
+        }
+        None => ()
+      }
+    }
+    current_y = current_y + max_height + config.v_spacing
   }
   // Flatten all boxes including children for rendering
   flatten_boxes(boxes)
@@ -308,6 +334,96 @@ fn max_i(a : Int, b : Int) -> Int {
   } else {
     b
   }
+}
+
+///|
+/// Sort objects by their y-coordinate (layout position)
+fn sort_objects_by_y(objects : Array[Object]) -> Unit {
+  // Insertion sort by y-coordinate
+  let n = objects.length()
+  for i = 1; i < n; i = i + 1 {
+    let key = objects[i]
+    let key_y = match key.box {
+      Some(b) => b.y
+      None => 0.0
+    }
+    let mut j = i - 1
+    while j >= 0 {
+      let j_y = match objects[j].box {
+        Some(b) => b.y
+        None => 0.0
+      }
+      if j_y > key_y {
+        objects[j + 1] = objects[j]
+        j = j - 1
+      } else {
+        break
+      }
+    }
+    objects[j + 1] = key
+  }
+}
+
+///|
+/// Sort objects by their x-coordinate (layout position)
+fn sort_objects_by_x(objects : Array[Object]) -> Unit {
+  let n = objects.length()
+  for i = 1; i < n; i = i + 1 {
+    let key = objects[i]
+    let key_x = match key.box {
+      Some(b) => b.x
+      None => 0.0
+    }
+    let mut j = i - 1
+    while j >= 0 {
+      let j_x = match objects[j].box {
+        Some(b) => b.x
+        None => 0.0
+      }
+      if j_x > key_x {
+        objects[j + 1] = objects[j]
+        j = j - 1
+      } else {
+        break
+      }
+    }
+    objects[j + 1] = key
+  }
+}
+
+///|
+/// Group objects by their y-coordinate (layer)
+/// Objects are already sorted by y, so consecutive objects with same y are in same layer
+fn group_by_layer(objects : Array[Object]) -> Array[Array[Object]] {
+  let layers : Array[Array[Object]] = []
+  if objects.length() == 0 {
+    return layers
+  }
+  let mut current_layer : Array[Object] = []
+  let mut current_y = match objects[0].box {
+    Some(b) => b.y
+    None => 0.0
+  }
+  for obj in objects {
+    let obj_y = match obj.box {
+      Some(b) => b.y
+      None => 0.0
+    }
+    // Use a small epsilon for floating point comparison
+    if (obj_y - current_y).abs() < 1.0 {
+      current_layer.push(obj)
+    } else {
+      if current_layer.length() > 0 {
+        layers.push(current_layer)
+      }
+      current_layer = [obj]
+      current_y = obj_y
+    }
+  }
+  if current_layer.length() > 0 {
+    layers.push(current_layer)
+  }
+  layers
 }
 
 ///|

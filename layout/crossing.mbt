@@ -16,6 +16,7 @@ pub(all) struct CrossingResult {
 ///|
 /// Minimize edge crossings using the Barycenter heuristic
 /// Performs alternating up/down sweeps to iteratively improve ordering
+/// Preserves original definition order as tie-breaker for nodes with equal barycenters
 pub fn minimize_crossings(
   graph : @graph.Graph,
   layer_result : LayerAssignment,
@@ -25,6 +26,16 @@ pub fn minimize_crossings(
   let (upper_neighbors, lower_neighbors) = build_layer_adjacency(
     graph, layer_result, cycle_result,
   )
+  // Build original order map: node -> definition order
+  // This preserves user's intended order for nodes without edge constraints
+  let original_order : Map[String, Int] = {}
+  let mut order_idx = 0
+  for layer in layer_result.nodes_by_layer {
+    for node in layer {
+      original_order[node] = order_idx
+      order_idx = order_idx + 1
+    }
+  }
   // Copy initial layer ordering
   let layers : Array[Array[String]] = []
   for layer in layer_result.nodes_by_layer {
@@ -35,9 +46,9 @@ pub fn minimize_crossings(
   for iter = 0; iter < max_iterations; iter = iter + 1 {
     // Alternate between down sweep and up sweep
     if iter % 2 == 0 {
-      sweep_down(layers, upper_neighbors)
+      sweep_down(layers, upper_neighbors, original_order)
     } else {
-      sweep_up(layers, lower_neighbors)
+      sweep_up(layers, lower_neighbors, original_order)
     }
   }
   { ordered_layers: layers }
@@ -94,12 +105,15 @@ fn build_layer_adjacency(
 fn sweep_down(
   layers : Array[Array[String]],
   upper_neighbors : Map[String, Array[String]],
+  original_order : Map[String, Int],
 ) -> Unit {
   // Skip first layer (no upper neighbors)
   for i = 1; i < layers.length(); i = i + 1 {
     let upper_layer = layers[i - 1]
     let current_layer = layers[i]
-    reorder_by_barycenter(current_layer, upper_layer, upper_neighbors)
+    reorder_by_barycenter(
+      current_layer, upper_layer, upper_neighbors, original_order,
+    )
   }
 }
 
@@ -108,12 +122,15 @@ fn sweep_down(
 fn sweep_up(
   layers : Array[Array[String]],
   lower_neighbors : Map[String, Array[String]],
+  original_order : Map[String, Int],
 ) -> Unit {
   // Skip last layer (no lower neighbors)
   for i = layers.length() - 2; i >= 0; i = i - 1 {
     let lower_layer = layers[i + 1]
     let current_layer = layers[i]
-    reorder_by_barycenter(current_layer, lower_layer, lower_neighbors)
+    reorder_by_barycenter(
+      current_layer, lower_layer, lower_neighbors, original_order,
+    )
   }
 }
 
@@ -123,6 +140,7 @@ fn reorder_by_barycenter(
   current_layer : Array[String],
   adjacent_layer : Array[String],
   neighbors : Map[String, Array[String]],
+  original_order : Map[String, Int],
 ) -> Unit {
   // Build position map for adjacent layer
   let positions : Map[String, Int] = {}
@@ -130,35 +148,41 @@ fn reorder_by_barycenter(
     positions[node] = i
   }
   // Compute barycenter for each node in current layer
-  let barycenters : Array[(String, Double)] = []
-  for i, node in current_layer {
-    let bc = compute_barycenter(node, positions, neighbors, i)
-    barycenters.push((node, bc))
+  // Store (node, barycenter, original_order) for sorting
+  let entries : Array[(String, Double, Int)] = []
+  for node in current_layer {
+    let bc = compute_barycenter(node, positions, neighbors, original_order)
+    let orig = original_order.get(node).unwrap_or(0)
+    entries.push((node, bc, orig))
   }
-  // Sort by barycenter (stable sort to preserve order for equal values)
-  sort_by_barycenter(barycenters)
+  // Sort by (barycenter, original_order) - uses original order as tie-breaker
+  sort_by_barycenter_and_order(entries)
   // Update current layer with new order
-  for i, pair in barycenters {
-    let (node, _) = pair
+  for i, entry in entries {
+    let (node, _, _) = entry
     current_layer[i] = node
   }
 }
 
 ///|
 /// Compute barycenter for a node
-/// Returns average position of neighbors, or current position if no neighbors
+/// Returns average position of neighbors, or a position based on original order if no neighbors
 fn compute_barycenter(
   node : String,
   adjacent_positions : Map[String, Int],
   neighbors : Map[String, Array[String]],
-  current_pos : Int,
+  original_order : Map[String, Int],
 ) -> Double {
   let node_neighbors = match neighbors.get(node) {
     Some(n) => n
-    None => return current_pos.to_double()
+    None =>
+      // No neighbors: use original order scaled to be in the middle of the layer
+      // This ensures nodes without edges stay near their original position
+      return original_order.get(node).unwrap_or(0).to_double()
   }
   if node_neighbors.length() == 0 {
-    return current_pos.to_double()
+    // No neighbors: use original order
+    return original_order.get(node).unwrap_or(0).to_double()
   }
   // Sum positions of neighbors
   let mut sum = 0.0
@@ -173,30 +197,40 @@ fn compute_barycenter(
     }
   }
   if count == 0 {
-    current_pos.to_double()
+    // Neighbors exist but not in adjacent layer: use original order
+    original_order.get(node).unwrap_or(0).to_double()
   } else {
     sum / count.to_double()
   }
 }
 
 ///|
-/// Sort pairs by barycenter value (insertion sort for stability)
-fn sort_by_barycenter(pairs : Array[(String, Double)]) -> Unit {
-  let n = pairs.length()
+/// Sort entries by (barycenter, original_order)
+/// Uses original order as tie-breaker when barycenters are equal
+fn sort_by_barycenter_and_order(entries : Array[(String, Double, Int)]) -> Unit {
+  let n = entries.length()
   for i = 1; i < n; i = i + 1 {
-    let key = pairs[i]
-    let (_, key_bc) = key
+    let key = entries[i]
+    let (_, key_bc, key_order) = key
     let mut j = i - 1
     while j >= 0 {
-      let (_, j_bc) = pairs[j]
-      if j_bc > key_bc {
-        pairs[j + 1] = pairs[j]
+      let (_, j_bc, j_order) = entries[j]
+      // Compare by barycenter first, then by original order
+      let should_swap = if j_bc > key_bc {
+        true
+      } else if j_bc == key_bc && j_order > key_order {
+        true
+      } else {
+        false
+      }
+      if should_swap {
+        entries[j + 1] = entries[j]
         j = j - 1
       } else {
         break
       }
     }
-    pairs[j + 1] = key
+    entries[j + 1] = key
   }
 }
 
