@@ -64,6 +64,10 @@ pub(all) struct Edge {
   src_arrow : Bool
   /// Has arrow at destination
   dst_arrow : Bool
+  /// Source arrowhead type (triangle, diamond, circle, cf-one, cf-many, none)
+  mut src_arrowhead : String
+  /// Destination arrowhead type (triangle, diamond, circle, cf-one, cf-many, none)
+  mut dst_arrowhead : String
   /// Edge label
   mut label : String
   /// Visual style
@@ -114,7 +118,13 @@ pub(all) struct Style {
   underline : Bool?
   mut animated : Bool?
   filled : Bool?
-  double_border : Bool?
+  mut double_border : Bool?
+  /// Text transformation: uppercase, lowercase, capitalize, none
+  mut text_transform : String?
+  /// Custom font family
+  mut font_family : String?
+  /// Fill pattern: dots, lines, cross-hatch, grain
+  mut fill_pattern : String?
 } derive(Eq, Show)
 
 // ============================================================================
@@ -170,6 +180,16 @@ pub fn Edge::new(
     dst_id,
     src_arrow,
     dst_arrow,
+    src_arrowhead: if src_arrow {
+      "triangle"
+    } else {
+      "none"
+    },
+    dst_arrowhead: if dst_arrow {
+      "triangle"
+    } else {
+      "none"
+    },
     label: "",
     style: Style::new(),
     route: [],
@@ -220,6 +240,9 @@ pub fn Style::new() -> Style {
     animated: None,
     filled: None,
     double_border: None,
+    text_transform: None,
+    font_family: None,
+    fill_pattern: None,
   }
 }
 

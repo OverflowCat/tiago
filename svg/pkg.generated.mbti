@@ -6,13 +6,41 @@ pub fn arrow_marker(String, Double, String, reverse? : Bool) -> String
 
 pub fn background(String) -> String
 
+pub fn cf_many_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn cf_many_optional_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn cf_many_required_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn cf_one_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn cf_one_optional_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn cf_one_required_marker(String, Double, String, reverse? : Bool) -> String
+
 pub fn circle(Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double) -> String
+
+pub fn circle_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn crosshatch_pattern(String, String, String) -> String
+
+pub fn diamond_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn dots_pattern(String, String, String) -> String
 
 pub fn ellipse(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double) -> String
 
 pub fn escape_xml(String) -> String
 
+pub fn grain_pattern(String, String, String) -> String
+
 pub fn line(Double, Double, Double, Double, stroke? : String, stroke_width? : Double) -> String
+
+pub fn line_marker(String, Double, String, reverse? : Bool) -> String
+
+pub fn lines_pattern(String, String, String) -> String
+
+pub fn open_marker(String, Double, String, reverse? : Bool) -> String
 
 pub fn path(String, fill? : String, stroke? : String, stroke_width? : Double, marker_start? : String, marker_end? : String) -> String
 
@@ -21,6 +49,8 @@ pub fn polygon(Array[(Double, Double)], fill? : String, stroke? : String, stroke
 pub fn polyline(Array[(Double, Double)], fill? : String, stroke? : String, stroke_width? : Double) -> String
 
 pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double, ry? : Double) -> String
+
+pub fn styled_text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String, text_transform? : String, extra_style? : String) -> String
 
 pub fn text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String) -> String
 

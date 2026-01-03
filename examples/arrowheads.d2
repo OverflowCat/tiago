@@ -1,0 +1,33 @@
+# Arrowhead Types Demo
+
+# Default triangle arrows
+a -> b: triangle (default)
+
+# Diamond arrowheads
+c -> d: diamond {
+  target-arrowhead.shape: diamond
+}
+
+# Circle arrowheads
+e -> f: circle {
+  target-arrowhead.shape: circle
+}
+
+# Crow's foot (ERD) notation
+# One-to-many relationship
+user -> orders: one to many {
+  source-arrowhead.shape: cf-one
+  target-arrowhead.shape: cf-many
+}
+
+# Many-to-many relationship
+students -> courses: many to many {
+  source-arrowhead.shape: cf-many
+  target-arrowhead.shape: cf-many
+}
+
+# Bidirectional with different heads
+g <-> h: mixed {
+  source-arrowhead.shape: circle
+  target-arrowhead.shape: diamond
+}

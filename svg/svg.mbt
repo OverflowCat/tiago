@@ -234,7 +234,38 @@ pub fn text(
 }
 
 ///|
-/// Build an arrow marker definition
+/// Build a styled text element with support for text-transform and extra styles
+pub fn styled_text(
+  x : Double,
+  y : Double,
+  content : String,
+  font_family? : String = "Arial, sans-serif",
+  font_size? : Int = 14,
+  text_anchor? : String = "middle",
+  dominant_baseline? : String = "middle",
+  text_transform? : String = "",
+  extra_style? : String = "",
+) -> String {
+  let escaped = escape_xml(content)
+  // Build style attribute
+  let style_parts : Array[String] = []
+  if text_transform != "" {
+    style_parts.push("text-transform: \{text_transform}")
+  }
+  if extra_style != "" {
+    style_parts.push(extra_style)
+  }
+  let style_attr = if style_parts.length() > 0 {
+    let joined = style_parts.join("; ")
+    " style=\"\{joined}\""
+  } else {
+    ""
+  }
+  "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{text_anchor}\" dominant-baseline=\"\{dominant_baseline}\" font-family=\"\{font_family}\" font-size=\"\{font_size}\"\{style_attr}>\{escaped}</text>"
+}
+
+///|
+/// Build an arrow marker definition (triangle)
 pub fn arrow_marker(
   id : String,
   size : Double,
@@ -250,9 +281,199 @@ pub fn arrow_marker(
 }
 
 ///|
+/// Build a diamond marker definition
+pub fn diamond_marker(
+  id : String,
+  size : Double,
+  fill : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let refX = if reverse { 0.0 } else { size }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{half},0 L\{size},\{half} L\{half},\{size} Z\" fill=\"\{fill}\"/></marker>"
+}
+
+///|
+/// Build a circle marker definition
+pub fn circle_marker(
+  id : String,
+  size : Double,
+  fill : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let r = half * 0.8
+  let refX = if reverse { r } else { size - r }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><circle cx=\"\{half}\" cy=\"\{half}\" r=\"\{r}\" fill=\"\{fill}\"/></marker>"
+}
+
+///|
+/// Build a crow's foot "one" marker (single line)
+pub fn cf_one_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let refX = if reverse { 0.0 } else { size }
+  let x = if reverse { 0.0 } else { size }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{x}\" y1=\"0\" x2=\"\{x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+}
+
+///|
+/// Build a crow's foot "many" marker (three lines spreading out)
+pub fn cf_many_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  if reverse {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  } else {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  }
+}
+
+///|
+/// Build a crow's foot "one-required" marker (line with bar)
+pub fn cf_one_required_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let bar_x = if reverse { size * 0.3 } else { size * 0.7 }
+  let line_x = if reverse { 0.0 } else { size }
+  let refX = if reverse { 0.0 } else { size }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{line_x}\" y1=\"0\" x2=\"\{line_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+}
+
+///|
+/// Build a crow's foot "many-required" marker (three lines with bar)
+pub fn cf_many_required_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let bar_x = if reverse { size * 0.7 } else { size * 0.3 }
+  if reverse {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  } else {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  }
+}
+
+///|
+/// Build a crow's foot "one-optional" marker (line with circle)
+pub fn cf_one_optional_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let r = size * 0.2
+  let circle_x = if reverse { size * 0.3 } else { size * 0.7 }
+  let line_x = if reverse { 0.0 } else { size }
+  let refX = if reverse { 0.0 } else { size }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{line_x}\" y1=\"0\" x2=\"\{line_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+}
+
+///|
+/// Build a crow's foot "many-optional" marker (three lines with circle)
+pub fn cf_many_optional_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let r = size * 0.2
+  let circle_x = if reverse { size * 0.7 } else { size * 0.3 }
+  if reverse {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+  } else {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+  }
+}
+
+///|
+/// Build a line terminator marker (simple perpendicular line)
+pub fn line_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  let x = if reverse { 0.0 } else { size }
+  let refX = if reverse { 0.0 } else { size }
+  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{x}\" y1=\"0\" x2=\"\{x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+}
+
+///|
+/// Build an open triangle marker (unfilled)
+pub fn open_marker(
+  id : String,
+  size : Double,
+  stroke : String,
+  reverse? : Bool = false,
+) -> String {
+  let half = size / 2.0
+  if reverse {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},0 L0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  } else {
+    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,0 L\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  }
+}
+
+///|
 /// Build a background rectangle
 pub fn background(color : String) -> String {
   "<rect width=\"100%\" height=\"100%\" fill=\"\{color}\"/>"
+}
+
+// =============================================================================
+// Fill patterns
+// =============================================================================
+
+///|
+/// Build a dots pattern definition
+pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
+  let size = 8.0
+  let r = 1.5
+  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><circle cx=\"\{size / 2.0}\" cy=\"\{size / 2.0}\" r=\"\{r}\" fill=\"\{color}\"/></pattern>"
+}
+
+///|
+/// Build a lines pattern definition (horizontal lines)
+pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
+  let size = 8.0
+  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><line x1=\"0\" y1=\"\{size / 2.0}\" x2=\"\{size}\" y2=\"\{size / 2.0}\" stroke=\"\{color}\" stroke-width=\"1\"/></pattern>"
+}
+
+///|
+/// Build a cross-hatch pattern definition
+pub fn crosshatch_pattern(
+  id : String,
+  color : String,
+  bg_color : String,
+) -> String {
+  let size = 8.0
+  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><path d=\"M0,0 L\{size},\{size} M\{size},0 L0,\{size}\" stroke=\"\{color}\" stroke-width=\"1\"/></pattern>"
+}
+
+///|
+/// Build a grain/paper texture pattern definition
+pub fn grain_pattern(id : String, color : String, bg_color : String) -> String {
+  let size = 4.0
+  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><circle cx=\"1\" cy=\"1\" r=\"0.5\" fill=\"\{color}\" opacity=\"0.3\"/><circle cx=\"3\" cy=\"3\" r=\"0.5\" fill=\"\{color}\" opacity=\"0.3\"/></pattern>"
 }
 
 // =============================================================================

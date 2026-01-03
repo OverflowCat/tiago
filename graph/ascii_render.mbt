@@ -439,6 +439,47 @@ fn render_ascii_box(
   let y2 = box.y + box.height - 1
   // Draw box shape
   match box.shape {
+    "text" => {
+      // Text shape - just the label, no border
+      let label_x = x1 + (box.width - box.label.length()) / 2
+      let label_y = y1 + box.height / 2
+      grid.text(label_x, label_y, box.label)
+      return
+    }
+    "code" => {
+      // Code shape - box with ``` markers
+      grid.set(x1, y1, '┌')
+      grid.set(x1 + 1, y1, '`')
+      grid.set(x1 + 2, y1, '`')
+      grid.set(x1 + 3, y1, '`')
+      grid.hline(x1 + 4, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 4, y2, '─')
+      grid.set(x2 - 3, y2, '`')
+      grid.set(x2 - 2, y2, '`')
+      grid.set(x2 - 1, y2, '`')
+      grid.set(x2, y2, '┘')
+    }
+    "class" | "sql_table" => {
+      // UML class / SQL table shape - box with separator line
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      // Separator line after class name / table header
+      if y1 + 2 < y2 {
+        grid.set(x1, y1 + 2, '├')
+        grid.hline(x1 + 1, x2 - 1, y1 + 2, '─')
+        grid.set(x2, y1 + 2, '┤')
+      }
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+    }
     "circle" | "oval" => {
       grid.set(x1, y1, '┌')
       grid.set(x1 + 1, y1, '⬭')

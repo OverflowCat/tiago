@@ -390,6 +390,42 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Text transform
+  match ir.get_field("text-transform") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.text_transform = Some(s.to_string())
+        None => ()
+      }
+    None => ()
+  }
+  // Font family
+  match ir.get_field("font-family") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.font_family = Some(s.to_string())
+        None => ()
+      }
+    None => ()
+  }
+  // Fill pattern
+  match ir.get_field("fill-pattern") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.fill_pattern = Some(s.to_string())
+        None => ()
+      }
+    None => ()
+  }
+  // Double border
+  match ir.get_field("double-border") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.double_border = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|
@@ -411,9 +447,10 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
       Some(s) => graph_edge.label = s.to_string()
       None => ()
     }
-    // Process edge style from map
+    // Process edge properties from map
     match edge.map {
-      Some(m) =>
+      Some(m) => {
+        // Process style
         match m.get_field("style") {
           Some(f) =>
             match f.composite {
@@ -423,6 +460,33 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
             }
           None => ()
         }
+        // Process source-arrowhead
+        if m.get_field("source-arrowhead") is Some(f) {
+          if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
+            if arrowhead_map.get_field("shape") is Some(shape_f) {
+              if shape_f.primary is Some(s) {
+                graph_edge.src_arrowhead = s.to_string()
+              }
+            }
+          } else if f.primary is Some(s) {
+            // Simple value (shape directly)
+            graph_edge.src_arrowhead = s.to_string()
+          }
+        }
+        // Process target-arrowhead
+        if m.get_field("target-arrowhead") is Some(f) {
+          if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
+            if arrowhead_map.get_field("shape") is Some(shape_f) {
+              if shape_f.primary is Some(s) {
+                graph_edge.dst_arrowhead = s.to_string()
+              }
+            }
+          } else if f.primary is Some(s) {
+            // Simple value (shape directly)
+            graph_edge.dst_arrowhead = s.to_string()
+          }
+        }
+      }
       None => ()
     }
     graph.add_edge(graph_edge)

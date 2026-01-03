@@ -82,18 +82,10 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   let height = max_y + config.padding * 2.0
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
-  // Add arrow markers
-  svg.add_def(
-    @svg.arrow_marker("arrow", config.arrow_size, config.default_stroke),
-  )
-  svg.add_def(
-    @svg.arrow_marker(
-      "arrow-reverse",
-      config.arrow_size,
-      config.default_stroke,
-      reverse=true,
-    ),
-  )
+  // Add arrow markers for all arrowhead types
+  add_arrowhead_markers(svg, config)
+  // Add fill patterns
+  add_fill_patterns(svg, graph, config)
   // Background
   svg.add(@svg.background(config.background))
   // Main content group with padding offset
@@ -108,6 +100,151 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   }
   svg.close_group()
   svg.to_string()
+}
+
+///|
+/// Add all arrowhead marker definitions to the SVG
+fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
+  let size = config.arrow_size
+  let stroke = config.default_stroke
+  // Triangle (default arrow)
+  svg.add_def(@svg.arrow_marker("arrow-triangle", size, stroke))
+  svg.add_def(
+    @svg.arrow_marker("arrow-triangle-reverse", size, stroke, reverse=true),
+  )
+  // Diamond
+  svg.add_def(@svg.diamond_marker("arrow-diamond", size, stroke))
+  svg.add_def(
+    @svg.diamond_marker("arrow-diamond-reverse", size, stroke, reverse=true),
+  )
+  // Circle
+  svg.add_def(@svg.circle_marker("arrow-circle", size, stroke))
+  svg.add_def(
+    @svg.circle_marker("arrow-circle-reverse", size, stroke, reverse=true),
+  )
+  // Crow's foot: one
+  svg.add_def(@svg.cf_one_marker("arrow-cf-one", size, stroke))
+  svg.add_def(
+    @svg.cf_one_marker("arrow-cf-one-reverse", size, stroke, reverse=true),
+  )
+  // Crow's foot: many
+  svg.add_def(@svg.cf_many_marker("arrow-cf-many", size, stroke))
+  svg.add_def(
+    @svg.cf_many_marker("arrow-cf-many-reverse", size, stroke, reverse=true),
+  )
+  // Crow's foot: one-required
+  svg.add_def(
+    @svg.cf_one_required_marker("arrow-cf-one-required", size, stroke),
+  )
+  svg.add_def(
+    @svg.cf_one_required_marker(
+      "arrow-cf-one-required-reverse",
+      size,
+      stroke,
+      reverse=true,
+    ),
+  )
+  // Crow's foot: many-required
+  svg.add_def(
+    @svg.cf_many_required_marker("arrow-cf-many-required", size, stroke),
+  )
+  svg.add_def(
+    @svg.cf_many_required_marker(
+      "arrow-cf-many-required-reverse",
+      size,
+      stroke,
+      reverse=true,
+    ),
+  )
+  // Crow's foot: one-optional
+  svg.add_def(
+    @svg.cf_one_optional_marker("arrow-cf-one-optional", size, stroke),
+  )
+  svg.add_def(
+    @svg.cf_one_optional_marker(
+      "arrow-cf-one-optional-reverse",
+      size,
+      stroke,
+      reverse=true,
+    ),
+  )
+  // Crow's foot: many-optional
+  svg.add_def(
+    @svg.cf_many_optional_marker("arrow-cf-many-optional", size, stroke),
+  )
+  svg.add_def(
+    @svg.cf_many_optional_marker(
+      "arrow-cf-many-optional-reverse",
+      size,
+      stroke,
+      reverse=true,
+    ),
+  )
+  // Line terminator
+  svg.add_def(@svg.line_marker("arrow-line", size, stroke))
+  svg.add_def(
+    @svg.line_marker("arrow-line-reverse", size, stroke, reverse=true),
+  )
+  // Open triangle
+  svg.add_def(@svg.open_marker("arrow-open", size, stroke))
+  svg.add_def(
+    @svg.open_marker("arrow-open-reverse", size, stroke, reverse=true),
+  )
+  // Aliases for backward compatibility
+  svg.add_def(@svg.arrow_marker("arrow", size, stroke))
+  svg.add_def(@svg.arrow_marker("arrow-reverse", size, stroke, reverse=true))
+}
+
+///|
+/// Add fill pattern definitions based on patterns used in the graph
+fn add_fill_patterns(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit {
+  // Collect unique patterns used
+  let patterns_used : @hashset.HashSet[String] = @hashset.new()
+  for obj in graph.objects {
+    if obj.style.fill_pattern is Some(p) {
+      patterns_used.add(p)
+    }
+  }
+  // Add pattern definitions for each used pattern
+  let stroke_color = config.default_stroke
+  let bg_color = config.default_fill
+  for pattern in patterns_used {
+    match pattern.to_lower() {
+      "dots" =>
+        svg.add_def(@svg.dots_pattern("pattern-dots", stroke_color, bg_color))
+      "lines" =>
+        svg.add_def(@svg.lines_pattern("pattern-lines", stroke_color, bg_color))
+      "cross-hatch" | "crosshatch" =>
+        svg.add_def(
+          @svg.crosshatch_pattern("pattern-crosshatch", stroke_color, bg_color),
+        )
+      "grain" =>
+        svg.add_def(@svg.grain_pattern("pattern-grain", stroke_color, bg_color))
+      _ => ()
+    }
+  }
+}
+
+///|
+/// Get the marker URL for an arrowhead type
+fn get_marker_url(arrowhead : String, reverse : Bool) -> String {
+  let base = match arrowhead.to_lower() {
+    "triangle" | "arrow" => "arrow-triangle"
+    "diamond" => "arrow-diamond"
+    "circle" => "arrow-circle"
+    "cf-one" => "arrow-cf-one"
+    "cf-many" => "arrow-cf-many"
+    "cf-one-required" => "arrow-cf-one-required"
+    "cf-many-required" => "arrow-cf-many-required"
+    "cf-one-optional" => "arrow-cf-one-optional"
+    "cf-many-optional" => "arrow-cf-many-optional"
+    "line" => "arrow-line"
+    "open" => "arrow-open"
+    "none" => return ""
+    _ => "arrow-triangle" // default
+  }
+  let id = if reverse { "\{base}-reverse" } else { base }
+  "url(#\{id})"
 }
 
 ///|
@@ -136,9 +273,21 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
 fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
   guard obj.box is Some(box) else { return }
   // Get style values
-  let fill = match obj.style.fill {
+  let base_fill = match obj.style.fill {
     Some(f) => f
     None => config.default_fill
+  }
+  // Apply fill pattern if specified
+  let fill = match obj.style.fill_pattern {
+    Some(p) =>
+      match p.to_lower() {
+        "dots" => "url(#pattern-dots)"
+        "lines" => "url(#pattern-lines)"
+        "cross-hatch" | "crosshatch" => "url(#pattern-crosshatch)"
+        "grain" => "url(#pattern-grain)"
+        _ => base_fill
+      }
+    None => base_fill
   }
   let stroke = match obj.style.stroke {
     Some(s) => s
@@ -154,6 +303,32 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
   }
   // Render shape based on type
   match obj.shape {
+    "text" =>
+      // Text shape - no border, just the label
+      ()
+    "code" => {
+      // Code shape - monospace text with dark background
+      render_svg_code(svg, box, obj.label, fill, stroke, stroke_width, config)
+      return // Don't render the default label
+    }
+    "class" => {
+      // UML class shape with sections for name, fields, methods
+      render_svg_class(svg, box, obj.label, fill, stroke, stroke_width, config)
+      return // Don't render the default label
+    }
+    "sql_table" => {
+      // SQL table shape with header and columns
+      render_svg_sql_table(
+        svg,
+        box,
+        obj.label,
+        fill,
+        stroke,
+        stroke_width,
+        config,
+      )
+      return // Don't render the default label
+    }
     "circle" | "oval" => {
       let cx = box.x + box.width / 2.0
       let cy = box.y + box.height / 2.0
@@ -233,20 +408,258 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
         ),
       )
   }
+  // Add double border if specified
+  if obj.style.double_border is Some(true) {
+    let inset = 4.0 // Gap between inner and outer border
+    svg.add(
+      @svg.rect(
+        box.x + inset,
+        box.y + inset,
+        box.width - inset * 2.0,
+        box.height - inset * 2.0,
+        fill="none",
+        stroke~,
+        stroke_width~,
+        rx=border_radius,
+        ry=border_radius,
+      ),
+    )
+  }
   // Render label
   if obj.label != "" {
     let cx = box.x + box.width / 2.0
     let cy = box.y + box.height / 2.0
+    // Use custom font-family if specified in style, otherwise use config
+    let font_family = match obj.style.font_family {
+      Some(f) => f
+      None => config.font_family
+    }
+    // Get text-transform if specified
+    let text_transform = match obj.style.text_transform {
+      Some(t) => t
+      None => ""
+    }
     svg.add(
-      @svg.text(
+      @svg.styled_text(
         cx,
         cy,
         obj.label,
-        font_family=config.font_family,
+        font_family~,
         font_size=config.font_size,
+        text_transform~,
       ),
     )
   }
+}
+
+///|
+fn render_svg_sql_table(
+  svg : @svg.Svg,
+  box : Box,
+  label : String,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  let line_height = config.font_size.to_double() + 4.0
+  let padding = 8.0
+  let header_bg = "#4a5568" // Darker header
+  let header_fg = "#ffffff"
+  // Parse label into table name and columns
+  let lines = split_lines(label)
+  let table_name = if lines.length() > 0 { lines[0] } else { "" }
+  // Draw main rectangle
+  svg.add(
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      box.height,
+      fill~,
+      stroke~,
+      stroke_width~,
+    ),
+  )
+  // Draw header background
+  let header_height = line_height + padding
+  svg.add(
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      header_height,
+      fill=header_bg,
+      stroke~,
+      stroke_width~,
+    ),
+  )
+  // Draw table name (bold, centered, white)
+  let name_y = box.y + header_height / 2.0
+  svg.add(
+    "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{header_fg}\">\{@svg.escape_xml(table_name)}</text>",
+  )
+  // Draw columns
+  let mut current_y = box.y + header_height + line_height * 0.7
+  for i = 1; i < lines.length(); i = i + 1 {
+    let col = lines[i]
+    if col.length() > 0 && current_y < box.y + box.height - padding {
+      // Check for PK/FK markers
+      let is_pk = col.contains("PK") || col.contains("pk")
+      let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
+      svg.add(
+        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col)}</text>",
+      )
+      current_y = current_y + line_height
+    }
+  }
+}
+
+///|
+fn render_svg_class(
+  svg : @svg.Svg,
+  box : Box,
+  label : String,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  let line_height = config.font_size.to_double() + 4.0
+  let padding = 8.0
+  // Parse label into sections: name, fields, methods
+  let lines = split_lines(label)
+  let class_name = if lines.length() > 0 { lines[0] } else { "" }
+  // Draw main rectangle
+  svg.add(
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      box.height,
+      fill~,
+      stroke~,
+      stroke_width~,
+    ),
+  )
+  // Draw class name (bold, centered)
+  let name_y = box.y + padding + line_height * 0.5
+  svg.add(
+    "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\">\{@svg.escape_xml(class_name)}</text>",
+  )
+  // Draw separator line after class name
+  let sep1_y = box.y + padding + line_height
+  svg.add(
+    @svg.line(box.x, sep1_y, box.x + box.width, sep1_y, stroke~, stroke_width~),
+  )
+  // Collect fields (start with +, -, #) and methods (contain parentheses)
+  let fields : Array[String] = []
+  let methods : Array[String] = []
+  for i = 1; i < lines.length(); i = i + 1 {
+    let line = lines[i]
+    if line.contains("(") {
+      methods.push(line)
+    } else if line.length() > 0 {
+      fields.push(line)
+    }
+  }
+  // Draw fields
+  let mut current_y = sep1_y + line_height * 0.7
+  for field in fields {
+    if current_y < box.y + box.height - padding {
+      svg.add(
+        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(field)}</text>",
+      )
+      current_y = current_y + line_height
+    }
+  }
+  // Draw separator before methods if there are both fields and methods
+  if fields.length() > 0 && methods.length() > 0 {
+    let sep2_y = sep1_y + (fields.length().to_double() + 0.5) * line_height
+    if sep2_y < box.y + box.height - padding {
+      svg.add(
+        @svg.line(
+          box.x,
+          sep2_y,
+          box.x + box.width,
+          sep2_y,
+          stroke~,
+          stroke_width~,
+        ),
+      )
+      current_y = sep2_y + line_height * 0.7
+    }
+  }
+  // Draw methods
+  for m in methods {
+    if current_y < box.y + box.height - padding {
+      svg.add(
+        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(m)}</text>",
+      )
+      current_y = current_y + line_height
+    }
+  }
+}
+
+///|
+fn render_svg_code(
+  svg : @svg.Svg,
+  box : Box,
+  label : String,
+  _fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  // Dark background for code block
+  let code_bg = "#1e1e1e"
+  let code_fg = "#d4d4d4"
+  let padding = 8.0
+  let line_height = 16.0
+  // Draw background rectangle with rounded corners
+  svg.add(
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      box.height,
+      fill=code_bg,
+      stroke~,
+      stroke_width~,
+      rx=4.0,
+      ry=4.0,
+    ),
+  )
+  // Split label into lines and render each
+  let lines = split_lines(label)
+  let start_y = box.y + padding + line_height * 0.8
+  for i, line in lines {
+    let y = start_y + i.to_double() * line_height
+    if y < box.y + box.height - padding {
+      svg.add(
+        "<text x=\"\{box.x + padding}\" y=\"\{y}\" fill=\"\{code_fg}\" font-family=\"'SF Mono', 'Fira Code', 'Consolas', monospace\" font-size=\"\{config.font_size - 2}\" text-anchor=\"start\" dominant-baseline=\"middle\">\{@svg.escape_xml(line)}</text>",
+      )
+    }
+  }
+}
+
+///|
+fn split_lines(s : String) -> Array[String] {
+  let lines : Array[String] = []
+  let current = StringBuilder::new()
+  for c in s {
+    if c == '\n' {
+      lines.push(current.to_string())
+      current.reset()
+    } else {
+      current.write_char(c)
+    }
+  }
+  let last = current.to_string()
+  if last.length() > 0 || lines.length() == 0 {
+    lines.push(last)
+  }
+  lines
 }
 
 ///|
@@ -721,9 +1134,9 @@ fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
 
     }
   }
-  // Determine markers
-  let marker_end = if edge.dst_arrow { "url(#arrow)" } else { "" }
-  let marker_start = if edge.src_arrow { "url(#arrow-reverse)" } else { "" }
+  // Determine markers based on arrowhead types
+  let marker_end = get_marker_url(edge.dst_arrowhead, false)
+  let marker_start = get_marker_url(edge.src_arrowhead, true)
   svg.add(
     @svg.path(pb.build(), stroke~, stroke_width~, marker_start~, marker_end~),
   )
