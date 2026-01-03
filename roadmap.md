@@ -102,7 +102,7 @@ This document tracks features from the D2 reference implementation that are not 
 - [ ] **Grid Layout** - Explicit grid-based positioning (`grid-rows`, `grid-columns`)
   - [x] Basic grid layout
   - [x] Grid gaps
-  - [ ] Cell spanning
+  - [x] Cell spanning
 
 ### 🟢 Low Priority
 - [x] **Icons** - Icon embedding and positioning

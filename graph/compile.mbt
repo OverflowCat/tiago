@@ -262,6 +262,32 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Process grid-column-span
+  match ir.get_field("grid-column-span") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_int(s.to_string()) {
+            Some(v) => obj.grid_column_span = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process grid-row-span
+  match ir.get_field("grid-row-span") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_int(s.to_string()) {
+            Some(v) => obj.grid_row_span = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
 }
 
 ///|
@@ -528,7 +554,7 @@ fn is_reserved_keyword(name : String) -> Bool {
   let keywords = [
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
     "direction", "constraint", "class", "classes", "vars", "grid-rows", "grid-columns",
-    "grid-gap", "horizontal-gap", "vertical-gap",
+    "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span", "grid-row-span",
   ]
   keywords.contains(name.to_lower())
 }

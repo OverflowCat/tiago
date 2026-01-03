@@ -49,6 +49,10 @@ pub(all) struct Object {
   mut horizontal_gap : Double?
   /// Grid layout: vertical gap between cells
   mut vertical_gap : Double?
+  /// Grid cell spanning: number of columns this cell spans
+  mut grid_column_span : Int?
+  /// Grid cell spanning: number of rows this cell spans
+  mut grid_row_span : Int?
 } derive(Show)
 
 ///|
@@ -166,6 +170,8 @@ pub fn Object::new(id : String) -> Object {
     grid_gap: None,
     horizontal_gap: None,
     vertical_gap: None,
+    grid_column_span: None,
+    grid_row_span: None,
   }
 }
 
@@ -411,6 +417,36 @@ pub fn Object::set_grid_columns(self : Object, columns : Int) -> Unit {
 /// Set grid gap
 pub fn Object::set_grid_gap(self : Object, gap : Double) -> Unit {
   self.grid_gap = Some(gap)
+}
+
+///|
+/// Get column span (returns 1 if not set)
+pub fn Object::get_grid_column_span(self : Object) -> Int {
+  match self.grid_column_span {
+    Some(v) => if v >= 1 { v } else { 1 }
+    None => 1
+  }
+}
+
+///|
+/// Get row span (returns 1 if not set)
+pub fn Object::get_grid_row_span(self : Object) -> Int {
+  match self.grid_row_span {
+    Some(v) => if v >= 1 { v } else { 1 }
+    None => 1
+  }
+}
+
+///|
+/// Set column span
+pub fn Object::set_grid_column_span(self : Object, span : Int) -> Unit {
+  self.grid_column_span = Some(span)
+}
+
+///|
+/// Set row span
+pub fn Object::set_grid_row_span(self : Object, span : Int) -> Unit {
+  self.grid_row_span = Some(span)
 }
 
 ///|

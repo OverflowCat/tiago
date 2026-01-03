@@ -391,6 +391,62 @@ test "grid horizontal and vertical gaps" {
   assert_true(result is Ok(_))
 }
 
+///|
+test "grid column span" {
+  let source =
+    #|dashboard {
+    #|  grid-rows: 2
+    #|  grid-columns: 3
+    #|  header {
+    #|    grid-column-span: 3
+    #|  }
+    #|  sidebar
+    #|  content
+    #|  footer
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "grid row span" {
+  let source =
+    #|layout {
+    #|  grid-rows: 3
+    #|  grid-columns: 2
+    #|  sidebar {
+    #|    grid-row-span: 2
+    #|  }
+    #|  main
+    #|  footer
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "grid combined spans" {
+  let source =
+    #|page {
+    #|  grid-rows: 3
+    #|  grid-columns: 3
+    #|  header {
+    #|    grid-column-span: 3
+    #|  }
+    #|  nav {
+    #|    grid-row-span: 2
+    #|  }
+    #|  content {
+    #|    grid-column-span: 2
+    #|  }
+    #|  footer {
+    #|    grid-column-span: 3
+    #|  }
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
 // =============================================================================
 // Theme tests
 // =============================================================================

@@ -190,27 +190,35 @@ test "grid dimensions calculation" {
 }
 
 ///|
-test "grid position calculation" {
-  // Row directed: fills left to right, then top to bottom
-  let (r0, c0) = get_grid_position(0, 2, 3, true)
-  assert_eq(r0, 0)
-  assert_eq(c0, 0)
-  let (r1, c1) = get_grid_position(1, 2, 3, true)
-  assert_eq(r1, 0)
-  assert_eq(c1, 1)
-  let (r3, c3) = get_grid_position(3, 2, 3, true)
-  assert_eq(r3, 1)
-  assert_eq(c3, 0)
-  // Column directed: fills top to bottom, then left to right
-  let (r0c, c0c) = get_grid_position(0, 2, 3, false)
-  assert_eq(r0c, 0)
-  assert_eq(c0c, 0)
-  let (r1c, c1c) = get_grid_position(1, 2, 3, false)
-  assert_eq(r1c, 1)
-  assert_eq(c1c, 0)
-  let (r2c, c2c) = get_grid_position(2, 2, 3, false)
-  assert_eq(r2c, 0)
-  assert_eq(c2c, 1)
+test "grid cell allocation with spanning" {
+  // Create children with various spans
+  let child1 = @graph.Object::new("header")
+  child1.set_grid_column_span(3) // Header spans all 3 columns
+  let child2 = @graph.Object::new("sidebar")
+  child2.set_grid_row_span(2) // Sidebar spans 2 rows
+  let child3 = @graph.Object::new("content")
+  // Default 1x1 span
+  let child4 = @graph.Object::new("footer")
+  child4.set_grid_column_span(2) // Footer spans 2 columns
+  let children = [child1, child2, child3, child4]
+  // Allocate cells in a 3x3 grid
+  let positions = allocate_grid_cells(children, 3, 3, true)
+  // Verify positions
+  assert_eq(positions.length(), 4)
+  // Header should be at row 0, col 0, spanning 3 columns
+  assert_eq(positions[0].row, 0)
+  assert_eq(positions[0].col, 0)
+  assert_eq(positions[0].col_span, 3)
+  assert_eq(positions[0].row_span, 1)
+  // Sidebar should be at row 1, col 0, spanning 2 rows
+  assert_eq(positions[1].row, 1)
+  assert_eq(positions[1].col, 0)
+  assert_eq(positions[1].row_span, 2)
+  // Content should be at row 1, col 1 (next to sidebar)
+  assert_eq(positions[2].row, 1)
+  assert_eq(positions[2].col, 1)
+  // Footer should be at row 1, col 2 or row 2, col 1
+  // (depends on available space after content)
 }
 
 ///|

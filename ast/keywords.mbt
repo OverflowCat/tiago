@@ -6,7 +6,7 @@
 pub let simple_reserved_keywords : Array[String] = [
   "label", "shape", "icon", "constraint", "tooltip", "link", "near", "width", "height",
   "direction", "top", "left", "grid-rows", "grid-columns", "grid-gap", "vertical-gap",
-  "horizontal-gap", "class", "vars",
+  "horizontal-gap", "grid-column-span", "grid-row-span", "class", "vars",
 ]
 
 ///|

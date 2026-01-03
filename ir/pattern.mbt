@@ -12,8 +12,8 @@
 let reserved_keywords : Array[String] = [
   "label", "shape", "icon", "style", "width", "height", "top", "left", "near", "tooltip",
   "link", "class", "vars", "source-arrowhead", "target-arrowhead", "direction", "grid-rows",
-  "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "constraint", "layers",
-  "scenarios", "steps",
+  "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span",
+  "grid-row-span", "constraint", "layers", "scenarios", "steps",
 ]
 
 ///|
