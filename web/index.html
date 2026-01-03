@@ -235,7 +235,6 @@
       <div class="pane-header">
         <span>D2 Source</span>
         <select id="example-select">
-          <option value="">Load Example...</option>
           <option value="hello">Hello World</option>
           <option value="basic">Basic Features</option>
           <option value="shapes">Shape Types</option>
@@ -336,7 +335,6 @@ server -> database: queries"></textarea>
       if (key) {
         const content = await loadExample(key);
         editor.value = content;
-        exampleSelect.value = '';
         render();
       }
     });
@@ -514,6 +512,7 @@ server -> database: queries"></textarea>
     // Initialize
     async function init() {
       editor.value = await loadExample('hello');
+      exampleSelect.value = 'hello';
       loadWasm();
     }
     init();
