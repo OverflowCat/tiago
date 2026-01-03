@@ -548,10 +548,24 @@ fn render_svg_object(
       ),
     )
   }
+  // Render icon and label
+  let cx = box.x + box.width / 2.0
+  let cy = box.y + box.height / 2.0
+  // Check if icon is present (non-image shapes)
+  let has_icon = obj.icon is Some(_) && obj.shape != "image"
+  if has_icon {
+    // Render icon above label
+    let icon_size = 24.0
+    let icon_y = cy - config.font_size.to_double() / 2.0 - icon_size / 2.0
+    let icon_url = obj.icon.unwrap()
+    let icon_x = cx - icon_size / 2.0
+    let icon_top = icon_y - icon_size / 2.0
+    svg.add(
+      "<image href=\"\{@svg.escape_xml(icon_url)}\" x=\"\{icon_x}\" y=\"\{icon_top}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+    )
+  }
   // Render label
   if obj.label != "" {
-    let cx = box.x + box.width / 2.0
-    let cy = box.y + box.height / 2.0
     // Use custom font-family if specified in style, otherwise use config
     let font_family = match obj.style.font_family {
       Some(f) => f
@@ -566,10 +580,16 @@ fn render_svg_object(
         None => ""
       }
     }
+    // Adjust label position if icon is present
+    let label_y = if has_icon {
+      cy + 12.0 // Move label down when icon is present
+    } else {
+      cy
+    }
     svg.add(
       @svg.styled_text(
         cx,
-        cy,
+        label_y,
         obj.label,
         font_family~,
         font_size=config.font_size,

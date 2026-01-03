@@ -201,3 +201,19 @@ test "style defaults" {
   assert_true(style.stroke is None)
   assert_true(style.fill is None)
 }
+
+///|
+test "compile object with icon" {
+  // Create IR with icon field
+  let inner = @ir.Map::new()
+  inner.add_field(
+    @ir.Field::new("icon", Some(@ir.Scalar::string("test-icon.png")), None, []),
+  )
+  let ir = @ir.Map::new()
+  ir.add_field(
+    @ir.Field::new("server", None, Some(@ir.Composite::Map(inner)), []),
+  )
+  let graph = compile("test", ir)
+  assert_eq(graph.objects.length(), 1)
+  assert_eq(graph.objects[0].icon, Some("test-icon.png"))
+}

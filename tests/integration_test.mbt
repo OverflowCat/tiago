@@ -476,6 +476,33 @@ test "terminal theme outer container double border" {
 }
 
 // =============================================================================
+// Icon tests
+// =============================================================================
+
+///|
+test "icon on shape" {
+  // Test that icon compiles without error
+  let source =
+    #|server {
+    #|  icon: test-icon.png
+    #|}
+  let result = compile(source)
+  assert_true(result is Ok(_))
+}
+
+///|
+test "icon does not affect image shape" {
+  let source =
+    #|photo {
+    #|  shape: image
+    #|  icon: https://example.com/photo.jpg
+    #|}
+  let svg = compile(source).unwrap()
+  // Image shape uses icon as the main image, not as a separate icon
+  assert_true(svg.contains("<image"))
+}
+
+// =============================================================================
 // Error handling tests
 // =============================================================================
 

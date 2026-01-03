@@ -105,7 +105,7 @@ This document tracks features from the D2 reference implementation that are not 
   - [ ] Cell spanning
 
 ### 🟢 Low Priority
-- [ ] **Icons** - Icon embedding and positioning
+- [x] **Icons** - Icon embedding and positioning
 - [ ] **LaTeX** - Mathematical formula rendering
 - [x] **Tooltips** - Interactive hover tooltips
 
