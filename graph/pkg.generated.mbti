@@ -2,6 +2,7 @@
 package "Milky2018/diago/graph"
 
 import(
+  "Milky2018/diago/ascii"
   "Milky2018/diago/ir"
 )
 
@@ -35,8 +36,10 @@ pub struct AsciiConfig {
   h_spacing : Int
   min_width : Int
   min_height : Int
+  charset : @ascii.CharSet
 }
 pub fn AsciiConfig::new() -> Self
+pub fn AsciiConfig::unicode() -> Self
 pub impl Show for AsciiConfig
 
 pub(all) struct Box {
@@ -96,6 +99,8 @@ pub(all) struct Graph {
   root : Object
   objects : Array[Object]
   edges : Array[Edge]
+  mut activation_boxes : Array[(String, Box)]
+  mut sequence_notes : Array[(String, String, Box)]
 }
 pub fn Graph::add_edge(Self, Edge) -> Unit
 pub fn Graph::add_object(Self, Object) -> Unit

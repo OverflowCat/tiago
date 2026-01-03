@@ -6,11 +6,61 @@ package "Milky2018/diago/ascii"
 // Errors
 
 // Types and methods
+pub struct CharSet {
+  top_left : Char
+  top_right : Char
+  bottom_left : Char
+  bottom_right : Char
+  horizontal : Char
+  vertical : Char
+  top_left_arc : Char
+  top_right_arc : Char
+  bottom_left_arc : Char
+  bottom_right_arc : Char
+  arrow_down : Char
+  arrow_up : Char
+  arrow_right : Char
+  arrow_left : Char
+  t_down : Char
+  t_up : Char
+  t_right : Char
+  t_left : Char
+  cross : Char
+  diagonal_down : Char
+  diagonal_up : Char
+}
+pub fn CharSet::arrow_down(Self) -> Char
+pub fn CharSet::arrow_left(Self) -> Char
+pub fn CharSet::arrow_right(Self) -> Char
+pub fn CharSet::arrow_up(Self) -> Char
+pub fn CharSet::ascii() -> Self
+pub fn CharSet::bottom_left(Self) -> Char
+pub fn CharSet::bottom_left_arc(Self) -> Char
+pub fn CharSet::bottom_right(Self) -> Char
+pub fn CharSet::bottom_right_arc(Self) -> Char
+pub fn CharSet::cross(Self) -> Char
+pub fn CharSet::diagonal_down(Self) -> Char
+pub fn CharSet::diagonal_up(Self) -> Char
+pub fn CharSet::horizontal(Self) -> Char
+pub fn CharSet::t_down(Self) -> Char
+pub fn CharSet::t_left(Self) -> Char
+pub fn CharSet::t_right(Self) -> Char
+pub fn CharSet::t_up(Self) -> Char
+pub fn CharSet::top_left(Self) -> Char
+pub fn CharSet::top_left_arc(Self) -> Char
+pub fn CharSet::top_right(Self) -> Char
+pub fn CharSet::top_right_arc(Self) -> Char
+pub fn CharSet::unicode() -> Self
+pub fn CharSet::vertical(Self) -> Char
+pub impl Show for CharSet
+
 pub struct Grid {
   width : Int
   height : Int
   cells : Array[Array[Char]]
 }
+pub fn Grid::ascii_rect(Self, Int, Int, Int, Int) -> Unit
+pub fn Grid::box_rect(Self, Int, Int, Int, Int, CharSet) -> Unit
 pub fn Grid::fill(Self, Int, Int, Int, Int, Char) -> Unit
 pub fn Grid::get(Self, Int, Int) -> Char
 pub fn Grid::get_height(Self) -> Int
@@ -19,10 +69,10 @@ pub fn Grid::hline(Self, Int, Int, Int, Char) -> Unit
 pub fn Grid::line(Self, Int, Int, Int, Int, Char, Char, Char, Char) -> Unit
 pub fn Grid::new(Int, Int) -> Self
 pub fn Grid::rect(Self, Int, Int, Int, Int, Char, Char, Char) -> Unit
+pub fn Grid::rounded_rect(Self, Int, Int, Int, Int, CharSet) -> Unit
 pub fn Grid::set(Self, Int, Int, Char) -> Unit
 pub fn Grid::text(Self, Int, Int, String) -> Unit
 pub fn Grid::to_string(Self) -> String
-pub fn Grid::unicode_rect(Self, Int, Int, Int, Int) -> Unit
 pub fn Grid::vline(Self, Int, Int, Int, Char) -> Unit
 pub impl Show for Grid
 

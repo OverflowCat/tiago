@@ -20,6 +20,8 @@ pub struct AsciiConfig {
   min_width : Int
   /// Minimum canvas height
   min_height : Int
+  /// Character set for rendering
+  charset : @ascii.CharSet
 } derive(Show)
 
 ///|
@@ -32,6 +34,22 @@ pub fn AsciiConfig::new() -> AsciiConfig {
     h_spacing: 2,
     min_width: 40,
     min_height: 10,
+    charset: @ascii.CharSet::ascii(),
+  }
+}
+
+///|
+/// Create config with Unicode charset
+pub fn AsciiConfig::unicode() -> AsciiConfig {
+  {
+    min_box_width: 6,
+    box_height: 4,
+    h_padding: 1,
+    v_spacing: 4,
+    h_spacing: 2,
+    min_width: 40,
+    min_height: 10,
+    charset: @ascii.CharSet::unicode(),
   }
 }
 
@@ -431,12 +449,13 @@ fn group_by_layer(objects : Array[Object]) -> Array[Array[Object]] {
 fn render_ascii_box(
   grid : @ascii.Grid,
   box : AsciiBox,
-  _config : AsciiConfig,
+  config : AsciiConfig,
 ) -> Unit {
   let x1 = box.x
   let y1 = box.y
   let x2 = box.x + box.width - 1
   let y2 = box.y + box.height - 1
+  let cs = config.charset
   // Draw box shape
   match box.shape {
     "text" => {
@@ -447,16 +466,8 @@ fn render_ascii_box(
       return
     }
     "image" => {
-      // Image shape - show [IMG] placeholder in ASCII
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
-      // Show [IMG] in center
+      // Image shape - show [IMG] placeholder
+      grid.box_rect(x1, y1, x2, y2, cs)
       let img_text = "[IMG]"
       let label_x = x1 + (box.width - img_text.length()) / 2
       let label_y = y1 + box.height / 2
@@ -465,66 +476,52 @@ fn render_ascii_box(
     }
     "code" => {
       // Code shape - box with ``` markers
-      grid.set(x1, y1, '┌')
+      grid.set(x1, y1, cs.top_left())
       grid.set(x1 + 1, y1, '`')
       grid.set(x1 + 2, y1, '`')
       grid.set(x1 + 3, y1, '`')
-      grid.hline(x1 + 4, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 4, y2, '─')
+      grid.hline(x1 + 4, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 4, y2, cs.horizontal())
       grid.set(x2 - 3, y2, '`')
       grid.set(x2 - 2, y2, '`')
       grid.set(x2 - 1, y2, '`')
-      grid.set(x2, y2, '┘')
+      grid.set(x2, y2, cs.bottom_right())
     }
     "class" | "sql_table" => {
       // UML class / SQL table shape - box with separator line
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y1, cs.top_left())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
       // Separator line after class name / table header
       if y1 + 2 < y2 {
-        grid.set(x1, y1 + 2, '├')
-        grid.hline(x1 + 1, x2 - 1, y1 + 2, '─')
-        grid.set(x2, y1 + 2, '┤')
+        grid.set(x1, y1 + 2, cs.t_right())
+        grid.hline(x1 + 1, x2 - 1, y1 + 2, cs.horizontal())
+        grid.set(x2, y1 + 2, cs.t_left())
       }
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+      grid.set(x2, y2, cs.bottom_right())
     }
-    "circle" | "oval" => {
-      grid.set(x1, y1, '┌')
-      grid.set(x1 + 1, y1, '⬭')
-      grid.hline(x1 + 2, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
-    }
+    "circle" | "oval" => grid.rounded_rect(x1, y1, x2, y2, cs)
     "cylinder" => {
-      // Top: .-‾‾-.
-      grid.set(x1, y1, '.')
-      grid.set(x1 + 1, y1, '-')
-      grid.hline(x1 + 2, x2 - 2, y1, '‾')
-      grid.set(x2 - 1, y1, '-')
-      grid.set(x2, y1, '.')
+      // Top: .----.
+      grid.set(x1, y1, cs.top_left_arc())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right_arc())
       // Sides
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      // Bottom: ╲-__-╱
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      // Bottom: curved
       grid.set(x1, y2, ' ')
-      grid.set(x1 + 1, y2, '╲')
-      grid.set(x1 + 2, y2, '-')
-      grid.hline(x1 + 3, x2 - 3, y2, '_')
-      grid.set(x2 - 2, y2, '-')
-      grid.set(x2 - 1, y2, '╱')
+      grid.set(x1 + 1, y2, cs.diagonal_down())
+      grid.hline(x1 + 2, x2 - 2, y2, '_')
+      grid.set(x2 - 1, y2, cs.diagonal_up())
     }
     "diamond" => {
       let cx = (x1 + x2) / 2
@@ -537,201 +534,172 @@ fn render_ascii_box(
       grid.set(cx, y2, '*')
     }
     "cloud" => {
-      grid.set(x1, y1, '┌')
-      grid.set(x1 + 1, y1, '☁')
-      grid.hline(x1 + 2, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.set(x1, y1, cs.top_left())
+      grid.set(x1 + 1, y1, '~')
+      grid.hline(x1 + 2, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+      grid.set(x2, y2, cs.bottom_right())
     }
     "person" => {
-      // Stick figure:  ╱‾‾╲
-      //                ╲__╱
-      //               ╱‾‾‾‾╲
-      //               ‾‾‾‾‾‾
+      // Stick figure
       let cx = (x1 + x2) / 2
       // Head (top)
-      grid.set(cx - 1, y1, '╱')
-      grid.set(cx, y1, '‾')
-      grid.set(cx + 1, y1, '╲')
-      grid.set(cx - 1, y1 + 1, '╲')
+      grid.set(cx - 1, y1, cs.diagonal_up())
+      grid.set(cx, y1, cs.horizontal())
+      grid.set(cx + 1, y1, cs.diagonal_down())
+      grid.set(cx - 1, y1 + 1, cs.diagonal_down())
       grid.set(cx, y1 + 1, '_')
-      grid.set(cx + 1, y1 + 1, '╱')
+      grid.set(cx + 1, y1 + 1, cs.diagonal_up())
       // Body (bottom)
       if y2 > y1 + 2 {
-        grid.set(cx - 2, y1 + 2, '╱')
-        grid.hline(cx - 1, cx + 1, y1 + 2, '‾')
-        grid.set(cx + 2, y1 + 2, '╲')
-        grid.hline(cx - 2, cx + 2, y2, '‾')
+        grid.set(cx - 2, y1 + 2, cs.diagonal_up())
+        grid.hline(cx - 1, cx + 1, y1 + 2, cs.horizontal())
+        grid.set(cx + 2, y1 + 2, cs.diagonal_down())
+        grid.hline(cx - 2, cx + 2, y2, cs.horizontal())
       }
     }
     "c4_person" => {
       // C4 person: simplified person icon with label
       let cx = (x1 + x2) / 2
       // Head
-      grid.set(cx - 1, y1, '╱')
-      grid.set(cx, y1, '‾')
-      grid.set(cx + 1, y1, '╲')
-      grid.set(cx - 1, y1 + 1, '╲')
+      grid.set(cx - 1, y1, cs.diagonal_up())
+      grid.set(cx, y1, cs.horizontal())
+      grid.set(cx + 1, y1, cs.diagonal_down())
+      grid.set(cx - 1, y1 + 1, cs.diagonal_down())
       grid.set(cx, y1 + 1, '_')
-      grid.set(cx + 1, y1 + 1, '╱')
+      grid.set(cx + 1, y1 + 1, cs.diagonal_up())
       // Body (rounded box)
       if y2 > y1 + 3 {
-        grid.set(x1 + 1, y1 + 2, '┌')
-        grid.hline(x1 + 2, x2 - 2, y1 + 2, '─')
-        grid.set(x2 - 1, y1 + 2, '┐')
-        grid.vline(x1 + 1, y1 + 3, y2 - 1, '│')
-        grid.vline(x2 - 1, y1 + 3, y2 - 1, '│')
-        grid.set(x1 + 1, y2, '└')
-        grid.hline(x1 + 2, x2 - 2, y2, '─')
-        grid.set(x2 - 1, y2, '┘')
+        grid.set(x1 + 1, y1 + 2, cs.top_left())
+        grid.hline(x1 + 2, x2 - 2, y1 + 2, cs.horizontal())
+        grid.set(x2 - 1, y1 + 2, cs.top_right())
+        grid.vline(x1 + 1, y1 + 3, y2 - 1, cs.vertical())
+        grid.vline(x2 - 1, y1 + 3, y2 - 1, cs.vertical())
+        grid.set(x1 + 1, y2, cs.bottom_left())
+        grid.hline(x1 + 2, x2 - 2, y2, cs.horizontal())
+        grid.set(x2 - 1, y2, cs.bottom_right())
       }
     }
-    "c4_container" => {
-      // C4 container: rounded rectangle
-      grid.set(x1, y1, '╭')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '╮')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╰')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '╯')
-    }
+    "c4_container" => grid.rounded_rect(x1, y1, x2, y2, cs)
     "hexagon" => {
-      // Hexagon:  ╱‾‾‾‾‾╲
-      //          ╲_____╱
-      grid.set(x1, y1, '╱')
-      grid.hline(x1 + 1, x2 - 1, y1, '‾')
-      grid.set(x2, y1, '╲')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╲')
+      // Hexagon:  /-----\
+      //          \_____/
+      grid.set(x1, y1, cs.diagonal_up())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.diagonal_down())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.diagonal_down())
       grid.hline(x1 + 1, x2 - 1, y2, '_')
-      grid.set(x2, y2, '╱')
+      grid.set(x2, y2, cs.diagonal_up())
     }
     "parallelogram" => {
-      // Parallelogram: ╱‾‾‾‾‾╱
-      //               ╱_____╱
-      grid.set(x1, y1, '╱')
-      grid.hline(x1 + 1, x2 - 1, y1, '‾')
-      grid.set(x2, y1, '╱')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╱')
+      // Parallelogram: /-----/
+      grid.set(x1, y1, cs.diagonal_up())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.diagonal_up())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.diagonal_up())
       grid.hline(x1 + 1, x2 - 1, y2, '_')
-      grid.set(x2, y2, '╱')
+      grid.set(x2, y2, cs.diagonal_up())
     }
     "document" => {
       // Document: box with wavy bottom
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      // Wavy bottom: `-.-`
+      grid.set(x1, y1, cs.top_left())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      // Wavy bottom
       grid.set(x1, y2, '`')
-      grid.set(x1 + 1, y2, '-')
+      grid.set(x1 + 1, y2, cs.horizontal())
       grid.set(x1 + 2, y2, '.')
-      grid.set(x1 + 3, y2, '-')
+      grid.set(x1 + 3, y2, cs.horizontal())
       grid.set(x1 + 4, y2, '`')
     }
     "page" => {
       // Page: box with folded corner
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 2, y1, '─')
-      grid.set(x2 - 1, y1, '╲')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.set(x1, y1, cs.top_left())
+      grid.hline(x1 + 1, x2 - 2, y1, cs.horizontal())
+      grid.set(x2 - 1, y1, cs.diagonal_down())
+      grid.set(x2, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+      grid.set(x2, y2, cs.bottom_right())
     }
     "package" => {
       // Package: box with top fold
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 2, y1, '─')
-      grid.set(x2 - 1, y1, '└')
-      grid.set(x2, y1, '─')
-      grid.set(x2 + 1, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.set(x1, y1, cs.top_left())
+      grid.hline(x1 + 1, x2 - 2, y1, cs.horizontal())
+      grid.set(x2 - 1, y1, cs.top_right())
+      grid.set(x2, y1, cs.horizontal())
+      grid.set(x2 + 1, y1, cs.top_right())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+      grid.set(x2, y2, cs.bottom_right())
     }
     "queue" => {
       // Queue: box with right side extending
-      grid.set(x1, y1, '╱')
-      grid.hline(x1 + 1, x2 - 1, y1, '‾')
-      grid.set(x2, y1, '╱')
-      grid.set(x2 + 1, y1, '╲')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╲')
+      grid.set(x1, y1, cs.diagonal_up())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.diagonal_up())
+      grid.set(x2 + 1, y1, cs.diagonal_down())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.diagonal_down())
       grid.hline(x1 + 1, x2 - 1, y2, '_')
-      grid.set(x2, y2, '╲')
-      grid.set(x2 + 1, y2, '╱')
+      grid.set(x2, y2, cs.diagonal_down())
+      grid.set(x2 + 1, y2, cs.diagonal_up())
     }
     "step" => {
       // Step: parallelogram pointing right
-      grid.set(x1, y1, '╲')
-      grid.hline(x1 + 1, x2 - 1, y1, '‾')
-      grid.set(x2, y1, '╲')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╱')
+      grid.set(x1, y1, cs.diagonal_down())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.diagonal_down())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.diagonal_up())
       grid.hline(x1 + 1, x2 - 1, y2, '_')
-      grid.set(x2, y2, '╱')
+      grid.set(x2, y2, cs.diagonal_up())
     }
     "stored_data" => {
       // Stored data: parallelogram-like cylinder
-      grid.set(x1, y1, '╱')
-      grid.hline(x1 + 1, x2 - 1, y1, '‾')
-      grid.set(x2, y1, '╱')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '╲')
+      grid.set(x1, y1, cs.diagonal_up())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.diagonal_up())
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      grid.set(x1, y2, cs.diagonal_down())
       grid.hline(x1 + 1, x2 - 1, y2, '_')
-      grid.set(x2, y2, '╲')
+      grid.set(x2, y2, cs.diagonal_down())
     }
     "callout" => {
       // Callout: box with arrow pointing down
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.box_rect(x1, y1, x2, y2, cs)
       // Arrow pointing down
       let cx = (x1 + x2) / 2
-      grid.set(cx, y2 + 1, '│')
-      grid.set(cx, y2 + 2, '╱')
+      grid.set(cx, y2 + 1, cs.vertical())
+      grid.set(cx, y2 + 2, cs.arrow_down())
     }
     "container" => {
       // Container: box with title at top, children inside
-      // Draw the border
-      grid.set(x1, y1, '┌')
-      grid.hline(x1 + 1, x2 - 1, y1, '─')
-      grid.set(x2, y1, '┐')
-      grid.vline(x1, y1 + 1, y2 - 1, '│')
-      grid.vline(x2, y1 + 1, y2 - 1, '│')
-      grid.set(x1, y2, '└')
-      grid.hline(x1 + 1, x2 - 1, y2, '─')
-      grid.set(x2, y2, '┘')
+      grid.box_rect(x1, y1, x2, y2, cs)
       // Draw title centered at top
       let label_x = x1 + (box.width - box.label.length()) / 2
       grid.text(label_x, y1 + 1, box.label)
       // Note: children are rendered separately since they're in the flattened boxes list
       return
     }
-    _ => grid.unicode_rect(x1, y1, x2, y2)
+    _ => grid.box_rect(x1, y1, x2, y2, cs)
   }
   // Draw label centered (on first content line, which is y1 + 1)
   let label_x = x1 + (box.width - box.label.length()) / 2
@@ -874,13 +842,14 @@ fn render_ascii_edge_new(
   edge : Edge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
-  _config : AsciiConfig,
+  config : AsciiConfig,
 ) -> Unit {
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
+  let cs = config.charset
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
@@ -900,27 +869,27 @@ fn render_ascii_edge_new(
           // Apply destination offset for multiple incoming edges
           let dst_offset = compute_destination_offset(graph, edge, boxes)
           let line_x = dst_center_x + offset + dst_offset
-          grid.vline(line_x, src_bottom, dst_top, '│')
+          grid.vline(line_x, src_bottom, dst_top, cs.vertical())
         } else {
           // L-shaped routing needed
           let line_x = src_center_x + offset
           // Draw vertical line from source
           let mid_y = (src_bottom + dst_top) / 2
-          grid.vline(line_x, src_bottom, mid_y, '│')
+          grid.vline(line_x, src_bottom, mid_y, cs.vertical())
           // Draw corner
           if dst_center_x > line_x {
-            grid.set(line_x, mid_y, '└')
+            grid.set(line_x, mid_y, cs.bottom_left())
             // Draw horizontal line
-            grid.hline(line_x + 1, dst_center_x - 1, mid_y, '─')
-            grid.set(dst_center_x, mid_y, '┐')
+            grid.hline(line_x + 1, dst_center_x - 1, mid_y, cs.horizontal())
+            grid.set(dst_center_x, mid_y, cs.top_right())
           } else {
-            grid.set(line_x, mid_y, '┘')
+            grid.set(line_x, mid_y, cs.bottom_right())
             // Draw horizontal line
-            grid.hline(dst_center_x + 1, line_x - 1, mid_y, '─')
-            grid.set(dst_center_x, mid_y, '┌')
+            grid.hline(dst_center_x + 1, line_x - 1, mid_y, cs.horizontal())
+            grid.set(dst_center_x, mid_y, cs.top_left())
           }
           // Draw vertical line to destination
-          grid.vline(dst_center_x, mid_y + 1, dst_top, '│')
+          grid.vline(dst_center_x, mid_y + 1, dst_top, cs.vertical())
         }
       } else if src.y > dst.y + dst.height {
         // Destination is above source - draw upward
@@ -937,30 +906,30 @@ fn render_ascii_edge_new(
         if overlaps {
           // Straight vertical line upward
           let line_x = dst_center_x + offset
-          grid.vline(line_x, dst_bottom, src_top, '│')
+          grid.vline(line_x, dst_bottom, src_top, cs.vertical())
         } else {
           // L-shaped routing upward
           let line_x = src_center_x + offset
           let mid_y = (dst_bottom + src_top) / 2
-          grid.vline(line_x, mid_y, src_top, '│')
+          grid.vline(line_x, mid_y, src_top, cs.vertical())
           if dst_center_x > line_x {
-            grid.set(line_x, mid_y, '┌')
-            grid.hline(line_x + 1, dst_center_x - 1, mid_y, '─')
-            grid.set(dst_center_x, mid_y, '┘')
+            grid.set(line_x, mid_y, cs.top_left())
+            grid.hline(line_x + 1, dst_center_x - 1, mid_y, cs.horizontal())
+            grid.set(dst_center_x, mid_y, cs.bottom_right())
           } else {
-            grid.set(line_x, mid_y, '┐')
-            grid.hline(dst_center_x + 1, line_x - 1, mid_y, '─')
-            grid.set(dst_center_x, mid_y, '└')
+            grid.set(line_x, mid_y, cs.top_right())
+            grid.hline(dst_center_x + 1, line_x - 1, mid_y, cs.horizontal())
+            grid.set(dst_center_x, mid_y, cs.bottom_left())
           }
-          grid.vline(dst_center_x, dst_bottom, mid_y - 1, '│')
+          grid.vline(dst_center_x, dst_bottom, mid_y - 1, cs.vertical())
         }
       } else if dst.x != src.x {
         // Side by side - horizontal connection
         let cy = src.y + src.height / 2
         if src.x < dst.x {
-          grid.hline(src.x + src.width, dst.x - 1, cy, '─')
+          grid.hline(src.x + src.width, dst.x - 1, cy, cs.horizontal())
         } else {
-          grid.hline(dst.x + dst.width, src.x - 1, cy, '─')
+          grid.hline(dst.x + dst.width, src.x - 1, cy, cs.horizontal())
         }
       }
     _ => ()
@@ -975,13 +944,14 @@ fn render_ascii_arrows_new(
   edge : Edge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
-  _config : AsciiConfig,
+  config : AsciiConfig,
 ) -> Unit {
   let src_id = edge.get_src_id()
   let dst_id = edge.get_dst_id()
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
+  let cs = config.charset
   match (src_box, dst_box) {
     (Some(src), Some(dst)) =>
       if dst.y > src.y + src.height {
@@ -1000,19 +970,19 @@ fn render_ascii_arrows_new(
           let dst_offset = compute_destination_offset(graph, edge, boxes)
           let line_x = dst_center_x + offset + dst_offset
           if edge.dst_arrow {
-            grid.set(line_x, dst_top, '▼')
+            grid.set(line_x, dst_top, cs.arrow_down())
           }
           if edge.src_arrow && ref_idx == 0 {
-            grid.set(line_x, src_bottom, '▲')
+            grid.set(line_x, src_bottom, cs.arrow_up())
           }
         } else {
           // L-shaped routing - arrow at destination center
           if edge.dst_arrow {
-            grid.set(dst_center_x, dst_top, '▼')
+            grid.set(dst_center_x, dst_top, cs.arrow_down())
           }
           if edge.src_arrow && ref_idx == 0 {
             let line_x = src_center_x + offset
-            grid.set(line_x, src_bottom, '▲')
+            grid.set(line_x, src_bottom, cs.arrow_up())
           }
         }
       } else if src.y > dst.y + dst.height {
@@ -1029,37 +999,37 @@ fn render_ascii_arrows_new(
           let line_x = dst_center_x + offset
           if edge.dst_arrow {
             // Arrow pointing up at destination (from below)
-            grid.set(line_x, dst_bottom, '▲')
+            grid.set(line_x, dst_bottom, cs.arrow_up())
           }
           if edge.src_arrow && ref_idx == 0 {
             // Arrow pointing down at source (from above)
-            grid.set(line_x, src_top, '▼')
+            grid.set(line_x, src_top, cs.arrow_down())
           }
         } else {
           if edge.dst_arrow {
             // Arrow pointing up at destination
-            grid.set(dst_center_x, dst_bottom, '▲')
+            grid.set(dst_center_x, dst_bottom, cs.arrow_up())
           }
           if edge.src_arrow && ref_idx == 0 {
             // Arrow pointing down at source
             let line_x = src_center_x + offset
-            grid.set(line_x, src_top, '▼')
+            grid.set(line_x, src_top, cs.arrow_down())
           }
         }
       } else if dst.x != src.x {
         // Horizontal edge
         if edge.dst_arrow {
           if dst.x > src.x {
-            grid.set(dst.x - 1, dst.y + dst.height / 2, '▶')
+            grid.set(dst.x - 1, dst.y + dst.height / 2, cs.arrow_right())
           } else {
-            grid.set(dst.x + dst.width, dst.y + dst.height / 2, '◀')
+            grid.set(dst.x + dst.width, dst.y + dst.height / 2, cs.arrow_left())
           }
         }
         if edge.src_arrow && ref_idx == 0 {
           if dst.x > src.x {
-            grid.set(src.x + src.width, src.y + src.height / 2, '◀')
+            grid.set(src.x + src.width, src.y + src.height / 2, cs.arrow_left())
           } else {
-            grid.set(src.x - 1, src.y + src.height / 2, '▶')
+            grid.set(src.x - 1, src.y + src.height / 2, cs.arrow_right())
           }
         }
       }

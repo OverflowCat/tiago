@@ -68,10 +68,27 @@ pub fn render_svg() -> Int {
 /// Render D2 source to ASCII
 pub fn render_ascii() -> Int {
   let source = bytes_to_string(input_buffer)
-  let result = compile_d2_ascii(source)
+  let result = compile_d2_text(source, @graph.AsciiConfig::new())
   match result {
     Ok(ascii) => {
       string_to_bytes(ascii, output_buffer)
+      0 // Success
+    }
+    Err(e) => {
+      string_to_bytes("Error: \{e}", output_buffer)
+      1 // Error
+    }
+  }
+}
+
+///|
+/// Render D2 source to Unicode box-drawing characters
+pub fn render_unicode() -> Int {
+  let source = bytes_to_string(input_buffer)
+  let result = compile_d2_text(source, @graph.AsciiConfig::unicode())
+  match result {
+    Ok(text) => {
+      string_to_bytes(text, output_buffer)
       0 // Success
     }
     Err(e) => {
@@ -91,10 +108,12 @@ fn bytes_to_string(bytes : Array[Byte]) -> String {
 }
 
 ///|
+/// Encode string to UTF-8 bytes
 fn string_to_bytes(s : String, out : Array[Byte]) -> Unit {
   out.clear()
-  for c in s {
-    out.push(c.to_int().to_byte())
+  let bytes = @encoding/utf8.encode(s[:])
+  for i in 0..<bytes.length() {
+    out.push(bytes[i])
   }
 }
 
@@ -117,13 +136,13 @@ fn compile_d2_svg(
 }
 
 ///|
-/// Compile D2 source to ASCII art
-fn compile_d2_ascii(source : String) -> Result[String, String] {
+/// Compile D2 source to text art (ASCII or Unicode)
+fn compile_d2_text(
+  source : String,
+  config : @graph.AsciiConfig,
+) -> Result[String, String] {
   match compile_to_graph(source) {
-    Ok(graph) => {
-      let render_config = @graph.AsciiConfig::new()
-      Ok(@graph.render_ascii(graph, render_config))
-    }
+    Ok(graph) => Ok(@graph.render_ascii(graph, config))
     Err(e) => Err(e)
   }
 }

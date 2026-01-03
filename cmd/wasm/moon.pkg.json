@@ -14,7 +14,8 @@
         "get_output_len:get_output_len",
         "read_output_byte:read_output_byte",
         "render_svg:render_svg",
-        "render_ascii:render_ascii"
+        "render_ascii:render_ascii",
+        "render_unicode:render_unicode"
       ]
     }
   }

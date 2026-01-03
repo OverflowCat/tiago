@@ -110,25 +110,60 @@ pub fn Grid::rect(
 }
 
 ///|
-/// Draw a rectangle with Unicode box-drawing characters
-/// Uses: ┌ ─ ┐ │ └ ┘
-pub fn Grid::unicode_rect(
+/// Draw a rectangle with ASCII box-drawing characters
+/// Uses: + - |
+pub fn Grid::ascii_rect(
   self : Grid,
   x1 : Int,
   y1 : Int,
   x2 : Int,
   y2 : Int,
 ) -> Unit {
-  // Corners: ┌ ┐ └ ┘
-  self.set(x1, y1, '┌')
-  self.set(x2, y1, '┐')
-  self.set(x1, y2, '└')
-  self.set(x2, y2, '┘')
-  // Edges: ─ │
-  self.hline(x1 + 1, x2 - 1, y1, '─')
-  self.hline(x1 + 1, x2 - 1, y2, '─')
-  self.vline(x1, y1 + 1, y2 - 1, '│')
-  self.vline(x2, y1 + 1, y2 - 1, '│')
+  self.box_rect(x1, y1, x2, y2, CharSet::ascii())
+}
+
+///|
+/// Draw a rectangle using a CharSet
+pub fn Grid::box_rect(
+  self : Grid,
+  x1 : Int,
+  y1 : Int,
+  x2 : Int,
+  y2 : Int,
+  cs : CharSet,
+) -> Unit {
+  // Corners
+  self.set(x1, y1, cs.top_left())
+  self.set(x2, y1, cs.top_right())
+  self.set(x1, y2, cs.bottom_left())
+  self.set(x2, y2, cs.bottom_right())
+  // Edges
+  self.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+  self.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+  self.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+  self.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+}
+
+///|
+/// Draw a rounded rectangle using a CharSet
+pub fn Grid::rounded_rect(
+  self : Grid,
+  x1 : Int,
+  y1 : Int,
+  x2 : Int,
+  y2 : Int,
+  cs : CharSet,
+) -> Unit {
+  // Rounded corners
+  self.set(x1, y1, cs.top_left_arc())
+  self.set(x2, y1, cs.top_right_arc())
+  self.set(x1, y2, cs.bottom_left_arc())
+  self.set(x2, y2, cs.bottom_right_arc())
+  // Edges
+  self.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+  self.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+  self.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+  self.vline(x2, y1 + 1, y2 - 1, cs.vertical())
 }
 
 ///|

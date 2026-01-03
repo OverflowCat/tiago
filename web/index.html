@@ -267,6 +267,7 @@ server -> database: queries"></textarea>
         <div class="tabs">
           <button class="tab active" data-view="svg">SVG</button>
           <button class="tab" data-view="ascii">ASCII</button>
+          <button class="tab" data-view="unicode">Unicode</button>
         </div>
         <div class="spacer"></div>
         <button id="render-btn">Render</button>
@@ -429,20 +430,26 @@ server -> database: queries"></textarea>
     }
 
     function setInput(str) {
-      const len = str.length;
+      // Encode string as UTF-8 bytes
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(str);
+      const len = bytes.length;
       wasmModule.set_input(len);
       for (let i = 0; i < len; i++) {
-        wasmModule.write_input_byte(i, str.charCodeAt(i));
+        wasmModule.write_input_byte(i, bytes[i]);
       }
     }
 
     function getOutput() {
       const len = wasmModule.get_output_len();
-      let result = '';
+      // Read bytes into a Uint8Array for proper UTF-8 decoding
+      const bytes = new Uint8Array(len);
       for (let i = 0; i < len; i++) {
-        result += String.fromCharCode(wasmModule.read_output_byte(i));
+        bytes[i] = wasmModule.read_output_byte(i);
       }
-      return result;
+      // Use TextDecoder to properly handle multi-byte UTF-8 characters
+      const decoder = new TextDecoder('utf-8');
+      return decoder.decode(bytes);
     }
 
     function render() {
@@ -466,6 +473,8 @@ server -> database: queries"></textarea>
         let status;
         if (currentView === 'ascii') {
           status = wasmModule.render_ascii();
+        } else if (currentView === 'unicode') {
+          status = wasmModule.render_unicode();
         } else {
           status = wasmModule.render_svg();
         }
@@ -478,7 +487,7 @@ server -> database: queries"></textarea>
           return;
         }
 
-        if (currentView === 'ascii') {
+        if (currentView === 'ascii' || currentView === 'unicode') {
           preview.className = 'preview-content dark ascii-output';
           preview.textContent = output;
         } else {

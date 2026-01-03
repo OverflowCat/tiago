@@ -5,9 +5,9 @@
 test "ascii simple object" {
   let ascii = compile_ascii("server").unwrap()
   assert_true(ascii.contains("server"))
-  assert_true(ascii.contains("┌"))
-  assert_true(ascii.contains("─"))
-  assert_true(ascii.contains("│"))
+  assert_true(ascii.contains("+"))
+  assert_true(ascii.contains("-"))
+  assert_true(ascii.contains("|"))
 }
 
 ///|
@@ -27,13 +27,13 @@ test "ascii edge has arrow" {
   let ascii = compile_ascii("a -> b").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
-  assert_true(ascii.contains("▼"))
+  assert_true(ascii.contains("v"))
 }
 
 ///|
 test "ascii edge has vertical line" {
   let ascii = compile_ascii("a -> b").unwrap()
-  assert_true(ascii.contains("│"))
+  assert_true(ascii.contains("|"))
 }
 
 ///|
@@ -42,7 +42,7 @@ test "ascii chain has multiple arrows" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("c"))
-  let arrow_count = count_char(ascii, '▼')
+  let arrow_count = count_char(ascii, 'v')
   assert_true(arrow_count >= 2)
 }
 
@@ -52,7 +52,7 @@ test "ascii labeled edge shows label" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("hello"))
-  assert_true(ascii.contains("▼"))
+  assert_true(ascii.contains("v"))
 }
 
 ///|
@@ -60,8 +60,8 @@ test "ascii bidirectional edge has two arrows" {
   let ascii = compile_ascii("a <-> b").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
-  let down_arrows = count_char(ascii, '▼')
-  let up_arrows = count_char(ascii, '▲')
+  let down_arrows = count_char(ascii, 'v')
+  let up_arrows = count_char(ascii, '^')
   assert_true(down_arrows >= 1 || up_arrows >= 1)
 }
 
@@ -80,7 +80,7 @@ test "ascii multiple edges from same source" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("c"))
-  let arrow_count = count_char(ascii, '▼')
+  let arrow_count = count_char(ascii, 'v')
   assert_true(arrow_count >= 2)
 }
 
@@ -111,7 +111,7 @@ test "ascii class shape has separator" {
     #|  shape: class
     #|}
   let ascii = compile_ascii(source).unwrap()
-  assert_true(ascii.contains("├") || ascii.contains("─"))
+  assert_true(ascii.contains("+") || ascii.contains("-"))
 }
 
 ///|
@@ -121,5 +121,5 @@ test "ascii sql_table shape has separator" {
     #|  shape: sql_table
     #|}
   let ascii = compile_ascii(source).unwrap()
-  assert_true(ascii.contains("├") || ascii.contains("─"))
+  assert_true(ascii.contains("+") || ascii.contains("-"))
 }
