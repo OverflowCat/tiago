@@ -446,6 +446,23 @@ fn render_ascii_box(
       grid.text(label_x, label_y, box.label)
       return
     }
+    "image" => {
+      // Image shape - show [IMG] placeholder in ASCII
+      grid.set(x1, y1, '┌')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '┐')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '└')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '┘')
+      // Show [IMG] in center
+      let img_text = "[IMG]"
+      let label_x = x1 + (box.width - img_text.length()) / 2
+      let label_y = y1 + box.height / 2
+      grid.text(label_x, label_y, img_text)
+      return
+    }
     "code" => {
       // Code shape - box with ``` markers
       grid.set(x1, y1, '┌')

@@ -306,6 +306,15 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
     "text" =>
       // Text shape - no border, just the label
       ()
+    "image" => {
+      // Image shape - render external image
+      if obj.icon is Some(url) {
+        svg.add(
+          "<image href=\"\{@svg.escape_xml(url)}\" x=\"\{box.x}\" y=\"\{box.y}\" width=\"\{box.width}\" height=\"\{box.height}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+        )
+      }
+      return // Don't render the default label for image shape
+    }
     "code" => {
       // Code shape - monospace text with dark background
       render_svg_code(svg, box, obj.label, fill, stroke, stroke_width, config)

@@ -32,7 +32,7 @@ This document tracks features from the D2 reference implementation that are not 
 
 ## Shapes
 
-### Currently Supported (21/24)
+### Currently Supported (22/24)
 - [x] rectangle
 - [x] square
 - [x] circle
@@ -56,7 +56,7 @@ This document tracks features from the D2 reference implementation that are not 
 - [x] sql_table
 
 ### 🔴 Missing Core Shapes
-- [ ] **image** - External image embedding
+- [x] **image** - External image embedding
 
 ### 🟢 Missing Utility Shapes
 - [ ] **c4_person** - C4 diagram person shape

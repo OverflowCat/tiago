@@ -237,3 +237,27 @@ test "sql_table shape renders table name" {
   assert_true(svg.contains("orders"))
   assert_true(svg.contains("font-weight=\"bold\""))
 }
+
+///|
+test "image shape renders image element" {
+  let source =
+    #|logo {
+    #|  shape: image
+    #|  icon: "./logo.png"
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<image"))
+  assert_true(svg.contains("href=\"./logo.png\""))
+  assert_true(svg.contains("preserveAspectRatio"))
+}
+
+///|
+test "image shape without icon renders nothing" {
+  let source =
+    #|img {
+    #|  shape: image
+    #|}
+  let svg = compile(source).unwrap()
+  // Should not crash, just no image element
+  assert_true(svg.contains("<svg"))
+}
