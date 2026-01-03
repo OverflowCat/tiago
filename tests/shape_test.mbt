@@ -261,3 +261,27 @@ test "image shape without icon renders nothing" {
   // Should not crash, just no image element
   assert_true(svg.contains("<svg"))
 }
+
+///|
+test "c4_person shape renders person icon" {
+  let source =
+    #|user: User {
+    #|  shape: c4_person
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<circle")) // Head
+  assert_true(svg.contains("<rect")) // Body
+  assert_true(svg.contains("User"))
+}
+
+///|
+test "c4_container shape renders rounded rectangle" {
+  let source =
+    #|api: API Gateway {
+    #|  shape: c4_container
+    #|}
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains("<rect"))
+  assert_true(svg.contains("rx=\"10\"")) // Rounded corners
+  assert_true(svg.contains("API Gateway"))
+}

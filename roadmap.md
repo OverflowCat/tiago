@@ -32,7 +32,7 @@ This document tracks features from the D2 reference implementation that are not 
 
 ## Shapes
 
-### Currently Supported (22/24)
+### Currently Supported (24/24)
 - [x] rectangle
 - [x] square
 - [x] circle
@@ -58,9 +58,9 @@ This document tracks features from the D2 reference implementation that are not 
 ### 🔴 Missing Core Shapes
 - [x] **image** - External image embedding
 
-### 🟢 Missing Utility Shapes
-- [ ] **c4_person** - C4 diagram person shape
-- [ ] **c4_container** - C4 diagram container shape
+### 🟢 Utility Shapes (Complete)
+- [x] **c4_person** - C4 diagram person shape
+- [x] **c4_container** - C4 diagram container shape
 
 ---
 

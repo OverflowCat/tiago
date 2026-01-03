@@ -568,6 +568,39 @@ fn render_ascii_box(
         grid.hline(cx - 2, cx + 2, y2, '‾')
       }
     }
+    "c4_person" => {
+      // C4 person: simplified person icon with label
+      let cx = (x1 + x2) / 2
+      // Head
+      grid.set(cx - 1, y1, '╱')
+      grid.set(cx, y1, '‾')
+      grid.set(cx + 1, y1, '╲')
+      grid.set(cx - 1, y1 + 1, '╲')
+      grid.set(cx, y1 + 1, '_')
+      grid.set(cx + 1, y1 + 1, '╱')
+      // Body (rounded box)
+      if y2 > y1 + 3 {
+        grid.set(x1 + 1, y1 + 2, '┌')
+        grid.hline(x1 + 2, x2 - 2, y1 + 2, '─')
+        grid.set(x2 - 1, y1 + 2, '┐')
+        grid.vline(x1 + 1, y1 + 3, y2 - 1, '│')
+        grid.vline(x2 - 1, y1 + 3, y2 - 1, '│')
+        grid.set(x1 + 1, y2, '└')
+        grid.hline(x1 + 2, x2 - 2, y2, '─')
+        grid.set(x2 - 1, y2, '┘')
+      }
+    }
+    "c4_container" => {
+      // C4 container: rounded rectangle
+      grid.set(x1, y1, '╭')
+      grid.hline(x1 + 1, x2 - 1, y1, '─')
+      grid.set(x2, y1, '╮')
+      grid.vline(x1, y1 + 1, y2 - 1, '│')
+      grid.vline(x2, y1 + 1, y2 - 1, '│')
+      grid.set(x1, y2, '╰')
+      grid.hline(x1 + 1, x2 - 1, y2, '─')
+      grid.set(x2, y2, '╯')
+    }
     "hexagon" => {
       // Hexagon:  ╱‾‾‾‾‾╲
       //          ╲_____╱

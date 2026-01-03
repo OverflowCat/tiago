@@ -393,6 +393,26 @@ fn render_svg_object(svg : @svg.Svg, obj : Object, config : SvgConfig) -> Unit {
     "parallelogram" =>
       render_svg_parallelogram(svg, box, fill, stroke, stroke_width)
     "person" => render_svg_person(svg, box, fill, stroke, stroke_width)
+    "c4_person" =>
+      render_svg_c4_person(
+        svg,
+        box,
+        obj.label,
+        fill,
+        stroke,
+        stroke_width,
+        config,
+      )
+    "c4_container" =>
+      render_svg_c4_container(
+        svg,
+        box,
+        obj.label,
+        fill,
+        stroke,
+        stroke_width,
+        config,
+      )
     "cloud" => render_svg_cloud(svg, box, fill, stroke, stroke_width)
     "document" => render_svg_document(svg, box, fill, stroke, stroke_width)
     "queue" => render_svg_queue(svg, box, fill, stroke, stroke_width)
@@ -1181,5 +1201,110 @@ fn render_svg_edge(svg : @svg.Svg, edge : Edge, config : SvgConfig) -> Unit {
       }
       None => ()
     }
+  }
+}
+
+///|
+/// Render C4 Person shape - person icon with label below
+fn render_svg_c4_person(
+  svg : @svg.Svg,
+  box : Box,
+  label : String,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  let cx = box.x + box.width / 2.0
+  // Person icon takes top 60%, label takes bottom 40%
+  let icon_height = box.height * 0.6
+  let label_height = box.height * 0.4
+  // Head
+  let head_r = icon_height * 0.25
+  let head_cy = box.y + head_r + 5.0
+  svg.add(@svg.circle(cx, head_cy, head_r, fill~, stroke~, stroke_width~))
+  // Body (rounded rectangle representing torso)
+  let body_width = box.width * 0.5
+  let body_height = icon_height * 0.45
+  let body_top = head_cy + head_r + 5.0
+  svg.add(
+    @svg.rect(
+      cx - body_width / 2.0,
+      body_top,
+      body_width,
+      body_height,
+      fill~,
+      stroke~,
+      stroke_width~,
+      rx=8.0,
+      ry=8.0,
+    ),
+  )
+  // Label below the icon
+  let label_y = box.y + icon_height + label_height / 2.0
+  svg.add(
+    @svg.text(
+      cx,
+      label_y,
+      label,
+      font_family=config.font_family,
+      font_size=config.font_size,
+    ),
+  )
+}
+
+///|
+/// Render C4 Container shape - rounded rect with technology label
+fn render_svg_c4_container(
+  svg : @svg.Svg,
+  box : Box,
+  label : String,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  // Main container rectangle with rounded corners
+  let corner_radius = 10.0
+  svg.add(
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      box.height,
+      fill~,
+      stroke~,
+      stroke_width~,
+      rx=corner_radius,
+      ry=corner_radius,
+    ),
+  )
+  // Parse label for name and technology
+  let lines = split_lines(label)
+  let name = if lines.length() > 0 { lines[0] } else { label }
+  let tech = if lines.length() > 1 { lines[1] } else { "" }
+  // Container name (centered)
+  let name_y = box.y + box.height / 2.0
+  svg.add(
+    @svg.text(
+      box.x + box.width / 2.0,
+      name_y,
+      name,
+      font_family=config.font_family,
+      font_size=config.font_size,
+    ),
+  )
+  // Technology label below name (smaller, in brackets)
+  if tech != "" {
+    svg.add(
+      @svg.styled_text(
+        box.x + box.width / 2.0,
+        name_y + config.font_size.to_double() + 5.0,
+        "[\{tech}]",
+        font_family=config.font_family,
+        font_size=config.font_size - 2,
+        extra_style="fill: #666666",
+      ),
+    )
   }
 }
