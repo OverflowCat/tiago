@@ -28,6 +28,10 @@ pub struct CharSet {
   cross : Char
   diagonal_down : Char
   diagonal_up : Char
+  dot : Char
+  hyphen : Char
+  overline : Char
+  underscore : Char
 }
 pub fn CharSet::arrow_down(Self) -> Char
 pub fn CharSet::arrow_left(Self) -> Char
@@ -41,7 +45,10 @@ pub fn CharSet::bottom_right_arc(Self) -> Char
 pub fn CharSet::cross(Self) -> Char
 pub fn CharSet::diagonal_down(Self) -> Char
 pub fn CharSet::diagonal_up(Self) -> Char
+pub fn CharSet::dot(Self) -> Char
 pub fn CharSet::horizontal(Self) -> Char
+pub fn CharSet::hyphen(Self) -> Char
+pub fn CharSet::overline(Self) -> Char
 pub fn CharSet::t_down(Self) -> Char
 pub fn CharSet::t_left(Self) -> Char
 pub fn CharSet::t_right(Self) -> Char
@@ -50,6 +57,7 @@ pub fn CharSet::top_left(Self) -> Char
 pub fn CharSet::top_left_arc(Self) -> Char
 pub fn CharSet::top_right(Self) -> Char
 pub fn CharSet::top_right_arc(Self) -> Char
+pub fn CharSet::underscore(Self) -> Char
 pub fn CharSet::unicode() -> Self
 pub fn CharSet::vertical(Self) -> Char
 pub impl Show for CharSet

@@ -510,18 +510,30 @@ fn render_ascii_box(
     }
     "circle" | "oval" => grid.rounded_rect(x1, y1, x2, y2, cs)
     "cylinder" => {
-      // Top: .----.
-      grid.set(x1, y1, cs.top_left_arc())
-      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
-      grid.set(x2, y1, cs.top_right_arc())
-      // Sides
-      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
-      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
-      // Bottom: curved
-      grid.set(x1, y2, ' ')
-      grid.set(x1 + 1, y2, cs.diagonal_down())
-      grid.hline(x1 + 2, x2 - 2, y2, '_')
-      grid.set(x2 - 1, y2, cs.diagonal_up())
+      // Draw cylinder according to D2 implementation
+      // Top row: .--‾‾--.
+      grid.set(x1 + 1, y1, cs.dot())
+      grid.set(x2 - 1, y1, cs.dot())
+      grid.set(x1 + 2, y1, cs.hyphen())
+      grid.set(x2 - 2, y1, cs.hyphen())
+      for ix = x1 + 3; ix < x2 - 2; ix = ix + 1 {
+        grid.set(ix, y1, cs.overline())
+      }
+      // Second row (y1+1) and bottom row (y2): \--__--/
+      for iy in [y1 + 1, y2] {
+        grid.set(x1 + 1, iy, cs.diagonal_down())
+        grid.set(x2 - 1, iy, cs.diagonal_up())
+        grid.set(x1 + 2, iy, cs.hyphen())
+        grid.set(x2 - 2, iy, cs.hyphen())
+        for ix = x1 + 3; ix < x2 - 2; ix = ix + 1 {
+          grid.set(ix, iy, cs.underscore())
+        }
+      }
+      // Sides: vertical lines
+      for iy = y1 + 1; iy < y2; iy = iy + 1 {
+        grid.set(x1, iy, cs.vertical())
+        grid.set(x2, iy, cs.vertical())
+      }
     }
     "diamond" => {
       let cx = (x1 + x2) / 2

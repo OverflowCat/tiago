@@ -32,6 +32,11 @@ pub struct CharSet {
   // Diagonals
   diagonal_down : Char
   diagonal_up : Char
+  // Cylinder/special characters
+  dot : Char
+  hyphen : Char
+  overline : Char
+  underscore : Char
 } derive(Show)
 
 ///|
@@ -66,6 +71,11 @@ pub fn CharSet::ascii() -> CharSet {
     // Diagonals
     diagonal_down: '\\',
     diagonal_up: '/',
+    // Cylinder/special
+    dot: '.',
+    hyphen: '-',
+    overline: '-',
+    underscore: '_',
   }
 }
 
@@ -101,6 +111,11 @@ pub fn CharSet::unicode() -> CharSet {
     // Diagonals
     diagonal_down: '╲',
     diagonal_up: '╱',
+    // Cylinder/special
+    dot: '.',
+    hyphen: '-',
+    overline: '‾',
+    underscore: '_',
   }
 }
 
@@ -214,4 +229,25 @@ pub fn CharSet::diagonal_down(self : CharSet) -> Char {
 ///|
 pub fn CharSet::diagonal_up(self : CharSet) -> Char {
   self.diagonal_up
+}
+
+///|
+/// Accessors for cylinder/special characters
+pub fn CharSet::dot(self : CharSet) -> Char {
+  self.dot
+}
+
+///|
+pub fn CharSet::hyphen(self : CharSet) -> Char {
+  self.hyphen
+}
+
+///|
+pub fn CharSet::overline(self : CharSet) -> Char {
+  self.overline
+}
+
+///|
+pub fn CharSet::underscore(self : CharSet) -> Char {
+  self.underscore
 }
