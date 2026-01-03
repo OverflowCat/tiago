@@ -94,20 +94,18 @@ pub fn rect(
   rx? : Double = 0.0,
   ry? : Double = 0.0,
 ) -> String {
-  let sb = StringBuilder::new()
-  sb.write_string(
-    "<rect x=\"\{x}\" y=\"\{y}\" width=\"\{width}\" height=\"\{height}\"",
-  )
-  if rx > 0.0 {
-    sb.write_string(" rx=\"\{rx}\"")
-  }
-  if ry > 0.0 {
-    sb.write_string(" ry=\"\{ry}\"")
-  }
-  sb.write_string(
-    " fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>",
-  )
-  sb.to_string()
+  @xml_emit.Element::new("rect")
+  .attr_num("x", x)
+  .attr_num("y", y)
+  .attr_num("width", width)
+  .attr_num("height", height)
+  .attr_num_if("rx", rx, rx > 0.0)
+  .attr_num_if("ry", ry, ry > 0.0)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -121,7 +119,16 @@ pub fn ellipse(
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
 ) -> String {
-  "<ellipse cx=\"\{cx}\" cy=\"\{cy}\" rx=\"\{rx}\" ry=\"\{ry}\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>"
+  @xml_emit.Element::new("ellipse")
+  .attr_num("cx", cx)
+  .attr_num("cy", cy)
+  .attr_num("rx", rx)
+  .attr_num("ry", ry)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -134,7 +141,15 @@ pub fn circle(
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
 ) -> String {
-  "<circle cx=\"\{cx}\" cy=\"\{cy}\" r=\"\{r}\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>"
+  @xml_emit.Element::new("circle")
+  .attr_num("cx", cx)
+  .attr_num("cy", cy)
+  .attr_num("r", r)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -147,7 +162,15 @@ pub fn line(
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
 ) -> String {
-  "<line x1=\"\{x1}\" y1=\"\{y1}\" x2=\"\{x2}\" y2=\"\{y2}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>"
+  @xml_emit.Element::new("line")
+  .attr_num("x1", x1)
+  .attr_num("y1", y1)
+  .attr_num("x2", x2)
+  .attr_num("y2", y2)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -158,18 +181,14 @@ pub fn polyline(
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
 ) -> String {
-  let sb = StringBuilder::new()
-  sb.write_string("<polyline points=\"")
-  for i, pt in points {
-    if i > 0 {
-      sb.write_char(' ')
-    }
-    sb.write_string("\{pt.0},\{pt.1}")
-  }
-  sb.write_string(
-    "\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>",
-  )
-  sb.to_string()
+  let points_str = points_to_string(points)
+  @xml_emit.Element::new("polyline")
+  .attr("points", points_str)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -180,17 +199,26 @@ pub fn polygon(
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
 ) -> String {
+  let points_str = points_to_string(points)
+  @xml_emit.Element::new("polygon")
+  .attr("points", points_str)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .self_close()
+  .build()
+}
+
+///|
+/// Convert array of points to SVG points string
+fn points_to_string(points : Array[(Double, Double)]) -> String {
   let sb = StringBuilder::new()
-  sb.write_string("<polygon points=\"")
   for i, pt in points {
     if i > 0 {
       sb.write_char(' ')
     }
     sb.write_string("\{pt.0},\{pt.1}")
   }
-  sb.write_string(
-    "\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>",
-  )
   sb.to_string()
 }
 
@@ -204,18 +232,15 @@ pub fn path(
   marker_start? : String = "",
   marker_end? : String = "",
 ) -> String {
-  let sb = StringBuilder::new()
-  sb.write_string(
-    "<path d=\"\{d}\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"",
-  )
-  if marker_start != "" {
-    sb.write_string(" marker-start=\"\{marker_start}\"")
-  }
-  if marker_end != "" {
-    sb.write_string(" marker-end=\"\{marker_end}\"")
-  }
-  sb.write_string("/>")
-  sb.to_string()
+  @xml_emit.Element::new("path")
+  .attr("d", d)
+  .attr("fill", fill)
+  .attr("stroke", stroke)
+  .attr_num("stroke-width", stroke_width)
+  .attr_if("marker-start", marker_start)
+  .attr_if("marker-end", marker_end)
+  .self_close()
+  .build()
 }
 
 ///|
@@ -229,8 +254,15 @@ pub fn text(
   text_anchor? : String = "middle",
   dominant_baseline? : String = "middle",
 ) -> String {
-  let escaped = escape_xml(content)
-  "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{text_anchor}\" dominant-baseline=\"\{dominant_baseline}\" font-family=\"\{font_family}\" font-size=\"\{font_size}\">\{escaped}</text>"
+  @xml_emit.Element::new("text")
+  .attr_num("x", x)
+  .attr_num("y", y)
+  .attr("text-anchor", text_anchor)
+  .attr("dominant-baseline", dominant_baseline)
+  .attr("font-family", font_family)
+  .attr_int("font-size", font_size)
+  .text(content)
+  .build()
 }
 
 ///|
@@ -246,7 +278,6 @@ pub fn styled_text(
   text_transform? : String = "",
   extra_style? : String = "",
 ) -> String {
-  let escaped = escape_xml(content)
   // Build style attribute
   let style_parts : Array[String] = []
   if text_transform != "" {
@@ -255,13 +286,17 @@ pub fn styled_text(
   if extra_style != "" {
     style_parts.push(extra_style)
   }
-  let style_attr = if style_parts.length() > 0 {
-    let joined = style_parts.join("; ")
-    " style=\"\{joined}\""
-  } else {
-    ""
-  }
-  "<text x=\"\{x}\" y=\"\{y}\" text-anchor=\"\{text_anchor}\" dominant-baseline=\"\{dominant_baseline}\" font-family=\"\{font_family}\" font-size=\"\{font_size}\"\{style_attr}>\{escaped}</text>"
+  let style_value = style_parts.join("; ")
+  @xml_emit.Element::new("text")
+  .attr_num("x", x)
+  .attr_num("y", y)
+  .attr("text-anchor", text_anchor)
+  .attr("dominant-baseline", dominant_baseline)
+  .attr("font-family", font_family)
+  .attr_int("font-size", font_size)
+  .attr_if("style", style_value)
+  .text(content)
+  .build()
 }
 
 ///|
@@ -273,11 +308,26 @@ pub fn arrow_marker(
   reverse? : Bool = false,
 ) -> String {
   let half = size / 2.0
-  if reverse {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},0 L0,\{half} L\{size},\{size} Z\" fill=\"\{fill}\"/></marker>"
+  let (refX, d) = if reverse {
+    (0.0, "M\{size},0 L0,\{half} L\{size},\{size} Z")
   } else {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,0 L\{size},\{half} L0,\{size} Z\" fill=\"\{fill}\"/></marker>"
+    (size, "M0,0 L\{size},\{half} L0,\{size} Z")
   }
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("fill", fill)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem)
+  .build()
 }
 
 ///|
@@ -290,7 +340,22 @@ pub fn diamond_marker(
 ) -> String {
   let half = size / 2.0
   let refX = if reverse { 0.0 } else { size }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{half},0 L\{size},\{half} L\{half},\{size} Z\" fill=\"\{fill}\"/></marker>"
+  let d = "M0,\{half} L\{half},0 L\{size},\{half} L\{half},\{size} Z"
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("fill", fill)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem)
+  .build()
 }
 
 ///|
@@ -304,7 +369,23 @@ pub fn circle_marker(
   let half = size / 2.0
   let r = half * 0.8
   let refX = if reverse { r } else { size - r }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><circle cx=\"\{half}\" cy=\"\{half}\" r=\"\{r}\" fill=\"\{fill}\"/></marker>"
+  let circle_elem = @xml_emit.Element::new("circle")
+    .attr_num("cx", half)
+    .attr_num("cy", half)
+    .attr_num("r", r)
+    .attr("fill", fill)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(circle_elem)
+  .build()
 }
 
 ///|
@@ -318,7 +399,25 @@ pub fn cf_one_marker(
   let half = size / 2.0
   let refX = if reverse { 0.0 } else { size }
   let x = if reverse { 0.0 } else { size }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{x}\" y1=\"0\" x2=\"\{x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  let line_elem = @xml_emit.Element::new("line")
+    .attr_num("x1", x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(line_elem)
+  .build()
 }
 
 ///|
@@ -330,11 +429,34 @@ pub fn cf_many_marker(
   reverse? : Bool = false,
 ) -> String {
   let half = size / 2.0
-  if reverse {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  let (refX, d) = if reverse {
+    (
+      0.0,
+      "M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}",
+    )
   } else {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+    (
+      size,
+      "M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}",
+    )
   }
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "none")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem)
+  .build()
 }
 
 ///|
@@ -349,7 +471,34 @@ pub fn cf_one_required_marker(
   let bar_x = if reverse { size * 0.3 } else { size * 0.7 }
   let line_x = if reverse { 0.0 } else { size }
   let refX = if reverse { 0.0 } else { size }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{line_x}\" y1=\"0\" x2=\"\{line_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  let line1 = @xml_emit.Element::new("line")
+    .attr_num("x1", line_x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", line_x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  let line2 = @xml_emit.Element::new("line")
+    .attr_num("x1", bar_x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", bar_x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(line1 + line2)
+  .build()
 }
 
 ///|
@@ -362,11 +511,43 @@ pub fn cf_many_required_marker(
 ) -> String {
   let half = size / 2.0
   let bar_x = if reverse { size * 0.7 } else { size * 0.3 }
-  if reverse {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  let (refX, d) = if reverse {
+    (
+      0.0,
+      "M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}",
+    )
   } else {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><line x1=\"\{bar_x}\" y1=\"0\" x2=\"\{bar_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+    (
+      size,
+      "M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}",
+    )
   }
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "none")
+    .self_close()
+    .build()
+  let line_elem = @xml_emit.Element::new("line")
+    .attr_num("x1", bar_x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", bar_x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem + line_elem)
+  .build()
 }
 
 ///|
@@ -382,7 +563,34 @@ pub fn cf_one_optional_marker(
   let circle_x = if reverse { size * 0.3 } else { size * 0.7 }
   let line_x = if reverse { 0.0 } else { size }
   let refX = if reverse { 0.0 } else { size }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{line_x}\" y1=\"0\" x2=\"\{line_x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+  let line_elem = @xml_emit.Element::new("line")
+    .attr_num("x1", line_x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", line_x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  let circle_elem = @xml_emit.Element::new("circle")
+    .attr_num("cx", circle_x)
+    .attr_num("cy", half)
+    .attr_num("r", r)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "white")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(line_elem + circle_elem)
+  .build()
 }
 
 ///|
@@ -396,11 +604,43 @@ pub fn cf_many_optional_marker(
   let half = size / 2.0
   let r = size * 0.2
   let circle_x = if reverse { size * 0.7 } else { size * 0.3 }
-  if reverse {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+  let (refX, d) = if reverse {
+    (
+      0.0,
+      "M\{size},\{half} L0,0 M\{size},\{half} L0,\{half} M\{size},\{half} L0,\{size}",
+    )
   } else {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/><circle cx=\"\{circle_x}\" cy=\"\{half}\" r=\"\{r}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"white\"/></marker>"
+    (
+      size,
+      "M0,\{half} L\{size},0 M0,\{half} L\{size},\{half} M0,\{half} L\{size},\{size}",
+    )
   }
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "none")
+    .self_close()
+    .build()
+  let circle_elem = @xml_emit.Element::new("circle")
+    .attr_num("cx", circle_x)
+    .attr_num("cy", half)
+    .attr_num("r", r)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "white")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem + circle_elem)
+  .build()
 }
 
 ///|
@@ -414,7 +654,25 @@ pub fn line_marker(
   let half = size / 2.0
   let x = if reverse { 0.0 } else { size }
   let refX = if reverse { 0.0 } else { size }
-  "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{refX}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><line x1=\"\{x}\" y1=\"0\" x2=\"\{x}\" y2=\"\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\"/></marker>"
+  let line_elem = @xml_emit.Element::new("line")
+    .attr_num("x1", x)
+    .attr_num("y1", 0.0)
+    .attr_num("x2", x)
+    .attr_num("y2", size)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(line_elem)
+  .build()
 }
 
 ///|
@@ -426,17 +684,39 @@ pub fn open_marker(
   reverse? : Bool = false,
 ) -> String {
   let half = size / 2.0
-  if reverse {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"0\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M\{size},0 L0,\{half} L\{size},\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+  let (refX, d) = if reverse {
+    (0.0, "M\{size},0 L0,\{half} L\{size},\{size}")
   } else {
-    "<marker id=\"\{id}\" markerWidth=\"\{size}\" markerHeight=\"\{size}\" refX=\"\{size}\" refY=\"\{half}\" orient=\"auto\" markerUnits=\"strokeWidth\"><path d=\"M0,0 L\{size},\{half} L0,\{size}\" stroke=\"\{stroke}\" stroke-width=\"2\" fill=\"none\"/></marker>"
+    (size, "M0,0 L\{size},\{half} L0,\{size}")
   }
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("stroke", stroke)
+    .attr_int("stroke-width", 2)
+    .attr("fill", "none")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", size)
+  .attr_num("markerHeight", size)
+  .attr_num("refX", refX)
+  .attr_num("refY", half)
+  .attr("orient", "auto")
+  .attr("markerUnits", "strokeWidth")
+  .raw(path_elem)
+  .build()
 }
 
 ///|
 /// Build a background rectangle
 pub fn background(color : String) -> String {
-  "<rect width=\"100%\" height=\"100%\" fill=\"\{color}\"/>"
+  @xml_emit.Element::new("rect")
+  .attr("width", "100%")
+  .attr("height", "100%")
+  .attr("fill", color)
+  .self_close()
+  .build()
 }
 
 // =============================================================================
@@ -448,14 +728,54 @@ pub fn background(color : String) -> String {
 pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
   let size = 8.0
   let r = 1.5
-  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><circle cx=\"\{size / 2.0}\" cy=\"\{size / 2.0}\" r=\"\{r}\" fill=\"\{color}\"/></pattern>"
+  let rect_elem = @xml_emit.Element::new("rect")
+    .attr_num("width", size)
+    .attr_num("height", size)
+    .attr("fill", bg_color)
+    .self_close()
+    .build()
+  let circle_elem = @xml_emit.Element::new("circle")
+    .attr_num("cx", size / 2.0)
+    .attr_num("cy", size / 2.0)
+    .attr_num("r", r)
+    .attr("fill", color)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("pattern")
+  .attr("id", id)
+  .attr("patternUnits", "userSpaceOnUse")
+  .attr_num("width", size)
+  .attr_num("height", size)
+  .raw(rect_elem + circle_elem)
+  .build()
 }
 
 ///|
 /// Build a lines pattern definition (horizontal lines)
 pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
   let size = 8.0
-  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><line x1=\"0\" y1=\"\{size / 2.0}\" x2=\"\{size}\" y2=\"\{size / 2.0}\" stroke=\"\{color}\" stroke-width=\"1\"/></pattern>"
+  let rect_elem = @xml_emit.Element::new("rect")
+    .attr_num("width", size)
+    .attr_num("height", size)
+    .attr("fill", bg_color)
+    .self_close()
+    .build()
+  let line_elem = @xml_emit.Element::new("line")
+    .attr_num("x1", 0.0)
+    .attr_num("y1", size / 2.0)
+    .attr_num("x2", size)
+    .attr_num("y2", size / 2.0)
+    .attr("stroke", color)
+    .attr_int("stroke-width", 1)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("pattern")
+  .attr("id", id)
+  .attr("patternUnits", "userSpaceOnUse")
+  .attr_num("width", size)
+  .attr_num("height", size)
+  .raw(rect_elem + line_elem)
+  .build()
 }
 
 ///|
@@ -466,14 +786,61 @@ pub fn crosshatch_pattern(
   bg_color : String,
 ) -> String {
   let size = 8.0
-  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><path d=\"M0,0 L\{size},\{size} M\{size},0 L0,\{size}\" stroke=\"\{color}\" stroke-width=\"1\"/></pattern>"
+  let rect_elem = @xml_emit.Element::new("rect")
+    .attr_num("width", size)
+    .attr_num("height", size)
+    .attr("fill", bg_color)
+    .self_close()
+    .build()
+  let d = "M0,0 L\{size},\{size} M\{size},0 L0,\{size}"
+  let path_elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("stroke", color)
+    .attr_int("stroke-width", 1)
+    .self_close()
+    .build()
+  @xml_emit.Element::new("pattern")
+  .attr("id", id)
+  .attr("patternUnits", "userSpaceOnUse")
+  .attr_num("width", size)
+  .attr_num("height", size)
+  .raw(rect_elem + path_elem)
+  .build()
 }
 
 ///|
 /// Build a grain/paper texture pattern definition
 pub fn grain_pattern(id : String, color : String, bg_color : String) -> String {
   let size = 4.0
-  "<pattern id=\"\{id}\" patternUnits=\"userSpaceOnUse\" width=\"\{size}\" height=\"\{size}\"><rect width=\"\{size}\" height=\"\{size}\" fill=\"\{bg_color}\"/><circle cx=\"1\" cy=\"1\" r=\"0.5\" fill=\"\{color}\" opacity=\"0.3\"/><circle cx=\"3\" cy=\"3\" r=\"0.5\" fill=\"\{color}\" opacity=\"0.3\"/></pattern>"
+  let rect_elem = @xml_emit.Element::new("rect")
+    .attr_num("width", size)
+    .attr_num("height", size)
+    .attr("fill", bg_color)
+    .self_close()
+    .build()
+  let circle1 = @xml_emit.Element::new("circle")
+    .attr_num("cx", 1.0)
+    .attr_num("cy", 1.0)
+    .attr_num("r", 0.5)
+    .attr("fill", color)
+    .attr("opacity", "0.3")
+    .self_close()
+    .build()
+  let circle2 = @xml_emit.Element::new("circle")
+    .attr_num("cx", 3.0)
+    .attr_num("cy", 3.0)
+    .attr_num("r", 0.5)
+    .attr("fill", color)
+    .attr("opacity", "0.3")
+    .self_close()
+    .build()
+  @xml_emit.Element::new("pattern")
+  .attr("id", id)
+  .attr("patternUnits", "userSpaceOnUse")
+  .attr_num("width", size)
+  .attr_num("height", size)
+  .raw(rect_elem + circle1 + circle2)
+  .build()
 }
 
 // =============================================================================
@@ -591,17 +958,7 @@ pub fn PathBuilder::build(self : PathBuilder) -> String {
 
 ///|
 /// Escape special XML characters
+/// Delegates to @xml_emit.escape for the actual implementation
 pub fn escape_xml(s : String) -> String {
-  let sb = StringBuilder::new()
-  for c in s {
-    match c {
-      '<' => sb.write_string("&lt;")
-      '>' => sb.write_string("&gt;")
-      '&' => sb.write_string("&amp;")
-      '"' => sb.write_string("&quot;")
-      '\'' => sb.write_string("&#39;")
-      _ => sb.write_char(c)
-    }
-  }
-  sb.to_string()
+  @xml_emit.escape(s)
 }
