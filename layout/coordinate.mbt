@@ -103,7 +103,10 @@ pub fn assign_coordinates(
   }
   let result : CoordinateResult = { x_coords, y_coords }
   // Brandes-Köpf tuning: apply post-processing adjustments
-  // These only fix actual overlaps, not enforce minimum separation
+  // 0. Center parents over their children to minimize zig-zag edges
+  center_parents_over_children(
+    result, graph, layers, node_widths, horizontal_sep, cycle_result,
+  )
   // For vertical (top-to-bottom) layout:
   // 1. Fix overlaps between layers (y-coordinates)
   adjust_rank_spacing(result, layers, node_heights, vertical_sep, false)
@@ -768,4 +771,118 @@ fn shift_nodes_y(
     let old_y = coords.y_coords.get(node).unwrap_or(0.0)
     coords.y_coords[node] = old_y + shift
   }
+}
+
+///|
+/// Center parents over their children to minimize zig-zag edges
+/// This post-processing step shifts nodes to align parents with the center
+/// of their children, reducing horizontal bends in edges
+fn center_parents_over_children(
+  coords : CoordinateResult,
+  graph : @graph.Graph,
+  layers : Array[Array[String]],
+  node_widths : Map[String, Double],
+  min_sep : Double,
+  cycle_result : CycleBreakResult,
+) -> Unit {
+  // Build layer index for each node
+  let layer_idx : Map[String, Int] = {}
+  for i, layer in layers {
+    for node in layer {
+      layer_idx[node] = i
+    }
+  }
+  // Build children map: parent -> [children in next layer]
+  let children_map : Map[String, Array[String]] = {}
+  for edge in graph.edges {
+    let src = get_effective_src(edge, cycle_result)
+    let dst = get_effective_dst(edge, cycle_result)
+    let src_layer = layer_idx.get(src).unwrap_or(-1)
+    let dst_layer = layer_idx.get(dst).unwrap_or(-1)
+    // Only consider edges going to next layer
+    if src_layer >= 0 && dst_layer == src_layer + 1 {
+      match children_map.get(src) {
+        Some(arr) => {
+          if not(arr.contains(dst)) {
+            arr.push(dst)
+          }
+        }
+        None => children_map[src] = [dst]
+      }
+    }
+  }
+  // Process layers from bottom to top
+  // This ensures children are positioned before we center parents
+  for layer_i = layers.length() - 2; layer_i >= 0; layer_i = layer_i - 1 {
+    let layer = layers[layer_i]
+    for node in layer {
+      match children_map.get(node) {
+        Some(children) => {
+          if children.length() == 0 {
+            continue
+          }
+          // Compute center of children
+          let mut sum_x = 0.0
+          for child in children {
+            let child_x = coords.x_coords.get(child).unwrap_or(0.0)
+            let child_w = node_widths.get(child).unwrap_or(100.0)
+            sum_x = sum_x + child_x + child_w / 2.0
+          }
+          let children_center = sum_x / children.length().to_double()
+          // Compute target x for parent (centered over children)
+          let node_w = node_widths.get(node).unwrap_or(100.0)
+          let target_x = children_center - node_w / 2.0
+          // Check if we can move without overlapping siblings
+          let current_x = coords.x_coords.get(node).unwrap_or(0.0)
+          let shift = target_x - current_x
+          if can_shift_node(node, shift, layer, coords, node_widths, min_sep) {
+            coords.x_coords[node] = target_x
+          }
+        }
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+/// Check if a node can be shifted without overlapping siblings
+fn can_shift_node(
+  node : String,
+  shift : Double,
+  layer : Array[String],
+  coords : CoordinateResult,
+  node_widths : Map[String, Double],
+  min_sep : Double,
+) -> Bool {
+  let node_x = coords.x_coords.get(node).unwrap_or(0.0)
+  let node_w = node_widths.get(node).unwrap_or(100.0)
+  let new_x = node_x + shift
+  let new_right = new_x + node_w
+  for other in layer {
+    if other == node {
+      continue
+    }
+    let other_x = coords.x_coords.get(other).unwrap_or(0.0)
+    let other_w = node_widths.get(other).unwrap_or(100.0)
+    let other_right = other_x + other_w
+    // Check for overlap with minimum separation
+    let left_bound = other_x - min_sep - node_w
+    let right_bound = other_right + min_sep
+    if new_x >= left_bound && new_x <= right_bound {
+      // Would overlap - check if we're on the correct side
+      if node_x < other_x {
+        // Node is to the left, new position must stay to the left
+        if new_right + min_sep > other_x {
+          return false
+        }
+      } else {
+        // Node is to the right, new position must stay to the right
+        if new_x < other_right + min_sep {
+          return false
+        }
+      }
+    }
+  }
+  true
 }
