@@ -8,11 +8,25 @@ import(
 )
 
 // Values
+pub fn add_arrowhead_markers_to_svg(@svg.Svg, Double, String) -> Unit
+
+pub fn arrowhead_to_ascii(ArrowheadType, Bool) -> String
+
+pub fn build_marker_attributes(ArrowheadType, ArrowheadType) -> String
+
 pub fn compile(String, @ir.Map) -> Graph raise GraphCompileError
+
+pub fn get_arrowhead_marker_url(ArrowheadType, Bool) -> String
 
 pub fn list_themes() -> Array[String]
 
+pub fn needs_end_marker(ArrowheadType) -> Bool
+
+pub fn needs_start_marker(ArrowheadType) -> Bool
+
 pub fn render_ascii(Graph, AsciiConfig) -> String
+
+pub fn render_connection_ascii(ArrowheadType, ArrowheadType, String) -> String
 
 pub fn render_legend_ascii(@ascii.Grid, Legend, Int, Int, @ascii.CharSet) -> Unit
 
@@ -290,6 +304,37 @@ pub fn Point::zero() -> Self
 pub impl Eq for Point
 pub impl Show for Point
 
+pub struct Route {
+  style : RouteStyle
+  waypoints : Array[Waypoint]
+  src_arrowhead : ArrowheadType
+  dst_arrowhead : ArrowheadType
+}
+pub fn Route::add_point(Self, Double, Double) -> Unit
+pub fn Route::add_waypoint(Self, Waypoint) -> Unit
+pub fn Route::end(Self) -> Waypoint?
+pub fn Route::from_points(Array[Point], RouteStyle, ArrowheadType, ArrowheadType) -> Self
+pub fn Route::is_empty(Self) -> Bool
+pub fn Route::length(Self) -> Int
+pub fn Route::new() -> Self
+pub fn Route::start(Self) -> Waypoint?
+pub fn Route::to_points(Self) -> Array[Point]
+pub fn Route::with_style(RouteStyle) -> Self
+pub impl Show for Route
+
+pub enum RouteStyle {
+  Straight
+  Curved
+  Elbow
+  Orthogonal
+}
+pub fn RouteStyle::from_string(String) -> Self
+pub fn RouteStyle::is_curved(Self) -> Bool
+pub fn RouteStyle::is_orthogonal(Self) -> Bool
+pub fn RouteStyle::to_route_string(Self) -> String
+pub impl Eq for RouteStyle
+pub impl Show for RouteStyle
+
 pub(all) struct Scenario {
   name : String
   graph : Graph
@@ -408,6 +453,16 @@ pub struct SvgShapeContext {
   config : SvgConfig
 }
 pub fn SvgShapeContext::new(@svg.Svg, Box, String, String, Double, String, SvgConfig) -> Self
+
+pub struct Waypoint {
+  x : Double
+  y : Double
+  control : (Double, Double)?
+}
+pub fn Waypoint::new(Double, Double) -> Self
+pub fn Waypoint::to_point(Self) -> Point
+pub fn Waypoint::with_control(Double, Double, Double, Double) -> Self
+pub impl Show for Waypoint
 
 // Type aliases
 
