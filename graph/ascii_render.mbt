@@ -54,6 +54,27 @@ pub fn AsciiConfig::unicode() -> AsciiConfig {
 }
 
 ///|
+/// Get the short name from a dotted ID (e.g., "users.id" -> "id")
+fn get_short_id(id : String) -> String {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot >= 0 && last_dot < id.length() - 1 {
+    // Build substring manually to avoid deprecated method
+    let buf = StringBuilder::new()
+    for i = last_dot + 1; i < id.length(); i = i + 1 {
+      buf.write_char(id[i].to_int().unsafe_to_char())
+    }
+    buf.to_string()
+  } else {
+    id
+  }
+}
+
+///|
 /// ASCII box position and size in character coordinates
 struct AsciiBox {
   id : String
@@ -206,6 +227,29 @@ fn compute_object_size(
     Some(size) => return size
     None => ()
   }
+  // Special handling for sql_table: size based on header + column rows
+  if obj.shape == "sql_table" {
+    let header_height = 3 // top border + label + separator
+    let num_columns = obj.children.length()
+    let footer_height = 1 // bottom border
+    let total_height = header_height + num_columns + footer_height
+    // Width = max of label width and column widths
+    let mut max_width = obj.label.length() + config.h_padding * 2 + 2
+    for child in obj.children {
+      // Column format: "name: type"
+      let col_name = get_short_id(child.id)
+      let col_label = if child.label.length() > 0 {
+        col_name + ": " + child.label
+      } else {
+        col_name
+      }
+      let col_width = col_label.length() + config.h_padding * 2 + 2
+      max_width = max_i(max_width, col_width)
+    }
+    max_width = max_i(max_width, config.min_box_width)
+    sizes[obj.id] = (max_width, total_height)
+    return (max_width, total_height)
+  }
   if obj.is_container() {
     // Container: stack children vertically
     let title_height = 2 // Title row + gap
@@ -250,6 +294,42 @@ fn create_positioned_box(
   config : AsciiConfig,
   sizes : Map[String, (Int, Int)],
 ) -> AsciiBox {
+  // Special handling for sql_table: store column info but not as nested boxes
+  if obj.shape == "sql_table" {
+    let columns : Array[AsciiBox] = []
+    for child in obj.children {
+      // Column format: "name: type"
+      let col_name = get_short_id(child.id)
+      let col_label = if child.label.length() > 0 {
+        col_name + ": " + child.label
+      } else {
+        col_name
+      }
+      // Store column as a pseudo-box (just for label storage)
+      columns.push({
+        id: child.id,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        label: col_label,
+        shape: "sql_column",
+        is_container: false,
+        children: [],
+      })
+    }
+    return {
+      id: obj.id,
+      x,
+      y,
+      width,
+      height,
+      label: obj.label,
+      shape: "sql_table",
+      is_container: false, // Don't treat as container for rendering
+      children: columns,
+    }
+  }
   if obj.is_container() {
     // Container with vertically stacked, centered children
     let children : Array[AsciiBox] = []
@@ -319,6 +399,10 @@ fn flatten_boxes(boxes : Array[AsciiBox]) -> Array[AsciiBox] {
 
 ///|
 fn flatten_children(box : AsciiBox, result : Array[AsciiBox]) -> Unit {
+  // Skip sql_column boxes - they're rendered inline within sql_table
+  if box.shape == "sql_column" {
+    return
+  }
   result.push(box)
   for child in box.children {
     flatten_children(child, result)
@@ -491,14 +575,49 @@ fn render_ascii_box(
       grid.set(x2 - 1, y2, '`')
       grid.set(x2, y2, cs.bottom_right())
     }
-    "class" | "sql_table" => {
-      // UML class / SQL table shape - box with separator line
+    "sql_table" => {
+      // SQL table: header + separator + column rows
+      // Top border
+      grid.set(x1, y1, cs.top_left())
+      grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
+      grid.set(x2, y1, cs.top_right())
+      // Sides
+      grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
+      grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
+      // Header row (label is drawn below by common code, but we draw separator)
+      // Separator line after table name (at y1 + 2)
+      if y1 + 2 < y2 {
+        grid.set(x1, y1 + 2, cs.t_right())
+        grid.hline(x1 + 1, x2 - 1, y1 + 2, cs.horizontal())
+        grid.set(x2, y1 + 2, cs.t_left())
+      }
+      // Column rows: starting at y1 + 3
+      let mut row_y = y1 + 3
+      for col in box.children {
+        if row_y < y2 {
+          // Draw column label left-aligned with padding
+          let col_x = x1 + 1
+          grid.text(col_x, row_y, col.label)
+          row_y = row_y + 1
+        }
+      }
+      // Bottom border
+      grid.set(x1, y2, cs.bottom_left())
+      grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
+      grid.set(x2, y2, cs.bottom_right())
+    }
+    "sql_column" => {
+      // sql_column is rendered inline within sql_table, skip standalone rendering
+      return
+    }
+    "class" => {
+      // UML class shape - box with separator line
       grid.set(x1, y1, cs.top_left())
       grid.hline(x1 + 1, x2 - 1, y1, cs.horizontal())
       grid.set(x2, y1, cs.top_right())
       grid.vline(x1, y1 + 1, y2 - 1, cs.vertical())
       grid.vline(x2, y1 + 1, y2 - 1, cs.vertical())
-      // Separator line after class name / table header
+      // Separator line after class name
       if y1 + 2 < y2 {
         grid.set(x1, y1 + 2, cs.t_right())
         grid.hline(x1 + 1, x2 - 1, y1 + 2, cs.horizontal())
