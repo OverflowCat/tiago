@@ -113,6 +113,10 @@
       max-width: 100%;
       max-height: 100%;
     }
+    .preview-content.ascii-mode {
+      display: block;
+      padding: 0;
+    }
     .ascii-output {
       background: #0f0f23;
       color: #00ff88;
@@ -121,9 +125,12 @@
       line-height: 1.4;
       white-space: pre;
       padding: 1rem;
+      margin: 0;
       overflow: auto;
       text-align: left;
-      display: block;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
     }
     .toolbar {
       background: #16213e;
@@ -328,6 +335,8 @@ server -> database: queries"></textarea>
         tabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         currentView = tab.dataset.view;
+        // Clear any pending debounced render to avoid double-render
+        clearTimeout(renderTimeout);
         render();
       });
     });
@@ -347,9 +356,13 @@ server -> database: queries"></textarea>
 
     // Copy button
     copyBtn.addEventListener('click', () => {
-      const content = currentView === 'ascii'
-        ? preview.textContent
-        : preview.innerHTML;
+      let content;
+      if (currentView === 'ascii' || currentView === 'unicode') {
+        const pre = preview.querySelector('pre');
+        content = pre ? pre.textContent : preview.textContent;
+      } else {
+        content = preview.innerHTML;
+      }
       navigator.clipboard.writeText(content).then(() => {
         copyBtn.textContent = 'Copied!';
         setTimeout(() => copyBtn.textContent = 'Copy Output', 1500);
@@ -488,9 +501,15 @@ server -> database: queries"></textarea>
           return;
         }
 
+        // Clear previous content first to avoid flash of old content with new styles
+        preview.innerHTML = '';
+
         if (currentView === 'ascii' || currentView === 'unicode') {
-          preview.className = 'preview-content dark ascii-output';
-          preview.textContent = output;
+          preview.className = 'preview-content ascii-mode';
+          const pre = document.createElement('pre');
+          pre.className = 'ascii-output';
+          pre.textContent = output;
+          preview.appendChild(pre);
         } else {
           preview.className = 'preview-content';
           preview.innerHTML = output;
