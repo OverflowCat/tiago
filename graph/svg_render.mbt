@@ -1615,49 +1615,110 @@ fn render_svg_person(
   stroke : String,
   stroke_width : Double,
 ) -> Unit {
-  // Simple stick figure person
-  let cx = box.x + box.width / 2.0
-  let head_r = box.width * 0.2
-  let head_cy = box.y + head_r + 5.0
-  let body_top = head_cy + head_r
-  let body_bottom = box.y + box.height * 0.6
-  let arm_y = body_top + (body_bottom - body_top) * 0.3
-  let leg_bottom = box.y + box.height
-  // Head
-  svg.add(@svg.circle(cx, head_cy, head_r, fill~, stroke~, stroke_width~))
-  // Body
-  svg.add(@svg.line(cx, body_top, cx, body_bottom, stroke~, stroke_width~))
-  // Arms
+  // D2-style person shape based on 68.3 x 77.4 coordinate system
+  let sx = box.width / 68.3
+  let sy = box.height / 77.4
+  let x = box.x
+  let y = box.y
+  // Build path using scaled coordinates
+  // The path draws: bottom line, left leg, left shoulder, head circle, right shoulder, right leg
+  let path = StringBuilder::new()
+  // Start at bottom right
+  path.write_string("M ")
+  path.write_string((x + 68.3 * sx).to_string())
+  path.write_string(" ")
+  path.write_string((y + 77.4 * sy).to_string())
+  // Bottom line (H 0)
+  path.write_string(" H ")
+  path.write_string(x.to_string())
+  // Left leg (v -1.1, then curve)
+  path.write_string(" v ")
+  path.write_string((-1.1 * sy).to_string())
+  // Left leg curve (relative: c 0,-13.2 7.5,-25.1 19.3,-30.8)
+  path.write_string(" c ")
+  path.write_string((0.0 * sx).to_string())
+  path.write_string(",")
+  path.write_string((-13.2 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((7.5 * sx).to_string())
+  path.write_string(",")
+  path.write_string((-25.1 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((19.3 * sx).to_string())
+  path.write_string(",")
+  path.write_string((-30.8 * sy).to_string())
+  // Left shoulder curve (absolute: C 12.8,40.9 8.9,33.4 8.9,25.2)
+  path.write_string(" C ")
+  path.write_string((x + 12.8 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 40.9 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((x + 8.9 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 33.4 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((x + 8.9 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 25.2 * sy).to_string())
+  // Head left half (absolute: C 8.9,11.3 20.2,0 34.1,0)
+  path.write_string(" C ")
+  path.write_string((x + 8.9 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 11.3 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((x + 20.2 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 0.0 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((x + 34.1 * sx).to_string())
+  path.write_string(",")
+  path.write_string((y + 0.0 * sy).to_string())
+  // Head right half (relative: c 13.9,0 25.2,11.3 25.2,25.2)
+  path.write_string(" c ")
+  path.write_string((13.9 * sx).to_string())
+  path.write_string(",")
+  path.write_string((0.0 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((25.2 * sx).to_string())
+  path.write_string(",")
+  path.write_string((11.3 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((25.2 * sx).to_string())
+  path.write_string(",")
+  path.write_string((25.2 * sy).to_string())
+  // Right shoulder (relative: c 0,8.2 -3.8,15.6 -10.4,20.4)
+  path.write_string(" c ")
+  path.write_string((0.0 * sx).to_string())
+  path.write_string(",")
+  path.write_string((8.2 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((-3.8 * sx).to_string())
+  path.write_string(",")
+  path.write_string((15.6 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((-10.4 * sx).to_string())
+  path.write_string(",")
+  path.write_string((20.4 * sy).to_string())
+  // Right leg (relative: c 11.8,5.7 19.3,17.6 19.3,30.8)
+  path.write_string(" c ")
+  path.write_string((11.8 * sx).to_string())
+  path.write_string(",")
+  path.write_string((5.7 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((19.3 * sx).to_string())
+  path.write_string(",")
+  path.write_string((17.6 * sy).to_string())
+  path.write_string(" ")
+  path.write_string((19.3 * sx).to_string())
+  path.write_string(",")
+  path.write_string((30.8 * sy).to_string())
+  // v 1
+  path.write_string(" v ")
+  path.write_string((1.0 * sy).to_string())
+  // Close path
+  path.write_string(" Z")
   svg.add(
-    @svg.line(
-      box.x + box.width * 0.1,
-      arm_y,
-      box.x + box.width * 0.9,
-      arm_y,
-      stroke~,
-      stroke_width~,
-    ),
-  )
-  // Legs
-  svg.add(
-    @svg.line(
-      cx,
-      body_bottom,
-      box.x + box.width * 0.2,
-      leg_bottom,
-      stroke~,
-      stroke_width~,
-    ),
-  )
-  svg.add(
-    @svg.line(
-      cx,
-      body_bottom,
-      box.x + box.width * 0.8,
-      leg_bottom,
-      stroke~,
-      stroke_width~,
-    ),
+    "<path d=\"\{path.to_string()}\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>",
   )
 }
 
