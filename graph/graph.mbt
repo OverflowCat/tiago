@@ -203,7 +203,7 @@ pub(all) struct Style {
   mut stroke : String?
   mut fill : String?
   mut stroke_width : Double?
-  stroke_dash : Double?
+  mut stroke_dash : Double?
   mut border_radius : Double?
   mut shadow : Bool?
   mut three_d : Bool?

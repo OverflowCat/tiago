@@ -133,10 +133,22 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
 
 ///|
 /// Render a sequence diagram to ASCII string
+/// This uses a format-agnostic approach: all elements come from the graph structure
+/// - Actors are objects with labels
+/// - Lifelines are edges with vertical routes (dashed style)
+/// - Messages are edges with horizontal routes
+/// - Activation boxes are objects (rectangles with no labels)
 fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   let cs = config.charset
-  // Collect actors (top-level objects)
-  let actors = graph.objects
+  // Separate actors from activation boxes
+  // Actors have labels, activation boxes don't
+  let actors : Array[Object] = []
+  for obj in graph.objects {
+    // Skip activation box objects (no label, internal ID pattern)
+    if obj.label.length() > 0 && not(obj.id.contains("__activation_")) {
+      actors.push(obj)
+    }
+  }
   if actors.length() == 0 {
     return ""
   }
@@ -146,6 +158,16 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
     sorted_actors.push(actor)
   }
   sort_objects_by_x(sorted_actors)
+  // Separate edges into lifelines and messages
+  // Lifelines have dashed stroke, messages don't
+  let messages : Array[Edge] = []
+  for edge in graph.edges {
+    // Skip lifeline edges (dashed stroke)
+    if edge.style.stroke_dash is None || edge.style.stroke_dash == Some(0.0) {
+      messages.push(edge)
+    }
+    // Lifelines will be rendered automatically via the edge routes
+  }
   // Build actor position info - map actor ID to (ascii_x, center_x, width)
   let actor_positions : Map[String, (Int, Int, Int)] = {}
   let mut current_x = 1
@@ -158,7 +180,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   }
   // Find max message label length to determine spacing
   let mut max_msg_len = 0
-  for edge in graph.edges {
+  for edge in messages {
     if edge.label.length() > max_msg_len {
       max_msg_len = edge.label.length()
     }
@@ -177,15 +199,18 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   let message_start_y = config.box_height + 1
   let mut max_message_y = message_start_y
   let message_y_positions : Array[(Int, Edge)] = [] // (y, edge)
-  for edge in graph.edges {
+  for edge in messages {
     // Get y from route points if available, otherwise use sequential
     let y = if edge.route.length() >= 2 {
       // Scale from layout coordinates to ASCII coordinates
       let route_y = edge.route[0].y
       // Approximate scaling: assume layout y starts around 100, each message adds ~40
-      let scaled_y = message_start_y +
-        ((route_y - 100.0) / 40.0 * 2.0).to_int()
-      if scaled_y > message_start_y { scaled_y } else { message_start_y }
+      let scaled_y = message_start_y + ((route_y - 100.0) / 40.0 * 2.0).to_int()
+      if scaled_y > message_start_y {
+        scaled_y
+      } else {
+        message_start_y
+      }
     } else {
       message_start_y + message_y_positions.length() * 2
     }
@@ -215,14 +240,33 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
       None => ()
     }
   }
-  // Render lifelines (vertical lines from box bottom to end)
-  for actor in sorted_actors {
-    match actor_positions.get(actor.id) {
-      Some((_, center_x, _)) => {
-        let lifeline_start = config.box_height + 1
-        grid.vline(center_x, lifeline_start, lifeline_end_y, cs.vertical())
+  // Render lifelines (from edges with dashed stroke)
+  for edge in graph.edges {
+    // Lifelines have dashed stroke
+    if edge.style.stroke_dash is Some(d) && d > 0.0 && edge.route.length() >= 2 {
+      // This is a lifeline edge - render as vertical line
+      // Get x from the route (lifelines are vertical)
+      let route_x = edge.route[0].x
+      // Find which actor this lifeline belongs to
+      for actor in sorted_actors {
+        match (actor.box, actor_positions.get(actor.id)) {
+          (Some(actor_box), Some((_, center_x, _))) => {
+            let actor_center = actor_box.x + actor_box.width / 2.0
+            // Check if this lifeline belongs to this actor (within tolerance)
+            if (route_x - actor_center).abs() < 10.0 {
+              let lifeline_start = config.box_height + 1
+              grid.vline(
+                center_x,
+                lifeline_start,
+                lifeline_end_y,
+                cs.vertical(),
+              )
+              break
+            }
+          }
+          _ => ()
+        }
       }
-      None => ()
     }
   }
   // Render messages in three passes: lines, labels, arrows
@@ -234,7 +278,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
     let src_pos = find_actor_position(actor_positions, src_id)
     let dst_pos = find_actor_position(actor_positions, dst_id)
     match (src_pos, dst_pos) {
-      (Some((_, src_center, _)), Some((_, dst_center, _))) => {
+      (Some((_, src_center, _)), Some((_, dst_center, _))) =>
         if src_center == dst_center {
           // Self-message: draw a loop
           let loop_right = src_center + 4
@@ -250,7 +294,6 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
           // Right to left line
           grid.hline(dst_center + 1, src_center - 1, msg_y, cs.horizontal())
         }
-      }
       _ => ()
     }
   }
@@ -297,7 +340,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
     let src_pos = find_actor_position(actor_positions, src_id)
     let dst_pos = find_actor_position(actor_positions, dst_id)
     match (src_pos, dst_pos) {
-      (Some((_, src_center, _)), Some((_, dst_center, _))) => {
+      (Some((_, src_center, _)), Some((_, dst_center, _))) =>
         if src_center == dst_center {
           // Self-message arrow
           if edge.dst_arrow {
@@ -320,7 +363,6 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
             grid.set(src_center, msg_y, cs.arrow_right())
           }
         }
-      }
       _ => ()
     }
   }

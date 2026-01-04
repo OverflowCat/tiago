@@ -312,18 +312,23 @@ pub fn path(
   fill? : String = "none",
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
+  stroke_dash? : Double = 0.0,
   marker_start? : String = "",
   marker_end? : String = "",
 ) -> String {
-  @xml_emit.Element::new("path")
-  .attr("d", d)
-  .attr("fill", fill)
-  .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
-  .attr_if("marker-start", marker_start)
-  .attr_if("marker-end", marker_end)
-  .self_close()
-  .build()
+  let elem = @xml_emit.Element::new("path")
+    .attr("d", d)
+    .attr("fill", fill)
+    .attr("stroke", stroke)
+    .attr_num("stroke-width", stroke_width)
+    .attr_if("marker-start", marker_start)
+    .attr_if("marker-end", marker_end)
+  // Add stroke-dasharray if dash value is set
+  if stroke_dash > 0.0 {
+    elem.attr("stroke-dasharray", stroke_dash.to_string()).self_close().build()
+  } else {
+    elem.self_close().build()
+  }
 }
 
 ///|

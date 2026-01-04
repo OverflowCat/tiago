@@ -178,51 +178,20 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   }
   // Main content group with offset to shift content into positive coordinate space
   svg.open_group_with_id("base-layer", "translate(\{offset_x},\{offset_y})")
-  // Check if this is a sequence diagram (has activation boxes)
-  let is_sequence = graph.activation_boxes.length() > 0
-  if is_sequence {
-    // For sequence diagrams: render activation boxes first (behind messages)
-    for ab in graph.activation_boxes {
-      let box = ab.1
-      svg.add(
-        @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          box.height,
-          fill=config.default_fill,
-          stroke=config.default_stroke,
-          stroke_width=config.default_stroke_width,
-        ),
-      )
-    }
-    // Then render edges (messages) on top of lifelines
-    for edge in graph.edges {
-      render_svg_edge(svg, edge, config, theme)
-    }
-    // Finally render actor boxes at the top (two-pass: background then foreground)
-    for obj in graph.objects {
-      render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
-    }
-    for obj in graph.objects {
-      render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
-    }
-  } else {
-    // For regular diagrams: use three-pass rendering
-    // This ensures edges are visible and not covered by object fills
-    let sorted_objects = sort_objects_by_depth(graph.objects)
-    // Pass 1: Render object backgrounds (shapes, fills, borders)
-    for obj in sorted_objects {
-      render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
-    }
-    // Pass 2: Render edges (on top of backgrounds, behind text)
-    for edge in graph.edges {
-      render_svg_edge(svg, edge, config, theme)
-    }
-    // Pass 3: Render object foregrounds (text, labels, content)
-    for obj in sorted_objects {
-      render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
-    }
+  // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
+  // Lifelines are rendered as dashed edges, activation boxes as regular objects
+  let sorted_objects = sort_objects_by_depth(graph.objects)
+  // Pass 1: Render object backgrounds (shapes, fills, borders)
+  for obj in sorted_objects {
+    render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
+  }
+  // Pass 2: Render edges (on top of backgrounds, behind text)
+  for edge in graph.edges {
+    render_svg_edge(svg, edge, config, theme)
+  }
+  // Pass 3: Render object foregrounds (text, labels, content)
+  for obj in sorted_objects {
+    render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
   }
   // Render sequence diagram notes (using page shape)
   for note in graph.sequence_notes {
@@ -2314,6 +2283,10 @@ fn render_svg_edge(
     Some(w) => w
     None => config.default_stroke_width
   }
+  let stroke_dash = match edge.style.stroke_dash {
+    Some(d) => d
+    None => 0.0
+  }
   // Build path - use railroad style (orthogonal with rounded corners) by default
   // Curved style overrides to smooth bezier curves when explicitly requested
   let use_curved = edge.style.curved is Some(true)
@@ -2343,7 +2316,14 @@ fn render_svg_edge(
     )
   } else {
     svg.add(
-      @svg.path(pb.build(), stroke~, stroke_width~, marker_start~, marker_end~),
+      @svg.path(
+        pb.build(),
+        stroke~,
+        stroke_width~,
+        stroke_dash~,
+        marker_start~,
+        marker_end~,
+      ),
     )
   }
   // Render edge label

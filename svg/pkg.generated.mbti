@@ -44,7 +44,7 @@ pub fn lines_pattern(String, String, String) -> String
 
 pub fn open_marker(String, Double, String, reverse? : Bool) -> String
 
-pub fn path(String, fill? : String, stroke? : String, stroke_width? : Double, marker_start? : String, marker_end? : String) -> String
+pub fn path(String, fill? : String, stroke? : String, stroke_width? : Double, stroke_dash? : Double, marker_start? : String, marker_end? : String) -> String
 
 pub fn polygon(Array[(Double, Double)], fill? : String, stroke? : String, stroke_width? : Double) -> String
 

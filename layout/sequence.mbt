@@ -244,6 +244,14 @@ pub fn layout_sequence_with_activations(
   total_width = total_width + config.container_padding * 2.0
   let total_height = final_y + config.container_padding
   container.set_box(@graph.Box::new(0.0, 0.0, total_width, total_height))
+  // Add lifelines as dashed edges (from actor bottom to diagram end)
+  add_lifeline_edges(graph, actors, max_actor_height, final_y, config)
+  // Add activation boxes as objects
+  add_activation_box_objects(graph, activation_boxes)
+  // Store notes in graph for backward compatibility
+  for note in notes {
+    graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
+  }
   { activation_boxes, notes, end_y: final_y }
 }
 
@@ -695,4 +703,56 @@ fn collect_and_position_notes(
     }
   }
   notes
+}
+
+///|
+/// Add lifeline edges for each actor (dashed vertical lines from actor bottom to diagram end)
+fn add_lifeline_edges(
+  graph : @graph.Graph,
+  actors : Array[@graph.Object],
+  actor_bottom_y : Double,
+  end_y : Double,
+  config : LayoutConfig,
+) -> Unit {
+  let lifeline_start_y = actor_bottom_y + config.container_padding
+  for actor in actors {
+    if actor.get_box() is Some(actor_box) {
+      let center_x = actor_box.get_x() + actor_box.get_width() / 2.0
+      // Create a lifeline edge with no arrows and dashed stroke
+      let edge_index = graph.get_edges().length()
+      let lifeline_id = actor.get_id() + "__lifeline"
+      let edge = @graph.Edge::new(
+        edge_index, lifeline_id, // Use a pseudo ID for the lifeline source
+         lifeline_id, // Same for destination (self-edge)
+         false, // No source arrow
+         false, // No destination arrow
+      )
+      // Set dashed stroke style
+      edge.style.stroke_dash = Some(6.0)
+      // Add route points (vertical line from actor bottom to diagram end)
+      edge.add_route_point(@graph.Point::new(center_x, lifeline_start_y))
+      edge.add_route_point(@graph.Point::new(center_x, end_y))
+      graph.add_edge(edge)
+    }
+  }
+}
+
+///|
+/// Add activation boxes as objects
+fn add_activation_box_objects(
+  graph : @graph.Graph,
+  activation_boxes : Array[ActivationBox],
+) -> Unit {
+  for i, ab in activation_boxes {
+    let box = ab.get_box()
+    let obj_id = ab.actor_id + "__activation_" + i.to_string()
+    let obj = @graph.Object::new(obj_id)
+    obj.label = "" // No label for activation boxes
+    obj.shape_type = @graph.ShapeType::Rectangle
+    obj.set_box(box)
+    // Store in graph's activation_boxes for backward compatibility
+    graph.activation_boxes.push((ab.actor_id, box))
+    // Also add as a regular object for format-agnostic rendering
+    graph.add_object(obj)
+  }
 }
