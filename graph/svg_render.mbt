@@ -176,8 +176,9 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     for edge in graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    // Render objects
-    for obj in graph.objects {
+    // Render objects sorted by depth (parents before children for proper layering)
+    let sorted_objects = sort_objects_by_depth(graph.objects)
+    for obj in sorted_objects {
       render_svg_object(svg, obj, config, theme)
     }
   }
@@ -203,8 +204,9 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     for edge in layer.graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    // Render layer objects
-    for obj in layer.graph.objects {
+    // Render layer objects sorted by depth
+    let sorted_layer_objects = sort_objects_by_depth(layer.graph.objects)
+    for obj in sorted_layer_objects {
       render_svg_object(svg, obj, config, theme)
     }
     svg.close_group()
@@ -220,7 +222,9 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     for edge in scenario.graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    for obj in scenario.graph.objects {
+    // Render scenario objects sorted by depth
+    let sorted_scenario_objects = sort_objects_by_depth(scenario.graph.objects)
+    for obj in sorted_scenario_objects {
       render_svg_object(svg, obj, config, theme)
     }
     svg.close_group()
@@ -236,7 +240,9 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     for edge in step.graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    for obj in step.graph.objects {
+    // Render step objects sorted by depth
+    let sorted_step_objects = sort_objects_by_depth(step.graph.objects)
+    for obj in sorted_step_objects {
       render_svg_object(svg, obj, config, theme)
     }
     svg.close_group()
@@ -826,6 +832,38 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
     }
   }
   (max_x, max_y)
+}
+
+///|
+/// Get the depth of an object ID (number of dots + 1)
+/// e.g., "aws" = 1, "aws.vpc" = 2, "aws.vpc.subnet" = 3
+fn get_object_depth(id : String) -> Int {
+  let mut depth = 1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      depth = depth + 1
+    }
+  }
+  depth
+}
+
+///|
+/// Sort objects by depth (parents before children) for proper SVG layering
+fn sort_objects_by_depth(objects : Array[Object]) -> Array[Object] {
+  let sorted = objects.copy()
+  // Simple bubble sort by depth (shallow objects first)
+  for i = 0; i < sorted.length(); i = i + 1 {
+    for j = i + 1; j < sorted.length(); j = j + 1 {
+      let depth_i = get_object_depth(sorted[i].id)
+      let depth_j = get_object_depth(sorted[j].id)
+      if depth_i > depth_j {
+        let temp = sorted[i]
+        sorted[i] = sorted[j]
+        sorted[j] = temp
+      }
+    }
+  }
+  sorted
 }
 
 ///|
