@@ -1,0 +1,29 @@
+# Layers example
+# Click the layer tabs to switch views
+
+server: Web Server
+database: Database
+cache: Cache
+
+server -> database
+server -> cache
+
+layers: {
+  development: {
+    server.style.fill: "#90EE90"
+    database.style.fill: "#90EE90"
+    cache.style.fill: "#90EE90"
+  }
+
+  staging: {
+    server.style.fill: "#FFD700"
+    database.style.fill: "#FFD700"
+    cache.style.fill: "#FFD700"
+  }
+
+  production: {
+    server.style.fill: "#FF6B6B"
+    database.style.fill: "#FF6B6B"
+    cache.style.fill: "#FF6B6B"
+  }
+}

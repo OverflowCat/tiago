@@ -1,0 +1,21 @@
+# Icons and Tooltips example
+
+server: Web Server {
+  tooltip: Main application server
+}
+
+database: PostgreSQL {
+  tooltip: Primary database
+}
+
+cache: Redis Cache {
+  tooltip: In-memory cache layer
+}
+
+cdn: CloudFlare {
+  tooltip: Content delivery network
+}
+
+server -> database: queries
+server -> cache: cache reads
+cdn -> server: requests
