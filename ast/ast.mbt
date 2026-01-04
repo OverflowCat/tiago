@@ -339,7 +339,17 @@ pub fn UnquotedString::to_string(self : UnquotedString) -> String {
   for seg in self.value {
     match seg {
       Text(s) => buf.write_string(s)
-      Sub(_) => ()
+      Sub(sub) => {
+        // Preserve substitution syntax for later resolution
+        buf.write_string("${")
+        for i, part in sub.path {
+          if i > 0 {
+            buf.write_char('.')
+          }
+          buf.write_string(part.content())
+        }
+        buf.write_string("}")
+      }
     }
   }
   buf.to_string()
@@ -351,7 +361,17 @@ pub fn DoubleQuotedString::to_string(self : DoubleQuotedString) -> String {
   for seg in self.value {
     match seg {
       Text(s) => buf.write_string(s)
-      Sub(_) => ()
+      Sub(sub) => {
+        // Preserve substitution syntax for later resolution
+        buf.write_string("${")
+        for i, part in sub.path {
+          if i > 0 {
+            buf.write_char('.')
+          }
+          buf.write_string(part.content())
+        }
+        buf.write_string("}")
+      }
     }
   }
   buf.to_string()
