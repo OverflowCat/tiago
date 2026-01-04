@@ -1027,6 +1027,21 @@ pub fn PathBuilder::cubic_to(
 }
 
 ///|
+/// Cubic bezier curve (relative)
+pub fn PathBuilder::cubic_rel(
+  self : PathBuilder,
+  dx1 : Double,
+  dy1 : Double,
+  dx2 : Double,
+  dy2 : Double,
+  dx : Double,
+  dy : Double,
+) -> PathBuilder {
+  self.commands.push("c \{dx1} \{dy1} \{dx2} \{dy2} \{dx} \{dy}")
+  self
+}
+
+///|
 /// Quadratic bezier curve (absolute)
 pub fn PathBuilder::quad_to(
   self : PathBuilder,
@@ -1050,6 +1065,13 @@ pub fn PathBuilder::h_to(self : PathBuilder, x : Double) -> PathBuilder {
 /// Vertical line to (absolute)
 pub fn PathBuilder::v_to(self : PathBuilder, y : Double) -> PathBuilder {
   self.commands.push("V \{y}")
+  self
+}
+
+///|
+/// Vertical line (relative)
+pub fn PathBuilder::v_rel(self : PathBuilder, dy : Double) -> PathBuilder {
+  self.commands.push("v \{dy}")
   self
 }
 

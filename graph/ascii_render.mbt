@@ -606,10 +606,9 @@ fn render_ascii_box(
       grid.hline(x1 + 1, x2 - 1, y2, cs.horizontal())
       grid.set(x2, y2, cs.bottom_right())
     }
-    "sql_column" => {
+    "sql_column" =>
       // sql_column is rendered inline within sql_table, skip standalone rendering
       return
-    }
     "class" => {
       // UML class shape - box with separator line
       grid.set(x1, y1, cs.top_left())

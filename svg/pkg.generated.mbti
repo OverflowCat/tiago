@@ -67,12 +67,14 @@ pub struct PathBuilder {
 pub fn PathBuilder::arc_to(Self, Double, Double, Double, Double, large_arc? : Bool, sweep? : Bool) -> Self
 pub fn PathBuilder::build(Self) -> String
 pub fn PathBuilder::close(Self) -> Self
+pub fn PathBuilder::cubic_rel(Self, Double, Double, Double, Double, Double, Double) -> Self
 pub fn PathBuilder::cubic_to(Self, Double, Double, Double, Double, Double, Double) -> Self
 pub fn PathBuilder::h_to(Self, Double) -> Self
 pub fn PathBuilder::line_to(Self, Double, Double) -> Self
 pub fn PathBuilder::move_to(Self, Double, Double) -> Self
 pub fn PathBuilder::new() -> Self
 pub fn PathBuilder::quad_to(Self, Double, Double, Double, Double) -> Self
+pub fn PathBuilder::v_rel(Self, Double) -> Self
 pub fn PathBuilder::v_to(Self, Double) -> Self
 
 pub struct Svg {

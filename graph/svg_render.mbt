@@ -1312,7 +1312,15 @@ fn render_svg_sql_table(
   }
   // Draw main rectangle
   svg.add(
-    @svg.rect(box.x, box.y, box.width, actual_height, fill~, stroke~, stroke_width~),
+    @svg.rect(
+      box.x,
+      box.y,
+      box.width,
+      actual_height,
+      fill~,
+      stroke~,
+      stroke_width~,
+    ),
   )
   // Draw header background
   svg.add(
@@ -1333,7 +1341,9 @@ fn render_svg_sql_table(
   )
   // Draw separator line
   let sep_y = box.y + header_height
-  svg.add(@svg.line(box.x, sep_y, box.x + box.width, sep_y, stroke~, stroke_width~))
+  svg.add(
+    @svg.line(box.x, sep_y, box.x + box.width, sep_y, stroke~, stroke_width~),
+  )
   // Draw columns from children
   let mut current_y = box.y + header_height + line_height * 0.7
   for child in children {
@@ -1620,106 +1630,44 @@ fn render_svg_person(
   let sy = box.height / 77.4
   let x = box.x
   let y = box.y
-  // Build path using scaled coordinates
+  // Build path using PathBuilder
   // The path draws: bottom line, left leg, left shoulder, head circle, right shoulder, right leg
-  let path = StringBuilder::new()
-  // Start at bottom right
-  path.write_string("M ")
-  path.write_string((x + 68.3 * sx).to_string())
-  path.write_string(" ")
-  path.write_string((y + 77.4 * sy).to_string())
-  // Bottom line (H 0)
-  path.write_string(" H ")
-  path.write_string(x.to_string())
-  // Left leg (v -1.1, then curve)
-  path.write_string(" v ")
-  path.write_string((-1.1 * sy).to_string())
-  // Left leg curve (relative: c 0,-13.2 7.5,-25.1 19.3,-30.8)
-  path.write_string(" c ")
-  path.write_string((0.0 * sx).to_string())
-  path.write_string(",")
-  path.write_string((-13.2 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((7.5 * sx).to_string())
-  path.write_string(",")
-  path.write_string((-25.1 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((19.3 * sx).to_string())
-  path.write_string(",")
-  path.write_string((-30.8 * sy).to_string())
-  // Left shoulder curve (absolute: C 12.8,40.9 8.9,33.4 8.9,25.2)
-  path.write_string(" C ")
-  path.write_string((x + 12.8 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 40.9 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((x + 8.9 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 33.4 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((x + 8.9 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 25.2 * sy).to_string())
-  // Head left half (absolute: C 8.9,11.3 20.2,0 34.1,0)
-  path.write_string(" C ")
-  path.write_string((x + 8.9 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 11.3 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((x + 20.2 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 0.0 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((x + 34.1 * sx).to_string())
-  path.write_string(",")
-  path.write_string((y + 0.0 * sy).to_string())
-  // Head right half (relative: c 13.9,0 25.2,11.3 25.2,25.2)
-  path.write_string(" c ")
-  path.write_string((13.9 * sx).to_string())
-  path.write_string(",")
-  path.write_string((0.0 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((25.2 * sx).to_string())
-  path.write_string(",")
-  path.write_string((11.3 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((25.2 * sx).to_string())
-  path.write_string(",")
-  path.write_string((25.2 * sy).to_string())
-  // Right shoulder (relative: c 0,8.2 -3.8,15.6 -10.4,20.4)
-  path.write_string(" c ")
-  path.write_string((0.0 * sx).to_string())
-  path.write_string(",")
-  path.write_string((8.2 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((-3.8 * sx).to_string())
-  path.write_string(",")
-  path.write_string((15.6 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((-10.4 * sx).to_string())
-  path.write_string(",")
-  path.write_string((20.4 * sy).to_string())
-  // Right leg (relative: c 11.8,5.7 19.3,17.6 19.3,30.8)
-  path.write_string(" c ")
-  path.write_string((11.8 * sx).to_string())
-  path.write_string(",")
-  path.write_string((5.7 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((19.3 * sx).to_string())
-  path.write_string(",")
-  path.write_string((17.6 * sy).to_string())
-  path.write_string(" ")
-  path.write_string((19.3 * sx).to_string())
-  path.write_string(",")
-  path.write_string((30.8 * sy).to_string())
-  // v 1
-  path.write_string(" v ")
-  path.write_string((1.0 * sy).to_string())
-  // Close path
-  path.write_string(" Z")
-  svg.add(
-    "<path d=\"\{path.to_string()}\" fill=\"\{fill}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\"/>",
-  )
+  let path_data = @svg.PathBuilder::new()
+    // Start at bottom right
+    .move_to(x + 68.3 * sx, y + 77.4 * sy)
+    // Bottom line
+    .h_to(x)
+    // Left leg
+    .v_rel(-1.1 * sy)
+    .cubic_rel(0.0, -13.2 * sy, 7.5 * sx, -25.1 * sy, 19.3 * sx, -30.8 * sy)
+    // Left shoulder curve
+    .cubic_to(
+      x + 12.8 * sx,
+      y + 40.9 * sy,
+      x + 8.9 * sx,
+      y + 33.4 * sy,
+      x + 8.9 * sx,
+      y + 25.2 * sy,
+    )
+    // Head left half
+    .cubic_to(
+      x + 8.9 * sx,
+      y + 11.3 * sy,
+      x + 20.2 * sx,
+      y + 0.0 * sy,
+      x + 34.1 * sx,
+      y + 0.0 * sy,
+    )
+    // Head right half
+    .cubic_rel(13.9 * sx, 0.0, 25.2 * sx, 11.3 * sy, 25.2 * sx, 25.2 * sy)
+    // Right shoulder
+    .cubic_rel(0.0, 8.2 * sy, -3.8 * sx, 15.6 * sy, -10.4 * sx, 20.4 * sy)
+    // Right leg
+    .cubic_rel(11.8 * sx, 5.7 * sy, 19.3 * sx, 17.6 * sy, 19.3 * sx, 30.8 * sy)
+    .v_rel(1.0 * sy)
+    .close()
+    .build()
+  svg.add(@svg.path(path_data, fill~, stroke~, stroke_width~))
 }
 
 ///|
