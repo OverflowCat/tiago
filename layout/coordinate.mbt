@@ -70,6 +70,9 @@ pub fn assign_coordinates(
       x_coords[node] = median4(v1, v2, v3, v4)
     }
   }
+  // Normalize x-coordinates: shift so minimum x starts at padding
+  let padding = 20.0
+  normalize_x_coords(x_coords, layers, padding)
   // Compute dynamic rank spacing based on edge labels
   let rank_spacing = compute_dynamic_rank_spacing(
     graph, layers, vertical_sep, cycle_result,
@@ -98,7 +101,17 @@ pub fn assign_coordinates(
     }
     y = y + max_height + spacing
   }
-  { x_coords, y_coords }
+  let result : CoordinateResult = { x_coords, y_coords }
+  // Brandes-Köpf tuning: apply post-processing adjustments
+  // These only fix actual overlaps, not enforce minimum separation
+  // For vertical (top-to-bottom) layout:
+  // 1. Fix overlaps between layers (y-coordinates)
+  adjust_rank_spacing(result, layers, node_heights, vertical_sep, false)
+  // 2. Fix overlaps within layers (x-coordinates)
+  adjust_cross_rank_spacing(result, layers, node_widths, horizontal_sep, false)
+  // 3. Adjust container padding
+  fit_container_padding(result, graph, layers, horizontal_sep, false)
+  result
 }
 
 ///|
@@ -455,6 +468,36 @@ fn median4(a : Double, b : Double, c : Double, d : Double) -> Double {
 }
 
 ///|
+/// Normalize x-coordinates to start from a padding value
+/// This fixes issues where Brandes-Köpf produces negative or very spread out coordinates
+fn normalize_x_coords(
+  x_coords : Map[String, Double],
+  layers : Array[Array[String]],
+  padding : Double,
+) -> Unit {
+  // Find minimum x-coordinate across all nodes
+  let mut min_x = 1.0e10
+  for layer in layers {
+    for node in layer {
+      let x = x_coords.get(node).unwrap_or(0.0)
+      if x < min_x {
+        min_x = x
+      }
+    }
+  }
+  // Shift all coordinates so minimum starts at padding
+  if min_x != 1.0e10 {
+    let shift = padding - min_x
+    for layer in layers {
+      for node in layer {
+        let old_x = x_coords.get(node).unwrap_or(0.0)
+        x_coords[node] = old_x + shift
+      }
+    }
+  }
+}
+
+///|
 /// Simple coordinate assignment (fallback)
 /// Places nodes sequentially within each layer
 pub fn assign_coordinates_simple(
@@ -484,4 +527,245 @@ pub fn assign_coordinates_simple(
     y = y + max_height + vertical_sep
   }
   { x_coords, y_coords }
+}
+
+// ============================================================================
+// Brandes-Köpf Tuning: Post-processing adjustments
+// ============================================================================
+
+///|
+/// Adjust rank (layer) spacing to fix overlaps between layers
+/// Only shifts nodes when there's actual overlap (not to enforce minimum separation)
+/// For horizontal layout: adjusts x-spacing between ranks
+/// For vertical layout: adjusts y-spacing between ranks
+pub fn adjust_rank_spacing(
+  coords : CoordinateResult,
+  layers : Array[Array[String]],
+  node_sizes : Map[String, Double], // widths for horizontal, heights for vertical
+  _rank_sep : Double,
+  is_horizontal : Bool,
+) -> Unit {
+  if layers.length() <= 1 {
+    return
+  }
+  // Get the coordinate map to adjust (x for horizontal, y for vertical)
+  let coord_map = if is_horizontal { coords.x_coords } else { coords.y_coords }
+  // Calculate the rightmost/bottom position of each rank (including node size)
+  let rank_maxes : Array[Double] = []
+  for layer in layers {
+    let mut max_pos = -1.0e10
+    for node in layer {
+      let pos = coord_map.get(node).unwrap_or(0.0)
+      let size = node_sizes.get(node).unwrap_or(60.0)
+      let end_pos = pos + size
+      if end_pos > max_pos {
+        max_pos = end_pos
+      }
+    }
+    rank_maxes.push(max_pos)
+  }
+  // Only fix actual overlaps (where next layer starts before previous layer ends)
+  let mut cumulative_shift = 0.0
+  for i = 1; i < layers.length(); i = i + 1 {
+    // Find minimum position in this rank
+    let mut min_pos = 1.0e10
+    for node in layers[i] {
+      let pos = coord_map.get(node).unwrap_or(0.0)
+      if pos < min_pos {
+        min_pos = pos
+      }
+    }
+    // Check if there's actual overlap (not just less than rank_sep)
+    let prev_max = rank_maxes[i - 1] + cumulative_shift
+    // Only shift if there's actual overlap (min_pos < prev_max)
+    if min_pos < prev_max {
+      let shift = prev_max - min_pos + 1.0 // Add small margin
+      cumulative_shift = cumulative_shift + shift
+      // Shift all nodes in this and subsequent ranks
+      for j = i; j < layers.length(); j = j + 1 {
+        for node in layers[j] {
+          let old_pos = coord_map.get(node).unwrap_or(0.0)
+          coord_map[node] = old_pos + shift
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Adjust cross-rank spacing to fix node overlaps within ranks
+/// Only shifts nodes when there's actual overlap (not to enforce minimum separation)
+/// For horizontal layout: adjusts y-spacing (nodes in same rank)
+/// For vertical layout: adjusts x-spacing (nodes in same rank)
+pub fn adjust_cross_rank_spacing(
+  coords : CoordinateResult,
+  layers : Array[Array[String]],
+  node_sizes : Map[String, Double], // heights for horizontal, widths for vertical
+  _sep : Double,
+  is_horizontal : Bool,
+) -> Unit {
+  // Get the coordinate map to adjust (y for horizontal layout, x for vertical)
+  let coord_map = if is_horizontal { coords.y_coords } else { coords.x_coords }
+  // Process each layer
+  for layer in layers {
+    if layer.length() <= 1 {
+      continue
+    }
+    // Sort nodes by their current position
+    let sorted = sort_nodes_by_coord(layer, coord_map)
+    // Only fix actual overlaps between adjacent nodes
+    for i = 1; i < sorted.length(); i = i + 1 {
+      let prev_node = sorted[i - 1]
+      let curr_node = sorted[i]
+      let prev_pos = coord_map.get(prev_node).unwrap_or(0.0)
+      let prev_size = node_sizes.get(prev_node).unwrap_or(60.0)
+      let curr_pos = coord_map.get(curr_node).unwrap_or(0.0)
+      let prev_end = prev_pos + prev_size
+      // Only shift if there's actual overlap (curr starts before prev ends)
+      if curr_pos < prev_end {
+        let shift = prev_end - curr_pos + 1.0 // Add small margin
+        // Shift this and all subsequent nodes
+        for j = i; j < sorted.length(); j = j + 1 {
+          let node = sorted[j]
+          let old_pos = coord_map.get(node).unwrap_or(0.0)
+          coord_map[node] = old_pos + shift
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Sort nodes by their coordinate value
+fn sort_nodes_by_coord(
+  nodes : Array[String],
+  coords : Map[String, Double],
+) -> Array[String] {
+  let result = nodes.copy()
+  // Insertion sort
+  for i = 1; i < result.length(); i = i + 1 {
+    let key = result[i]
+    let key_coord = coords.get(key).unwrap_or(0.0)
+    let mut j = i - 1
+    while j >= 0 {
+      let j_coord = coords.get(result[j]).unwrap_or(0.0)
+      if j_coord > key_coord {
+        result[j + 1] = result[j]
+        j = j - 1
+      } else {
+        break
+      }
+    }
+    result[j + 1] = key
+  }
+  result
+}
+
+///|
+/// Adjust container padding to ensure children have proper margins
+/// This handles nested containers by ensuring minimum internal padding
+pub fn fit_container_padding(
+  coords : CoordinateResult,
+  graph : @graph.Graph,
+  layers : Array[Array[String]],
+  padding : Double,
+  is_horizontal : Bool,
+) -> Unit {
+  // Build parent-child relationships
+  let children_map : Map[String, Array[String]] = {}
+  for obj in graph.objects {
+    if obj.children.length() > 0 {
+      let child_ids : Array[String] = []
+      for child in obj.children {
+        child_ids.push(child.id)
+      }
+      children_map[obj.id] = child_ids
+    }
+  }
+  // Process each container
+  for obj in graph.objects {
+    match children_map.get(obj.id) {
+      Some(children) => {
+        if children.length() == 0 {
+          continue
+        }
+        // Find bounding box of children
+        let (min_x, min_y, _max_x, _max_y) = compute_children_bounds(
+          children, coords,
+        )
+        // Get container position
+        let container_x = coords.x_coords.get(obj.id).unwrap_or(0.0)
+        let container_y = coords.y_coords.get(obj.id).unwrap_or(0.0)
+        // Adjust children to ensure padding from container edges
+        let required_min_x = container_x + padding
+        let required_min_y = container_y + padding
+        if min_x < required_min_x {
+          let shift = required_min_x - min_x
+          shift_nodes_x(children, coords, shift)
+        }
+        if min_y < required_min_y {
+          let shift = required_min_y - min_y
+          shift_nodes_y(children, coords, shift)
+        }
+      }
+      None => ()
+    }
+  }
+  ignore(layers)
+  ignore(is_horizontal)
+}
+
+///|
+/// Compute bounding box of a set of nodes
+fn compute_children_bounds(
+  nodes : Array[String],
+  coords : CoordinateResult,
+) -> (Double, Double, Double, Double) {
+  let mut min_x = 1.0e10
+  let mut min_y = 1.0e10
+  let mut max_x = -1.0e10
+  let mut max_y = -1.0e10
+  for node in nodes {
+    let x = coords.x_coords.get(node).unwrap_or(0.0)
+    let y = coords.y_coords.get(node).unwrap_or(0.0)
+    if x < min_x {
+      min_x = x
+    }
+    if y < min_y {
+      min_y = y
+    }
+    if x > max_x {
+      max_x = x
+    }
+    if y > max_y {
+      max_y = y
+    }
+  }
+  (min_x, min_y, max_x, max_y)
+}
+
+///|
+/// Shift nodes horizontally
+fn shift_nodes_x(
+  nodes : Array[String],
+  coords : CoordinateResult,
+  shift : Double,
+) -> Unit {
+  for node in nodes {
+    let old_x = coords.x_coords.get(node).unwrap_or(0.0)
+    coords.x_coords[node] = old_x + shift
+  }
+}
+
+///|
+/// Shift nodes vertically
+fn shift_nodes_y(
+  nodes : Array[String],
+  coords : CoordinateResult,
+  shift : Double,
+) -> Unit {
+  for node in nodes {
+    let old_y = coords.y_coords.get(node).unwrap_or(0.0)
+    coords.y_coords[node] = old_y + shift
+  }
 }

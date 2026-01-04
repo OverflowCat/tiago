@@ -6,6 +6,10 @@ import(
 )
 
 // Values
+pub fn adjust_cross_rank_spacing(CoordinateResult, Array[Array[String]], Map[String, Double], Double, Bool) -> Unit
+
+pub fn adjust_rank_spacing(CoordinateResult, Array[Array[String]], Map[String, Double], Double, Bool) -> Unit
+
 pub fn assign_coordinates(@graph.Graph, CrossingResult, CycleBreakResult, Map[String, Double], Map[String, Double], Double, Double) -> CoordinateResult
 
 pub fn assign_coordinates_simple(CrossingResult, Map[String, Double], Map[String, Double], Double, Double, Double) -> CoordinateResult
@@ -17,6 +21,8 @@ pub fn break_cycles(@graph.Graph) -> CycleBreakResult
 pub fn count_crossings(Array[String], Array[String], Array[(String, String)]) -> Int
 
 pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
+
+pub fn fit_container_padding(CoordinateResult, @graph.Graph, Array[Array[String]], Double, Bool) -> Unit
 
 pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
 
