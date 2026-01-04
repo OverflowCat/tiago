@@ -145,28 +145,41 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     "base-layer",
     "translate(\{config.padding},\{content_y})",
   )
-  // Render edges first (behind objects)
-  for edge in graph.edges {
-    render_svg_edge(svg, edge, config, theme)
-  }
-  // Render objects
-  for obj in graph.objects {
-    render_svg_object(svg, obj, config, theme)
-  }
-  // Render activation boxes for sequence diagrams (on top of lifelines)
-  for ab in graph.activation_boxes {
-    let box = ab.1
-    svg.add(
-      @svg.rect(
-        box.x,
-        box.y,
-        box.width,
-        box.height,
-        fill=config.default_fill,
-        stroke=config.default_stroke,
-        stroke_width=config.default_stroke_width,
-      ),
-    )
+  // Check if this is a sequence diagram (has activation boxes)
+  let is_sequence = graph.activation_boxes.length() > 0
+  if is_sequence {
+    // For sequence diagrams: render activation boxes first (behind messages)
+    for ab in graph.activation_boxes {
+      let box = ab.1
+      svg.add(
+        @svg.rect(
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          fill=config.default_fill,
+          stroke=config.default_stroke,
+          stroke_width=config.default_stroke_width,
+        ),
+      )
+    }
+    // Then render edges (messages) on top of lifelines
+    for edge in graph.edges {
+      render_svg_edge(svg, edge, config, theme)
+    }
+    // Finally render actor boxes at the top
+    for obj in graph.objects {
+      render_svg_object(svg, obj, config, theme)
+    }
+  } else {
+    // For regular diagrams: render edges first (behind objects)
+    for edge in graph.edges {
+      render_svg_edge(svg, edge, config, theme)
+    }
+    // Render objects
+    for obj in graph.objects {
+      render_svg_object(svg, obj, config, theme)
+    }
   }
   // Render sequence diagram notes (using page shape)
   for note in graph.sequence_notes {
