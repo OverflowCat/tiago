@@ -802,11 +802,7 @@ fn center_parents_over_children(
     // Only consider edges going to next layer
     if src_layer >= 0 && dst_layer == src_layer + 1 {
       match children_map.get(src) {
-        Some(arr) => {
-          if not(arr.contains(dst)) {
-            arr.push(dst)
-          }
-        }
+        Some(arr) => if not(arr.contains(dst)) { arr.push(dst) }
         None => children_map[src] = [dst]
       }
     }
@@ -876,11 +872,9 @@ fn can_shift_node(
         if new_right + min_sep > other_x {
           return false
         }
-      } else {
         // Node is to the right, new position must stay to the right
-        if new_x < other_right + min_sep {
-          return false
-        }
+      } else if new_x < other_right + min_sep {
+        return false
       }
     }
   }

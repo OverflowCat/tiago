@@ -18,7 +18,21 @@ pub fn assign_layers(@graph.Graph, CycleBreakResult) -> LayerAssignment
 
 pub fn break_cycles(@graph.Graph) -> CycleBreakResult
 
+pub fn compute_container_ranks(@graph.Graph, Array[Array[String]]) -> ContainerRanks
+
+pub fn copy_layers(Array[Array[String]]) -> Array[Array[String]]
+
+pub fn count_all_crossings(Array[Array[String]], Map[String, Array[String]]) -> Int
+
+pub fn count_all_crossings_weighted(Array[Array[String]], Map[String, Array[String]], Map[(String, String), Double]) -> Double
+
 pub fn count_crossings(Array[String], Array[String], Array[(String, String)]) -> Int
+
+pub fn count_crossings_fast(Array[String], Array[String], Array[(String, String)]) -> Int
+
+pub fn count_crossings_fenwick(Array[String], Array[String], Array[(String, String, Double)]) -> Double
+
+pub fn expand_containers_to_fit(CoordinateResult, @graph.Graph, Array[Array[String]], ContainerRanks, Double) -> Unit
 
 pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
 
@@ -67,6 +81,11 @@ pub(all) struct ActivationBox {
 }
 pub fn ActivationBox::get_box(Self) -> @graph.Box
 pub fn ActivationBox::new(String, Double, Double) -> Self
+
+pub(all) struct ContainerRanks {
+  starting_rank : Map[String, Int]
+  ending_rank : Map[String, Int]
+}
 
 pub(all) struct CoordinateResult {
   x_coords : Map[String, Double]
