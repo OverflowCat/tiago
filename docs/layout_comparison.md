@@ -9,11 +9,11 @@ This document compares the layout implementations between the D2 reference (Go) 
 | Aspect | D2 Reference | diago | Impact |
 |--------|-------------|-------|--------|
 | **Core Algorithm** | Sugiyama via Dagre.js | Sugiyama native | Similar approach |
-| **Edge Routing** | Sophisticated polyline + Bezier smoothing | Simple direct lines | **Major visual issue** |
-| **Label Positioning** | 25 discrete positions with collision avoidance | Basic midpoint only | **Labels overlap** |
-| **Container Layout** | Extract → Layout → Reinject recursively | Basic nested positioning | **Container edges wrong** |
-| **Crossing Minimization** | 4 alignment passes + barycenter | Barycenter only | Minor quality difference |
-| **Post-Processing** | S-shape elimination, edge endpoint extension | None | **Edges look messy** |
+| **Edge Routing** | Sophisticated polyline + Bezier smoothing | Polyline + Catmull-Rom Bezier | ✅ Similar |
+| **Label Positioning** | 25 discrete positions with collision avoidance | 5 perpendicular offsets with collision avoidance | Minor difference |
+| **Container Layout** | Extract → Layout → Reinject recursively | Basic nested positioning | Container edges basic |
+| **Crossing Minimization** | 4 alignment passes + barycenter | 4 alignment passes + barycenter | ✅ Equivalent |
+| **Post-Processing** | S-shape elimination, edge endpoint extension | S-shape elimination, edge endpoint extension | ✅ Equivalent |
 
 ---
 
@@ -124,19 +124,18 @@ This document compares the layout implementations between the D2 reference (Go) 
 | Feature | D2 | diago | Status |
 |---------|----|----|--------|
 | Polyline through virtual nodes | ✅ | ✅ | Equivalent |
-| Cubic Bezier smoothing | ✅ | ❌ | **Missing** |
-| Short segment extension | ✅ | ❌ | **Missing** |
-| S-shape elimination | ✅ | ❌ | **Missing** |
-| Ladder elimination | ✅ | ❌ | **Missing** |
-| Edge endpoint extension for arrows | ✅ | ❌ | **Missing** |
+| Cubic Bezier smoothing | ✅ | ✅ | Catmull-Rom to Bezier |
+| Short segment extension | ✅ | ⚠️ | Basic |
+| S-shape elimination | ✅ | ✅ | Equivalent |
+| Ladder elimination | ✅ | ✅ | Equivalent |
+| Edge endpoint extension for arrows | ✅ | ✅ | Equivalent |
 | Trace to shape border | ✅ | ⚠️ | Basic box only |
 | 3D/modifier adjustment | ✅ | ❌ | **Missing** |
 
-**Major Issues in diago**:
-1. **No curve smoothing** - edges are jagged polylines
-2. **No S-shape/ladder elimination** - unnecessary bends remain
-3. **No endpoint adjustment** - arrows may not align properly
-4. Edges only intersect basic box, not actual shape borders
+**Notes**:
+- Bezier smoothing available via `style.curved: true` (straight lines by default)
+- S-shape/ladder elimination implemented as post-processing
+- Edge endpoints extended for arrow visibility
 
 ---
 
@@ -161,11 +160,11 @@ This document compares the layout implementations between the D2 reference (Go) 
 
 | Feature | D2 | diago | Status |
 |---------|----|----|--------|
-| adjustRankSpacing() | ✅ | ❌ | **Missing** |
-| adjustCrossRankSpacing() | ✅ | ❌ | **Missing** |
-| fitContainerPadding() | ✅ | ❌ | **Missing** |
+| adjustRankSpacing() | ✅ | ✅ | Dynamic rank spacing |
+| adjustCrossRankSpacing() | ✅ | ⚠️ | Basic |
+| fitContainerPadding() | ✅ | ⚠️ | Fixed padding |
 
-**Impact**: Containers may not have proper padding, ranks may be too close
+**Notes**: Dynamic rank spacing implemented based on edge label heights
 
 ---
 
@@ -223,57 +222,57 @@ This document compares the layout implementations between the D2 reference (Go) 
 
 | Parameter | D2 Default | diago Default | Notes |
 |-----------|-----------|---------------|-------|
-| ranksep | 60-100 | 40 | diago uses smaller spacing |
-| nodesep | 60 | 60 | Same |
-| edgesep | 20 | 10 | diago uses smaller edge padding |
+| ranksep (vertical_spacing) | 60-100 | 60 | ✅ Same range |
+| nodesep (horizontal_spacing) | 60 | 60 | ✅ Same |
+| edgesep (edge_padding) | 20 | 20 | ✅ Same |
 | container_padding | Varies | 20 | Fixed in diago |
 
 ---
 
 ## Priority Fixes for diago
 
-### Critical (Major Visual Impact)
+### ✅ Completed
 
-1. **Edge Curve Smoothing**
-   - Add cubic Bezier interpolation to edge routes
-   - Remove sharp corners between segments
+1. **Edge Curve Smoothing** ✅
+   - Catmull-Rom to Bezier interpolation implemented
+   - Available via `style.curved: true`
 
-2. **Dynamic Rank Spacing**
-   - Increase layer separation when edge labels are tall
-   - Prevents labels overlapping nodes
+2. **Dynamic Rank Spacing** ✅
+   - Layer separation increases when edge labels are tall
+   - Implemented in `compute_dynamic_rank_spacing()`
 
-3. **Container Edge Routing**
+3. **S-Shape/Ladder Elimination** ✅
+   - Post-process edge routes to remove unnecessary bends
+   - Checks for object intersections before removing waypoints
+
+4. **Edge Endpoint Extension** ✅
+   - Edge endpoints extended past shape border for arrow visibility
+   - Implemented in `extend_edge_endpoints()`
+
+5. **Default Spacing Values** ✅
+   - vertical_spacing: 60.0 (matches D2)
+   - edge_padding: 20.0 (matches D2)
+
+### Remaining High Priority
+
+6. **Container Edge Routing**
    - Implement extract/reinject pattern for nested graphs
    - Route cross-boundary edges separately
    - "Chop" edges at container borders
 
-4. **S-Shape/Ladder Elimination**
-   - Post-process edge routes to remove unnecessary bends
-   - Count edge crossings to decide if removal improves layout
-
-### High Priority
-
-5. **Edge Endpoint Extension**
-   - Extend edge endpoints past shape border for arrow visibility
-   - Trace to actual shape border, not just bounding box
-
-6. **Label Position Options**
+7. **Label Position Options**
    - Implement 25-position label placement
    - Add outside/inside/border modes
 
-7. **Actor Spacing Computation (Sequence)**
+8. **Actor Spacing Computation (Sequence)**
    - Compute actor spacing based on message label widths
    - Distribute label width across spanned actor gaps
 
 ### Medium Priority
 
-8. **Grid Layout Optimization**
+9. **Grid Layout Optimization**
    - Add debt mechanism for row/column assignment
    - Consider aspect ratio constraints
-
-9. **Post-Layout Adjustments**
-   - Implement adjustRankSpacing()
-   - Implement fitContainerPadding()
 
 10. **Shape-Specific Edge Routing**
     - Add ellipse-line intersection for ovals/circles
@@ -298,24 +297,25 @@ The D2 implementation is roughly 2.8x larger, primarily due to sophisticated edg
 
 ## Recommendations
 
-### Quick Wins (1-2 hours each)
+### ✅ Completed
 
-1. Increase default `vertical_spacing` from 40 to 60
-2. Increase default `edge_padding` from 10 to 20
-3. Add simple Bezier curve interpolation for edge smoothing
+1. ~~Increase default `vertical_spacing` from 40 to 60~~ ✅
+2. ~~Increase default `edge_padding` from 10 to 20~~ ✅
+3. ~~Add simple Bezier curve interpolation for edge smoothing~~ ✅
+4. ~~Implement dynamic rank spacing based on edge label heights~~ ✅
+5. ~~Add S-shape elimination post-processing~~ ✅
+6. ~~Implement edge endpoint extension for arrows~~ ✅
 
-### Medium Effort (4-8 hours each)
+### Remaining Work
 
-4. Implement dynamic rank spacing based on edge label heights
-5. Add S-shape elimination post-processing
-6. Implement edge endpoint extension for arrows
+**Medium Effort (4-8 hours each)**
+- Implement container extract/reinject pattern
+- Add comprehensive label positioning system (25 positions)
 
-### Major Effort (1-2 days each)
-
-7. Implement container extract/reinject pattern
-8. Add comprehensive label positioning system
-9. Add shape-specific edge routing (ellipse, polygon)
+**Major Effort (1-2 days each)**
+- Add shape-specific edge routing (ellipse, polygon)
+- Improve actor spacing computation for sequence diagrams
 
 ---
 
-*Generated: 2025-01-03*
+*Updated: 2025-01-04*
