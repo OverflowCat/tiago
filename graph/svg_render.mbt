@@ -2020,6 +2020,114 @@ fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
 }
 
 ///|
+/// Build a railroad-style path with orthogonal lines and rounded corners
+fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
+  if points.length() < 2 {
+    return
+  }
+  // Radius for rounded corners
+  let radius = 8.0
+  // Move to first point
+  let _ = pb.move_to(points[0].x, points[0].y)
+  if points.length() == 2 {
+    // Two points - create orthogonal path with a bend
+    let p0 = points[0]
+    let p1 = points[1]
+    let dx = (p1.x - p0.x).abs()
+    let dy = (p1.y - p0.y).abs()
+    // If already aligned, just draw straight
+    if dx < 1.0 || dy < 1.0 {
+      let _ = pb.line_to(p1.x, p1.y)
+      return
+    }
+    // Create orthogonal path: go vertical first, then horizontal (or vice versa)
+    // Choose based on which dimension is larger
+    let mid_y = (p0.y + p1.y) / 2.0
+    let r = @cmp.minimum(radius, @cmp.minimum(dx, dy) / 2.0)
+    if r < 1.0 {
+      // Too small for arcs, just use straight lines
+      let _ = pb.line_to(p0.x, mid_y)
+      let _ = pb.line_to(p1.x, mid_y)
+      let _ = pb.line_to(p1.x, p1.y)
+      return
+    }
+    // First vertical segment (stop before corner)
+    let stop1_y = if mid_y > p0.y { mid_y - r } else { mid_y + r }
+    let _ = pb.line_to(p0.x, stop1_y)
+    // First arc
+    let sweep1 = if (p1.x > p0.x) == (mid_y > p0.y) { true } else { false }
+    let resume1_x = if p1.x > p0.x { p0.x + r } else { p0.x - r }
+    let _ = pb.arc_to(r, r, resume1_x, mid_y, large_arc=false, sweep=sweep1)
+    // Horizontal segment (stop before second corner)
+    let stop2_x = if p1.x > p0.x { p1.x - r } else { p1.x + r }
+    let _ = pb.line_to(stop2_x, mid_y)
+    // Second arc
+    let sweep2 = if (p1.x > p0.x) == (p1.y > mid_y) { false } else { true }
+    let resume2_y = if p1.y > mid_y { mid_y + r } else { mid_y - r }
+    let _ = pb.arc_to(r, r, p1.x, resume2_y, large_arc=false, sweep=sweep2)
+    // Final vertical segment
+    let _ = pb.line_to(p1.x, p1.y)
+    return
+  }
+  // For each intermediate point, draw line segments with rounded corners
+  for i = 0; i < points.length() - 1; i = i + 1 {
+    let curr = points[i]
+    let next = points[i + 1]
+    if i == points.length() - 2 {
+      // Last segment - just draw to end
+      let _ = pb.line_to(next.x, next.y)
+
+    } else {
+      // There's a corner at 'next', so we need to draw a rounded corner
+      let after = points[i + 2]
+      // Calculate the direction vectors
+      let dx1 = next.x - curr.x
+      let dy1 = next.y - curr.y
+      let dx2 = after.x - next.x
+      let dy2 = after.y - next.y
+      // Normalize directions
+      let len1 = (dx1 * dx1 + dy1 * dy1).sqrt()
+      let len2 = (dx2 * dx2 + dy2 * dy2).sqrt()
+      if len1 < 0.001 || len2 < 0.001 {
+        // Degenerate case - just line to next
+        let _ = pb.line_to(next.x, next.y)
+        continue
+      }
+      // Limit radius to half the shorter segment length
+      let max_radius = @cmp.minimum(len1, len2) / 2.0
+      let r = @cmp.minimum(radius, max_radius)
+      if r < 1.0 {
+        // Radius too small - just use straight lines
+        let _ = pb.line_to(next.x, next.y)
+        continue
+      }
+      // Calculate the point where we stop before the corner
+      let stop_x = next.x - dx1 / len1 * r
+      let stop_y = next.y - dy1 / len1 * r
+      // Calculate the point where we resume after the corner
+      let resume_x = next.x + dx2 / len2 * r
+      let resume_y = next.y + dy2 / len2 * r
+      // Draw line to the stop point
+      let _ = pb.line_to(stop_x, stop_y)
+      // Determine arc direction (sweep flag)
+      // Cross product of directions determines if we turn left or right
+      let cross = dx1 * dy2 - dy1 * dx2
+      let sweep_flag = cross > 0.0
+      // Draw arc to resume point: rx, ry, end-x, end-y, large_arc?, sweep?
+      let _ = pb.arc_to(
+        r,
+        r,
+        resume_x,
+        resume_y,
+        large_arc=false,
+        sweep=sweep_flag,
+      )
+
+    }
+  }
+}
+
+///|
 fn render_svg_edge(
   svg : @svg.Svg,
   edge : Edge,
@@ -2045,24 +2153,16 @@ fn render_svg_edge(
     Some(w) => w
     None => config.default_stroke_width
   }
-  // Build path - use straight lines by default, curves only when explicitly requested
-  // Straight lines for: curved=false (explicit), curved=None (default)
-  // Curves only when curved=true (explicit)
+  // Build path - use railroad style (orthogonal with rounded corners) by default
+  // Curved style overrides to smooth bezier curves when explicitly requested
   let use_curved = edge.style.curved is Some(true)
   let pb = @svg.PathBuilder::new()
   if use_curved && edge.route.length() >= 2 {
     // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
     build_curved_path(pb, edge.route)
   } else {
-    for i, point in edge.route {
-      if i == 0 {
-        let _ = pb.move_to(point.x, point.y)
-
-      } else {
-        let _ = pb.line_to(point.x, point.y)
-
-      }
-    }
+    // Use railroad style: orthogonal lines with rounded corners at bends
+    build_railroad_path(pb, edge.route)
   }
   // Determine markers based on arrowhead types
   let marker_end = get_marker_url(edge.dst_arrowhead, false)

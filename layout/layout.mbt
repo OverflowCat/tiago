@@ -980,48 +980,53 @@ fn route_edges_with_virtual(
 }
 
 ///|
-/// Route an edge through virtual nodes
+/// Route an edge through virtual nodes using orthogonal (railroad) style
 fn route_edge_through_virtual(
   edge : @graph.Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
-  virtual_ids : Array[String],
+  _virtual_ids : Array[String],
   virtual_result : VirtualNodeResult,
 ) -> Unit {
   // Get connection points on source
   let src_anchor = edge.src_anchor.unwrap_or("bottom")
   let src_point = get_anchor_point(src_box, src_anchor, 0.0)
   edge.route.push(src_point)
-  // Add waypoints at virtual node positions
-  // Virtual nodes should be positioned between source and destination
+  // Add waypoints at virtual node positions with orthogonal routing
   let layer_assignment = virtual_result.layer_assignment
   let src_layer = layer_assignment.layers.get(edge.src_id).unwrap_or(0)
   let dst_layer = layer_assignment.layers.get(edge.dst_id).unwrap_or(0)
   let layer_span = dst_layer - src_layer
+  let dst_anchor = edge.dst_anchor.unwrap_or("top")
+  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
   if layer_span > 1 {
     // Calculate intermediate Y positions based on layer
     let total_height = dst_box.y - (src_box.y + src_box.height)
     let layer_height = total_height / layer_span.to_double()
-    // Interpolate X position between source and destination centers
-    let src_center_x = src_box.x + src_box.width / 2.0
-    let dst_center_x = dst_box.x + dst_box.width / 2.0
-    for i, _ in virtual_ids {
-      let t = (i + 1).to_double() / layer_span.to_double()
-      let waypoint_x = src_center_x + (dst_center_x - src_center_x) * t
-      let waypoint_y = src_box.y +
-        src_box.height +
-        layer_height * (i + 1).to_double()
-      edge.route.push(@graph.Point::new(waypoint_x, waypoint_y))
+    // For orthogonal routing: go vertical first, then horizontal at mid-y, then vertical to destination
+    // Find the midpoint Y where we'll make the horizontal transition
+    let mid_layer = layer_span / 2
+    let mid_y = src_box.y +
+      src_box.height +
+      layer_height * (mid_layer + 1).to_double()
+    // First vertical segment: stay at src x, go to mid y
+    edge.route.push(@graph.Point::new(src_point.x, mid_y))
+    // Horizontal segment: move from src x to dst x at mid y
+    edge.route.push(@graph.Point::new(dst_point.x, mid_y))
+  } else {
+    // For direct edges (no virtual nodes but still multi-layer), create orthogonal path
+    let mid_y = (src_point.y + dst_point.y) / 2.0
+    if (src_point.x - dst_point.x).abs() > 1.0 {
+      edge.route.push(@graph.Point::new(src_point.x, mid_y))
+      edge.route.push(@graph.Point::new(dst_point.x, mid_y))
     }
   }
   // Get connection point on destination
-  let dst_anchor = edge.dst_anchor.unwrap_or("top")
-  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
   edge.route.push(dst_point)
 }
 
 ///|
-/// Route a direct edge (no virtual nodes)
+/// Route a direct edge (no virtual nodes) using orthogonal (railroad) style
 fn route_direct_edge(
   edge : @graph.Edge,
   src_box : @graph.Box,
@@ -1031,8 +1036,50 @@ fn route_direct_edge(
   let dst_anchor = edge.dst_anchor.unwrap_or("top")
   let src_point = get_anchor_point(src_box, src_anchor, 0.0)
   let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
-  edge.route.push(src_point)
-  edge.route.push(dst_point)
+  // Create orthogonal route (railroad style)
+  create_orthogonal_route(edge, src_point, dst_point, src_anchor, dst_anchor)
+}
+
+///|
+/// Create orthogonal (railroad) route between two points
+/// Uses only horizontal and vertical segments
+fn create_orthogonal_route(
+  edge : @graph.Edge,
+  src : @graph.Point,
+  dst : @graph.Point,
+  src_anchor : String,
+  dst_anchor : String,
+) -> Unit {
+  edge.route.push(src)
+  // Determine routing direction based on anchors
+  let is_vertical_start = src_anchor == "top" || src_anchor == "bottom"
+  let is_vertical_end = dst_anchor == "top" || dst_anchor == "bottom"
+  let dx = dst.x - src.x
+  let dy = dst.y - src.y
+  // If points are already aligned, no intermediate points needed
+  if dx.abs() < 1.0 || dy.abs() < 1.0 {
+    edge.route.push(dst)
+    return
+  }
+  // Choose routing based on anchor directions
+  if is_vertical_start && is_vertical_end {
+    // Both vertical: go vertical halfway, then horizontal, then vertical
+    let mid_y = (src.y + dst.y) / 2.0
+    edge.route.push(@graph.Point::new(src.x, mid_y))
+    edge.route.push(@graph.Point::new(dst.x, mid_y))
+  } else if is_vertical_start {
+    // Start vertical, end horizontal: go vertical first, then horizontal
+    edge.route.push(@graph.Point::new(src.x, dst.y))
+  } else if is_vertical_end {
+    // Start horizontal, end vertical: go horizontal first, then vertical
+    edge.route.push(@graph.Point::new(dst.x, src.y))
+  } else {
+    // Both horizontal: go horizontal halfway, then vertical, then horizontal
+    let mid_x = (src.x + dst.x) / 2.0
+    edge.route.push(@graph.Point::new(mid_x, src.y))
+    edge.route.push(@graph.Point::new(mid_x, dst.y))
+  }
+  edge.route.push(dst)
 }
 
 // ============================================================================
@@ -1065,6 +1112,7 @@ fn extend_edge_endpoints(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Extend a point away from another point by a given distance
+/// Preserves orthogonality by extending only along the dominant axis
 fn extend_point_away(
   point : @graph.Point,
   away_from : @graph.Point,
@@ -1072,14 +1120,25 @@ fn extend_point_away(
 ) -> @graph.Point {
   let dx = point.x - away_from.x
   let dy = point.y - away_from.y
-  let len = (dx * dx + dy * dy).sqrt()
-  if len < 0.001 {
-    return point
+  // For orthogonal routing, extend along the dominant axis only
+  if dx.abs() > dy.abs() {
+    // Horizontal segment - extend horizontally
+    let sign = if dx > 0.0 { 1.0 } else { -1.0 }
+    @graph.Point::new(point.x + sign * distance, point.y)
+  } else if dy.abs() > dx.abs() {
+    // Vertical segment - extend vertically
+    let sign = if dy > 0.0 { 1.0 } else { -1.0 }
+    @graph.Point::new(point.x, point.y + sign * distance)
+  } else {
+    // Diagonal or zero - use original logic
+    let len = (dx * dx + dy * dy).sqrt()
+    if len < 0.001 {
+      return point
+    }
+    let nx = dx / len
+    let ny = dy / len
+    @graph.Point::new(point.x + nx * distance, point.y + ny * distance)
   }
-  // Normalize and extend
-  let nx = dx / len
-  let ny = dy / len
-  @graph.Point::new(point.x + nx * distance, point.y + ny * distance)
 }
 
 // ============================================================================
@@ -1149,28 +1208,29 @@ fn can_remove_waypoint(
 
 ///|
 /// Check if three points form an S-shape (horizontal or vertical direction reversal)
+/// Only removes waypoints that form S-shapes, NOT orthogonal corners
 fn is_s_shape(p0 : @graph.Point, p1 : @graph.Point, p2 : @graph.Point) -> Bool {
   let dx1 = p1.x - p0.x
   let dy1 = p1.y - p0.y
   let dx2 = p2.x - p1.x
   let dy2 = p2.y - p1.y
+  // Check if this is an orthogonal corner (railroad style) - don't remove these!
+  // Orthogonal: one segment is vertical (dx≈0) and other is horizontal (dy≈0)
+  let is_seg1_vertical = dx1.abs() < 1.0 && dy1.abs() > 1.0
+  let is_seg1_horizontal = dy1.abs() < 1.0 && dx1.abs() > 1.0
+  let is_seg2_vertical = dx2.abs() < 1.0 && dy2.abs() > 1.0
+  let is_seg2_horizontal = dy2.abs() < 1.0 && dx2.abs() > 1.0
+  // If this forms an orthogonal corner, preserve it
+  if (is_seg1_vertical && is_seg2_horizontal) ||
+    (is_seg1_horizontal && is_seg2_vertical) {
+    return false
+  }
   // S-shape: horizontal direction reverses
   if dx1 * dx2 < 0.0 {
     return true
   }
   // S-shape: vertical direction reverses
   if dy1 * dy2 < 0.0 {
-    return true
-  }
-  // Ladder: both segments go same direction but middle is a detour
-  // Check if removing p1 significantly shortens the path
-  let current_len = (dx1 * dx1 + dy1 * dy1).sqrt() +
-    (dx2 * dx2 + dy2 * dy2).sqrt()
-  let dx_direct = p2.x - p0.x
-  let dy_direct = p2.y - p0.y
-  let direct_len = (dx_direct * dx_direct + dy_direct * dy_direct).sqrt()
-  // If direct path is significantly shorter (more than 20% savings), it's a ladder
-  if current_len > direct_len * 1.2 {
     return true
   }
   false
