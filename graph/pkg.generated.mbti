@@ -164,23 +164,45 @@ pub fn Graph::add_layer(Self, Layer) -> Unit
 pub fn Graph::add_object(Self, Object) -> Unit
 pub fn Graph::add_scenario(Self, Scenario) -> Unit
 pub fn Graph::add_step(Self, Step) -> Unit
+pub fn Graph::all_variants(Self) -> Array[VariantGraph]
 pub fn Graph::edges_from(Self, String) -> Array[Edge]
 pub fn Graph::edges_to(Self, String) -> Array[Edge]
 pub fn Graph::find_object(Self, String) -> Object?
 pub fn Graph::get_edges(Self) -> Array[Edge]
+pub fn Graph::get_layer(Self, String) -> Self?
 pub fn Graph::get_layers(Self) -> Array[Layer]
 pub fn Graph::get_legend(Self) -> Legend?
 pub fn Graph::get_objects(Self) -> Array[Object]
+pub fn Graph::get_scenario(Self, String) -> Self?
 pub fn Graph::get_scenarios(Self) -> Array[Scenario]
+pub fn Graph::get_step(Self, Int) -> Self?
+pub fn Graph::get_step_by_name(Self, String) -> Self?
 pub fn Graph::get_steps(Self) -> Array[Step]
 pub fn Graph::has_fragments(Self) -> Bool
 pub fn Graph::has_layers(Self) -> Bool
 pub fn Graph::has_legend(Self) -> Bool
 pub fn Graph::has_scenarios(Self) -> Bool
 pub fn Graph::has_steps(Self) -> Bool
+pub fn Graph::has_variants(Self) -> Bool
+pub fn Graph::layer_names(Self) -> Array[String]
 pub fn Graph::new(String) -> Self
+pub fn Graph::scenario_names(Self) -> Array[String]
 pub fn Graph::set_legend(Self, Legend) -> Unit
+pub fn Graph::step_names(Self) -> Array[String]
 pub impl Show for Graph
+
+pub enum GraphVariant {
+  LayerVariant(name~ : String)
+  ScenarioVariant(name~ : String)
+  StepVariant(index~ : Int, name~ : String)
+}
+pub fn GraphVariant::layer(String) -> Self
+pub fn GraphVariant::name(Self) -> String
+pub fn GraphVariant::scenario(String) -> Self
+pub fn GraphVariant::step(Int, String) -> Self
+pub fn GraphVariant::step_index(Self) -> Int?
+pub fn GraphVariant::variant_type(Self) -> VariantType
+pub impl Show for GraphVariant
 
 pub(all) struct Layer {
   name : String
@@ -453,6 +475,23 @@ pub struct SvgShapeContext {
   config : SvgConfig
 }
 pub fn SvgShapeContext::new(@svg.Svg, Box, String, String, Double, String, SvgConfig) -> Self
+
+pub struct VariantGraph {
+  variant : GraphVariant
+  graph : Graph
+}
+pub fn VariantGraph::name(Self) -> String
+pub fn VariantGraph::new(GraphVariant, Graph) -> Self
+pub fn VariantGraph::variant_type(Self) -> VariantType
+pub impl Show for VariantGraph
+
+pub enum VariantType {
+  Layer
+  Scenario
+  Step
+}
+pub impl Eq for VariantType
+pub impl Show for VariantType
 
 pub struct Waypoint {
   x : Double

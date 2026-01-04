@@ -281,6 +281,127 @@ pub fn Graph::has_legend(self : Graph) -> Bool {
 }
 
 ///|
+/// Get a layer by name
+pub fn Graph::get_layer(self : Graph, name : String) -> Graph? {
+  for layer in self.layers {
+    if layer.name == name {
+      return Some(layer.graph)
+    }
+  }
+  None
+}
+
+///|
+/// Get a scenario by name
+pub fn Graph::get_scenario(self : Graph, name : String) -> Graph? {
+  for scenario in self.scenarios {
+    if scenario.name == name {
+      return Some(scenario.graph)
+    }
+  }
+  None
+}
+
+///|
+/// Get a step by index (1-indexed)
+pub fn Graph::get_step(self : Graph, index : Int) -> Graph? {
+  if index < 1 || index > self.steps.length() {
+    return None
+  }
+  Some(self.steps[index - 1].graph)
+}
+
+///|
+/// Get a step by name
+pub fn Graph::get_step_by_name(self : Graph, name : String) -> Graph? {
+  for step in self.steps {
+    if step.name == name {
+      return Some(step.graph)
+    }
+  }
+  None
+}
+
+///|
+/// Get all variants as VariantGraph array
+pub fn Graph::all_variants(self : Graph) -> Array[VariantGraph] {
+  let variants : Array[VariantGraph] = []
+  // Add layers
+  for layer in self.layers {
+    variants.push(
+      VariantGraph::new(GraphVariant::layer(layer.name), layer.graph),
+    )
+  }
+  // Add scenarios
+  for scenario in self.scenarios {
+    variants.push(
+      VariantGraph::new(GraphVariant::scenario(scenario.name), scenario.graph),
+    )
+  }
+  // Add steps
+  for i, step in self.steps {
+    variants.push(
+      VariantGraph::new(GraphVariant::step(i + 1, step.name), step.graph),
+    )
+  }
+  variants
+}
+
+///|
+/// Check if graph has any layers
+pub fn Graph::has_layers(self : Graph) -> Bool {
+  not(self.layers.is_empty())
+}
+
+///|
+/// Check if graph has any scenarios
+pub fn Graph::has_scenarios(self : Graph) -> Bool {
+  not(self.scenarios.is_empty())
+}
+
+///|
+/// Check if graph has any steps
+pub fn Graph::has_steps(self : Graph) -> Bool {
+  not(self.steps.is_empty())
+}
+
+///|
+/// Check if graph has any variants (layers, scenarios, or steps)
+pub fn Graph::has_variants(self : Graph) -> Bool {
+  self.has_layers() || self.has_scenarios() || self.has_steps()
+}
+
+///|
+/// Get layer names
+pub fn Graph::layer_names(self : Graph) -> Array[String] {
+  let names : Array[String] = []
+  for layer in self.layers {
+    names.push(layer.name)
+  }
+  names
+}
+
+///|
+/// Get scenario names
+pub fn Graph::scenario_names(self : Graph) -> Array[String] {
+  let names : Array[String] = []
+  for scenario in self.scenarios {
+    names.push(scenario.name)
+  }
+  names
+}
+
+///|
+/// Get step names
+pub fn Graph::step_names(self : Graph) -> Array[String] {
+  let names : Array[String] = []
+  for step in self.steps {
+    names.push(step.name)
+  }
+  names
+}
+
+///|
 pub fn Layer::new(name : String, graph : Graph) -> Layer {
   { name, graph }
 }
@@ -488,12 +609,6 @@ pub fn Graph::get_layers(self : Graph) -> Array[Layer] {
 }
 
 ///|
-/// Check if graph has layers
-pub fn Graph::has_layers(self : Graph) -> Bool {
-  self.layers.length() > 0
-}
-
-///|
 /// Add a scenario to the graph
 pub fn Graph::add_scenario(self : Graph, scenario : Scenario) -> Unit {
   self.scenarios.push(scenario)
@@ -506,12 +621,6 @@ pub fn Graph::get_scenarios(self : Graph) -> Array[Scenario] {
 }
 
 ///|
-/// Check if graph has scenarios
-pub fn Graph::has_scenarios(self : Graph) -> Bool {
-  self.scenarios.length() > 0
-}
-
-///|
 /// Add a step to the graph
 pub fn Graph::add_step(self : Graph, step : Step) -> Unit {
   self.steps.push(step)
@@ -521,12 +630,6 @@ pub fn Graph::add_step(self : Graph, step : Step) -> Unit {
 /// Get all steps
 pub fn Graph::get_steps(self : Graph) -> Array[Step] {
   self.steps
-}
-
-///|
-/// Check if graph has steps
-pub fn Graph::has_steps(self : Graph) -> Bool {
-  self.steps.length() > 0
 }
 
 // ============================================================================
