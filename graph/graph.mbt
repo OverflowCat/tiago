@@ -24,6 +24,8 @@ pub(all) struct Graph {
   scenarios : Array[Scenario]
   /// Named steps - animation frames (for steps: {...})
   steps : Array[Step]
+  /// Legend configuration
+  mut legend : Legend?
 } derive(Show)
 
 ///|
@@ -241,6 +243,7 @@ pub fn Graph::new(name : String) -> Graph {
     layers: [],
     scenarios: [],
     steps: [],
+    legend: None,
   }
 }
 
@@ -254,6 +257,27 @@ pub fn Graph::add_fragment(self : Graph, fragment : SequenceFragment) -> Unit {
 /// Check if graph has any sequence fragments
 pub fn Graph::has_fragments(self : Graph) -> Bool {
   self.sequence_fragments.length() > 0
+}
+
+///|
+/// Get the graph's legend
+pub fn Graph::get_legend(self : Graph) -> Legend? {
+  self.legend
+}
+
+///|
+/// Set the graph's legend
+pub fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
+  self.legend = Some(legend)
+}
+
+///|
+/// Check if the graph has a legend configured
+pub fn Graph::has_legend(self : Graph) -> Bool {
+  match self.legend {
+    Some(l) => not(l.is_empty()) && l.position != Hidden
+    None => false
+  }
 }
 
 ///|

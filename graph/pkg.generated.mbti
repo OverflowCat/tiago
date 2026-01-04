@@ -14,6 +14,10 @@ pub fn list_themes() -> Array[String]
 
 pub fn render_ascii(Graph, AsciiConfig) -> String
 
+pub fn render_legend_ascii(@ascii.Grid, Legend, Int, Int, @ascii.CharSet) -> Unit
+
+pub fn render_legend_svg(@svg.Svg, Legend, (Double, Double, Double, Double), SvgConfig) -> Unit
+
 pub fn render_shape_svg(ShapeType, SvgShapeContext) -> Unit
 
 pub fn render_svg(Graph, SvgConfig) -> String
@@ -138,6 +142,7 @@ pub(all) struct Graph {
   layers : Array[Layer]
   scenarios : Array[Scenario]
   steps : Array[Step]
+  mut legend : Legend?
 }
 pub fn Graph::add_edge(Self, Edge) -> Unit
 pub fn Graph::add_fragment(Self, SequenceFragment) -> Unit
@@ -150,14 +155,17 @@ pub fn Graph::edges_to(Self, String) -> Array[Edge]
 pub fn Graph::find_object(Self, String) -> Object?
 pub fn Graph::get_edges(Self) -> Array[Edge]
 pub fn Graph::get_layers(Self) -> Array[Layer]
+pub fn Graph::get_legend(Self) -> Legend?
 pub fn Graph::get_objects(Self) -> Array[Object]
 pub fn Graph::get_scenarios(Self) -> Array[Scenario]
 pub fn Graph::get_steps(Self) -> Array[Step]
 pub fn Graph::has_fragments(Self) -> Bool
 pub fn Graph::has_layers(Self) -> Bool
+pub fn Graph::has_legend(Self) -> Bool
 pub fn Graph::has_scenarios(Self) -> Bool
 pub fn Graph::has_steps(Self) -> Bool
 pub fn Graph::new(String) -> Self
+pub fn Graph::set_legend(Self, Legend) -> Unit
 pub impl Show for Graph
 
 pub(all) struct Layer {
@@ -166,6 +174,52 @@ pub(all) struct Layer {
 }
 pub fn Layer::new(String, Graph) -> Self
 pub impl Show for Layer
+
+pub struct Legend {
+  title : String?
+  position : LegendPosition
+  entries : Array[LegendEntry]
+  fill : String?
+  stroke : String?
+  padding : Double
+  entry_gap : Double
+  icon_size : Double
+}
+pub fn Legend::add_connection(Self, ArrowheadType, ArrowheadType, String) -> Unit
+pub fn Legend::add_entry(Self, LegendEntry) -> Unit
+pub fn Legend::add_separator(Self) -> Unit
+pub fn Legend::add_shape(Self, ShapeType, String) -> Unit
+pub fn Legend::calculate_size(Self, Int) -> (Double, Double)
+pub fn Legend::entry_count(Self) -> Int
+pub fn Legend::is_empty(Self) -> Bool
+pub fn Legend::new() -> Self
+pub fn Legend::set_title(Self, String) -> Unit
+pub fn Legend::with_position(LegendPosition) -> Self
+pub impl Show for Legend
+
+pub enum LegendEntry {
+  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : Style?)
+  ConnectionEntry(src_arrow~ : ArrowheadType, dst_arrow~ : ArrowheadType, label~ : String, style~ : Style?)
+  CustomEntry(icon~ : String, label~ : String)
+  Separator
+}
+pub fn LegendEntry::connection(ArrowheadType, ArrowheadType, String, Style?) -> Self
+pub fn LegendEntry::custom(String, String) -> Self
+pub fn LegendEntry::separator() -> Self
+pub fn LegendEntry::shape(ShapeType, String, Style?) -> Self
+pub impl Show for LegendEntry
+
+pub enum LegendPosition {
+  TopLeft
+  TopRight
+  BottomLeft
+  BottomRight
+  Hidden
+}
+pub fn LegendPosition::from_string(String) -> Self
+pub fn LegendPosition::to_position_string(Self) -> String
+pub impl Eq for LegendPosition
+pub impl Show for LegendPosition
 
 pub(all) struct Object {
   id : String

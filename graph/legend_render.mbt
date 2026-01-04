@@ -1,0 +1,319 @@
+///|
+/// Legend rendering for SVG and ASCII output
+///
+/// This module provides rendering functions for legends in both
+/// SVG and ASCII formats.
+
+///|
+/// Render a legend to SVG
+pub fn render_legend_svg(
+  svg : @svg.Svg,
+  legend : Legend,
+  graph_bounds : (Double, Double, Double, Double),
+  config : SvgConfig,
+) -> Unit {
+  if legend.is_empty() || legend.position == Hidden {
+    return
+  }
+  let (min_x, min_y, max_x, max_y) = graph_bounds
+  let (width, height) = legend.calculate_size(config.font_size)
+  // Calculate position based on legend.position
+  let margin = 20.0
+  let (x, y) = match legend.position {
+    TopLeft => (min_x + margin, min_y + margin)
+    TopRight => (max_x - width - margin, min_y + margin)
+    BottomLeft => (min_x + margin, max_y - height - margin)
+    BottomRight | Hidden => (max_x - width - margin, max_y - height - margin)
+  }
+  // Render legend background
+  let fill = legend.fill.unwrap_or("#ffffff")
+  let stroke = legend.stroke.unwrap_or("#cccccc")
+  svg.add(
+    @svg.rect(
+      x,
+      y,
+      width,
+      height,
+      fill~,
+      stroke~,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      ry=Some(4.0),
+    ),
+  )
+  // Render title if present
+  let mut current_y = y + legend.padding
+  match legend.title {
+    Some(title) => {
+      let title_x = x + legend.padding
+      let title_y = current_y + config.font_size.to_double() * 0.8
+      svg.add(
+        "<text x=\"\{title_x}\" y=\"\{title_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(title)}</text>",
+      )
+      current_y = current_y + config.font_size.to_double() + legend.entry_gap
+    }
+    None => ()
+  }
+  // Render each entry
+  for entry in legend.entries {
+    match entry {
+      ShapeEntry(shape~, label~, style~) =>
+        render_legend_shape_entry(
+          svg,
+          x + legend.padding,
+          current_y,
+          shape,
+          label,
+          style,
+          legend,
+          config,
+        )
+      ConnectionEntry(src_arrow~, dst_arrow~, label~, style~) =>
+        render_legend_connection_entry(
+          svg,
+          x + legend.padding,
+          current_y,
+          src_arrow,
+          dst_arrow,
+          label,
+          style,
+          legend,
+          config,
+        )
+      CustomEntry(icon~, label~) =>
+        render_legend_custom_entry(
+          svg,
+          x + legend.padding,
+          current_y,
+          icon,
+          label,
+          legend,
+          config,
+        )
+      Separator => {
+        // Draw a horizontal line
+        let line_y = current_y + 2.0
+        svg.add(
+          "<line x1=\"\{x + legend.padding}\" y1=\"\{line_y}\" x2=\"\{x + width - legend.padding}\" y2=\"\{line_y}\" stroke=\"#cccccc\" stroke-width=\"1\"/>",
+        )
+      }
+    }
+    // Update y position for next entry
+    current_y = current_y +
+      (match entry {
+        Separator => 4.0
+        _ => legend.icon_size
+      }) +
+      legend.entry_gap
+  }
+}
+
+///|
+fn render_legend_shape_entry(
+  svg : @svg.Svg,
+  x : Double,
+  y : Double,
+  shape : ShapeType,
+  label : String,
+  style : Style?,
+  legend : Legend,
+  config : SvgConfig,
+) -> Unit {
+  let icon_size = legend.icon_size
+  let fill = match style {
+    Some(s) =>
+      match s.fill {
+        Some(f) => f
+        None => config.default_fill
+      }
+    None => config.default_fill
+  }
+  let stroke = match style {
+    Some(s) =>
+      match s.stroke {
+        Some(f) => f
+        None => config.default_stroke
+      }
+    None => config.default_stroke
+  }
+  // Create a mini shape icon
+  let icon_box = Box::new(x, y, icon_size, icon_size)
+  let ctx = SvgShapeContext::new(svg, icon_box, fill, stroke, 1.0, "", config)
+  render_shape_svg(shape, ctx)
+  // Render label
+  let label_x = x + icon_size + legend.entry_gap
+  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
+  svg.add(
+    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+  )
+}
+
+///|
+fn render_legend_connection_entry(
+  svg : @svg.Svg,
+  x : Double,
+  y : Double,
+  src_arrow : ArrowheadType,
+  dst_arrow : ArrowheadType,
+  label : String,
+  _style : Style?,
+  legend : Legend,
+  config : SvgConfig,
+) -> Unit {
+  let icon_size = legend.icon_size
+  let stroke = config.default_stroke
+  // Draw a line with arrowheads
+  let line_y = y + icon_size / 2.0
+  let line_start = x
+  let line_end = x + icon_size
+  // Get marker URLs
+  let marker_start = src_arrow.marker_url(true)
+  let marker_end = dst_arrow.marker_url(false)
+  // Build line with markers
+  let mut line = "<line x1=\"\{line_start}\" y1=\"\{line_y}\" x2=\"\{line_end}\" y2=\"\{line_y}\" stroke=\"\{stroke}\" stroke-width=\"2\""
+  if not(marker_start.is_empty()) {
+    line = line + " marker-start=\"\{marker_start}\""
+  }
+  if not(marker_end.is_empty()) {
+    line = line + " marker-end=\"\{marker_end}\""
+  }
+  line = line + "/>"
+  svg.add(line)
+  // Render label
+  let label_x = x + icon_size + legend.entry_gap
+  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
+  svg.add(
+    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+  )
+}
+
+///|
+fn render_legend_custom_entry(
+  svg : @svg.Svg,
+  x : Double,
+  y : Double,
+  icon : String,
+  label : String,
+  legend : Legend,
+  config : SvgConfig,
+) -> Unit {
+  let icon_size = legend.icon_size
+  // Render icon (could be URL or text symbol)
+  if icon.has_prefix("http") || icon.contains(".") {
+    // URL - render as image
+    svg.add(
+      "<image href=\"\{@svg.escape_xml(icon)}\" x=\"\{x}\" y=\"\{y}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+    )
+  } else {
+    // Text symbol - render as text
+    let icon_x = x + icon_size / 2.0
+    let icon_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
+    svg.add(
+      "<text x=\"\{icon_x}\" y=\"\{icon_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size + 4}\" fill=\"\{config.default_stroke}\" text-anchor=\"middle\">\{@svg.escape_xml(icon)}</text>",
+    )
+  }
+  // Render label
+  let label_x = x + icon_size + legend.entry_gap
+  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
+  svg.add(
+    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+  )
+}
+
+///|
+/// Render a legend to ASCII
+pub fn render_legend_ascii(
+  grid : @ascii.Grid,
+  legend : Legend,
+  x : Int,
+  y : Int,
+  charset : @ascii.CharSet,
+) -> Unit {
+  if legend.is_empty() || legend.position == Hidden {
+    return
+  }
+  let width = 30 // Fixed width for ASCII legend
+  let height = 3 + legend.entries.length() * 2
+  // Draw legend box
+  grid.box_rect(x, y, x + width, y + height, charset)
+  // Draw title if present
+  let mut current_y = y + 1
+  match legend.title {
+    Some(title) => {
+      let title_x = x + 2
+      let display_title = truncate_string(title, width - 4)
+      grid.text(title_x, current_y, display_title)
+      current_y = current_y + 1
+      // Separator after title
+      grid.hline(x + 1, x + width - 1, current_y, charset.horizontal())
+      current_y = current_y + 1
+    }
+    None => ()
+  }
+  // Render each entry
+  for entry in legend.entries {
+    let entry_x = x + 2
+    match entry {
+      ShapeEntry(shape~, label~, ..) => {
+        // Draw shape icon as ASCII character
+        let icon = shape_to_ascii_icon(shape)
+        grid.text(entry_x, current_y, icon)
+        // Draw label
+        let label_x = entry_x + 4
+        let display_label = truncate_string(label, width - 8)
+        grid.text(label_x, current_y, display_label)
+      }
+      ConnectionEntry(src_arrow~, dst_arrow~, label~, ..) => {
+        // Draw connection as ASCII
+        let icon = connection_to_ascii_icon(src_arrow, dst_arrow)
+        grid.text(entry_x, current_y, icon)
+        // Draw label
+        let label_x = entry_x + 4
+        grid.text(label_x, current_y, label)
+      }
+      CustomEntry(icon~, label~) => {
+        grid.text(entry_x, current_y, icon)
+        let label_x = entry_x + 4
+        grid.text(label_x, current_y, label)
+      }
+      Separator =>
+        grid.hline(x + 1, x + width - 1, current_y, charset.horizontal())
+    }
+    current_y = current_y + 1
+  }
+}
+
+///|
+fn truncate_string(s : String, max_len : Int) -> String {
+  if s.length() <= max_len {
+    return s
+  }
+  let buf = StringBuilder::new()
+  let chars = s.to_array()
+  for i = 0; i < max_len - 3; i = i + 1 {
+    buf.write_char(chars[i])
+  }
+  buf.write_string("...")
+  buf.to_string()
+}
+
+///|
+fn shape_to_ascii_icon(shape : ShapeType) -> String {
+  match shape {
+    Rectangle | Square => "[]"
+    Circle | Oval => "()"
+    Diamond => "<>"
+    Cylinder => "||"
+    Person => "/\\"
+    Cloud => "(~)"
+    Document => "[~]"
+    _ => "[]"
+  }
+}
+
+///|
+fn connection_to_ascii_icon(src : ArrowheadType, dst : ArrowheadType) -> String {
+  let start = src.to_ascii(true)
+  let end = dst.to_ascii(false)
+  start + "--" + end
+}
