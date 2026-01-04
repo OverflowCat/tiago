@@ -267,7 +267,122 @@ fn compute_slack(src : String, dst : String, layers : Map[String, Int]) -> Int {
 }
 
 ///|
-/// Compute cut values for tree edges
+/// Tree structure for low/lim optimization
+/// Enables O(1) subtree membership testing
+priv struct TreeInfo {
+  low : Map[String, Int] // Lowest DFS number in subtree
+  lim : Map[String, Int] // Highest DFS number in subtree (DFS order of node)
+}
+
+///|
+/// Initialize low/lim values for the spanning tree
+/// This enables O(1) subtree membership testing
+fn init_low_lim_values(
+  nodes : Array[String],
+  tree_edges : Array[(String, String)],
+) -> TreeInfo {
+  // Build parent-child relationships from tree edges
+  let children : Map[String, Array[String]] = {}
+  let low : Map[String, Int] = {}
+  let lim : Map[String, Int] = {}
+  // Initialize children arrays
+  for node in nodes {
+    children[node] = []
+  }
+  // Find root (nodes without a parent in the tree)
+  let has_parent : Map[String, Bool] = {}
+  for edge in tree_edges {
+    let (src, dst) = edge
+    // In a directed spanning tree, src is parent of dst
+    has_parent[dst] = true
+    match children.get(src) {
+      Some(c) => c.push(dst)
+      None => children[src] = [dst]
+    }
+  }
+  // Find root node
+  let mut root = ""
+  for node in nodes {
+    match has_parent.get(node) {
+      Some(true) => ()
+      _ => {
+        root = node
+        break
+      }
+    }
+  }
+  if root == "" && nodes.length() > 0 {
+    root = nodes[0]
+  }
+  // DFS to compute low/lim values
+  fn dfs(
+    node : String,
+    children : Map[String, Array[String]],
+    low : Map[String, Int],
+    lim : Map[String, Int],
+    dfs_num : Ref[Int],
+  ) {
+    let my_low = dfs_num.val
+    let mut max_lim = dfs_num.val
+    dfs_num.val = dfs_num.val + 1
+    match children.get(node) {
+      Some(childs) =>
+        for child in childs {
+          dfs(child, children, low, lim, dfs_num)
+          match lim.get(child) {
+            Some(child_lim) => if child_lim > max_lim { max_lim = child_lim }
+            None => ()
+          }
+        }
+      None => ()
+    }
+    low[node] = my_low
+    lim[node] = max_lim
+  }
+
+  let dfs_num_ref : Ref[Int] = { val: 0 }
+  if root != "" {
+    dfs(root, children, low, lim, dfs_num_ref)
+  }
+  // Handle disconnected nodes
+  for node in nodes {
+    match lim.get(node) {
+      Some(_) => ()
+      None => {
+        low[node] = dfs_num_ref.val
+        lim[node] = dfs_num_ref.val
+        dfs_num_ref.val = dfs_num_ref.val + 1
+      }
+    }
+  }
+  { low, lim }
+}
+
+///|
+/// Check if node is in the subtree rooted at subtree_root
+/// Uses low/lim for O(1) check: low(root) <= lim(node) <= lim(root)
+fn is_in_subtree(
+  node : String,
+  subtree_root : String,
+  tree_info : TreeInfo,
+) -> Bool {
+  let node_lim = match tree_info.lim.get(node) {
+    Some(l) => l
+    None => return false
+  }
+  let root_low = match tree_info.low.get(subtree_root) {
+    Some(l) => l
+    None => return false
+  }
+  let root_lim = match tree_info.lim.get(subtree_root) {
+    Some(l) => l
+    None => return false
+  }
+  root_low <= node_lim && node_lim <= root_lim
+}
+
+///|
+/// Compute cut values for tree edges using low/lim optimization
 /// Cut value = number of edges going down - edges going up across the cut
 /// A negative cut value indicates the edge should be removed from the tree
 fn compute_cut_values(
@@ -275,20 +390,23 @@ fn compute_cut_values(
   adj : Map[String, Array[String]],
   tree_edges : Array[(String, String)],
 ) -> Array[Int] {
+  // Initialize low/lim values for O(1) subtree membership
+  let tree_info = init_low_lim_values(nodes, tree_edges)
   let cut_values : Array[Int] = []
   for edge in tree_edges {
-    let (src, dst) = edge
-    // Compute which side each node is on when this edge is removed
-    let tail_side = compute_tail_component(src, dst, tree_edges)
+    let (_src, dst) = edge
+    // For tree edge (src, dst), we consider dst as the subtree root
+    // Tail side = subtree rooted at dst
+    // Head side = everything else
     // Count edges crossing the cut
     let mut cut_value = 0
     // Edge from tail to head counts as +1, head to tail as -1
     for node in nodes {
-      let in_tail = tail_side.contains(node)
+      let in_tail = is_in_subtree(node, dst, tree_info)
       match adj.get(node) {
         Some(successors) =>
           for succ in successors {
-            let succ_in_tail = tail_side.contains(succ)
+            let succ_in_tail = is_in_subtree(succ, dst, tree_info)
             if in_tail && not(succ_in_tail) {
               // Edge from tail to head side
               cut_value = cut_value + 1
