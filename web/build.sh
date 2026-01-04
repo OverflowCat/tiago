@@ -11,6 +11,7 @@ echo "Copying wasm.wasm..."
 cp target/wasm/release/build/cmd/wasm/wasm.wasm web/
 
 echo "Copying examples..."
+rm -rf web/examples
 mkdir -p web/examples
 cp examples/*.d2 web/examples/
 
