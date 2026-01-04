@@ -1842,21 +1842,21 @@ fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
     // Only two points - create a subtle curve using quadratic bezier
-    // Control point is offset perpendicular to the line
     let p0 = points[0]
     let p1 = points[1]
     let dx = p1.x - p0.x
     let dy = p1.y - p0.y
-    // Mid-point
     let mx = (p0.x + p1.x) / 2.0
     let my = (p0.y + p1.y) / 2.0
-    // Perpendicular offset (10% of length, perpendicular to line direction)
     let len = (dx * dx + dy * dy).sqrt()
-    let offset = len * 0.1
-    // Control point offset perpendicular to line
-    let cx = mx - dy / len * offset
-    let cy = my + dx / len * offset
-    let _ = pb.quad_to(cx, cy, p1.x, p1.y)
+    if len > 0.0 {
+      let offset = len * 0.1
+      let cx = mx - dy / len * offset
+      let cy = my + dx / len * offset
+      let _ = pb.quad_to(cx, cy, p1.x, p1.y)
+    } else {
+      let _ = pb.line_to(p1.x, p1.y)
+    }
     return
   }
   // Tension factor for Catmull-Rom (0.5 is typical)
@@ -1913,12 +1913,12 @@ fn render_svg_edge(
     Some(w) => w
     None => config.default_stroke_width
   }
-  // Build path - use curves by default unless explicitly disabled
-  // Curves are used for: curved=true (explicit), curved=None (default)
-  // Straight lines only when curved=false (explicit)
-  let use_straight = edge.style.curved is Some(false)
+  // Build path - use straight lines by default, curves only when explicitly requested
+  // Straight lines for: curved=false (explicit), curved=None (default)
+  // Curves only when curved=true (explicit)
+  let use_curved = edge.style.curved is Some(true)
   let pb = @svg.PathBuilder::new()
-  if not(use_straight) && edge.route.length() >= 2 {
+  if use_curved && edge.route.length() >= 2 {
     // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
     build_curved_path(pb, edge.route)
   } else {
