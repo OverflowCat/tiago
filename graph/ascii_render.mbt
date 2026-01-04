@@ -93,6 +93,10 @@ struct AsciiBox {
 ///|
 /// Render a graph to ASCII string
 pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
+  // Check if this is a sequence diagram - use special renderer
+  if graph.root.get_shape() == "sequence_diagram" {
+    return render_ascii_sequence(graph, config)
+  }
   // Compute ASCII layout for all objects
   let boxes = compute_ascii_layout(graph, config)
   // Calculate canvas dimensions
@@ -125,6 +129,218 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
     }
   }
   grid.to_string()
+}
+
+///|
+/// Render a sequence diagram to ASCII string
+fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
+  let cs = config.charset
+  // Collect actors (top-level objects)
+  let actors = graph.objects
+  if actors.length() == 0 {
+    return ""
+  }
+  // Sort actors by x-coordinate
+  let sorted_actors : Array[Object] = []
+  for actor in actors {
+    sorted_actors.push(actor)
+  }
+  sort_objects_by_x(sorted_actors)
+  // Build actor position info - map actor ID to (ascii_x, center_x, width)
+  let actor_positions : Map[String, (Int, Int, Int)] = {}
+  let mut current_x = 1
+  let mut max_label_len = 0
+  for actor in sorted_actors {
+    let label = actor.label
+    if label.length() > max_label_len {
+      max_label_len = label.length()
+    }
+  }
+  // Find max message label length to determine spacing
+  let mut max_msg_len = 0
+  for edge in graph.edges {
+    if edge.label.length() > max_msg_len {
+      max_msg_len = edge.label.length()
+    }
+  }
+  // Calculate box width (at least label + padding + borders)
+  let box_width = max_i(config.min_box_width, max_label_len + 4)
+  // Calculate spacing based on longest message label (need space for label + arrows)
+  let min_spacing = max_i(config.h_spacing, max_msg_len + 6)
+  for actor in sorted_actors {
+    let center_x = current_x + box_width / 2
+    actor_positions[actor.id] = (current_x, center_x, box_width)
+    current_x = current_x + box_width + min_spacing
+  }
+  // Calculate message y-positions based on route points
+  // Each message gets a unique y-level
+  let message_start_y = config.box_height + 1
+  let mut max_message_y = message_start_y
+  let message_y_positions : Array[(Int, Edge)] = [] // (y, edge)
+  for edge in graph.edges {
+    // Get y from route points if available, otherwise use sequential
+    let y = if edge.route.length() >= 2 {
+      // Scale from layout coordinates to ASCII coordinates
+      let route_y = edge.route[0].y
+      // Approximate scaling: assume layout y starts around 100, each message adds ~40
+      let scaled_y = message_start_y +
+        ((route_y - 100.0) / 40.0 * 2.0).to_int()
+      if scaled_y > message_start_y { scaled_y } else { message_start_y }
+    } else {
+      message_start_y + message_y_positions.length() * 2
+    }
+    message_y_positions.push((y, edge))
+    if y > max_message_y {
+      max_message_y = y
+    }
+  }
+  // Calculate canvas size
+  let canvas_width = current_x + 2
+  let lifeline_end_y = max_message_y + 3
+  let canvas_height = lifeline_end_y + 2
+  let grid = @ascii.Grid::new(canvas_width, canvas_height)
+  // Render actor boxes at top
+  for actor in sorted_actors {
+    match actor_positions.get(actor.id) {
+      Some((x, _, width)) => {
+        let y1 = 1
+        let y2 = config.box_height
+        let x2 = x + width - 1
+        grid.box_rect(x, y1, x2, y2, cs)
+        // Center label in box
+        let label_x = x + (width - actor.label.length()) / 2
+        let label_y = y1 + 1
+        grid.text(label_x, label_y, actor.label)
+      }
+      None => ()
+    }
+  }
+  // Render lifelines (vertical lines from box bottom to end)
+  for actor in sorted_actors {
+    match actor_positions.get(actor.id) {
+      Some((_, center_x, _)) => {
+        let lifeline_start = config.box_height + 1
+        grid.vline(center_x, lifeline_start, lifeline_end_y, cs.vertical())
+      }
+      None => ()
+    }
+  }
+  // Render messages in three passes: lines, labels, arrows
+  // Pass 1: Draw horizontal lines
+  for pair in message_y_positions {
+    let (msg_y, edge) = pair
+    let src_id = edge.get_src_id()
+    let dst_id = edge.get_dst_id()
+    let src_pos = find_actor_position(actor_positions, src_id)
+    let dst_pos = find_actor_position(actor_positions, dst_id)
+    match (src_pos, dst_pos) {
+      (Some((_, src_center, _)), Some((_, dst_center, _))) => {
+        if src_center == dst_center {
+          // Self-message: draw a loop
+          let loop_right = src_center + 4
+          grid.hline(src_center, loop_right, msg_y, cs.horizontal())
+          grid.set(loop_right, msg_y, cs.top_right())
+          grid.vline(loop_right, msg_y + 1, msg_y + 1, cs.vertical())
+          grid.set(loop_right, msg_y + 2, cs.bottom_right())
+          grid.hline(src_center + 1, loop_right - 1, msg_y + 2, cs.horizontal())
+        } else if dst_center > src_center {
+          // Left to right line
+          grid.hline(src_center + 1, dst_center - 1, msg_y, cs.horizontal())
+        } else {
+          // Right to left line
+          grid.hline(dst_center + 1, src_center - 1, msg_y, cs.horizontal())
+        }
+      }
+      _ => ()
+    }
+  }
+  // Pass 2: Draw labels (will overwrite line segments, but not arrow positions)
+  for pair in message_y_positions {
+    let (msg_y, edge) = pair
+    if edge.label.length() == 0 {
+      continue
+    }
+    let src_id = edge.get_src_id()
+    let dst_id = edge.get_dst_id()
+    let src_pos = find_actor_position(actor_positions, src_id)
+    let dst_pos = find_actor_position(actor_positions, dst_id)
+    match (src_pos, dst_pos) {
+      (Some((_, src_center, _)), Some((_, dst_center, _))) => {
+        // Calculate safe label bounds (leave space for arrows)
+        let (left, right) = if src_center < dst_center {
+          (src_center + 2, dst_center - 2)
+        } else {
+          (dst_center + 2, src_center - 2)
+        }
+        let available_width = right - left
+        let label = edge.label
+        let label_len = label.length()
+        // Center the label within the safe bounds
+        if label_len <= available_width {
+          let label_start = left + (available_width - label_len) / 2
+          grid.text(label_start, msg_y, label)
+        } else {
+          // Label is too long, truncate it
+          let truncated = truncate_string(label, available_width)
+          let label_start = left
+          grid.text(label_start, msg_y, truncated)
+        }
+      }
+      _ => ()
+    }
+  }
+  // Pass 3: Draw arrows (on top of labels)
+  for pair in message_y_positions {
+    let (msg_y, edge) = pair
+    let src_id = edge.get_src_id()
+    let dst_id = edge.get_dst_id()
+    let src_pos = find_actor_position(actor_positions, src_id)
+    let dst_pos = find_actor_position(actor_positions, dst_id)
+    match (src_pos, dst_pos) {
+      (Some((_, src_center, _)), Some((_, dst_center, _))) => {
+        if src_center == dst_center {
+          // Self-message arrow
+          if edge.dst_arrow {
+            grid.set(src_center, msg_y + 2, cs.arrow_left())
+          }
+        } else if dst_center > src_center {
+          // Left to right arrows
+          if edge.dst_arrow {
+            grid.set(dst_center, msg_y, cs.arrow_right())
+          }
+          if edge.src_arrow {
+            grid.set(src_center, msg_y, cs.arrow_left())
+          }
+        } else {
+          // Right to left arrows
+          if edge.dst_arrow {
+            grid.set(dst_center, msg_y, cs.arrow_left())
+          }
+          if edge.src_arrow {
+            grid.set(src_center, msg_y, cs.arrow_right())
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  grid.to_string()
+}
+
+///|
+/// Find actor position by ID, handling nested IDs (e.g., "seq.alice" -> "alice")
+fn find_actor_position(
+  positions : Map[String, (Int, Int, Int)],
+  id : String,
+) -> (Int, Int, Int)? {
+  // Direct match
+  match positions.get(id) {
+    Some(pos) => return Some(pos)
+    None => ()
+  }
+  // Try suffix match (for nested IDs)
+  let suffix = get_short_id(id)
+  positions.get(suffix)
 }
 
 ///|
