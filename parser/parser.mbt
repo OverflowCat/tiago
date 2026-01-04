@@ -3,6 +3,7 @@
 
 ///|
 pub struct Parser {
+  source : String
   tokens : Array[@lexer.Token]
   mut pos : Int
   errors : ParseErrors
@@ -12,7 +13,7 @@ pub struct Parser {
 /// Parse a D2 source string into an AST
 pub fn parse(source : String) -> (@ast.Map, ParseErrors) {
   let (tokens, lex_errors) = @lexer.tokenize(source)
-  let parser = Parser::new(tokens)
+  let parser = Parser::new(source, tokens)
 
   // Add lexer errors to parse errors
   for err in lex_errors {
@@ -23,8 +24,23 @@ pub fn parse(source : String) -> (@ast.Map, ParseErrors) {
 }
 
 ///|
-pub fn Parser::new(tokens : Array[@lexer.Token]) -> Parser {
-  { tokens, pos: 0, errors: ParseErrors::new() }
+pub fn Parser::new(source : String, tokens : Array[@lexer.Token]) -> Parser {
+  { source, tokens, pos: 0, errors: ParseErrors::new() }
+}
+
+///|
+/// Extract substring from source using positions
+fn Parser::extract_source(
+  self : Parser,
+  start : @lexer.Position,
+  end : @lexer.Position,
+) -> String {
+  let chars = self.source.to_array()
+  let buf = StringBuilder::new()
+  for i = start.offset; i < end.offset && i < chars.length(); i = i + 1 {
+    buf.write_char(chars[i])
+  }
+  buf.to_string()
 }
 
 ///|
@@ -707,58 +723,51 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
         Some(@ast.Scalar::Boolean(start_token.range, false))
       } else {
         // Collect multi-word unquoted value (e.g., "Web Server", "Down (default)")
-        let parts : Array[String] = [name]
+        // Use source extraction to preserve exact spacing
+        let start_pos = start_token.range.start
         let mut end_pos = start_token.range.end
         // Keep consuming identifiers until we hit a delimiter
         while not(self.is_at_end()) {
           match self.peek() {
-            @lexer.Ident(next_name) => {
+            @lexer.Ident(_) => {
               let token = self.advance()
-              parts.push(next_name)
               end_pos = token.range.end
             }
-            @lexer.Number(n) => {
+            @lexer.Number(_) => {
               let token = self.advance()
-              parts.push(n)
               end_pos = token.range.end
             }
             @lexer.LeftParen => {
               // Handle parenthesized content like "(default)"
               let _ = self.advance()
-              let paren_parts : Array[String] = ["("]
               // Collect until closing paren
               while not(self.is_at_end()) {
                 match self.peek() {
                   @lexer.RightParen => {
                     let close = self.advance()
-                    paren_parts.push(")")
                     end_pos = close.range.end
                     break
                   }
-                  @lexer.Ident(pname) => {
+                  @lexer.Ident(_) | @lexer.Number(_) => {
                     let _ = self.advance()
-                    paren_parts.push(pname)
-                  }
-                  @lexer.Number(pnum) => {
-                    let _ = self.advance()
-                    paren_parts.push(pnum)
+
                   }
                   _ => break
                 }
               }
-              parts.push(paren_parts.join(""))
             }
             // Stop at any delimiter
             _ => break
           }
         }
-        let range = @lexer.Range::new(start_token.range.start, end_pos)
+        let range = @lexer.Range::new(start_pos, end_pos)
+        let text = self.extract_source(start_pos, end_pos)
         Some(
           @ast.Scalar::String(
             @ast.StringValue::Unquoted(
               @ast.UnquotedString::new(
                 range,
-                [@ast.Interpolation::Text(parts.join(" "))],
+                [@ast.Interpolation::Text(text)],
                 [],
               ),
             ),
@@ -767,8 +776,61 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
       }
     }
     @lexer.Number(n) => {
-      let token = self.advance()
-      Some(@ast.Scalar::Number(token.range, n))
+      let start_token = self.advance()
+      // Check if there are more words after the number (e.g., "3D Box")
+      // If so, treat as multi-word string, otherwise as number
+      match self.peek() {
+        @lexer.Ident(_) => {
+          // Multi-word value starting with number like "3D Box"
+          // Use source extraction to preserve exact spacing (e.g., "3D" not "3 D")
+          let start_pos = start_token.range.start
+          let mut end_pos = start_token.range.end
+          while not(self.is_at_end()) {
+            match self.peek() {
+              @lexer.Ident(_) => {
+                let token = self.advance()
+                end_pos = token.range.end
+              }
+              @lexer.Number(_) => {
+                let token = self.advance()
+                end_pos = token.range.end
+              }
+              @lexer.LeftParen => {
+                let _ = self.advance()
+                while not(self.is_at_end()) {
+                  match self.peek() {
+                    @lexer.RightParen => {
+                      let close = self.advance()
+                      end_pos = close.range.end
+                      break
+                    }
+                    @lexer.Ident(_) | @lexer.Number(_) => {
+                      let _ = self.advance()
+
+                    }
+                    _ => break
+                  }
+                }
+              }
+              _ => break
+            }
+          }
+          let range = @lexer.Range::new(start_pos, end_pos)
+          let text = self.extract_source(start_pos, end_pos)
+          Some(
+            @ast.Scalar::String(
+              @ast.StringValue::Unquoted(
+                @ast.UnquotedString::new(
+                  range,
+                  [@ast.Interpolation::Text(text)],
+                  [],
+                ),
+              ),
+            ),
+          )
+        }
+        _ => Some(@ast.Scalar::Number(start_token.range, n))
+      }
     }
     @lexer.StringLit(style, content) => {
       let token = self.advance()
