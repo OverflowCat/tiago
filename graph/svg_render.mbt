@@ -200,9 +200,12 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     for edge in graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    // Finally render actor boxes at the top
+    // Finally render actor boxes at the top (two-pass: background then foreground)
     for obj in graph.objects {
-      render_svg_object(svg, obj, graph.objects, config, theme)
+      render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
+    }
+    for obj in graph.objects {
+      render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
     }
   } else {
     // For regular diagrams: use three-pass rendering
