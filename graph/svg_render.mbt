@@ -193,7 +193,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     }
     // Finally render actor boxes at the top
     for obj in graph.objects {
-      render_svg_object(svg, obj, config, theme)
+      render_svg_object(svg, obj, graph.objects, config, theme)
     }
   } else {
     // For regular diagrams: render edges first (behind objects)
@@ -203,7 +203,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     // Render objects sorted by depth (parents before children for proper layering)
     let sorted_objects = sort_objects_by_depth(graph.objects)
     for obj in sorted_objects {
-      render_svg_object(svg, obj, config, theme)
+      render_svg_object(svg, obj, graph.objects, config, theme)
     }
   }
   // Render sequence diagram notes (using page shape)
@@ -231,7 +231,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     // Render layer objects sorted by depth
     let sorted_layer_objects = sort_objects_by_depth(layer.graph.objects)
     for obj in sorted_layer_objects {
-      render_svg_object(svg, obj, config, theme)
+      render_svg_object(svg, obj, layer.graph.objects, config, theme)
     }
     svg.close_group()
   }
@@ -249,7 +249,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     // Render scenario objects sorted by depth
     let sorted_scenario_objects = sort_objects_by_depth(scenario.graph.objects)
     for obj in sorted_scenario_objects {
-      render_svg_object(svg, obj, config, theme)
+      render_svg_object(svg, obj, scenario.graph.objects, config, theme)
     }
     svg.close_group()
   }
@@ -267,7 +267,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     // Render step objects sorted by depth
     let sorted_step_objects = sort_objects_by_depth(step.graph.objects)
     for obj in sorted_step_objects {
-      render_svg_object(svg, obj, config, theme)
+      render_svg_object(svg, obj, step.graph.objects, config, theme)
     }
     svg.close_group()
   }
@@ -940,13 +940,48 @@ fn sort_objects_by_depth(objects : Array[Object]) -> Array[Object] {
 }
 
 ///|
+/// Check if an object is a child of an sql_table (should not be rendered separately)
+fn is_sql_table_child(obj : Object, all_objects : Array[Object]) -> Bool {
+  // Check if object has a parent that is an sql_table
+  // Parent ID is everything before the last dot
+  let id = obj.id
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot <= 0 {
+    return false // No parent
+  }
+  // Get parent ID
+  let parent_id_buf = StringBuilder::new()
+  for i = 0; i < last_dot; i = i + 1 {
+    parent_id_buf.write_char(id[i].to_int().unsafe_to_char())
+  }
+  let parent_id = parent_id_buf.to_string()
+  // Find parent object and check if it's an sql_table
+  for parent in all_objects {
+    if parent.id == parent_id && parent.shape == "sql_table" {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn render_svg_object(
   svg : @svg.Svg,
   obj : Object,
+  all_objects : Array[Object],
   config : SvgConfig,
   theme : @themes.Theme,
 ) -> Unit {
   guard obj.box is Some(box) else { return }
+  // Skip children of sql_table - they are rendered inline within the table
+  if is_sql_table_child(obj, all_objects) {
+    return
+  }
   // Apply tooltip if present
   let has_tooltip = obj.tooltip is Some(_)
   if has_tooltip {
@@ -1021,6 +1056,7 @@ fn render_svg_object(
         svg,
         box,
         obj.label,
+        obj.children,
         fill,
         stroke,
         stroke_width,
@@ -1253,6 +1289,7 @@ fn render_svg_sql_table(
   svg : @svg.Svg,
   box : Box,
   label : String,
+  children : Array[Object],
   fill : String,
   stroke : String,
   stroke_width : Double,
@@ -1262,23 +1299,22 @@ fn render_svg_sql_table(
   let padding = 8.0
   let header_bg = "#4a5568" // Darker header
   let header_fg = "#ffffff"
-  // Parse label into table name and columns
-  let lines = split_lines(label)
-  let table_name = if lines.length() > 0 { lines[0] } else { "" }
+  let table_name = label
+  // Calculate height: header + column rows
+  let header_height = line_height + padding
+  let columns_height = children.length().to_double() * line_height + padding
+  let total_height = header_height + columns_height
+  // Use calculated height if larger than box
+  let actual_height = if total_height > box.height {
+    total_height
+  } else {
+    box.height
+  }
   // Draw main rectangle
   svg.add(
-    @svg.rect(
-      box.x,
-      box.y,
-      box.width,
-      box.height,
-      fill~,
-      stroke~,
-      stroke_width~,
-    ),
+    @svg.rect(box.x, box.y, box.width, actual_height, fill~, stroke~, stroke_width~),
   )
   // Draw header background
-  let header_height = line_height + padding
   svg.add(
     @svg.rect(
       box.x,
@@ -1295,19 +1331,47 @@ fn render_svg_sql_table(
   svg.add(
     "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{header_fg}\">\{@svg.escape_xml(table_name)}</text>",
   )
-  // Draw columns
+  // Draw separator line
+  let sep_y = box.y + header_height
+  svg.add(@svg.line(box.x, sep_y, box.x + box.width, sep_y, stroke~, stroke_width~))
+  // Draw columns from children
   let mut current_y = box.y + header_height + line_height * 0.7
-  for i = 1; i < lines.length(); i = i + 1 {
-    let col = lines[i]
-    if col.length() > 0 && current_y < box.y + box.height - padding {
-      // Check for PK/FK markers
-      let is_pk = col.contains("PK") || col.contains("pk")
-      let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
-      svg.add(
-        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col)}</text>",
-      )
-      current_y = current_y + line_height
+  for child in children {
+    // Get short name from child ID (e.g., "users.id" -> "id")
+    let col_name = get_short_name(child.id)
+    // Format: "name: type" where type is the child's label
+    let col_text = if child.label.length() > 0 {
+      col_name + ": " + child.label
+    } else {
+      col_name
     }
+    // Check for PK/FK markers in label
+    let is_pk = child.label.contains("PK") || child.label.contains("pk")
+    let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
+    svg.add(
+      "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col_text)}</text>",
+    )
+    current_y = current_y + line_height
+  }
+}
+
+///|
+/// Get the short name from a dotted ID (e.g., "users.id" -> "id")
+fn get_short_name(id : String) -> String {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot >= 0 && last_dot < id.length() - 1 {
+    let buf = StringBuilder::new()
+    for i = last_dot + 1; i < id.length(); i = i + 1 {
+      buf.write_char(id[i].to_int().unsafe_to_char())
+    }
+    buf.to_string()
+  } else {
+    id
   }
 }
 
