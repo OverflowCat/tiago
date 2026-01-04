@@ -228,7 +228,7 @@ fn compute_object_size(
     None => ()
   }
   // Special handling for sql_table: size based on header + column rows
-  if obj.shape == "sql_table" {
+  if obj.shape_type == SqlTable {
     let header_height = 3 // top border + label + separator
     let num_columns = obj.children.length()
     let footer_height = 1 // bottom border
@@ -295,7 +295,7 @@ fn create_positioned_box(
   sizes : Map[String, (Int, Int)],
 ) -> AsciiBox {
   // Special handling for sql_table: store column info but not as nested boxes
-  if obj.shape == "sql_table" {
+  if obj.shape_type == SqlTable {
     let columns : Array[AsciiBox] = []
     for child in obj.children {
       // Column format: "name: type"
@@ -368,7 +368,7 @@ fn create_positioned_box(
       width,
       height,
       label: obj.label,
-      shape: obj.shape,
+      shape: obj.get_shape(),
       is_container: false,
       children: [],
     }

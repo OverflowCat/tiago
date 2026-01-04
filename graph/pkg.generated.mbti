@@ -25,6 +25,29 @@ pub impl Eq for GraphCompileError
 pub impl Show for GraphCompileError
 
 // Types and methods
+pub enum ArrowheadType {
+  None
+  Triangle
+  Diamond
+  Circle
+  Open
+  Line
+  CfOne
+  CfMany
+  CfOneRequired
+  CfManyRequired
+  CfOneOptional
+  CfManyOptional
+}
+pub fn ArrowheadType::from_string(String) -> Self
+pub fn ArrowheadType::is_crows_foot(Self) -> Bool
+pub fn ArrowheadType::marker_id(Self, Bool) -> String
+pub fn ArrowheadType::marker_url(Self, Bool) -> String
+pub fn ArrowheadType::to_arrowhead_string(Self) -> String
+pub fn ArrowheadType::to_ascii(Self, Bool) -> String
+pub impl Eq for ArrowheadType
+pub impl Show for ArrowheadType
+
 type AsciiBox
 pub impl Show for AsciiBox
 
@@ -70,8 +93,8 @@ pub(all) struct Edge {
   dst_id : String
   src_arrow : Bool
   dst_arrow : Bool
-  mut src_arrowhead : String
-  mut dst_arrowhead : String
+  mut src_arrowhead : ArrowheadType
+  mut dst_arrowhead : ArrowheadType
   mut src_anchor : String?
   mut dst_anchor : String?
   mut label : String
@@ -144,7 +167,7 @@ pub impl Show for Layer
 pub(all) struct Object {
   id : String
   mut label : String
-  mut shape : String
+  mut shape_type : ShapeType
   style : Style
   mut box : Box?
   children : Array[Object]
@@ -176,6 +199,7 @@ pub fn Object::get_id(Self) -> String
 pub fn Object::get_label(Self) -> String
 pub fn Object::get_near(Self) -> String?
 pub fn Object::get_shape(Self) -> String
+pub fn Object::get_shape_type(Self) -> ShapeType
 pub fn Object::get_vertical_gap(Self) -> Double
 pub fn Object::has_near(Self) -> Bool
 pub fn Object::is_container(Self) -> Bool
@@ -190,6 +214,7 @@ pub fn Object::set_grid_rows(Self, Int) -> Unit
 pub fn Object::set_label(Self, String) -> Unit
 pub fn Object::set_near(Self, String) -> Unit
 pub fn Object::set_shape(Self, String) -> Unit
+pub fn Object::set_shape_type(Self, ShapeType) -> Unit
 pub fn Object::with_label(String, String) -> Self
 pub impl Show for Object
 
@@ -225,6 +250,44 @@ pub(all) struct SequenceFragment {
 }
 pub fn SequenceFragment::new(String, Int, Int) -> Self
 pub impl Show for SequenceFragment
+
+pub enum ShapeType {
+  Rectangle
+  Square
+  Circle
+  Oval
+  Diamond
+  Hexagon
+  Parallelogram
+  Cylinder
+  Queue
+  Package
+  Step
+  Callout
+  StoredData
+  Person
+  Cloud
+  Page
+  Document
+  Class
+  SqlTable
+  Text
+  Code
+  Image
+  SequenceDiagram
+  Octagon
+  C4Person
+  C4Container
+}
+pub fn ShapeType::default_aspect_ratio(Self) -> Double
+pub fn ShapeType::from_string(String) -> Self
+pub fn ShapeType::has_inside_label(Self) -> Bool
+pub fn ShapeType::is_3d_shape(Self) -> Bool
+pub fn ShapeType::is_container(Self) -> Bool
+pub fn ShapeType::is_text_only(Self) -> Bool
+pub fn ShapeType::to_shape_string(Self) -> String
+pub impl Eq for ShapeType
+pub impl Show for ShapeType
 
 pub(all) struct Step {
   name : String

@@ -793,24 +793,8 @@ fn add_sketch_filter(svg : @svg.Svg, graph : Graph) -> Unit {
 
 ///|
 /// Get the marker URL for an arrowhead type
-fn get_marker_url(arrowhead : String, reverse : Bool) -> String {
-  let base = match arrowhead.to_lower() {
-    "triangle" | "arrow" => "arrow-triangle"
-    "diamond" => "arrow-diamond"
-    "circle" => "arrow-circle"
-    "cf-one" => "arrow-cf-one"
-    "cf-many" => "arrow-cf-many"
-    "cf-one-required" => "arrow-cf-one-required"
-    "cf-many-required" => "arrow-cf-many-required"
-    "cf-one-optional" => "arrow-cf-one-optional"
-    "cf-many-optional" => "arrow-cf-many-optional"
-    "line" => "arrow-line"
-    "open" => "arrow-open"
-    "none" => return ""
-    _ => "arrow-triangle" // default
-  }
-  let id = if reverse { "\{base}-reverse" } else { base }
-  "url(#\{id})"
+fn get_marker_url(arrowhead : ArrowheadType, reverse : Bool) -> String {
+  arrowhead.marker_url(reverse)
 }
 
 ///|
@@ -962,7 +946,7 @@ fn is_sql_table_child(obj : Object, all_objects : Array[Object]) -> Bool {
   let parent_id = parent_id_buf.to_string()
   // Find parent object and check if it's an sql_table
   for parent in all_objects {
-    if parent.id == parent_id && parent.shape == "sql_table" {
+    if parent.id == parent_id && parent.shape_type == SqlTable {
       return true
     }
   }
@@ -1027,7 +1011,7 @@ fn render_svg_object(
     }
   }
   // Render shape based on type
-  match obj.shape {
+  match obj.get_shape() {
     "text" =>
       // Text shape - no border, just the label
       ()
@@ -1229,7 +1213,7 @@ fn render_svg_object(
   let cx = box.x + box.width / 2.0
   let cy = box.y + box.height / 2.0
   // Check if icon is present (non-image shapes)
-  let has_icon = obj.icon is Some(_) && obj.shape != "image"
+  let has_icon = obj.icon is Some(_) && obj.shape_type != Image
   if has_icon {
     // Render icon above label
     let icon_size = 24.0

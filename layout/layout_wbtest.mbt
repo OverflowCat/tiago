@@ -238,7 +238,7 @@ test "sum_with_gap" {
 test "is_sequence_diagram" {
   let obj = @graph.Object::new("test")
   assert_true(!is_sequence_diagram(obj)) // default is rectangle
-  obj.shape = "sequence_diagram"
+  obj.set_shape("sequence_diagram")
   assert_true(is_sequence_diagram(obj))
 }
 
@@ -246,7 +246,7 @@ test "is_sequence_diagram" {
 test "sequence layout basic" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors
   let alice = @graph.Object::new("alice")
   let bob = @graph.Object::new("bob")
@@ -273,7 +273,7 @@ test "sequence layout basic" {
 test "sequence layout with messages" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors as children of container
   let alice = @graph.Object::new("seq.alice")
   let bob = @graph.Object::new("seq.bob")
@@ -303,7 +303,7 @@ test "sequence layout with messages" {
 test "sequence layout self-referential message" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add single actor
   let alice = @graph.Object::new("seq.alice")
   container.add_child(alice)
@@ -324,7 +324,7 @@ test "sequence layout self-referential message" {
 test "sequence layout activation boxes" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors
   let alice = @graph.Object::new("seq.alice")
   let bob = @graph.Object::new("seq.bob")
@@ -355,7 +355,7 @@ test "sequence layout activation boxes" {
 test "sequence layout self-message activation" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add single actor
   let alice = @graph.Object::new("seq.alice")
   container.add_child(alice)
@@ -379,7 +379,7 @@ test "sequence layout self-message activation" {
 test "sequence layout with notes" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors
   let alice = @graph.Object::new("seq.alice")
   let bob = @graph.Object::new("seq.bob")
@@ -412,7 +412,7 @@ test "sequence layout with notes" {
 test "sequence layout multiple notes per actor" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors
   let alice = @graph.Object::new("seq.alice")
   // Add two notes as children of alice
@@ -450,7 +450,7 @@ test "SequenceNote constructor" {
 test "sequence layout with opt group creates fragment" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("seq")
-  container.shape = "sequence_diagram"
+  container.set_shape("sequence_diagram")
   // Add actors
   let alice = @graph.Object::new("seq.alice")
   alice.label = "Alice"
@@ -492,7 +492,7 @@ test "root-level sequence diagram layout" {
   // Create a graph with root-level sequence diagram (no prefix on actors)
   let graph = @graph.Graph::new("test")
   // Set root to be a sequence diagram
-  graph.root.shape = "sequence_diagram"
+  graph.root.set_shape("sequence_diagram")
   // Add actors (without "root." prefix - just like compiled from D2)
   let alice = @graph.Object::new("alice")
   alice.label = "Alice"

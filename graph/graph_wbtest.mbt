@@ -97,7 +97,7 @@ test "compile object with shape" {
   )
   ir.add_field(field)
   let graph = compile("test", ir)
-  assert_eq(graph.objects[0].shape, "cylinder")
+  assert_eq(graph.objects[0].get_shape(), "cylinder")
 }
 
 ///|
@@ -582,7 +582,7 @@ test "compile sequence diagram with root-level shape" {
   // Compile
   let graph = compile("test", ir)
   // Verify root has sequence_diagram shape
-  assert_eq(graph.root.shape, "sequence_diagram")
+  assert_eq(graph.root.get_shape(), "sequence_diagram")
   // Verify root has children (actors)
   assert_eq(graph.root.children.length(), 2)
   // Verify root is a container

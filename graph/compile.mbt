@@ -152,7 +152,7 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
   match ir.get_field("shape") {
     Some(f) =>
       match f.primary {
-        Some(s) => obj.shape = s.to_string()
+        Some(s) => obj.shape_type = ShapeType::from_string(s.to_string())
         None => ()
       }
     None => ()
@@ -524,12 +524,14 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
           if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
             if arrowhead_map.get_field("shape") is Some(shape_f) {
               if shape_f.primary is Some(s) {
-                graph_edge.src_arrowhead = s.to_string()
+                graph_edge.src_arrowhead = ArrowheadType::from_string(
+                  s.to_string(),
+                )
               }
             }
           } else if f.primary is Some(s) {
             // Simple value (shape directly)
-            graph_edge.src_arrowhead = s.to_string()
+            graph_edge.src_arrowhead = ArrowheadType::from_string(s.to_string())
           }
         }
         // Process target-arrowhead
@@ -537,12 +539,14 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
           if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
             if arrowhead_map.get_field("shape") is Some(shape_f) {
               if shape_f.primary is Some(s) {
-                graph_edge.dst_arrowhead = s.to_string()
+                graph_edge.dst_arrowhead = ArrowheadType::from_string(
+                  s.to_string(),
+                )
               }
             }
           } else if f.primary is Some(s) {
             // Simple value (shape directly)
-            graph_edge.dst_arrowhead = s.to_string()
+            graph_edge.dst_arrowhead = ArrowheadType::from_string(s.to_string())
           }
         }
         // Process source-anchor
@@ -696,7 +700,7 @@ fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
       match f.primary {
         Some(s) => {
           let shape = s.to_string()
-          graph.root.shape = shape
+          graph.root.shape_type = ShapeType::from_string(shape)
           // For sequence diagrams, make all top-level objects children of root
           if shape == "sequence_diagram" {
             // Find all objects that are not children of other objects

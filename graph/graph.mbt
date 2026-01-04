@@ -101,8 +101,8 @@ pub(all) struct Object {
   id : String
   /// Display label
   mut label : String
-  /// Shape type (rectangle, circle, etc.)
-  mut shape : String
+  /// Shape type
+  mut shape_type : ShapeType
   /// Visual style
   style : Style
   /// Position and size
@@ -150,10 +150,10 @@ pub(all) struct Edge {
   src_arrow : Bool
   /// Has arrow at destination
   dst_arrow : Bool
-  /// Source arrowhead type (triangle, diamond, circle, cf-one, cf-many, none)
-  mut src_arrowhead : String
-  /// Destination arrowhead type (triangle, diamond, circle, cf-one, cf-many, none)
-  mut dst_arrowhead : String
+  /// Source arrowhead type
+  mut src_arrowhead : ArrowheadType
+  /// Destination arrowhead type
+  mut dst_arrowhead : ArrowheadType
   /// Source anchor position (top, bottom, left, right, center)
   mut src_anchor : String?
   /// Destination anchor position (top, bottom, left, right, center)
@@ -276,7 +276,7 @@ pub fn Object::new(id : String) -> Object {
   {
     id,
     label: id,
-    shape: "rectangle",
+    shape_type: Rectangle,
     style: Style::new(),
     box: None,
     children: [],
@@ -318,14 +318,14 @@ pub fn Edge::new(
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
-      "triangle"
+      Triangle
     } else {
-      "none"
+      None
     },
     dst_arrowhead: if dst_arrow {
-      "triangle"
+      Triangle
     } else {
-      "none"
+      None
     },
     src_anchor: None,
     dst_anchor: None,
@@ -649,9 +649,15 @@ pub fn Object::set_box(self : Object, box : Box) -> Unit {
 }
 
 ///|
-/// Set the shape of the object
+/// Set the shape of the object (from string)
 pub fn Object::set_shape(self : Object, shape : String) -> Unit {
-  self.shape = shape
+  self.shape_type = ShapeType::from_string(shape)
+}
+
+///|
+/// Set the shape type of the object
+pub fn Object::set_shape_type(self : Object, shape_type : ShapeType) -> Unit {
+  self.shape_type = shape_type
 }
 
 ///|
@@ -679,9 +685,15 @@ pub fn Object::get_children(self : Object) -> Array[Object] {
 }
 
 ///|
-/// Get the object's shape
+/// Get the object's shape as string
 pub fn Object::get_shape(self : Object) -> String {
-  self.shape
+  self.shape_type.to_shape_string()
+}
+
+///|
+/// Get the object's shape type
+pub fn Object::get_shape_type(self : Object) -> ShapeType {
+  self.shape_type
 }
 
 ///|
