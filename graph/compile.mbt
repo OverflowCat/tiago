@@ -22,6 +22,12 @@ pub fn compile(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
   compile_objects(graph, ir, "", classes)
   // Second pass: create all edges
   compile_edges(graph, ir)
+  // Third pass: compile layers, scenarios, and steps
+  compile_layers(graph, ir, classes)
+  compile_scenarios(graph, ir, classes)
+  compile_steps(graph, ir, classes)
+  // Handle root-level shape (e.g., shape: sequence_diagram)
+  handle_root_shape(graph, ir)
   graph
 }
 
@@ -564,8 +570,101 @@ fn is_reserved_keyword(name : String) -> Bool {
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
     "direction", "constraint", "class", "classes", "vars", "grid-rows", "grid-columns",
     "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span", "grid-row-span",
+    "layers", "scenarios", "steps",
   ]
   keywords.contains(name.to_lower())
+}
+
+///|
+/// Compile layers from IR
+fn compile_layers(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  match ir.get_field("layers") {
+    Some(f) =>
+      match f.composite {
+        Some(@ir.Composite::Map(layers_map)) =>
+          for field in layers_map.fields {
+            match field.composite {
+              Some(@ir.Composite::Map(layer_ir)) => {
+                // Compile this layer as a separate graph
+                let layer_graph = Graph::new(field.name)
+                compile_objects(layer_graph, layer_ir, "", classes)
+                compile_edges(layer_graph, layer_ir)
+                // Recursively compile nested layers/scenarios/steps
+                compile_layers(layer_graph, layer_ir, classes)
+                compile_scenarios(layer_graph, layer_ir, classes)
+                compile_steps(layer_graph, layer_ir, classes)
+                graph.add_layer(Layer::new(field.name, layer_graph))
+              }
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+/// Compile scenarios from IR
+fn compile_scenarios(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  match ir.get_field("scenarios") {
+    Some(f) =>
+      match f.composite {
+        Some(@ir.Composite::Map(scenarios_map)) =>
+          for field in scenarios_map.fields {
+            match field.composite {
+              Some(@ir.Composite::Map(scenario_ir)) => {
+                // Compile this scenario as a graph
+                // Note: scenarios inherit from base graph + apply modifications
+                let scenario_graph = Graph::new(field.name)
+                compile_objects(scenario_graph, scenario_ir, "", classes)
+                compile_edges(scenario_graph, scenario_ir)
+                graph.add_scenario(Scenario::new(field.name, scenario_graph))
+              }
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+/// Compile steps from IR
+fn compile_steps(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  match ir.get_field("steps") {
+    Some(f) =>
+      match f.composite {
+        Some(@ir.Composite::Map(steps_map)) =>
+          for field in steps_map.fields {
+            match field.composite {
+              Some(@ir.Composite::Map(step_ir)) => {
+                // Compile this step as a graph
+                let step_graph = Graph::new(field.name)
+                compile_objects(step_graph, step_ir, "", classes)
+                compile_edges(step_graph, step_ir)
+                graph.add_step(Step::new(field.name, step_graph))
+              }
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    None => ()
+  }
 }
 
 ///|
@@ -583,5 +682,51 @@ fn parse_int(s : String) -> Int? {
     _ => None
   } noraise {
     v => Some(v)
+  }
+}
+
+///|
+/// Handle root-level shape declaration (e.g., shape: sequence_diagram)
+/// When the root has a special shape like sequence_diagram, we need to:
+/// 1. Set the shape on graph.root
+/// 2. Make all top-level objects children of graph.root
+fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
+  match ir.get_field("shape") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => {
+          let shape = s.to_string()
+          graph.root.shape = shape
+          // For sequence diagrams, make all top-level objects children of root
+          if shape == "sequence_diagram" {
+            // Find all objects that are not children of other objects
+            let root_obj_ids : Array[String] = []
+            let child_ids : Array[String] = []
+            // Collect all child IDs
+            for obj in graph.objects {
+              for child in obj.children {
+                child_ids.push(child.id)
+              }
+            }
+            // Find root objects (not children of any other object)
+            for obj in graph.objects {
+              if not(child_ids.contains(obj.id)) {
+                root_obj_ids.push(obj.id)
+              }
+            }
+            // Make root objects children of graph.root
+            for id in root_obj_ids {
+              for obj in graph.objects {
+                if obj.id == id {
+                  graph.root.add_child(obj)
+                  break
+                }
+              }
+            }
+          }
+        }
+        None => ()
+      }
+    None => ()
   }
 }

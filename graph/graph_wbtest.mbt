@@ -253,3 +253,336 @@ test "compile object with near object reference" {
     fail("expected info object")
   }
 }
+
+///|
+test "compile layers" {
+  // Create IR with layers
+  let ir = @ir.Map::new()
+  ir.add_field(@ir.Field::simple("server"))
+  ir.add_field(@ir.Field::simple("database"))
+  // Create layers block
+  let layers_map = @ir.Map::new()
+  // Layer 1: network
+  let network_map = @ir.Map::new()
+  network_map.add_field(@ir.Field::simple("router"))
+  network_map.add_field(@ir.Field::simple("switch"))
+  layers_map.add_field(
+    @ir.Field::new("network", None, Some(@ir.Composite::Map(network_map)), []),
+  )
+  // Layer 2: security
+  let security_map = @ir.Map::new()
+  security_map.add_field(@ir.Field::simple("firewall"))
+  layers_map.add_field(
+    @ir.Field::new("security", None, Some(@ir.Composite::Map(security_map)), []),
+  )
+  ir.add_field(
+    @ir.Field::new("layers", None, Some(@ir.Composite::Map(layers_map)), []),
+  )
+  let graph = compile("test", ir)
+  // Base graph should have 2 objects
+  assert_eq(graph.objects.length(), 2)
+  // Should have 2 layers
+  assert_eq(graph.layers.length(), 2)
+  assert_eq(graph.layers[0].name, "network")
+  assert_eq(graph.layers[0].graph.objects.length(), 2)
+  assert_eq(graph.layers[1].name, "security")
+  assert_eq(graph.layers[1].graph.objects.length(), 1)
+}
+
+///|
+test "compile scenarios" {
+  // Create IR with scenarios
+  let ir = @ir.Map::new()
+  ir.add_field(@ir.Field::simple("user"))
+  ir.add_field(@ir.Field::simple("app"))
+  // Create scenarios block
+  let scenarios_map = @ir.Map::new()
+  // Scenario 1: happy path
+  let happy_map = @ir.Map::new()
+  happy_map.add_field(@ir.Field::simple("success"))
+  scenarios_map.add_field(
+    @ir.Field::new("happy_path", None, Some(@ir.Composite::Map(happy_map)), []),
+  )
+  // Scenario 2: error path
+  let error_map = @ir.Map::new()
+  error_map.add_field(@ir.Field::simple("error"))
+  error_map.add_field(@ir.Field::simple("retry"))
+  scenarios_map.add_field(
+    @ir.Field::new("error_path", None, Some(@ir.Composite::Map(error_map)), []),
+  )
+  ir.add_field(
+    @ir.Field::new("scenarios", None, Some(@ir.Composite::Map(scenarios_map)), []),
+  )
+  let graph = compile("test", ir)
+  // Base graph should have 2 objects
+  assert_eq(graph.objects.length(), 2)
+  // Should have 2 scenarios
+  assert_eq(graph.scenarios.length(), 2)
+  assert_eq(graph.scenarios[0].name, "happy_path")
+  assert_eq(graph.scenarios[0].graph.objects.length(), 1)
+  assert_eq(graph.scenarios[1].name, "error_path")
+  assert_eq(graph.scenarios[1].graph.objects.length(), 2)
+}
+
+///|
+test "compile steps" {
+  // Create IR with steps
+  let ir = @ir.Map::new()
+  ir.add_field(@ir.Field::simple("start"))
+  // Create steps block
+  let steps_map = @ir.Map::new()
+  // Step 1
+  let step1_map = @ir.Map::new()
+  step1_map.add_field(@ir.Field::simple("middle"))
+  steps_map.add_field(
+    @ir.Field::new("step1", None, Some(@ir.Composite::Map(step1_map)), []),
+  )
+  // Step 2
+  let step2_map = @ir.Map::new()
+  step2_map.add_field(@ir.Field::simple("end"))
+  steps_map.add_field(
+    @ir.Field::new("step2", None, Some(@ir.Composite::Map(step2_map)), []),
+  )
+  ir.add_field(
+    @ir.Field::new("steps", None, Some(@ir.Composite::Map(steps_map)), []),
+  )
+  let graph = compile("test", ir)
+  // Base graph should have 1 object
+  assert_eq(graph.objects.length(), 1)
+  // Should have 2 steps
+  assert_eq(graph.steps.length(), 2)
+  assert_eq(graph.steps[0].name, "step1")
+  assert_eq(graph.steps[0].graph.objects.length(), 1)
+  assert_eq(graph.steps[1].name, "step2")
+  assert_eq(graph.steps[1].graph.objects.length(), 1)
+}
+
+///|
+test "graph has_layers has_scenarios has_steps" {
+  let graph = Graph::new("test")
+  assert_false(graph.has_layers())
+  assert_false(graph.has_scenarios())
+  assert_false(graph.has_steps())
+  // Add a layer
+  let layer_graph = Graph::new("layer1")
+  graph.add_layer(Layer::new("layer1", layer_graph))
+  assert_true(graph.has_layers())
+  // Add a scenario
+  let scenario_graph = Graph::new("scenario1")
+  graph.add_scenario(Scenario::new("scenario1", scenario_graph))
+  assert_true(graph.has_scenarios())
+  // Add a step
+  let step_graph = Graph::new("step1")
+  graph.add_step(Step::new("step1", step_graph))
+  assert_true(graph.has_steps())
+}
+
+///|
+test "compile layers with edges" {
+  // Create IR with layers containing edges
+  let ir = @ir.Map::new()
+  ir.add_field(@ir.Field::simple("main"))
+  // Create layers block
+  let layers_map = @ir.Map::new()
+  // Layer with nodes and edges
+  let layer_map = @ir.Map::new()
+  layer_map.add_field(@ir.Field::simple("a"))
+  layer_map.add_field(@ir.Field::simple("b"))
+  // Add edge a -> b
+  let edge = @ir.Edge::new(
+    @ir.EdgeID::new(["a"], ["b"], false, true),
+    Some(@ir.Scalar::string("connects")),
+    None,
+    [],
+  )
+  layer_map.add_edge(edge)
+  layers_map.add_field(
+    @ir.Field::new("connected", None, Some(@ir.Composite::Map(layer_map)), []),
+  )
+  ir.add_field(
+    @ir.Field::new("layers", None, Some(@ir.Composite::Map(layers_map)), []),
+  )
+  let graph = compile("test", ir)
+  // Layer should have edge
+  assert_eq(graph.layers.length(), 1)
+  assert_eq(graph.layers[0].graph.edges.length(), 1)
+  assert_eq(graph.layers[0].graph.edges[0].label, "connects")
+}
+
+///|
+test "render SVG with layers includes tabs" {
+  // Create a graph with layers
+  let graph = Graph::new("test")
+  let obj = Object::new("main")
+  obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  graph.add_object(obj)
+  // Add a layer
+  let layer_graph = Graph::new("network")
+  let layer_obj = Object::new("router")
+  layer_obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  layer_graph.add_object(layer_obj)
+  graph.add_layer(Layer::new("network", layer_graph))
+  // Render to SVG
+  let config = SvgConfig::new()
+  let svg = render_svg(graph, config)
+  // Verify tabs are present
+  assert_true(svg.contains("layer-tab"))
+  assert_true(svg.contains("Base"))
+  assert_true(svg.contains("network"))
+  // Verify layer groups exist
+  assert_true(svg.contains("id=\"base-layer\""))
+  assert_true(svg.contains("id=\"layer-0\""))
+  // Verify JavaScript is included
+  assert_true(svg.contains("switchLayer"))
+}
+
+///|
+test "render SVG with scenarios includes selector" {
+  // Create a graph with scenarios
+  let graph = Graph::new("test")
+  let obj = Object::new("main")
+  obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  graph.add_object(obj)
+  // Add a scenario
+  let scenario_graph = Graph::new("happy_path")
+  let scenario_obj = Object::new("success")
+  scenario_obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  scenario_graph.add_object(scenario_obj)
+  graph.add_scenario(Scenario::new("happy_path", scenario_graph))
+  // Render to SVG
+  let config = SvgConfig::new()
+  let svg = render_svg(graph, config)
+  // Verify scenario selector is present
+  assert_true(svg.contains("scenario-btn"))
+  assert_true(svg.contains("Scenario:"))
+  assert_true(svg.contains("happy_path"))
+  // Verify scenario groups exist
+  assert_true(svg.contains("id=\"base-layer\""))
+  assert_true(svg.contains("id=\"scenario-0\""))
+  // Verify JavaScript is included
+  assert_true(svg.contains("switchScenario"))
+}
+
+///|
+test "render SVG with steps includes controls" {
+  // Create a graph with steps
+  let graph = Graph::new("test")
+  let obj = Object::new("main")
+  obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  graph.add_object(obj)
+  // Add steps
+  let step1_graph = Graph::new("step1")
+  let step1_obj = Object::new("action1")
+  step1_obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  step1_graph.add_object(step1_obj)
+  graph.add_step(Step::new("First", step1_graph))
+  let step2_graph = Graph::new("step2")
+  let step2_obj = Object::new("action2")
+  step2_obj.box = Some(Box::new(10.0, 10.0, 100.0, 50.0))
+  step2_graph.add_object(step2_obj)
+  graph.add_step(Step::new("Second", step2_graph))
+  // Render to SVG
+  let config = SvgConfig::new()
+  let svg = render_svg(graph, config)
+  // Verify step controls are present
+  assert_true(svg.contains("step-prev"))
+  assert_true(svg.contains("step-play"))
+  assert_true(svg.contains("step-next"))
+  assert_true(svg.contains("Step:"))
+  // Verify step groups exist
+  assert_true(svg.contains("id=\"base-layer\""))
+  assert_true(svg.contains("id=\"step-0\""))
+  assert_true(svg.contains("id=\"step-1\""))
+  // Verify JavaScript is included
+  assert_true(svg.contains("stepNext"))
+  assert_true(svg.contains("stepPrev"))
+  assert_true(svg.contains("stepTogglePlay"))
+}
+
+///|
+test "sequence fragment creation" {
+  // Test SequenceFragment and FragmentOperand creation
+  let fragment = SequenceFragment::new("alt", 0, 2)
+  assert_eq(fragment.fragment_type, "alt")
+  assert_eq(fragment.start_index, 0)
+  assert_eq(fragment.end_index, 2)
+  assert_true(fragment.condition is None)
+  assert_true(fragment.bbox is None)
+  assert_eq(fragment.operands.length(), 0)
+}
+
+///|
+test "sequence fragment with condition" {
+  let fragment = SequenceFragment::new("loop", 0, 5)
+  fragment.condition = Some("[i < 10]")
+  assert_eq(fragment.condition, Some("[i < 10]"))
+}
+
+///|
+test "sequence fragment with operands" {
+  let fragment = SequenceFragment::new("alt", 0, 4)
+  fragment.operands.push(FragmentOperand::new(Some("[condition1]")))
+  fragment.operands.push(FragmentOperand::new(Some("[else]")))
+  assert_eq(fragment.operands.length(), 2)
+  assert_eq(fragment.operands[0].condition, Some("[condition1]"))
+  assert_eq(fragment.operands[1].condition, Some("[else]"))
+}
+
+///|
+test "graph add and has fragments" {
+  let graph = Graph::new("test")
+  assert_false(graph.has_fragments())
+  let fragment = SequenceFragment::new("opt", 0, 1)
+  graph.add_fragment(fragment)
+  assert_true(graph.has_fragments())
+  assert_eq(graph.sequence_fragments.length(), 1)
+}
+
+///|
+test "render SVG with sequence fragment" {
+  // Create a graph with a sequence fragment
+  let graph = Graph::new("test")
+  let obj = Object::new("main")
+  obj.box = Some(Box::new(10.0, 10.0, 100.0, 100.0))
+  graph.add_object(obj)
+  // Add a fragment with bbox
+  let fragment = SequenceFragment::new("alt", 0, 1)
+  fragment.condition = Some("[x > 0]")
+  fragment.bbox = Some(Box::new(20.0, 50.0, 200.0, 100.0))
+  fragment.operands.push(FragmentOperand::new(Some("[else]")))
+  fragment.operands[0].separator_y = 100.0
+  graph.add_fragment(fragment)
+  // Render to SVG
+  let config = SvgConfig::new()
+  let svg = render_svg(graph, config)
+  // Verify fragment is rendered
+  assert_true(svg.contains("ALT"))
+  // Note: > is XML-escaped to &gt; in text content
+  assert_true(svg.contains("[x &gt; 0]"))
+  assert_true(svg.contains("stroke-dasharray"))
+}
+
+///|
+test "compile sequence diagram with root-level shape" {
+  // Create IR with shape: sequence_diagram at root level
+  let ir = @ir.Map::new()
+  // Add shape field
+  let shape_field = @ir.Field::new(
+    "shape",
+    Some(@ir.Scalar::string("sequence_diagram")),
+    None,
+    [],
+  )
+  ir.add_field(shape_field)
+  // Add actors
+  ir.add_field(@ir.Field::new("alice", Some(@ir.Scalar::string("Alice")), None, []))
+  ir.add_field(@ir.Field::new("bob", Some(@ir.Scalar::string("Bob")), None, []))
+  // Compile
+  let graph = compile("test", ir)
+  // Verify root has sequence_diagram shape
+  assert_eq(graph.root.shape, "sequence_diagram")
+  // Verify root has children (actors)
+  assert_eq(graph.root.children.length(), 2)
+  // Verify root is a container
+  assert_true(graph.root.is_container())
+}

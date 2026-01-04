@@ -12,7 +12,87 @@ pub(all) struct Graph {
   root : Object
   objects : Array[Object]
   edges : Array[Edge]
+  /// Activation boxes for sequence diagrams (actor_id, bounding box)
+  mut activation_boxes : Array[(String, Box)]
+  /// Notes for sequence diagrams (actor_id, text, bounding box)
+  mut sequence_notes : Array[(String, String, Box)]
+  /// Sequence diagram fragments (combined fragments like alt, opt, loop)
+  sequence_fragments : Array[SequenceFragment]
+  /// Named layers - multiple diagram variants (for layers: {...})
+  layers : Array[Layer]
+  /// Named scenarios - diagram variations with base + delta (for scenarios: {...})
+  scenarios : Array[Scenario]
+  /// Named steps - animation frames (for steps: {...})
+  steps : Array[Step]
 } derive(Show)
+
+///|
+/// A named layer in the diagram
+pub(all) struct Layer {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+/// A scenario variant
+pub(all) struct Scenario {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+/// An animation step
+pub(all) struct Step {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+/// A sequence diagram combined fragment (alt, opt, loop, par, etc.)
+pub(all) struct SequenceFragment {
+  /// Fragment type: "alt", "opt", "loop", "par", "break", "critical"
+  fragment_type : String
+  /// Guard condition text (e.g., "[condition]")
+  mut condition : String?
+  /// Bounding box computed during layout
+  mut bbox : Box?
+  /// Start message index (first message in this fragment)
+  start_index : Int
+  /// End message index (last message in this fragment)
+  end_index : Int
+  /// Operands for multi-branch fragments like "alt" (each operand has a condition)
+  operands : Array[FragmentOperand]
+} derive(Show)
+
+///|
+/// An operand within a combined fragment (e.g., one branch of an "alt")
+pub(all) struct FragmentOperand {
+  /// Condition for this operand (e.g., "[else]")
+  condition : String?
+  /// Y position of the operand separator line
+  mut separator_y : Double
+} derive(Show)
+
+///|
+pub fn SequenceFragment::new(
+  fragment_type : String,
+  start_index : Int,
+  end_index : Int,
+) -> SequenceFragment {
+  {
+    fragment_type,
+    condition: None,
+    bbox: None,
+    start_index,
+    end_index,
+    operands: [],
+  }
+}
+
+///|
+pub fn FragmentOperand::new(condition : String?) -> FragmentOperand {
+  { condition, separator_y: 0.0 }
+}
 
 ///|
 /// A node/shape in the diagram
@@ -150,7 +230,45 @@ pub(all) struct Style {
 ///|
 pub fn Graph::new(name : String) -> Graph {
   let root = Object::new("root")
-  { name, root, objects: [], edges: [] }
+  {
+    name,
+    root,
+    objects: [],
+    edges: [],
+    activation_boxes: [],
+    sequence_notes: [],
+    sequence_fragments: [],
+    layers: [],
+    scenarios: [],
+    steps: [],
+  }
+}
+
+///|
+/// Add a sequence fragment to the graph
+pub fn Graph::add_fragment(self : Graph, fragment : SequenceFragment) -> Unit {
+  self.sequence_fragments.push(fragment)
+}
+
+///|
+/// Check if graph has any sequence fragments
+pub fn Graph::has_fragments(self : Graph) -> Bool {
+  self.sequence_fragments.length() > 0
+}
+
+///|
+pub fn Layer::new(name : String, graph : Graph) -> Layer {
+  { name, graph }
+}
+
+///|
+pub fn Scenario::new(name : String, graph : Graph) -> Scenario {
+  { name, graph }
+}
+
+///|
+pub fn Step::new(name : String, graph : Graph) -> Step {
+  { name, graph }
 }
 
 ///|
@@ -331,6 +449,60 @@ pub fn Graph::edges_to(self : Graph, dst_id : String) -> Array[Edge] {
     }
   }
   result
+}
+
+///|
+/// Add a layer to the graph
+pub fn Graph::add_layer(self : Graph, layer : Layer) -> Unit {
+  self.layers.push(layer)
+}
+
+///|
+/// Get all layers
+pub fn Graph::get_layers(self : Graph) -> Array[Layer] {
+  self.layers
+}
+
+///|
+/// Check if graph has layers
+pub fn Graph::has_layers(self : Graph) -> Bool {
+  self.layers.length() > 0
+}
+
+///|
+/// Add a scenario to the graph
+pub fn Graph::add_scenario(self : Graph, scenario : Scenario) -> Unit {
+  self.scenarios.push(scenario)
+}
+
+///|
+/// Get all scenarios
+pub fn Graph::get_scenarios(self : Graph) -> Array[Scenario] {
+  self.scenarios
+}
+
+///|
+/// Check if graph has scenarios
+pub fn Graph::has_scenarios(self : Graph) -> Bool {
+  self.scenarios.length() > 0
+}
+
+///|
+/// Add a step to the graph
+pub fn Graph::add_step(self : Graph, step : Step) -> Unit {
+  self.steps.push(step)
+}
+
+///|
+/// Get all steps
+pub fn Graph::get_steps(self : Graph) -> Array[Step] {
+  self.steps
+}
+
+///|
+/// Check if graph has steps
+pub fn Graph::has_steps(self : Graph) -> Bool {
+  self.steps.length() > 0
 }
 
 // ============================================================================

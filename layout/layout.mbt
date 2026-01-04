@@ -49,11 +49,11 @@ pub(all) suberror LayoutError {
 pub fn LayoutConfig::new() -> LayoutConfig {
   {
     horizontal_spacing: 60.0,
-    vertical_spacing: 40.0,
+    vertical_spacing: 60.0,
     container_padding: 20.0,
     default_width: 100.0,
     default_height: 60.0,
-    edge_padding: 10.0,
+    edge_padding: 20.0,
   }
 }
 
@@ -73,6 +73,30 @@ pub fn layout(
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
+  // Check if root-level is a sequence diagram
+  if is_sequence_diagram(graph.root) && graph.root.is_container() {
+    // Use sequence layout for the entire graph
+    let result = layout_sequence_with_activations(graph.root, graph, config)
+    // Store activation boxes in the graph for rendering
+    for box in result.activation_boxes {
+      graph.activation_boxes.push((box.actor_id, box.get_box()))
+    }
+    // Store notes in the graph for rendering
+    for note in result.notes {
+      graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
+    }
+    // Layout layers, scenarios, and steps recursively
+    for layer in graph.layers {
+      layout(layer.graph, config, direction)
+    }
+    for scenario in graph.scenarios {
+      layout(scenario.graph, config, direction)
+    }
+    for step in graph.steps {
+      layout(step.graph, config, direction)
+    }
+    return
+  }
   // Phase 0: Break cycles using greedy DFS (Feedback Arc Set)
   let cycle_result = break_cycles(graph)
   // Phase 1: Assign layers using network simplex
@@ -91,8 +115,16 @@ pub fn layout(
   // Phase 4: Position objects - check for special containers
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
-      // Use full sequence layout with message routing
-      layout_sequence_with_messages(obj, graph, config)
+      // Use full sequence layout with message routing, activation boxes, and notes
+      let result = layout_sequence_with_activations(obj, graph, config)
+      // Store activation boxes in the graph for rendering
+      for box in result.activation_boxes {
+        graph.activation_boxes.push((box.actor_id, box.get_box()))
+      }
+      // Store notes in the graph for rendering
+      for note in result.notes {
+        graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
+      }
     } else if obj.is_grid_diagram() && obj.is_container() {
       layout_grid(obj, config)
     }
@@ -107,6 +139,16 @@ pub fn layout(
   route_edges_with_virtual(graph, config, virtual_result)
   // Phase 8: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
+  // Phase 9: Layout layers, scenarios, and steps recursively
+  for layer in graph.layers {
+    layout(layer.graph, config, direction)
+  }
+  for scenario in graph.scenarios {
+    layout(scenario.graph, config, direction)
+  }
+  for step in graph.steps {
+    layout(step.graph, config, direction)
+  }
 }
 
 ///|
@@ -216,86 +258,6 @@ fn position_subtree(
 }
 
 ///|
-/// Position objects using layer assignment with crossing-minimized ordering
-/// Uses Brandes-Köpf coordinate assignment for optimal node placement
-fn position_objects_layered(
-  graph : @graph.Graph,
-  config : LayoutConfig,
-  direction : Direction,
-  layer_result : LayerAssignment,
-  crossing_result : CrossingResult,
-  cycle_result : CycleBreakResult,
-) -> Unit {
-  // If only one layer (no edges create dependencies), fall back to sequential layout
-  if layer_result.layer_count <= 1 {
-    position_objects_sequential(graph, config, direction)
-    return
-  }
-  // Collect node dimensions
-  let node_widths : Map[String, Double] = {}
-  let node_heights : Map[String, Double] = {}
-  for layer in crossing_result.ordered_layers {
-    for node_id in layer {
-      match graph.find_object(node_id) {
-        Some(obj) =>
-          match obj.box {
-            Some(b) => {
-              node_widths[node_id] = b.width
-              node_heights[node_id] = b.height
-            }
-            None => {
-              node_widths[node_id] = config.default_width
-              node_heights[node_id] = config.default_height
-            }
-          }
-        None => ()
-      }
-    }
-  }
-  // Assign coordinates using Brandes-Köpf algorithm
-  let coords = assign_coordinates(
-    graph,
-    crossing_result,
-    cycle_result,
-    node_widths,
-    node_heights,
-    config.horizontal_spacing,
-    config.vertical_spacing,
-  )
-  // Apply coordinates to objects
-  for layer in crossing_result.ordered_layers {
-    for node_id in layer {
-      match graph.find_object(node_id) {
-        Some(obj) =>
-          match obj.box {
-            Some(b) => {
-              let x = coords.x_coords.get(node_id).unwrap_or(0.0) +
-                config.container_padding
-              let y = coords.y_coords.get(node_id).unwrap_or(0.0) +
-                config.container_padding
-              match direction {
-                Down | Up =>
-                  obj.set_box(@graph.Box::new(x, y, b.width, b.height))
-                Right | Left =>
-                  // Swap x and y for horizontal layouts
-                  obj.set_box(@graph.Box::new(y, x, b.width, b.height))
-              }
-            }
-            None => ()
-          }
-        None => ()
-      }
-    }
-  }
-  // Position children within containers
-  for obj in graph.objects {
-    if obj.is_container() {
-      position_container_children(obj, config, direction)
-    }
-  }
-}
-
-///|
 /// Position objects sequentially (for graphs without dependencies)
 fn position_objects_sequential(
   graph : @graph.Graph,
@@ -350,113 +312,6 @@ fn position_container_children(
 }
 
 ///|
-/// Route edges between objects
-fn route_edges(graph : @graph.Graph, config : LayoutConfig) -> Unit {
-  // Group edges by source to compute offsets
-  let edges_by_src : Map[String, Array[@graph.Edge]] = {}
-  for edge in graph.edges {
-    let src_id = edge.get_src_id()
-    match edges_by_src.get(src_id) {
-      Some(arr) => arr.push(edge)
-      None => edges_by_src[src_id] = [edge]
-    }
-  }
-  // Route each edge with offset based on its position in source group
-  for _, edges in edges_by_src {
-    let count = edges.length()
-    for i, edge in edges {
-      route_edge(graph, edge, config, i, count)
-    }
-  }
-}
-
-///|
-/// Route a single edge with offset for multiple edges from same source
-fn route_edge(
-  graph : @graph.Graph,
-  edge : @graph.Edge,
-  config : LayoutConfig,
-  edge_index : Int,
-  total_edges : Int,
-) -> Unit {
-  // Find source and destination objects
-  let src = graph.find_object(edge.get_src_id())
-  let dst = graph.find_object(edge.get_dst_id())
-  match (src, dst) {
-    (Some(src_obj), Some(dst_obj)) =>
-      match (src_obj.get_box(), dst_obj.get_box()) {
-        (Some(src_box), Some(dst_box)) => {
-          // Calculate horizontal offset for multiple edges from same source
-          let offset = if total_edges > 1 {
-            let spacing = 15.0
-            let total_width = (total_edges - 1).to_double() * spacing
-            edge_index.to_double() * spacing - total_width / 2.0
-          } else {
-            0.0
-          }
-          let points = compute_connection_points(
-            src_box,
-            dst_box,
-            config,
-            offset,
-            edge.src_anchor,
-            edge.dst_anchor,
-          )
-          for point in points {
-            edge.add_route_point(point)
-          }
-        }
-        _ => ()
-      }
-    _ => ()
-  }
-}
-
-///|
-/// Compute connection points between two boxes with optional anchors
-fn compute_connection_points(
-  src : @graph.Box,
-  dst : @graph.Box,
-  _config : LayoutConfig,
-  offset : Double,
-  src_anchor : String?,
-  dst_anchor : String?,
-) -> Array[@graph.Point] {
-  // If anchors are specified, use them directly
-  let src_point = match src_anchor {
-    Some(anchor) => get_anchor_point(src, anchor, offset)
-    None => {
-      // Default: apply horizontal offset to centers for edge routing
-      let src_center = @graph.Point::new(
-        src.center().get_x() + offset,
-        src.center().get_y(),
-      )
-      let dst_center = @graph.Point::new(
-        dst.center().get_x() + offset,
-        dst.center().get_y(),
-      )
-      find_edge_intersection(src, src_center, dst_center)
-    }
-  }
-  let dst_point = match dst_anchor {
-    Some(anchor) => get_anchor_point(dst, anchor, offset)
-    None => {
-      // Default: apply horizontal offset to centers for edge routing
-      let src_center = @graph.Point::new(
-        src.center().get_x() + offset,
-        src.center().get_y(),
-      )
-      let dst_center = @graph.Point::new(
-        dst.center().get_x() + offset,
-        dst.center().get_y(),
-      )
-      find_edge_intersection(dst, dst_center, src_center)
-    }
-  }
-  [src_point, dst_point]
-}
-
-///|
 /// Get the connection point for a specific anchor position on a box
 fn get_anchor_point(
   box : @graph.Box,
@@ -481,7 +336,7 @@ fn get_anchor_point(
 
 ///|
 /// Find where a line from center to target intersects the box edge
-fn find_edge_intersection(
+pub fn find_edge_intersection(
   box : @graph.Box,
   center : @graph.Point,
   target : @graph.Point,

@@ -76,10 +76,49 @@ pub fn list_themes() -> Array[String] {
 ///|
 /// Render a graph to SVG string
 pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
-  // Calculate bounds
-  let (max_x, max_y) = compute_graph_bounds(graph)
+  // Check if we have layers, scenarios, or steps
+  let has_layers = graph.has_layers()
+  let has_scenarios = graph.has_scenarios()
+  let has_steps = graph.has_steps()
+  // Calculate control bar height
+  let control_height = if has_layers || has_scenarios || has_steps {
+    40.0
+  } else {
+    0.0
+  }
+  // Calculate bounds (include all layers/scenarios/steps for max size)
+  let (base_max_x, base_max_y) = compute_graph_bounds(graph)
+  let mut max_x = base_max_x
+  let mut max_y = base_max_y
+  for layer in graph.layers {
+    let (lx, ly) = compute_graph_bounds(layer.graph)
+    if lx > max_x {
+      max_x = lx
+    }
+    if ly > max_y {
+      max_y = ly
+    }
+  }
+  for scenario in graph.scenarios {
+    let (sx, sy) = compute_graph_bounds(scenario.graph)
+    if sx > max_x {
+      max_x = sx
+    }
+    if sy > max_y {
+      max_y = sy
+    }
+  }
+  for step in graph.steps {
+    let (sx, sy) = compute_graph_bounds(step.graph)
+    if sx > max_x {
+      max_x = sx
+    }
+    if sy > max_y {
+      max_y = sy
+    }
+  }
   let width = max_x + config.padding * 2.0
-  let height = max_y + config.padding * 2.0
+  let height = max_y + config.padding * 2.0 + control_height
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
   // Get theme for special rules
@@ -92,8 +131,20 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   add_sketch_filter(svg, graph)
   // Background
   svg.add(@svg.background(config.background))
-  // Main content group with padding offset
-  svg.open_group("translate(\{config.padding},\{config.padding})")
+  // Render control bar based on what's present
+  if has_layers {
+    render_layer_tabs(svg, graph, config)
+  } else if has_scenarios {
+    render_scenario_selector(svg, graph, config)
+  } else if has_steps {
+    render_step_controls(svg, graph, config)
+  }
+  // Main content group with padding offset (account for control height)
+  let content_y = config.padding + control_height
+  svg.open_group_with_id(
+    "base-layer",
+    "translate(\{config.padding},\{content_y})",
+  )
   // Render edges first (behind objects)
   for edge in graph.edges {
     render_svg_edge(svg, edge, config, theme)
@@ -102,8 +153,451 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   for obj in graph.objects {
     render_svg_object(svg, obj, config, theme)
   }
+  // Render activation boxes for sequence diagrams (on top of lifelines)
+  for ab in graph.activation_boxes {
+    let box = ab.1
+    svg.add(
+      @svg.rect(
+        box.x,
+        box.y,
+        box.width,
+        box.height,
+        fill=config.default_fill,
+        stroke=config.default_stroke,
+        stroke_width=config.default_stroke_width,
+      ),
+    )
+  }
+  // Render sequence diagram notes (using page shape)
+  for note in graph.sequence_notes {
+    let text = note.1
+    let box = note.2
+    render_svg_sequence_note(svg, box, text, config)
+  }
+  // Render sequence diagram fragments (combined fragments like alt, opt, loop)
+  render_svg_sequence_fragments(svg, graph, config)
   svg.close_group()
+  // Render each layer as a hidden group
+  for i, layer in graph.layers {
+    let layer_id = "layer-\{i}"
+    // Hidden by default (display: none)
+    svg.open_group_with_id_style(
+      layer_id,
+      "translate(\{config.padding},\{content_y})",
+      "display: none",
+    )
+    // Render layer edges
+    for edge in layer.graph.edges {
+      render_svg_edge(svg, edge, config, theme)
+    }
+    // Render layer objects
+    for obj in layer.graph.objects {
+      render_svg_object(svg, obj, config, theme)
+    }
+    svg.close_group()
+  }
+  // Render each scenario as a hidden group
+  for i, scenario in graph.scenarios {
+    let scenario_id = "scenario-\{i}"
+    svg.open_group_with_id_style(
+      scenario_id,
+      "translate(\{config.padding},\{content_y})",
+      "display: none",
+    )
+    for edge in scenario.graph.edges {
+      render_svg_edge(svg, edge, config, theme)
+    }
+    for obj in scenario.graph.objects {
+      render_svg_object(svg, obj, config, theme)
+    }
+    svg.close_group()
+  }
+  // Render each step as a hidden group
+  for i, step in graph.steps {
+    let step_id = "step-\{i}"
+    svg.open_group_with_id_style(
+      step_id,
+      "translate(\{config.padding},\{content_y})",
+      "display: none",
+    )
+    for edge in step.graph.edges {
+      render_svg_edge(svg, edge, config, theme)
+    }
+    for obj in step.graph.objects {
+      render_svg_object(svg, obj, config, theme)
+    }
+    svg.close_group()
+  }
+  // Add JavaScript for controls
+  if has_layers {
+    add_layer_switch_script(svg, graph.layers.length())
+  } else if has_scenarios {
+    add_scenario_switch_script(svg, graph.scenarios.length())
+  } else if has_steps {
+    add_step_control_script(svg, graph.steps.length())
+  }
   svg.to_string()
+}
+
+///|
+/// Estimate text width based on font size and character count
+fn estimate_text_width(text : String, font_size : Int) -> Double {
+  // Average character width is approximately 0.6 * font_size for proportional fonts
+  text.length().to_double() * font_size.to_double() * 0.6
+}
+
+///|
+/// Render layer tabs at the top of the SVG
+fn render_layer_tabs(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit {
+  let tab_height = 30.0
+  let tab_y = 5.0
+  let mut tab_x = config.padding
+  let tab_padding = 10.0
+  // Base layer tab (selected by default)
+  let base_width = estimate_text_width("Base", config.font_size) +
+    tab_padding * 2.0
+  svg.add(
+    @svg.rect(
+      tab_x,
+      tab_y,
+      base_width,
+      tab_height,
+      fill=config.default_fill,
+      stroke=config.default_stroke,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      id=Some("tab-base"),
+      class=Some("layer-tab selected"),
+      onclick=Some("switchLayer('base-layer', this)"),
+    ),
+  )
+  svg.add(
+    @svg.text(
+      tab_x + tab_padding,
+      tab_y + tab_height / 2.0 + 5.0,
+      "Base",
+      font_size=config.font_size,
+      font_family=config.font_family,
+    ),
+  )
+  tab_x = tab_x + base_width + 5.0
+  // Layer tabs
+  for i, layer in graph.layers {
+    let layer_width = estimate_text_width(layer.name, config.font_size) +
+      tab_padding * 2.0
+    svg.add(
+      @svg.rect(
+        tab_x,
+        tab_y,
+        layer_width,
+        tab_height,
+        fill="#f0f0f0",
+        stroke=config.default_stroke,
+        stroke_width=1.0,
+        rx=Some(4.0),
+        id=Some("tab-layer-\{i}"),
+        class=Some("layer-tab"),
+        onclick=Some("switchLayer('layer-\{i}', this)"),
+      ),
+    )
+    svg.add(
+      @svg.text(
+        tab_x + tab_padding,
+        tab_y + tab_height / 2.0 + 5.0,
+        layer.name,
+        font_size=config.font_size,
+        font_family=config.font_family,
+      ),
+    )
+    tab_x = tab_x + layer_width + 5.0
+  }
+}
+
+///|
+/// Add JavaScript for layer switching
+fn add_layer_switch_script(svg : @svg.Svg, layer_count : Int) -> Unit {
+  let mut layer_ids = "['base-layer'"
+  for i = 0; i < layer_count; i = i + 1 {
+    layer_ids = layer_ids + ", 'layer-\{i}'"
+  }
+  layer_ids = layer_ids + "]"
+  let script = "function switchLayer(layerId, tabEl) {\n" +
+    "  var layers = " +
+    layer_ids +
+    ";\n" +
+    "  layers.forEach(function(id) {\n" +
+    "    var el = document.getElementById(id);\n" +
+    "    if (el) el.style.display = (id === layerId) ? 'block' : 'none';\n" +
+    "  });\n" +
+    "  var tabs = document.querySelectorAll('.layer-tab');\n" +
+    "  tabs.forEach(function(t) {\n" +
+    "    t.classList.remove('selected');\n" +
+    "    t.style.fill = '#f0f0f0';\n" +
+    "  });\n" +
+    "  if (tabEl) {\n" +
+    "    tabEl.classList.add('selected');\n" +
+    "    tabEl.style.fill = '#ffffff';\n" +
+    "  }\n" +
+    "}"
+  svg.add_script(script)
+}
+
+///|
+/// Render scenario dropdown selector at the top of the SVG
+fn render_scenario_selector(
+  svg : @svg.Svg,
+  graph : Graph,
+  config : SvgConfig,
+) -> Unit {
+  let selector_height = 30.0
+  let selector_y = 5.0
+  let selector_x = config.padding
+  let label_width = estimate_text_width("Scenario:", config.font_size) + 10.0
+  // Label
+  svg.add(
+    @svg.text(
+      selector_x + label_width / 2.0,
+      selector_y + selector_height / 2.0 + 5.0,
+      "Scenario:",
+      font_size=config.font_size,
+      font_family=config.font_family,
+    ),
+  )
+  // Build option list for dropdown appearance
+  let mut options_x = selector_x + label_width + 5.0
+  // Base option (selected by default)
+  let base_width = estimate_text_width("Base", config.font_size) + 20.0
+  svg.add(
+    @svg.rect(
+      options_x,
+      selector_y,
+      base_width,
+      selector_height,
+      fill=config.default_fill,
+      stroke=config.default_stroke,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      id=Some("scenario-base"),
+      class=Some("scenario-btn selected"),
+      onclick=Some("switchScenario('base-layer', this)"),
+    ),
+  )
+  svg.add(
+    @svg.text(
+      options_x + base_width / 2.0,
+      selector_y + selector_height / 2.0 + 5.0,
+      "Base",
+      font_size=config.font_size - 1,
+      font_family=config.font_family,
+    ),
+  )
+  options_x = options_x + base_width + 5.0
+  // Scenario options
+  for i, scenario in graph.scenarios {
+    let btn_width = estimate_text_width(scenario.name, config.font_size) + 20.0
+    svg.add(
+      @svg.rect(
+        options_x,
+        selector_y,
+        btn_width,
+        selector_height,
+        fill="#f0f0f0",
+        stroke=config.default_stroke,
+        stroke_width=1.0,
+        rx=Some(4.0),
+        id=Some("scenario-btn-\{i}"),
+        class=Some("scenario-btn"),
+        onclick=Some("switchScenario('scenario-\{i}', this)"),
+      ),
+    )
+    svg.add(
+      @svg.text(
+        options_x + btn_width / 2.0,
+        selector_y + selector_height / 2.0 + 5.0,
+        scenario.name,
+        font_size=config.font_size - 1,
+        font_family=config.font_family,
+      ),
+    )
+    options_x = options_x + btn_width + 5.0
+  }
+}
+
+///|
+/// Add JavaScript for scenario switching
+fn add_scenario_switch_script(svg : @svg.Svg, scenario_count : Int) -> Unit {
+  let mut scenario_ids = "['base-layer'"
+  for i = 0; i < scenario_count; i = i + 1 {
+    scenario_ids = scenario_ids + ", 'scenario-\{i}'"
+  }
+  scenario_ids = scenario_ids + "]"
+  let script = "function switchScenario(scenarioId, btnEl) {\n" +
+    "  var scenarios = " +
+    scenario_ids +
+    ";\n" +
+    "  scenarios.forEach(function(id) {\n" +
+    "    var el = document.getElementById(id);\n" +
+    "    if (el) el.style.display = (id === scenarioId) ? 'block' : 'none';\n" +
+    "  });\n" +
+    "  var btns = document.querySelectorAll('.scenario-btn');\n" +
+    "  btns.forEach(function(b) {\n" +
+    "    b.classList.remove('selected');\n" +
+    "    b.style.fill = '#f0f0f0';\n" +
+    "  });\n" +
+    "  if (btnEl) {\n" +
+    "    btnEl.classList.add('selected');\n" +
+    "    btnEl.style.fill = '#ffffff';\n" +
+    "  }\n" +
+    "}"
+  svg.add_script(script)
+}
+
+///|
+/// Render step timeline controls at the top of the SVG
+fn render_step_controls(
+  svg : @svg.Svg,
+  graph : Graph,
+  config : SvgConfig,
+) -> Unit {
+  let control_height = 30.0
+  let control_y = 5.0
+  let control_x = config.padding
+  let btn_size = 28.0
+  // Previous button
+  svg.add(
+    @svg.rect(
+      control_x,
+      control_y,
+      btn_size,
+      control_height,
+      fill="#f0f0f0",
+      stroke=config.default_stroke,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      id=Some("step-prev"),
+      onclick=Some("stepPrev()"),
+    ),
+  )
+  svg.add(
+    @svg.text(
+      control_x + btn_size / 2.0,
+      control_y + control_height / 2.0 + 5.0,
+      "<",
+      font_size=config.font_size,
+      font_family=config.font_family,
+    ),
+  )
+  // Play/Pause button
+  svg.add(
+    @svg.rect(
+      control_x + btn_size + 5.0,
+      control_y,
+      btn_size,
+      control_height,
+      fill="#f0f0f0",
+      stroke=config.default_stroke,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      id=Some("step-play"),
+      onclick=Some("stepTogglePlay()"),
+    ),
+  )
+  svg.add(
+    @svg.text(
+      control_x + btn_size + 5.0 + btn_size / 2.0,
+      control_y + control_height / 2.0 + 5.0,
+      ">",
+      font_size=config.font_size,
+      font_family=config.font_family,
+    ),
+  )
+  // Next button
+  svg.add(
+    @svg.rect(
+      control_x + (btn_size + 5.0) * 2.0,
+      control_y,
+      btn_size,
+      control_height,
+      fill="#f0f0f0",
+      stroke=config.default_stroke,
+      stroke_width=1.0,
+      rx=Some(4.0),
+      id=Some("step-next"),
+      onclick=Some("stepNext()"),
+    ),
+  )
+  svg.add(
+    @svg.text(
+      control_x + (btn_size + 5.0) * 2.0 + btn_size / 2.0,
+      control_y + control_height / 2.0 + 5.0,
+      ">",
+      font_size=config.font_size,
+      font_family=config.font_family,
+    ),
+  )
+  // Step indicator (shows current step)
+  let indicator_x = control_x + (btn_size + 5.0) * 3.0 + 10.0
+  svg.add(
+    @svg.text(
+      indicator_x,
+      control_y + control_height / 2.0 + 5.0,
+      "Step: ",
+      font_size=config.font_size,
+      font_family=config.font_family,
+      text_anchor="start",
+    ),
+  )
+  // Step name indicators
+  let step_x = indicator_x + estimate_text_width("Step: ", config.font_size)
+  for i, step in graph.steps {
+    let step_width = estimate_text_width(step.name, config.font_size) + 16.0
+    let style = if i == 0 { "display: block" } else { "display: none" }
+    svg.add(
+      "<text id=\"step-name-\{i}\" x=\"\{step_x}\" y=\"\{control_y + control_height / 2.0 + 5.0}\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" text-anchor=\"start\" style=\"\{style}\">\{@svg.escape_xml(step.name)}</text>",
+    )
+    ignore(step_width)
+  }
+}
+
+///|
+/// Add JavaScript for step animation controls
+fn add_step_control_script(svg : @svg.Svg, step_count : Int) -> Unit {
+  let script = "var currentStep = 0;\n" +
+    "var stepCount = \{step_count};\n" +
+    "var isPlaying = false;\n" +
+    "var playInterval = null;\n" +
+    "function showStep(index) {\n" +
+    "  for (var i = 0; i < stepCount; i++) {\n" +
+    "    var el = document.getElementById('step-' + i);\n" +
+    "    var name = document.getElementById('step-name-' + i);\n" +
+    "    if (el) el.style.display = (i === index) ? 'block' : 'none';\n" +
+    "    if (name) name.style.display = (i === index) ? 'block' : 'none';\n" +
+    "  }\n" +
+    "  var base = document.getElementById('base-layer');\n" +
+    "  if (base) base.style.display = (index < 0) ? 'block' : 'none';\n" +
+    "  currentStep = index;\n" +
+    "}\n" +
+    "function stepNext() {\n" +
+    "  if (currentStep < stepCount - 1) showStep(currentStep + 1);\n" +
+    "}\n" +
+    "function stepPrev() {\n" +
+    "  if (currentStep > 0) showStep(currentStep - 1);\n" +
+    "  else showStep(-1);\n" +
+    "}\n" +
+    "function stepTogglePlay() {\n" +
+    "  if (isPlaying) {\n" +
+    "    clearInterval(playInterval);\n" +
+    "    isPlaying = false;\n" +
+    "  } else {\n" +
+    "    isPlaying = true;\n" +
+    "    playInterval = setInterval(function() {\n" +
+    "      if (currentStep < stepCount - 1) stepNext();\n" +
+    "      else { showStep(-1); }\n" +
+    "    }, 1500);\n" +
+    "  }\n" +
+    "}\n" +
+    "showStep(-1);"
+  svg.add_script(script)
 }
 
 ///|
@@ -295,6 +789,29 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
       None => ()
     }
   }
+  // Include activation boxes (for sequence diagrams)
+  for ab in graph.activation_boxes {
+    let b = ab.1
+    let right = b.x + b.width
+    let bottom = b.y + b.height
+    if right > max_x {
+      max_x = right
+    }
+    if bottom > max_y {
+      max_y = bottom
+    }
+  }
+  // Include edge routes
+  for edge in graph.edges {
+    for point in edge.route {
+      if point.x > max_x {
+        max_x = point.x
+      }
+      if point.y > max_y {
+        max_y = point.y
+      }
+    }
+  }
   (max_x, max_y)
 }
 
@@ -481,8 +998,8 @@ fn render_svg_object(
           fill~,
           stroke~,
           stroke_width~,
-          rx=border_radius,
-          ry=border_radius,
+          rx=Some(border_radius),
+          ry=Some(border_radius),
         ),
       )
   }
@@ -501,8 +1018,8 @@ fn render_svg_object(
         fill="none",
         stroke~,
         stroke_width~,
-        rx=border_radius,
-        ry=border_radius,
+        rx=Some(border_radius),
+        ry=Some(border_radius),
       ),
     )
   }
@@ -781,8 +1298,8 @@ fn render_svg_code(
       fill=code_bg,
       stroke~,
       stroke_width~,
-      rx=4.0,
-      ry=4.0,
+      rx=Some(4.0),
+      ry=Some(4.0),
     ),
   )
   // Split label into lines and render each
@@ -1345,10 +1862,12 @@ fn render_svg_edge(
     Some(w) => w
     None => config.default_stroke_width
   }
-  // Build path - check if curved style is enabled
-  let use_curved = edge.style.curved is Some(true)
+  // Build path - use curves by default unless explicitly disabled
+  // Curves are used for: curved=true (explicit), curved=None (default)
+  // Straight lines only when curved=false (explicit)
+  let use_straight = edge.style.curved is Some(false)
   let pb = @svg.PathBuilder::new()
-  if use_curved && edge.route.length() >= 2 {
+  if not(use_straight) && edge.route.length() >= 2 {
     // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
     build_curved_path(pb, edge.route)
   } else {
@@ -1398,8 +1917,8 @@ fn render_svg_edge(
             label_box.height,
             fill="white",
             stroke="none",
-            rx=3.0,
-            ry=3.0,
+            rx=Some(3.0),
+            ry=Some(3.0),
           ),
         )
         svg.add(
@@ -1428,8 +1947,8 @@ fn render_svg_edge(
                 label_height,
                 fill="white",
                 stroke="none",
-                rx=3.0,
-                ry=3.0,
+                rx=Some(3.0),
+                ry=Some(3.0),
               ),
             )
             svg.add(
@@ -1484,8 +2003,8 @@ fn render_svg_c4_person(
       fill~,
       stroke~,
       stroke_width~,
-      rx=8.0,
-      ry=8.0,
+      rx=Some(8.0),
+      ry=Some(8.0),
     ),
   )
   // Label below the icon
@@ -1523,8 +2042,8 @@ fn render_svg_c4_container(
       fill~,
       stroke~,
       stroke_width~,
-      rx=corner_radius,
-      ry=corner_radius,
+      rx=Some(corner_radius),
+      ry=Some(corner_radius),
     ),
   )
   // Parse label for name and technology
@@ -1554,5 +2073,130 @@ fn render_svg_c4_container(
         extra_style="fill: #666666",
       ),
     )
+  }
+}
+
+///|
+/// Render a sequence diagram note (uses page shape with folded corner)
+fn render_svg_sequence_note(
+  svg : @svg.Svg,
+  box : Box,
+  text : String,
+  config : SvgConfig,
+) -> Unit {
+  let fill = "#ffffc0" // Light yellow for notes
+  let stroke = config.default_stroke
+  let stroke_width = config.default_stroke_width
+  // Use page shape for notes (with folded corner)
+  render_svg_page(svg, box, fill, stroke, stroke_width)
+  // Render note text centered
+  let cx = box.x + box.width / 2.0
+  let cy = box.y + box.height / 2.0
+  svg.add(
+    @svg.text(
+      cx,
+      cy,
+      text,
+      font_family=config.font_family,
+      font_size=config.font_size - 2,
+    ),
+  )
+}
+
+///|
+/// Render sequence diagram fragments (combined fragments like alt, opt, loop)
+fn render_svg_sequence_fragments(
+  svg : @svg.Svg,
+  graph : Graph,
+  config : SvgConfig,
+) -> Unit {
+  for fragment in graph.sequence_fragments {
+    if fragment.bbox is Some(bbox) {
+      render_svg_fragment(svg, fragment, bbox, config)
+    }
+  }
+}
+
+///|
+/// Render a single sequence diagram fragment
+fn render_svg_fragment(
+  svg : @svg.Svg,
+  fragment : SequenceFragment,
+  bbox : Box,
+  config : SvgConfig,
+) -> Unit {
+  let stroke = config.default_stroke
+  let stroke_width = config.default_stroke_width
+  let fill = "none"
+  let label_height = 20.0
+  let label_padding = 8.0
+  // Draw the main fragment frame
+  svg.add(
+    @svg.rect(
+      bbox.x,
+      bbox.y,
+      bbox.width,
+      bbox.height,
+      fill~,
+      stroke~,
+      stroke_width~,
+    ),
+  )
+  // Draw the label box in the top-left corner
+  let label_text = fragment.fragment_type.to_upper()
+  let label_width = estimate_text_width(label_text, config.font_size) +
+    label_padding * 2.0
+  // Pentagon-like shape for the label
+  let pb = @svg.PathBuilder::new()
+    .move_to(bbox.x, bbox.y)
+    .line_to(bbox.x + label_width, bbox.y)
+    .line_to(bbox.x + label_width, bbox.y + label_height - 5.0)
+    .line_to(bbox.x + label_width - 5.0, bbox.y + label_height)
+    .line_to(bbox.x, bbox.y + label_height)
+    .close()
+  svg.add(@svg.path(pb.build(), fill="#f0f0f0", stroke~, stroke_width~))
+  // Fragment type label
+  svg.add(
+    @svg.text(
+      bbox.x + label_padding,
+      bbox.y + label_height / 2.0 + 3.0,
+      label_text,
+      font_size=config.font_size - 1,
+      font_family=config.font_family,
+      text_anchor="start",
+    ),
+  )
+  // Draw condition if present
+  if fragment.condition is Some(cond) {
+    svg.add(
+      @svg.text(
+        bbox.x + label_width + 10.0,
+        bbox.y + label_height / 2.0 + 3.0,
+        cond,
+        font_size=config.font_size - 2,
+        font_family=config.font_family,
+        text_anchor="start",
+      ),
+    )
+  }
+  // Draw operand separators for multi-branch fragments (e.g., alt)
+  for operand in fragment.operands {
+    // Dashed horizontal line
+    svg.add(
+      "<line x1=\"\{bbox.x}\" y1=\"\{operand.separator_y}\" x2=\"\{bbox.x + bbox.width}\" y2=\"\{operand.separator_y}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\" stroke-dasharray=\"5,5\"/>",
+    )
+    // Operand condition label
+    if operand.condition is Some(cond) {
+      svg.add(
+        @svg.text(
+          bbox.x + label_padding,
+          operand.separator_y + 15.0,
+          cond,
+          font_size=config.font_size - 2,
+          font_family=config.font_family,
+          text_anchor="start",
+        ),
+      )
+    }
   }
 }
