@@ -4,6 +4,15 @@
 /// Renders a laid-out Graph to SVG using the pure svg library.
 
 ///|
+/// Render pass for two-layer rendering
+/// Background: shapes, fills, borders (rendered first, behind edges)
+/// Foreground: text, labels, content (rendered last, on top of edges)
+pub enum RenderPass {
+  Background
+  Foreground
+}
+
+///|
 /// SVG rendering configuration
 pub struct SvgConfig {
   /// Padding around the entire diagram
@@ -196,14 +205,20 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
       render_svg_object(svg, obj, graph.objects, config, theme)
     }
   } else {
-    // For regular diagrams: render edges first (behind objects)
+    // For regular diagrams: use three-pass rendering
+    // This ensures edges are visible and not covered by object fills
+    let sorted_objects = sort_objects_by_depth(graph.objects)
+    // Pass 1: Render object backgrounds (shapes, fills, borders)
+    for obj in sorted_objects {
+      render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
+    }
+    // Pass 2: Render edges (on top of backgrounds, behind text)
     for edge in graph.edges {
       render_svg_edge(svg, edge, config, theme)
     }
-    // Render objects sorted by depth (parents before children for proper layering)
-    let sorted_objects = sort_objects_by_depth(graph.objects)
+    // Pass 3: Render object foregrounds (text, labels, content)
     for obj in sorted_objects {
-      render_svg_object(svg, obj, graph.objects, config, theme)
+      render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
     }
   }
   // Render sequence diagram notes (using page shape)
@@ -960,19 +975,25 @@ fn render_svg_object(
   all_objects : Array[Object],
   config : SvgConfig,
   theme : @themes.Theme,
+  pass? : RenderPass = Foreground,
 ) -> Unit {
   guard obj.box is Some(box) else { return }
   // Skip children of sql_table - they are rendered inline within the table
   if is_sql_table_child(obj, all_objects) {
     return
   }
-  // Apply tooltip if present
-  let has_tooltip = obj.tooltip is Some(_)
+  // For background pass, only open groups in foreground pass
+  let is_foreground = match pass {
+    Foreground => true
+    Background => false
+  }
+  // Apply tooltip if present (only in foreground pass to avoid double-wrapping)
+  let has_tooltip = obj.tooltip is Some(_) && is_foreground
   if has_tooltip {
     svg.open_group_with_tooltip(obj.tooltip.unwrap())
   }
-  // Apply sketch filter if enabled
-  let use_sketch = obj.style.sketch is Some(true)
+  // Apply sketch filter if enabled (only in foreground pass)
+  let use_sketch = obj.style.sketch is Some(true) && is_foreground
   if use_sketch {
     svg.open_group_with_filter("sketch-filter")
   }
@@ -1013,29 +1034,71 @@ fn render_svg_object(
   // Render shape based on type
   match obj.get_shape() {
     "text" =>
-      // Text shape - no border, just the label
+      // Text shape - no border, just the label (foreground only)
       ()
     "image" => {
-      // Image shape - render external image
-      if obj.icon is Some(url) {
+      // Image shape - render external image (foreground only)
+      if is_foreground && obj.icon is Some(url) {
         svg.add(
           "<image href=\"\{@svg.escape_xml(url)}\" x=\"\{box.x}\" y=\"\{box.y}\" width=\"\{box.width}\" height=\"\{box.height}\" preserveAspectRatio=\"xMidYMid meet\"/>",
         )
       }
+      if is_foreground {
+        if use_sketch {
+          svg.close_group()
+        }
+        if has_tooltip {
+          svg.close_group()
+        }
+      }
       return // Don't render the default label for image shape
     }
     "code" => {
-      // Code shape - monospace text with dark background
-      render_svg_code(svg, box, obj.label, fill, stroke, stroke_width, config)
+      // Code shape - render in appropriate pass
+      render_svg_code(
+        svg,
+        box,
+        obj.label,
+        fill,
+        stroke,
+        stroke_width,
+        config,
+        pass~,
+      )
+      if is_foreground {
+        if use_sketch {
+          svg.close_group()
+        }
+        if has_tooltip {
+          svg.close_group()
+        }
+      }
       return // Don't render the default label
     }
     "class" => {
-      // UML class shape with sections for name, fields, methods
-      render_svg_class(svg, box, obj.label, fill, stroke, stroke_width, config)
+      // UML class shape - render in appropriate pass
+      render_svg_class(
+        svg,
+        box,
+        obj.label,
+        fill,
+        stroke,
+        stroke_width,
+        config,
+        pass~,
+      )
+      if is_foreground {
+        if use_sketch {
+          svg.close_group()
+        }
+        if has_tooltip {
+          svg.close_group()
+        }
+      }
       return // Don't render the default label
     }
     "sql_table" => {
-      // SQL table shape with header and columns
+      // SQL table shape with header and columns - render in appropriate pass
       render_svg_sql_table(
         svg,
         box,
@@ -1044,227 +1107,284 @@ fn render_svg_object(
         fill,
         stroke,
         stroke_width,
+        pass~,
         config,
       )
+      if is_foreground {
+        if use_sketch {
+          svg.close_group()
+        }
+        if has_tooltip {
+          svg.close_group()
+        }
+      }
       return // Don't render the default label
     }
-    "circle" | "oval" => {
-      let cx = box.x + box.width / 2.0
-      let cy = box.y + box.height / 2.0
-      svg.add(
-        @svg.ellipse(
-          cx,
-          cy,
-          box.width / 2.0,
-          box.height / 2.0,
-          fill~,
-          stroke~,
-          stroke_width~,
-        ),
-      )
-    }
-    "cylinder" => render_svg_cylinder(svg, box, fill, stroke, stroke_width)
-    "diamond" => {
-      let cx = box.x + box.width / 2.0
-      let cy = box.y + box.height / 2.0
-      svg.add(
-        @svg.polygon(
-          [
-            (cx, box.y),
-            (box.x + box.width, cy),
-            (cx, box.y + box.height),
-            (box.x, cy),
-          ],
-          fill~,
-          stroke~,
-          stroke_width~,
-        ),
-      )
-    }
-    "hexagon" => {
-      let inset = box.width * 0.25
-      svg.add(
-        @svg.polygon(
-          [
-            (box.x + inset, box.y),
-            (box.x + box.width - inset, box.y),
-            (box.x + box.width, box.y + box.height / 2.0),
-            (box.x + box.width - inset, box.y + box.height),
-            (box.x + inset, box.y + box.height),
-            (box.x, box.y + box.height / 2.0),
-          ],
-          fill~,
-          stroke~,
-          stroke_width~,
-        ),
-      )
-    }
-    "octagon" => render_svg_octagon(svg, box, fill, stroke, stroke_width)
+    "circle" | "oval" =>
+      if not(is_foreground) {
+        let cx = box.x + box.width / 2.0
+        let cy = box.y + box.height / 2.0
+        svg.add(
+          @svg.ellipse(
+            cx,
+            cy,
+            box.width / 2.0,
+            box.height / 2.0,
+            fill~,
+            stroke~,
+            stroke_width~,
+          ),
+        )
+      }
+    "cylinder" =>
+      if not(is_foreground) {
+        render_svg_cylinder(svg, box, fill, stroke, stroke_width)
+      }
+    "diamond" =>
+      if not(is_foreground) {
+        let cx = box.x + box.width / 2.0
+        let cy = box.y + box.height / 2.0
+        svg.add(
+          @svg.polygon(
+            [
+              (cx, box.y),
+              (box.x + box.width, cy),
+              (cx, box.y + box.height),
+              (box.x, cy),
+            ],
+            fill~,
+            stroke~,
+            stroke_width~,
+          ),
+        )
+      }
+    "hexagon" =>
+      if not(is_foreground) {
+        let inset = box.width * 0.25
+        svg.add(
+          @svg.polygon(
+            [
+              (box.x + inset, box.y),
+              (box.x + box.width - inset, box.y),
+              (box.x + box.width, box.y + box.height / 2.0),
+              (box.x + box.width - inset, box.y + box.height),
+              (box.x + inset, box.y + box.height),
+              (box.x, box.y + box.height / 2.0),
+            ],
+            fill~,
+            stroke~,
+            stroke_width~,
+          ),
+        )
+      }
+    "octagon" =>
+      if not(is_foreground) {
+        render_svg_octagon(svg, box, fill, stroke, stroke_width)
+      }
     "parallelogram" =>
-      render_svg_parallelogram(svg, box, fill, stroke, stroke_width)
-    "person" => render_svg_person(svg, box, fill, stroke, stroke_width)
+      if not(is_foreground) {
+        render_svg_parallelogram(svg, box, fill, stroke, stroke_width)
+      }
+    "person" =>
+      if not(is_foreground) {
+        render_svg_person(svg, box, fill, stroke, stroke_width)
+      }
     "c4_person" =>
-      render_svg_c4_person(
-        svg,
-        box,
-        obj.label,
-        fill,
-        stroke,
-        stroke_width,
-        config,
-      )
+      if not(is_foreground) {
+        render_svg_c4_person(
+          svg,
+          box,
+          obj.label,
+          fill,
+          stroke,
+          stroke_width,
+          config,
+        )
+      }
     "c4_container" =>
-      render_svg_c4_container(
-        svg,
-        box,
-        obj.label,
-        fill,
-        stroke,
-        stroke_width,
-        config,
-      )
-    "cloud" => render_svg_cloud(svg, box, fill, stroke, stroke_width)
-    "document" => render_svg_document(svg, box, fill, stroke, stroke_width)
-    "queue" => render_svg_queue(svg, box, fill, stroke, stroke_width)
+      if not(is_foreground) {
+        render_svg_c4_container(
+          svg,
+          box,
+          obj.label,
+          fill,
+          stroke,
+          stroke_width,
+          config,
+        )
+      }
+    "cloud" =>
+      if not(is_foreground) {
+        render_svg_cloud(svg, box, fill, stroke, stroke_width)
+      }
+    "document" =>
+      if not(is_foreground) {
+        render_svg_document(svg, box, fill, stroke, stroke_width)
+      }
+    "queue" =>
+      if not(is_foreground) {
+        render_svg_queue(svg, box, fill, stroke, stroke_width)
+      }
     "stored_data" =>
-      render_svg_stored_data(svg, box, fill, stroke, stroke_width)
-    "page" => render_svg_page(svg, box, fill, stroke, stroke_width)
-    "package" => render_svg_package(svg, box, fill, stroke, stroke_width)
-    "step" => render_svg_step(svg, box, fill, stroke, stroke_width)
-    "callout" => render_svg_callout(svg, box, fill, stroke, stroke_width)
+      if not(is_foreground) {
+        render_svg_stored_data(svg, box, fill, stroke, stroke_width)
+      }
+    "page" =>
+      if not(is_foreground) {
+        render_svg_page(svg, box, fill, stroke, stroke_width)
+      }
+    "package" =>
+      if not(is_foreground) {
+        render_svg_package(svg, box, fill, stroke, stroke_width)
+      }
+    "step" =>
+      if not(is_foreground) {
+        render_svg_step(svg, box, fill, stroke, stroke_width)
+      }
+    "callout" =>
+      if not(is_foreground) {
+        render_svg_callout(svg, box, fill, stroke, stroke_width)
+      }
     _ =>
+      if not(is_foreground) {
+        svg.add(
+          @svg.rect(
+            box.x,
+            box.y,
+            box.width,
+            box.height,
+            fill~,
+            stroke~,
+            stroke_width~,
+            rx=Some(border_radius),
+            ry=Some(border_radius),
+          ),
+        )
+      }
+  }
+  // Background pass: render decorations (double border, dots)
+  if not(is_foreground) {
+    // Add double border if specified by style or theme rule for outer containers
+    let is_outer_container = obj.is_container() && not(obj.id.contains("."))
+    let needs_double_border = obj.style.double_border is Some(true) ||
+      (theme.rules.outer_container_double_border && is_outer_container)
+    if needs_double_border {
+      let inset = 4.0 // Gap between inner and outer border
       svg.add(
         @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          box.height,
-          fill~,
+          box.x + inset,
+          box.y + inset,
+          box.width - inset * 2.0,
+          box.height - inset * 2.0,
+          fill="none",
           stroke~,
           stroke_width~,
           rx=Some(border_radius),
           ry=Some(border_radius),
         ),
       )
-  }
-  // Add double border if specified by style or theme rule for outer containers
-  let is_outer_container = obj.is_container() && not(obj.id.contains("."))
-  let needs_double_border = obj.style.double_border is Some(true) ||
-    (theme.rules.outer_container_double_border && is_outer_container)
-  if needs_double_border {
-    let inset = 4.0 // Gap between inner and outer border
-    svg.add(
-      @svg.rect(
-        box.x + inset,
-        box.y + inset,
-        box.width - inset * 2.0,
-        box.height - inset * 2.0,
-        fill="none",
-        stroke~,
-        stroke_width~,
-        rx=Some(border_radius),
-        ry=Some(border_radius),
-      ),
-    )
-  }
-  // Add container dots if theme rule is enabled
-  if theme.rules.container_dots && obj.is_container() {
-    let dot_r = 2.5
-    let dot_offset = 8.0
-    // Dots at each corner
-    svg.add(
-      @svg.circle(
-        box.x + dot_offset,
-        box.y + dot_offset,
-        dot_r,
-        fill=stroke,
-        stroke="none",
-      ),
-    )
-    svg.add(
-      @svg.circle(
-        box.x + box.width - dot_offset,
-        box.y + dot_offset,
-        dot_r,
-        fill=stroke,
-        stroke="none",
-      ),
-    )
-    svg.add(
-      @svg.circle(
-        box.x + dot_offset,
-        box.y + box.height - dot_offset,
-        dot_r,
-        fill=stroke,
-        stroke="none",
-      ),
-    )
-    svg.add(
-      @svg.circle(
-        box.x + box.width - dot_offset,
-        box.y + box.height - dot_offset,
-        dot_r,
-        fill=stroke,
-        stroke="none",
-      ),
-    )
-  }
-  // Render icon and label
-  let cx = box.x + box.width / 2.0
-  let cy = box.y + box.height / 2.0
-  // Check if icon is present (non-image shapes)
-  let has_icon = obj.icon is Some(_) && obj.shape_type != Image
-  if has_icon {
-    // Render icon above label
-    let icon_size = 24.0
-    let icon_y = cy - config.font_size.to_double() / 2.0 - icon_size / 2.0
-    let icon_url = obj.icon.unwrap()
-    let icon_x = cx - icon_size / 2.0
-    let icon_top = icon_y - icon_size / 2.0
-    svg.add(
-      "<image href=\"\{@svg.escape_xml(icon_url)}\" x=\"\{icon_x}\" y=\"\{icon_top}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
-    )
-  }
-  // Render label
-  if obj.label != "" {
-    // Use custom font-family if specified in style, otherwise use config
-    let font_family = match obj.style.font_family {
-      Some(f) => f
-      None => config.font_family
     }
-    // Get text-transform if specified, or apply caps_lock rule
-    let text_transform = if theme.rules.caps_lock {
-      "uppercase"
-    } else {
-      match obj.style.text_transform {
-        Some(t) => t
-        None => ""
+    // Add container dots if theme rule is enabled
+    if theme.rules.container_dots && obj.is_container() {
+      let dot_r = 2.5
+      let dot_offset = 8.0
+      // Dots at each corner
+      svg.add(
+        @svg.circle(
+          box.x + dot_offset,
+          box.y + dot_offset,
+          dot_r,
+          fill=stroke,
+          stroke="none",
+        ),
+      )
+      svg.add(
+        @svg.circle(
+          box.x + box.width - dot_offset,
+          box.y + dot_offset,
+          dot_r,
+          fill=stroke,
+          stroke="none",
+        ),
+      )
+      svg.add(
+        @svg.circle(
+          box.x + dot_offset,
+          box.y + box.height - dot_offset,
+          dot_r,
+          fill=stroke,
+          stroke="none",
+        ),
+      )
+      svg.add(
+        @svg.circle(
+          box.x + box.width - dot_offset,
+          box.y + box.height - dot_offset,
+          dot_r,
+          fill=stroke,
+          stroke="none",
+        ),
+      )
+    }
+  }
+  // Foreground pass: render icon and label
+  if is_foreground {
+    let cx = box.x + box.width / 2.0
+    let cy = box.y + box.height / 2.0
+    // Check if icon is present (non-image shapes)
+    let has_icon = obj.icon is Some(_) && obj.shape_type != Image
+    if has_icon {
+      // Render icon above label
+      let icon_size = 24.0
+      let icon_y = cy - config.font_size.to_double() / 2.0 - icon_size / 2.0
+      let icon_url = obj.icon.unwrap()
+      let icon_x = cx - icon_size / 2.0
+      let icon_top = icon_y - icon_size / 2.0
+      svg.add(
+        "<image href=\"\{@svg.escape_xml(icon_url)}\" x=\"\{icon_x}\" y=\"\{icon_top}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+      )
+    }
+    // Render label
+    if obj.label != "" {
+      // Use custom font-family if specified in style, otherwise use config
+      let font_family = match obj.style.font_family {
+        Some(f) => f
+        None => config.font_family
       }
+      // Get text-transform if specified, or apply caps_lock rule
+      let text_transform = if theme.rules.caps_lock {
+        "uppercase"
+      } else {
+        match obj.style.text_transform {
+          Some(t) => t
+          None => ""
+        }
+      }
+      // Adjust label position if icon is present
+      let label_y = if has_icon {
+        cy + 12.0 // Move label down when icon is present
+      } else {
+        cy
+      }
+      svg.add(
+        @svg.styled_text(
+          cx,
+          label_y,
+          obj.label,
+          font_family~,
+          font_size=config.font_size,
+          text_transform~,
+        ),
+      )
     }
-    // Adjust label position if icon is present
-    let label_y = if has_icon {
-      cy + 12.0 // Move label down when icon is present
-    } else {
-      cy
+    // Close sketch filter group if opened
+    if use_sketch {
+      svg.close_group()
     }
-    svg.add(
-      @svg.styled_text(
-        cx,
-        label_y,
-        obj.label,
-        font_family~,
-        font_size=config.font_size,
-        text_transform~,
-      ),
-    )
-  }
-  // Close sketch filter group if opened
-  if use_sketch {
-    svg.close_group()
-  }
-  // Close tooltip group if opened
-  if has_tooltip {
-    svg.close_group()
+    // Close tooltip group if opened
+    if has_tooltip {
+      svg.close_group()
+    }
   }
 }
 
@@ -1277,6 +1397,7 @@ fn render_svg_sql_table(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  pass? : RenderPass = Foreground,
   config : SvgConfig,
 ) -> Unit {
   let line_height = config.font_size.to_double() + 4.0
@@ -1294,58 +1415,73 @@ fn render_svg_sql_table(
   } else {
     box.height
   }
-  // Draw main rectangle
-  svg.add(
-    @svg.rect(
-      box.x,
-      box.y,
-      box.width,
-      actual_height,
-      fill~,
-      stroke~,
-      stroke_width~,
-    ),
-  )
-  // Draw header background
-  svg.add(
-    @svg.rect(
-      box.x,
-      box.y,
-      box.width,
-      header_height,
-      fill=header_bg,
-      stroke~,
-      stroke_width~,
-    ),
-  )
-  // Draw table name (bold, centered, white)
-  let name_y = box.y + header_height / 2.0
-  svg.add(
-    "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{header_fg}\">\{@svg.escape_xml(table_name)}</text>",
-  )
-  // Draw separator line
-  let sep_y = box.y + header_height
-  svg.add(
-    @svg.line(box.x, sep_y, box.x + box.width, sep_y, stroke~, stroke_width~),
-  )
-  // Draw columns from children
-  let mut current_y = box.y + header_height + line_height * 0.7
-  for child in children {
-    // Get short name from child ID (e.g., "users.id" -> "id")
-    let col_name = get_short_name(child.id)
-    // Format: "name: type" where type is the child's label
-    let col_text = if child.label.length() > 0 {
-      col_name + ": " + child.label
-    } else {
-      col_name
+  match pass {
+    Background => {
+      // Background pass: render shapes (rectangles, lines)
+      // Draw main rectangle
+      svg.add(
+        @svg.rect(
+          box.x,
+          box.y,
+          box.width,
+          actual_height,
+          fill~,
+          stroke~,
+          stroke_width~,
+        ),
+      )
+      // Draw header background
+      svg.add(
+        @svg.rect(
+          box.x,
+          box.y,
+          box.width,
+          header_height,
+          fill=header_bg,
+          stroke~,
+          stroke_width~,
+        ),
+      )
+      // Draw separator line
+      let sep_y = box.y + header_height
+      svg.add(
+        @svg.line(
+          box.x,
+          sep_y,
+          box.x + box.width,
+          sep_y,
+          stroke~,
+          stroke_width~,
+        ),
+      )
     }
-    // Check for PK/FK markers in label
-    let is_pk = child.label.contains("PK") || child.label.contains("pk")
-    let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
-    svg.add(
-      "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col_text)}</text>",
-    )
-    current_y = current_y + line_height
+    Foreground => {
+      // Foreground pass: render text (table name, column names)
+      // Draw table name (bold, centered, white)
+      let name_y = box.y + header_height / 2.0
+      svg.add(
+        "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{header_fg}\">\{@svg.escape_xml(table_name)}</text>",
+      )
+      // Draw columns from children
+      let mut current_y = box.y + header_height + line_height * 0.7
+      for child in children {
+        // Get short name from child ID (e.g., "users.id" -> "id")
+        let col_name = get_short_name(child.id)
+        // Format: "name: type" where type is the child's label
+        let col_text = if child.label.length() > 0 {
+          col_name + ": " + child.label
+        } else {
+          col_name
+        }
+        // Check for PK/FK markers in label
+        let is_pk = child.label.contains("PK") || child.label.contains("pk")
+        let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
+        svg.add(
+          "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col_text)}</text>",
+        )
+        current_y = current_y + line_height
+      }
+    }
   }
 }
 
@@ -1378,79 +1514,92 @@ fn render_svg_class(
   stroke : String,
   stroke_width : Double,
   config : SvgConfig,
+  pass? : RenderPass = Foreground,
 ) -> Unit {
   let line_height = config.font_size.to_double() + 4.0
   let padding = 8.0
   // Parse label into sections: name, fields, methods
   let lines = split_lines(label)
   let class_name = if lines.length() > 0 { lines[0] } else { "" }
-  // Draw main rectangle
-  svg.add(
-    @svg.rect(
-      box.x,
-      box.y,
-      box.width,
-      box.height,
-      fill~,
-      stroke~,
-      stroke_width~,
-    ),
-  )
-  // Draw class name (bold, centered)
-  let name_y = box.y + padding + line_height * 0.5
-  svg.add(
-    "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\">\{@svg.escape_xml(class_name)}</text>",
-  )
-  // Draw separator line after class name
-  let sep1_y = box.y + padding + line_height
-  svg.add(
-    @svg.line(box.x, sep1_y, box.x + box.width, sep1_y, stroke~, stroke_width~),
-  )
-  // Collect fields (start with +, -, #) and methods (contain parentheses)
-  let fields : Array[String] = []
-  let methods : Array[String] = []
-  for i = 1; i < lines.length(); i = i + 1 {
-    let line = lines[i]
-    if line.contains("(") {
-      methods.push(line)
-    } else if line.length() > 0 {
-      fields.push(line)
-    }
-  }
-  // Draw fields
-  let mut current_y = sep1_y + line_height * 0.7
-  for field in fields {
-    if current_y < box.y + box.height - padding {
+  match pass {
+    Background =>
+      // Draw main rectangle
       svg.add(
-        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(field)}</text>",
-      )
-      current_y = current_y + line_height
-    }
-  }
-  // Draw separator before methods if there are both fields and methods
-  if fields.length() > 0 && methods.length() > 0 {
-    let sep2_y = sep1_y + (fields.length().to_double() + 0.5) * line_height
-    if sep2_y < box.y + box.height - padding {
-      svg.add(
-        @svg.line(
+        @svg.rect(
           box.x,
-          sep2_y,
-          box.x + box.width,
-          sep2_y,
+          box.y,
+          box.width,
+          box.height,
+          fill~,
           stroke~,
           stroke_width~,
         ),
       )
-      current_y = sep2_y + line_height * 0.7
-    }
-  }
-  // Draw methods
-  for m in methods {
-    if current_y < box.y + box.height - padding {
+    Foreground => {
+      // Draw class name (bold, centered)
+      let name_y = box.y + padding + line_height * 0.5
       svg.add(
-        "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(m)}</text>",
+        "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\">\{@svg.escape_xml(class_name)}</text>",
       )
-      current_y = current_y + line_height
+      // Draw separator line after class name
+      let sep1_y = box.y + padding + line_height
+      svg.add(
+        @svg.line(
+          box.x,
+          sep1_y,
+          box.x + box.width,
+          sep1_y,
+          stroke~,
+          stroke_width~,
+        ),
+      )
+      // Collect fields (start with +, -, #) and methods (contain parentheses)
+      let fields : Array[String] = []
+      let methods : Array[String] = []
+      for i = 1; i < lines.length(); i = i + 1 {
+        let line = lines[i]
+        if line.contains("(") {
+          methods.push(line)
+        } else if line.length() > 0 {
+          fields.push(line)
+        }
+      }
+      // Draw fields
+      let mut current_y = sep1_y + line_height * 0.7
+      for field in fields {
+        if current_y < box.y + box.height - padding {
+          svg.add(
+            "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(field)}</text>",
+          )
+          current_y = current_y + line_height
+        }
+      }
+      // Draw separator before methods if there are both fields and methods
+      if fields.length() > 0 && methods.length() > 0 {
+        let sep2_y = sep1_y + (fields.length().to_double() + 0.5) * line_height
+        if sep2_y < box.y + box.height - padding {
+          svg.add(
+            @svg.line(
+              box.x,
+              sep2_y,
+              box.x + box.width,
+              sep2_y,
+              stroke~,
+              stroke_width~,
+            ),
+          )
+          current_y = sep2_y + line_height * 0.7
+        }
+      }
+      // Draw methods
+      for m in methods {
+        if current_y < box.y + box.height - padding {
+          svg.add(
+            "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(m)}</text>",
+          )
+          current_y = current_y + line_height
+        }
+      }
     }
   }
 }
@@ -1464,35 +1613,41 @@ fn render_svg_code(
   stroke : String,
   stroke_width : Double,
   config : SvgConfig,
+  pass? : RenderPass = Foreground,
 ) -> Unit {
   // Dark background for code block
   let code_bg = "#1e1e1e"
   let code_fg = "#d4d4d4"
   let padding = 8.0
   let line_height = 16.0
-  // Draw background rectangle with rounded corners
-  svg.add(
-    @svg.rect(
-      box.x,
-      box.y,
-      box.width,
-      box.height,
-      fill=code_bg,
-      stroke~,
-      stroke_width~,
-      rx=Some(4.0),
-      ry=Some(4.0),
-    ),
-  )
-  // Split label into lines and render each
-  let lines = split_lines(label)
-  let start_y = box.y + padding + line_height * 0.8
-  for i, line in lines {
-    let y = start_y + i.to_double() * line_height
-    if y < box.y + box.height - padding {
+  match pass {
+    Background =>
+      // Draw background rectangle with rounded corners
       svg.add(
-        "<text x=\"\{box.x + padding}\" y=\"\{y}\" fill=\"\{code_fg}\" font-family=\"'SF Mono', 'Fira Code', 'Consolas', monospace\" font-size=\"\{config.font_size - 2}\" text-anchor=\"start\" dominant-baseline=\"middle\">\{@svg.escape_xml(line)}</text>",
+        @svg.rect(
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          fill=code_bg,
+          stroke~,
+          stroke_width~,
+          rx=Some(4.0),
+          ry=Some(4.0),
+        ),
       )
+    Foreground => {
+      // Split label into lines and render each
+      let lines = split_lines(label)
+      let start_y = box.y + padding + line_height * 0.8
+      for i, line in lines {
+        let y = start_y + i.to_double() * line_height
+        if y < box.y + box.height - padding {
+          svg.add(
+            "<text x=\"\{box.x + padding}\" y=\"\{y}\" fill=\"\{code_fg}\" font-family=\"'SF Mono', 'Fira Code', 'Consolas', monospace\" font-size=\"\{config.font_size - 2}\" text-anchor=\"start\" dominant-baseline=\"middle\">\{@svg.escape_xml(line)}</text>",
+          )
+        }
+      }
     }
   }
 }
@@ -2055,14 +2210,14 @@ fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
     let stop1_y = if mid_y > p0.y { mid_y - r } else { mid_y + r }
     let _ = pb.line_to(p0.x, stop1_y)
     // First arc
-    let sweep1 = if (p1.x > p0.x) == (mid_y > p0.y) { true } else { false }
+    let sweep1 = (p1.x > p0.x) != (mid_y > p0.y)
     let resume1_x = if p1.x > p0.x { p0.x + r } else { p0.x - r }
     let _ = pb.arc_to(r, r, resume1_x, mid_y, large_arc=false, sweep=sweep1)
     // Horizontal segment (stop before second corner)
     let stop2_x = if p1.x > p0.x { p1.x - r } else { p1.x + r }
     let _ = pb.line_to(stop2_x, mid_y)
     // Second arc
-    let sweep2 = if (p1.x > p0.x) == (p1.y > mid_y) { false } else { true }
+    let sweep2 = (p1.x > p0.x) == (p1.y > mid_y)
     let resume2_y = if p1.y > mid_y { mid_y + r } else { mid_y - r }
     let _ = pb.arc_to(r, r, p1.x, resume2_y, large_arc=false, sweep=sweep2)
     // Final vertical segment
@@ -2111,6 +2266,9 @@ fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let _ = pb.line_to(stop_x, stop_y)
       // Determine arc direction (sweep flag)
       // Cross product of directions determines if we turn left or right
+      // In SVG coords (y down), positive cross means counter-clockwise turn
+      // For right→down or left→up turns, we need sweep=true (clockwise)
+      // For down→right or up→left turns, we need sweep=false (counter-clockwise)
       let cross = dx1 * dy2 - dy1 * dx2
       let sweep_flag = cross > 0.0
       // Draw arc to resume point: rx, ry, end-x, end-y, large_arc?, sweep?
@@ -2165,8 +2323,10 @@ fn render_svg_edge(
     build_railroad_path(pb, edge.route)
   }
   // Determine markers based on arrowhead types
-  let marker_end = get_marker_url(edge.dst_arrowhead, false)
+  // For marker-start: reverse direction (arrow points toward destination/into line)
+  // For marker-end: normal direction (arrow points toward destination/away from line)
   let marker_start = get_marker_url(edge.src_arrowhead, true)
+  let marker_end = get_marker_url(edge.dst_arrowhead, false)
   // Use animated path if animated style is enabled
   if edge.style.animated is Some(true) {
     svg.add(

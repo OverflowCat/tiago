@@ -6,7 +6,7 @@
 
 ///|
 /// All supported shape types
-pub enum ShapeType {
+pub(all) enum ShapeType {
   // Basic shapes
   Rectangle
   Square

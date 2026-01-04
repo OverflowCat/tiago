@@ -174,6 +174,10 @@ pub(all) struct Edge {
   mut reference_count : Int
   /// Computed label bounding box (for automatic label positioning)
   mut label_box : Box?
+  /// Source SQL table column index (for field-level connections)
+  mut src_column_index : Int?
+  /// Destination SQL table column index (for field-level connections)
+  mut dst_column_index : Int?
 } derive(Show)
 
 ///|
@@ -481,6 +485,8 @@ pub fn Edge::new(
     z_index: 0,
     reference_count: 1,
     label_box: None,
+    src_column_index: None,
+    dst_column_index: None,
   }
 }
 

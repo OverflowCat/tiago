@@ -269,8 +269,15 @@ fn replace_substitution(
   value : String,
 ) -> String {
   // Build the pattern to replace
-  let pattern_braced = "${" + join_strings(path, ".") + "}"
-  let pattern_simple = "$" + path[0]
+  // Use character concatenation to avoid JS template literal issues
+  let dollar = '$'.to_string()
+  let open_brace = '{'.to_string()
+  let close_brace = '}'.to_string()
+  let pattern_braced = dollar +
+    open_brace +
+    join_strings(path, ".") +
+    close_brace
+  let pattern_simple = dollar + path[0]
   // Try braced pattern first
   match string_replace(s, pattern_braced, value) {
     Some(replaced) => return replaced

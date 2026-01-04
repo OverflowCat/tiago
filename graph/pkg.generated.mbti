@@ -125,6 +125,8 @@ pub(all) struct Edge {
   z_index : Int
   mut reference_count : Int
   mut label_box : Box?
+  mut src_column_index : Int?
+  mut dst_column_index : Int?
 }
 pub fn Edge::add_route_point(Self, Point) -> Unit
 pub fn Edge::arrow_string(Self) -> String
@@ -326,6 +328,11 @@ pub fn Point::zero() -> Self
 pub impl Eq for Point
 pub impl Show for Point
 
+pub enum RenderPass {
+  Background
+  Foreground
+}
+
 pub struct Route {
   style : RouteStyle
   waypoints : Array[Waypoint]
@@ -375,7 +382,7 @@ pub(all) struct SequenceFragment {
 pub fn SequenceFragment::new(String, Int, Int) -> Self
 pub impl Show for SequenceFragment
 
-pub enum ShapeType {
+pub(all) enum ShapeType {
   Rectangle
   Square
   Circle

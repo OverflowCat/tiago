@@ -137,10 +137,10 @@ pub fn layout(
   apply_near_positioning(graph, config)
   // Phase 7: Route edges using virtual node positions
   route_edges_with_virtual(graph, config, virtual_result)
+  // Phase 7.1: Route around obstacles
+  route_around_obstacles(graph)
   // Phase 7.5: Optimize edge routes by removing unnecessary bends
   eliminate_unnecessary_bends(graph)
-  // Phase 7.6: Extend edge endpoints for arrow visibility
-  extend_edge_endpoints(graph)
   // Phase 8: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
   // Phase 9: Layout layers, scenarios, and steps recursively
@@ -166,7 +166,24 @@ fn compute_sizes(graph : @graph.Graph, config : LayoutConfig) -> Unit {
 ///|
 /// Compute size for a single object
 fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
-  if obj.is_container() {
+  // SQL tables use compact row-based sizing (not container spacing)
+  if obj.shape_type == @graph.SqlTable {
+    let line_height = 18.0 // font_size (14) + 4
+    let padding = 8.0
+    let header_height = line_height + padding // 26
+    let columns_height = obj.children.length().to_double() * line_height +
+      padding
+    let total_height = header_height + columns_height
+    // Width: max of label and column labels
+    let mut max_width = estimate_label_width(obj.label, config)
+    for child in obj.children {
+      let col_width = estimate_label_width(child.label, config)
+      if col_width > max_width {
+        max_width = col_width
+      }
+    }
+    obj.set_box(@graph.Box::new(0.0, 0.0, max_width, total_height))
+  } else if obj.is_container() {
     // Container: compute based on children
     let mut max_width = 0.0
     let mut total_height = 0.0
@@ -336,6 +353,49 @@ fn get_anchor_point(
     "bottom-right" => @graph.Point::new(box.x + box.width, box.y + box.height)
     _ => @graph.Point::new(cx, cy) // Default to center
   }
+}
+
+///|
+/// Get parent ID from a dotted field ID (e.g., "users.id" -> "users")
+fn get_parent_id_from_field(id : String) -> String? {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot <= 0 {
+    return None
+  }
+  let buf = StringBuilder::new()
+  for i = 0; i < last_dot; i = i + 1 {
+    buf.write_char(id[i].to_int().unsafe_to_char())
+  }
+  Some(buf.to_string())
+}
+
+///|
+/// Get the anchor point for a SQL table row connection
+/// column_index is 0-based, the y-position matches SVG renderer's calculation
+fn get_sql_row_anchor_point(
+  table_box : @graph.Box,
+  column_index : Int,
+  _num_columns : Int,
+  is_left_side : Bool,
+) -> @graph.Point {
+  // Match the SVG renderer's calculation in svg_render.mbt:
+  // - line_height = font_size + 4.0 (default font_size = 14, so line_height = 18)
+  // - header_height = line_height + padding = 18 + 8 = 26
+  // - row text y = box.y + header_height + line_height * 0.7 + line_height * i
+  // For edge connection, use the same y as the row text (which is centered)
+  let line_height = 18.0 // font_size (14) + 4
+  let header_height = 26.0 // line_height + padding (8)
+  let row_center_y = table_box.y +
+    header_height +
+    line_height * (column_index.to_double() + 0.7)
+  // Return exact edge position - extend_edge_endpoints will add outward extension
+  let x = if is_left_side { table_box.x } else { table_box.x + table_box.width }
+  @graph.Point::new(x, row_center_y)
 }
 
 ///|
@@ -952,193 +1012,441 @@ fn route_edges_with_virtual(
   for edge in graph.edges {
     // Clear existing route
     edge.route.clear()
-    // Find source and destination objects
-    let src_obj = graph.find_object(edge.src_id)
-    let dst_obj = graph.find_object(edge.dst_id)
-    if src_obj is None || dst_obj is None {
-      continue
+    // Handle SQL table field connections specially
+    let (src_box, src_num_cols, dst_box, dst_num_cols) = match
+      get_sql_table_boxes(graph, edge) {
+      Some(boxes) => boxes
+      None => {
+        // Regular edge routing - find source and destination objects
+        let src_obj = graph.find_object(edge.src_id)
+        let dst_obj = graph.find_object(edge.dst_id)
+        if src_obj is None || dst_obj is None {
+          continue
+        }
+        let src = src_obj.unwrap()
+        let dst = dst_obj.unwrap()
+        if src.box is None || dst.box is None {
+          continue
+        }
+        (src.box.unwrap(), 0, dst.box.unwrap(), 0)
+      }
     }
-    let src = src_obj.unwrap()
-    let dst = dst_obj.unwrap()
-    if src.box is None || dst.box is None {
-      continue
-    }
-    let src_box = src.box.unwrap()
-    let dst_box = dst.box.unwrap()
     // Check if this edge has virtual nodes
     if virtual_result.edge_virtual_nodes.get(edge.index) is Some(virtual_ids) &&
       virtual_ids.length() > 0 {
       // Route through virtual nodes
-      route_edge_through_virtual(
-        edge, src_box, dst_box, virtual_ids, virtual_result,
+      route_edge_through_virtual_sql(
+        edge, src_box, dst_box, virtual_ids, virtual_result, src_num_cols, dst_num_cols,
       )
     } else {
       // Direct edge routing
-      route_direct_edge(edge, src_box, dst_box)
+      route_direct_edge_sql(edge, src_box, dst_box, src_num_cols, dst_num_cols)
     }
   }
 }
 
 ///|
-/// Route an edge through virtual nodes using orthogonal (railroad) style
-fn route_edge_through_virtual(
+/// Get SQL table boxes for an edge with column indices
+/// Returns (src_box, src_num_cols, dst_box, dst_num_cols) if applicable
+fn get_sql_table_boxes(
+  graph : @graph.Graph,
+  edge : @graph.Edge,
+) -> (@graph.Box, Int, @graph.Box, Int)? {
+  // Get source box (either from parent table or direct object)
+  let (src_box, src_num_cols) = if edge.src_column_index is Some(_) {
+    // Find parent SQL table
+    let parent_id = match get_parent_id_from_field(edge.src_id) {
+      Some(p) => p
+      None => return None
+    }
+    let parent = match graph.find_object(parent_id) {
+      Some(p) => p
+      None => return None
+    }
+    if parent.box is None {
+      return None
+    }
+    (parent.box.unwrap(), parent.children.length())
+  } else {
+    let obj = match graph.find_object(edge.src_id) {
+      Some(o) => o
+      None => return None
+    }
+    if obj.box is None {
+      return None
+    }
+    (obj.box.unwrap(), 0)
+  }
+  // Get destination box (either from parent table or direct object)
+  let (dst_box, dst_num_cols) = if edge.dst_column_index is Some(_) {
+    // Find parent SQL table
+    let parent_id = match get_parent_id_from_field(edge.dst_id) {
+      Some(p) => p
+      None => return None
+    }
+    let parent = match graph.find_object(parent_id) {
+      Some(p) => p
+      None => return None
+    }
+    if parent.box is None {
+      return None
+    }
+    (parent.box.unwrap(), parent.children.length())
+  } else {
+    let obj = match graph.find_object(edge.dst_id) {
+      Some(o) => o
+      None => return None
+    }
+    if obj.box is None {
+      return None
+    }
+    (obj.box.unwrap(), 0)
+  }
+  Some((src_box, src_num_cols, dst_box, dst_num_cols))
+}
+
+///|
+/// Route an edge through virtual nodes with SQL table support
+fn route_edge_through_virtual_sql(
   edge : @graph.Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
   _virtual_ids : Array[String],
-  virtual_result : VirtualNodeResult,
+  _virtual_result : VirtualNodeResult,
+  src_num_cols : Int,
+  dst_num_cols : Int,
 ) -> Unit {
-  // Get connection points on source
-  let src_anchor = edge.src_anchor.unwrap_or("bottom")
-  let src_point = get_anchor_point(src_box, src_anchor, 0.0)
-  edge.route.push(src_point)
-  // Add waypoints at virtual node positions with orthogonal routing
-  let layer_assignment = virtual_result.layer_assignment
-  let src_layer = layer_assignment.layers.get(edge.src_id).unwrap_or(0)
-  let dst_layer = layer_assignment.layers.get(edge.dst_id).unwrap_or(0)
-  let layer_span = dst_layer - src_layer
-  let dst_anchor = edge.dst_anchor.unwrap_or("top")
-  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
-  if layer_span > 1 {
-    // Calculate intermediate Y positions based on layer
-    let total_height = dst_box.y - (src_box.y + src_box.height)
-    let layer_height = total_height / layer_span.to_double()
-    // For orthogonal routing: go vertical first, then horizontal at mid-y, then vertical to destination
-    // Find the midpoint Y where we'll make the horizontal transition
-    let mid_layer = layer_span / 2
-    let mid_y = src_box.y +
-      src_box.height +
-      layer_height * (mid_layer + 1).to_double()
-    // First vertical segment: stay at src x, go to mid y
-    edge.route.push(@graph.Point::new(src_point.x, mid_y))
-    // Horizontal segment: move from src x to dst x at mid y
-    edge.route.push(@graph.Point::new(dst_point.x, mid_y))
+  // Check if this is an SQL table edge
+  let is_sql_src = edge.src_column_index is Some(_) && src_num_cols > 0
+  let is_sql_dst = edge.dst_column_index is Some(_) && dst_num_cols > 0
+  let is_sql_edge = is_sql_src || is_sql_dst
+
+  // Port constraint approach for SQL tables:
+  // - Source column connections use RIGHT side (srcSide = East)
+  // - Destination column connections use LEFT side (dstSide = West)
+  let src_point = if edge.src_column_index is Some(col_idx) && src_num_cols > 0 {
+    get_sql_row_anchor_point(src_box, col_idx, src_num_cols, false)
   } else {
-    // For direct edges (no virtual nodes but still multi-layer), create orthogonal path
+    let src_anchor = edge.src_anchor.unwrap_or("bottom")
+    get_anchor_point(src_box, src_anchor, 0.0)
+  }
+  let dst_point = if edge.dst_column_index is Some(col_idx) && dst_num_cols > 0 {
+    get_sql_row_anchor_point(dst_box, col_idx, dst_num_cols, true)
+  } else {
+    let dst_anchor = edge.dst_anchor.unwrap_or("top")
+    get_anchor_point(dst_box, dst_anchor, 0.0)
+  }
+  if is_sql_edge {
+    // SQL table edge: simple 4-point zig-zag
+    let mid_x = (src_point.x + dst_point.x) / 2.0
+    edge.route.push(src_point)
+    edge.route.push(@graph.Point::new(mid_x, src_point.y))
+    edge.route.push(@graph.Point::new(mid_x, dst_point.y))
+    edge.route.push(dst_point)
+  } else {
+    // Regular edge: use standard orthogonal routing
+    edge.route.push(src_point)
     let mid_y = (src_point.y + dst_point.y) / 2.0
     if (src_point.x - dst_point.x).abs() > 1.0 {
       edge.route.push(@graph.Point::new(src_point.x, mid_y))
       edge.route.push(@graph.Point::new(dst_point.x, mid_y))
     }
+    edge.route.push(dst_point)
   }
-  // Get connection point on destination
-  edge.route.push(dst_point)
 }
 
 ///|
-/// Route a direct edge (no virtual nodes) using orthogonal (railroad) style
-fn route_direct_edge(
+/// Route a direct edge with SQL table support
+fn route_direct_edge_sql(
   edge : @graph.Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
+  src_num_cols : Int,
+  dst_num_cols : Int,
 ) -> Unit {
-  let src_anchor = edge.src_anchor.unwrap_or("bottom")
-  let dst_anchor = edge.dst_anchor.unwrap_or("top")
-  let src_point = get_anchor_point(src_box, src_anchor, 0.0)
-  let dst_point = get_anchor_point(dst_box, dst_anchor, 0.0)
-  // Create orthogonal route (railroad style)
-  create_orthogonal_route(edge, src_point, dst_point, src_anchor, dst_anchor)
+  // Check if this is an SQL table edge
+  let is_sql_src = edge.src_column_index is Some(_) && src_num_cols > 0
+  let is_sql_dst = edge.dst_column_index is Some(_) && dst_num_cols > 0
+  let is_sql_edge = is_sql_src || is_sql_dst
+
+  // Port constraint approach for SQL tables:
+  // - Source column connections use RIGHT side (srcSide = East)
+  // - Destination column connections use LEFT side (dstSide = West)
+  let src_point = if edge.src_column_index is Some(col_idx) && src_num_cols > 0 {
+    get_sql_row_anchor_point(src_box, col_idx, src_num_cols, false)
+  } else {
+    let src_anchor = edge.src_anchor.unwrap_or("bottom")
+    get_anchor_point(src_box, src_anchor, 0.0)
+  }
+  let dst_point = if edge.dst_column_index is Some(col_idx) && dst_num_cols > 0 {
+    get_sql_row_anchor_point(dst_box, col_idx, dst_num_cols, true)
+  } else {
+    let dst_anchor = edge.dst_anchor.unwrap_or("top")
+    get_anchor_point(dst_box, dst_anchor, 0.0)
+  }
+  if is_sql_edge {
+    // SQL table edge: simple 4-point zig-zag
+    // The railroad path builder will add rounded corners at the 2 turns
+    let mid_x = (src_point.x + dst_point.x) / 2.0
+    edge.route.push(src_point)
+    edge.route.push(@graph.Point::new(mid_x, src_point.y))
+    edge.route.push(@graph.Point::new(mid_x, dst_point.y))
+    edge.route.push(dst_point)
+  } else {
+    // Regular edge: simple 2-point route
+    edge.route.push(src_point)
+    edge.route.push(dst_point)
+  }
+}
+
+// ============================================================================
+// Obstacle Avoidance Routing
+// ============================================================================
+
+///|
+/// Route edges around obstacles (objects that would be intersected)
+fn route_around_obstacles(graph : @graph.Graph) -> Unit {
+  for edge in graph.edges {
+    route_edge_around_obstacles(edge, graph)
+  }
 }
 
 ///|
-/// Create orthogonal (railroad) route between two points
-/// Uses only horizontal and vertical segments
-fn create_orthogonal_route(
+/// Route a single edge around any obstacles it would intersect
+fn route_edge_around_obstacles(
   edge : @graph.Edge,
-  src : @graph.Point,
-  dst : @graph.Point,
-  src_anchor : String,
-  dst_anchor : String,
+  graph : @graph.Graph,
 ) -> Unit {
-  edge.route.push(src)
-  // Determine routing direction based on anchors
-  let is_vertical_start = src_anchor == "top" || src_anchor == "bottom"
-  let is_vertical_end = dst_anchor == "top" || dst_anchor == "bottom"
-  let dx = dst.x - src.x
-  let dy = dst.y - src.y
-  // If points are already aligned, no intermediate points needed
-  if dx.abs() < 1.0 || dy.abs() < 1.0 {
-    edge.route.push(dst)
+  // Skip SQL table field-to-field edges - they use a zig-zag route that
+  // naturally avoids obstacles (the vertical segment is between tables)
+  if edge.src_column_index is Some(_) || edge.dst_column_index is Some(_) {
     return
   }
-  // Choose routing based on anchor directions
-  if is_vertical_start && is_vertical_end {
-    // Both vertical: go vertical halfway, then horizontal, then vertical
-    let mid_y = (src.y + dst.y) / 2.0
-    edge.route.push(@graph.Point::new(src.x, mid_y))
-    edge.route.push(@graph.Point::new(dst.x, mid_y))
-  } else if is_vertical_start {
-    // Start vertical, end horizontal: go vertical first, then horizontal
-    edge.route.push(@graph.Point::new(src.x, dst.y))
-  } else if is_vertical_end {
-    // Start horizontal, end vertical: go horizontal first, then vertical
-    edge.route.push(@graph.Point::new(dst.x, src.y))
-  } else {
-    // Both horizontal: go horizontal halfway, then vertical, then horizontal
-    let mid_x = (src.x + dst.x) / 2.0
-    edge.route.push(@graph.Point::new(mid_x, src.y))
-    edge.route.push(@graph.Point::new(mid_x, dst.y))
-  }
-  edge.route.push(dst)
-}
-
-// ============================================================================
-// Edge Endpoint Extension
-// ============================================================================
-
-///|
-/// Extend edge endpoints slightly past shape borders for arrow visibility
-/// This ensures arrowheads are not obscured by shape boundaries.
-fn extend_edge_endpoints(graph : @graph.Graph) -> Unit {
-  // Extension distance (should match or exceed marker refX)
-  let extension = 2.0
-  for edge in graph.edges {
-    if edge.route.length() < 2 {
-      continue
+  // Process iteratively until no more intersections (max 10 iterations to prevent infinite loops)
+  for _iteration = 0; _iteration < 10; _iteration = _iteration + 1 {
+    let obstacle = find_intersecting_obstacle(edge, graph)
+    if obstacle is None {
+      break // No more obstacles
     }
-    // Extend start point (for source arrows)
-    let first = edge.route[0]
-    let second = edge.route[1]
-    let start_extended = extend_point_away(first, second, extension)
-    edge.route[0] = start_extended
-    // Extend end point (for destination arrows)
-    let last_idx = edge.route.length() - 1
-    let last = edge.route[last_idx]
-    let second_last = edge.route[last_idx - 1]
-    let end_extended = extend_point_away(last, second_last, extension)
-    edge.route[last_idx] = end_extended
+    let obs_box = obstacle.unwrap()
+    // Find which segment intersects and reroute around
+    reroute_around_obstacle(edge, obs_box, graph)
   }
 }
 
 ///|
-/// Extend a point away from another point by a given distance
-/// Preserves orthogonality by extending only along the dominant axis
-fn extend_point_away(
-  point : @graph.Point,
-  away_from : @graph.Point,
-  distance : Double,
-) -> @graph.Point {
-  let dx = point.x - away_from.x
-  let dy = point.y - away_from.y
-  // For orthogonal routing, extend along the dominant axis only
-  if dx.abs() > dy.abs() {
-    // Horizontal segment - extend horizontally
-    let sign = if dx > 0.0 { 1.0 } else { -1.0 }
-    @graph.Point::new(point.x + sign * distance, point.y)
-  } else if dy.abs() > dx.abs() {
-    // Vertical segment - extend vertically
-    let sign = if dy > 0.0 { 1.0 } else { -1.0 }
-    @graph.Point::new(point.x, point.y + sign * distance)
-  } else {
-    // Diagonal or zero - use original logic
-    let len = (dx * dx + dy * dy).sqrt()
-    if len < 0.001 {
-      return point
-    }
-    let nx = dx / len
-    let ny = dy / len
-    @graph.Point::new(point.x + nx * distance, point.y + ny * distance)
+/// Find the first obstacle (object box) that the edge route intersects
+fn find_intersecting_obstacle(
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> @graph.Box? {
+  if edge.route.length() < 2 {
+    return None
   }
+  // For SQL table field connections (e.g., users.id), also skip the parent table
+  let src_parent = get_parent_id_from_field(edge.src_id)
+  let dst_parent = get_parent_id_from_field(edge.dst_id)
+  for i = 0; i < edge.route.length() - 1; i = i + 1 {
+    let p0 = edge.route[i]
+    let p1 = edge.route[i + 1]
+    for obj in graph.objects {
+      // Skip source and destination objects (and their parent tables)
+      if obj.id == edge.src_id || obj.id == edge.dst_id {
+        continue
+      }
+      if src_parent is Some(p) && obj.id == p {
+        continue
+      }
+      if dst_parent is Some(p) && obj.id == p {
+        continue
+      }
+      // Skip objects without boxes
+      guard obj.box is Some(box) else { continue }
+      if line_intersects_box(p0, p1, box) {
+        return Some(box)
+      }
+    }
+  }
+  None
+}
+
+///|
+/// Reroute edge around a specific obstacle
+fn reroute_around_obstacle(
+  edge : @graph.Edge,
+  obstacle : @graph.Box,
+  graph : @graph.Graph,
+) -> Unit {
+  if edge.route.length() < 2 {
+    return
+  }
+  // Find the segment that intersects the obstacle
+  for i = 0; i < edge.route.length() - 1; i = i + 1 {
+    let p0 = edge.route[i]
+    let p1 = edge.route[i + 1]
+    if line_intersects_box(p0, p1, obstacle) {
+      // Calculate bypass routes and pick the best one
+      let bypass = calculate_best_bypass(p0, p1, obstacle, edge, graph)
+      // Replace segment with bypass route
+      let new_route : Array[@graph.Point] = []
+      for j = 0; j <= i; j = j + 1 {
+        new_route.push(edge.route[j])
+      }
+      for pt in bypass {
+        new_route.push(pt)
+      }
+      for j = i + 1; j < edge.route.length(); j = j + 1 {
+        new_route.push(edge.route[j])
+      }
+      edge.route.clear()
+      for pt in new_route {
+        edge.route.push(pt)
+      }
+      return // Only fix one segment per call
+    }
+  }
+}
+
+///|
+/// Calculate the best bypass route around an obstacle
+fn calculate_best_bypass(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  obstacle : @graph.Box,
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> Array[@graph.Point] {
+  let margin = 10.0 // Distance to keep from obstacle
+  let obs_left = obstacle.x - margin
+  let obs_right = obstacle.x + obstacle.width + margin
+  let obs_top = obstacle.y - margin
+  let obs_bottom = obstacle.y + obstacle.height + margin
+  // Try 4 bypass routes and pick the shortest valid one
+  let routes : Array[Array[@graph.Point]] = []
+  // Route 1: Go above obstacle (only if segment is not vertical)
+  // For vertical segments, above/below routes create degenerate points
+  if (p0.x - p1.x).abs() > 1.0 {
+    let route_above = [
+      @graph.Point::new(p0.x, obs_top),
+      @graph.Point::new(p1.x, obs_top),
+    ]
+    routes.push(route_above)
+    // Route 2: Go below obstacle
+    let route_below = [
+      @graph.Point::new(p0.x, obs_bottom),
+      @graph.Point::new(p1.x, obs_bottom),
+    ]
+    routes.push(route_below)
+  }
+  // Route 3: Go left of obstacle (only if segment is not horizontal)
+  if (p0.y - p1.y).abs() > 1.0 {
+    let route_left = [
+      @graph.Point::new(obs_left, p0.y),
+      @graph.Point::new(obs_left, p1.y),
+    ]
+    routes.push(route_left)
+    // Route 4: Go right of obstacle
+    let route_right = [
+      @graph.Point::new(obs_right, p0.y),
+      @graph.Point::new(obs_right, p1.y),
+    ]
+    routes.push(route_right)
+  }
+  // If no valid routes (segment is a point), use above as fallback
+  if routes.is_empty() {
+    routes.push([
+      @graph.Point::new(obs_left, obs_top),
+      @graph.Point::new(obs_right, obs_top),
+    ])
+  }
+  // Find the shortest route that doesn't intersect any obstacles
+  let mut best_route : Array[@graph.Point] = routes[0] // Default to first
+  let mut best_length = 1.0e10
+  for route in routes {
+    // Check if this route is valid (doesn't intersect obstacles)
+    let valid = is_bypass_valid(p0, route, p1, edge, graph)
+    if valid {
+      let length = bypass_length(p0, route, p1)
+      if length < best_length {
+        best_length = length
+        best_route = route
+      }
+    }
+  }
+  best_route
+}
+
+///|
+/// Check if a bypass route is valid (doesn't intersect other obstacles)
+fn is_bypass_valid(
+  start : @graph.Point,
+  bypass : Array[@graph.Point],
+  end : @graph.Point,
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> Bool {
+  // For SQL table field connections, get parent IDs to skip
+  let src_parent = get_parent_id_from_field(edge.src_id)
+  let dst_parent = get_parent_id_from_field(edge.dst_id)
+  // Check segment from start to first bypass point
+  if bypass.length() > 0 {
+    if line_intersects_objects_with_skip(
+        start,
+        bypass[0],
+        graph,
+        edge,
+        src_parent,
+        dst_parent,
+      ) {
+      return false
+    }
+    // Check segments between bypass points
+    for i = 0; i < bypass.length() - 1; i = i + 1 {
+      if line_intersects_objects_with_skip(
+          bypass[i],
+          bypass[i + 1],
+          graph,
+          edge,
+          src_parent,
+          dst_parent,
+        ) {
+        return false
+      }
+    }
+    // Check segment from last bypass point to end
+    if line_intersects_objects_with_skip(
+        bypass[bypass.length() - 1],
+        end,
+        graph,
+        edge,
+        src_parent,
+        dst_parent,
+      ) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// Calculate total length of a bypass route
+fn bypass_length(
+  start : @graph.Point,
+  bypass : Array[@graph.Point],
+  end : @graph.Point,
+) -> Double {
+  let mut total = 0.0
+  let mut prev = start
+  for pt in bypass {
+    let dx = pt.x - prev.x
+    let dy = pt.y - prev.y
+    total = total + (dx * dx + dy * dy).sqrt()
+    prev = pt
+  }
+  let dx = end.x - prev.x
+  let dy = end.y - prev.y
+  total = total + (dx * dx + dy * dy).sqrt()
+  total
 }
 
 // ============================================================================
@@ -1247,6 +1555,36 @@ fn line_intersects_objects(
   for obj in graph.objects {
     // Skip source and destination objects
     if obj.id == edge.src_id || obj.id == edge.dst_id {
+      continue
+    }
+    match obj.box {
+      Some(b) => if line_intersects_box(p0, p1, b) { return true }
+      None => ()
+    }
+  }
+  false
+}
+
+///|
+/// Check if a line segment intersects any object boxes (with parent skip for SQL tables)
+fn line_intersects_objects_with_skip(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  graph : @graph.Graph,
+  edge : @graph.Edge,
+  src_parent : String?,
+  dst_parent : String?,
+) -> Bool {
+  for obj in graph.objects {
+    // Skip source and destination objects
+    if obj.id == edge.src_id || obj.id == edge.dst_id {
+      continue
+    }
+    // Skip parent tables for SQL field connections
+    if src_parent is Some(p) && obj.id == p {
+      continue
+    }
+    if dst_parent is Some(p) && obj.id == p {
       continue
     }
     match obj.box {
