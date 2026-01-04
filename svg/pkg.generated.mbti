@@ -50,7 +50,7 @@ pub fn polygon(Array[(Double, Double)], fill? : String, stroke? : String, stroke
 
 pub fn polyline(Array[(Double, Double)], fill? : String, stroke? : String, stroke_width? : Double) -> String
 
-pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double, ry? : Double) -> String
+pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double?, ry? : Double?, id? : String?, class? : String?, onclick? : String?) -> String
 
 pub fn sketch_filter(String) -> String
 
@@ -80,13 +80,17 @@ pub struct Svg {
   height : Double
   elements : Array[String]
   defs : Array[String]
+  scripts : Array[String]
 }
 pub fn Svg::add(Self, String) -> Unit
 pub fn Svg::add_def(Self, String) -> Unit
+pub fn Svg::add_script(Self, String) -> Unit
 pub fn Svg::close_group(Self) -> Unit
 pub fn Svg::new(Double, Double) -> Self
 pub fn Svg::open_group(Self, String) -> Unit
 pub fn Svg::open_group_with_filter(Self, String) -> Unit
+pub fn Svg::open_group_with_id(Self, String, String) -> Unit
+pub fn Svg::open_group_with_id_style(Self, String, String, String) -> Unit
 pub fn Svg::open_group_with_tooltip(Self, String) -> Unit
 pub fn Svg::to_string(Self) -> String
 pub impl Show for Svg

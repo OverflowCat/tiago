@@ -120,3 +120,146 @@ test "join_strings" {
   let single = ["one"]
   assert_eq(join_strings(single, "."), "one")
 }
+
+///|
+test "deeply nested variable substitution (3+ levels)" {
+  // Test: vars: { a: { b: { c: "deep" } } }, x: ${a.b.c}
+  let ir = Map::new()
+  // Build deeply nested vars structure
+  let vars = Field::simple("vars")
+  let vars_map = Map::new()
+  let a = Field::simple("a")
+  let a_map = Map::new()
+  let b = Field::simple("b")
+  let b_map = Map::new()
+  let c = Field::simple("c")
+  c.primary = Some(Scalar::string("deep"))
+  b_map.add_field(c)
+  b.composite = Some(Composite::Map(b_map))
+  a_map.add_field(b)
+  a.composite = Some(Composite::Map(a_map))
+  vars_map.add_field(a)
+  vars.composite = Some(Composite::Map(vars_map))
+  ir.add_field(vars)
+  // Create field using deeply nested path
+  let x = Field::simple("x")
+  x.primary = Some(Scalar::string("${a.b.c}"))
+  ir.add_field(x)
+  // Resolve substitutions
+  ir.resolve_substitutions()
+  // Check that deeply nested variable was resolved
+  guard ir.get_field("x") is Some(xf) else { fail("expected x field") }
+  assert_eq(xf.primary, Some(Scalar::string("deep")))
+}
+
+///|
+test "variable shadowing in nested scopes" {
+  // Test: vars: { x: "outer" }, container: { vars: { x: "inner" }, label: ${x} }
+  // The inner ${x} should resolve to "inner" (local scope first)
+  let ir = Map::new()
+  // Create outer vars
+  let outer_vars = Field::simple("vars")
+  let outer_vars_map = Map::new()
+  let outer_x = Field::simple("x")
+  outer_x.primary = Some(Scalar::string("outer"))
+  outer_vars_map.add_field(outer_x)
+  outer_vars.composite = Some(Composite::Map(outer_vars_map))
+  ir.add_field(outer_vars)
+  // Create container with inner vars
+  let container = Field::simple("container")
+  let container_map = Map::new()
+  let inner_vars = Field::simple("vars")
+  let inner_vars_map = Map::new()
+  let inner_x = Field::simple("x")
+  inner_x.primary = Some(Scalar::string("inner"))
+  inner_vars_map.add_field(inner_x)
+  inner_vars.composite = Some(Composite::Map(inner_vars_map))
+  container_map.add_field(inner_vars)
+  // Add field that uses ${x}
+  let label = Field::simple("label")
+  label.primary = Some(Scalar::string("${x}"))
+  container_map.add_field(label)
+  container.composite = Some(Composite::Map(container_map))
+  ir.add_field(container)
+  // Resolve substitutions
+  ir.resolve_substitutions()
+  // Check that inner scope's x was used
+  guard ir.get_field("container") is Some(c) else { fail("expected container") }
+  guard c.composite is Some(Composite::Map(cm)) else {
+    fail("expected container map")
+  }
+  guard cm.get_field("label") is Some(lbl) else { fail("expected label") }
+  assert_eq(lbl.primary, Some(Scalar::string("inner")))
+}
+
+///|
+test "outer variable accessible when not shadowed" {
+  // Test: vars: { y: "outer" }, container: { vars: { x: "inner" }, label: ${y} }
+  // ${y} should resolve to "outer" from outer scope
+  let ir = Map::new()
+  // Create outer vars with y
+  let outer_vars = Field::simple("vars")
+  let outer_vars_map = Map::new()
+  let outer_y = Field::simple("y")
+  outer_y.primary = Some(Scalar::string("outer"))
+  outer_vars_map.add_field(outer_y)
+  outer_vars.composite = Some(Composite::Map(outer_vars_map))
+  ir.add_field(outer_vars)
+  // Create container with inner vars (different variable)
+  let container = Field::simple("container")
+  let container_map = Map::new()
+  let inner_vars = Field::simple("vars")
+  let inner_vars_map = Map::new()
+  let inner_x = Field::simple("x")
+  inner_x.primary = Some(Scalar::string("inner"))
+  inner_vars_map.add_field(inner_x)
+  inner_vars.composite = Some(Composite::Map(inner_vars_map))
+  container_map.add_field(inner_vars)
+  // Add field that uses ${y} from outer scope
+  let label = Field::simple("label")
+  label.primary = Some(Scalar::string("${y}"))
+  container_map.add_field(label)
+  container.composite = Some(Composite::Map(container_map))
+  ir.add_field(container)
+  // Resolve substitutions
+  ir.resolve_substitutions()
+  // Check that outer scope's y was used
+  guard ir.get_field("container") is Some(c) else { fail("expected container") }
+  guard c.composite is Some(Composite::Map(cm)) else {
+    fail("expected container map")
+  }
+  guard cm.get_field("label") is Some(lbl) else { fail("expected label") }
+  assert_eq(lbl.primary, Some(Scalar::string("outer")))
+}
+
+///|
+test "edge label substitution" {
+  // Test: vars: { msg: "hello" }, a -> b: ${msg}
+  let ir = Map::new()
+  // Create vars
+  let vars = Field::simple("vars")
+  let vars_map = Map::new()
+  let msg = Field::simple("msg")
+  msg.primary = Some(Scalar::string("hello"))
+  vars_map.add_field(msg)
+  vars.composite = Some(Composite::Map(vars_map))
+  ir.add_field(vars)
+  // Create source and destination nodes
+  let a = Field::simple("a")
+  ir.add_field(a)
+  let b = Field::simple("b")
+  ir.add_field(b)
+  // Create edge with variable in label
+  let edge = Edge::new(
+    EdgeID::new(["a"], ["b"], false, true),
+    Some(Scalar::string("${msg}")),
+    None,
+    [],
+  )
+  ir.add_edge(edge)
+  // Resolve substitutions
+  ir.resolve_substitutions()
+  // Check that edge label was resolved
+  assert_eq(ir.edges.length(), 1)
+  assert_eq(ir.edges[0].primary, Some(Scalar::string("hello")))
+}

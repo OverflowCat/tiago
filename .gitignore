@@ -5,3 +5,4 @@ target/
 web/*.wasm
 web/examples
 TODO.md
+.playwright-mcp

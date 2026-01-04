@@ -24,8 +24,9 @@ fn main {
   // Parse arguments for compile
   let mut ascii_mode = false
   let mut theme_name : String? = None
-  let mut input_path : String? = None
+  let input_files : Array[String] = []
   let mut output_path : String? = None
+  let mut from_stdin = false
   let mut i = 1
   while i < args.length() {
     let arg = args[i]
@@ -44,51 +45,133 @@ fn main {
     } else if arg == "--help" || arg == "-h" {
       print_usage()
       return
-    } else if input_path is None {
-      input_path = Some(arg)
-    } else if output_path is None {
+    } else if arg == "-" || arg == "--stdin" {
+      from_stdin = true
+    } else if arg.has_suffix(".d2") {
+      // Collect all .d2 files
+      input_files.push(arg)
+    } else if input_files.length() == 1 && output_path is None {
+      // Single file with explicit output
       output_path = Some(arg)
     }
     i = i + 1
   }
-  guard input_path is Some(input) else {
+  // Handle stdin mode
+  if from_stdin {
+    let stdin_content = @fs.read_file_to_string("/dev/stdin") catch {
+      e => {
+        println("Error reading from stdin: \{e}")
+        @sys.exit(1)
+        return
+      }
+    }
+    let result = if ascii_mode {
+      compile_d2_ascii(stdin_content, None)
+    } else {
+      compile_d2_svg(stdin_content, theme_name, None)
+    }
+    match result {
+      Ok(output) =>
+        match output_path {
+          Some(path) => write_output(path, output)
+          None => println(output)
+        }
+      Err(e) => {
+        println("Error: \{e}")
+        @sys.exit(1)
+      }
+    }
+    return
+  }
+  // Handle file(s) mode
+  if input_files.length() == 0 {
     print_usage()
     @sys.exit(1)
     return
   }
-  // Read input file
-  let source = @fs.read_file_to_string(input) catch {
+  // Single file: use explicit output or stdout
+  if input_files.length() == 1 {
+    let input = input_files[0]
+    let source = @fs.read_file_to_string(input) catch {
+      e => {
+        println("Error reading file '\{input}': \{e}")
+        @sys.exit(1)
+        return
+      }
+    }
+    let base_path = get_dir_path(input)
+    let result = if ascii_mode {
+      compile_d2_ascii(source, base_path)
+    } else {
+      compile_d2_svg(source, theme_name, base_path)
+    }
+    match result {
+      Ok(output) =>
+        match output_path {
+          Some(path) => write_output(path, output)
+          None => println(output)
+        }
+      Err(e) => {
+        println("Error: \{e}")
+        @sys.exit(1)
+      }
+    }
+    return
+  }
+  // Multiple files: auto-generate output names
+  let ext = if ascii_mode { ".txt" } else { ".svg" }
+  for input in input_files {
+    let source = @fs.read_file_to_string(input) catch {
+      e => {
+        println("Error reading file '\{input}': \{e}")
+        continue
+      }
+    }
+    let base_path = get_dir_path(input)
+    let result = if ascii_mode {
+      compile_d2_ascii(source, base_path)
+    } else {
+      compile_d2_svg(source, theme_name, base_path)
+    }
+    match result {
+      Ok(output) => {
+        let out_path = replace_extension(input, ext)
+        write_output(out_path, output)
+      }
+      Err(e) => println("Error in '\{input}': \{e}")
+    }
+  }
+}
+
+///|
+fn write_output(path : String, content : String) -> Unit {
+  @fs.write_string_to_file(path, content) catch {
     e => {
-      println("Error reading file '\{input}': \{e}")
-      @sys.exit(1)
+      println("Error writing file '\{path}': \{e}")
       return
     }
   }
-  // Compile the diagram
-  let base_path = get_dir_path(input)
-  let result = if ascii_mode {
-    compile_d2_ascii(source, base_path)
-  } else {
-    compile_d2_svg(source, theme_name, base_path)
-  }
-  match result {
-    Ok(output) =>
-      match output_path {
-        Some(path) => {
-          @fs.write_string_to_file(path, output) catch {
-            e => {
-              println("Error writing file '\{path}': \{e}")
-              @sys.exit(1)
-            }
-          }
-          println("Written to \{path}")
-        }
-        None => println(output)
-      }
-    Err(e) => {
-      println("Error: \{e}")
-      @sys.exit(1)
+  println("Written to \{path}")
+}
+
+///|
+fn replace_extension(path : String, new_ext : String) -> String {
+  // Find last dot
+  let mut last_dot = -1
+  for i in 0..<path.length() {
+    if path.code_unit_at(i) == '.'.to_int().to_uint16() {
+      last_dot = i
     }
+  }
+  if last_dot > 0 {
+    // Build base string manually
+    let buf = StringBuilder::new()
+    for j in 0..<last_dot {
+      buf.write_char(path.code_unit_at(j).to_int().unsafe_to_char())
+    }
+    buf.to_string() + new_ext
+  } else {
+    path + new_ext
   }
 }
 
@@ -100,14 +183,20 @@ fn print_usage() -> Unit {
   println("  validate          Check D2 source for errors")
   println("  fmt               Format D2 source file")
   println("")
-  println("Options:")
+  println("Compile Options:")
   println("  --ascii, -a       Output ASCII art instead of SVG")
   println("  --theme, -t NAME  Use specified theme (default: Neutral Default)")
   println("  --list-themes     List all available themes")
+  println("  -, --stdin        Read D2 source from stdin")
   println("  --help, -h        Show this help message")
   println("")
+  println("Format Options (fmt command):")
+  println("  -w, --write       Write formatted output to file in-place")
+  println("  --check           Exit non-zero if file is not formatted (for CI)")
+  println("  --diff            Show diff between original and formatted")
+  println("")
   println("Arguments:")
-  println("  input.d2          D2 diagram source file")
+  println("  input.d2          D2 diagram source file (use - for stdin)")
   println("  output            Output file (default: stdout)")
 }
 
@@ -115,19 +204,25 @@ fn print_usage() -> Unit {
 /// Run the fmt subcommand
 fn run_fmt(args : Array[String]) -> Unit {
   let mut write_in_place = false
+  let mut check_mode = false
+  let mut diff_mode = false
   let mut input_path : String? = None
   let mut i = 2
   while i < args.length() {
     let arg = args[i]
     if arg == "-w" || arg == "--write" {
       write_in_place = true
+    } else if arg == "--check" {
+      check_mode = true
+    } else if arg == "--diff" {
+      diff_mode = true
     } else if input_path is None {
       input_path = Some(arg)
     }
     i = i + 1
   }
   guard input_path is Some(input) else {
-    println("Usage: diago fmt [-w] <input.d2>")
+    println("Usage: diago fmt [-w] [--check] [--diff] <input.d2>")
     @sys.exit(1)
     return
   }
@@ -150,18 +245,101 @@ fn run_fmt(args : Array[String]) -> Unit {
   // Format
   let config = @formatter.FormatConfig::new()
   let formatted = @formatter.format(ast, config)
-  if write_in_place {
-    @fs.write_string_to_file(input, formatted) catch {
-      e => {
-        println("Error writing file '\{input}': \{e}")
-        @sys.exit(1)
-        return
-      }
+  // Handle different modes
+  if check_mode {
+    // Check mode: exit non-zero if not formatted
+    if source != formatted {
+      println("\{input}: not formatted")
+      @sys.exit(1)
+    } else {
+      println("\{input}: OK")
     }
-    println("Formatted \{input}")
+    return
+  }
+  if diff_mode {
+    // Diff mode: show unified diff
+    if source == formatted {
+      println("\{input}: already formatted")
+    } else {
+      // Simple diff output (line-by-line)
+      println("--- \{input}")
+      println("+++ \{input}.formatted")
+      print_diff(source, formatted)
+    }
+    return
+  }
+  if write_in_place {
+    if source == formatted {
+      println("\{input}: already formatted")
+    } else {
+      @fs.write_string_to_file(input, formatted) catch {
+        e => {
+          println("Error writing file '\{input}': \{e}")
+          @sys.exit(1)
+          return
+        }
+      }
+      println("Formatted \{input}")
+    }
   } else {
     println(formatted)
   }
+}
+
+///|
+/// Print a simple unified diff between two strings
+fn print_diff(original : String, formatted : String) -> Unit {
+  let orig_lines = split_lines(original)
+  let fmt_lines = split_lines(formatted)
+  // Simple line-by-line diff (not a full unified diff, but useful)
+  let max_len = if orig_lines.length() > fmt_lines.length() {
+    orig_lines.length()
+  } else {
+    fmt_lines.length()
+  }
+  for i = 0; i < max_len; i = i + 1 {
+    let orig_line = if i < orig_lines.length() {
+      Some(orig_lines[i])
+    } else {
+      None
+    }
+    let fmt_line = if i < fmt_lines.length() {
+      Some(fmt_lines[i])
+    } else {
+      None
+    }
+    match (orig_line, fmt_line) {
+      (Some(o), Some(f)) =>
+        if o != f {
+          println("-\{o}")
+          println("+\{f}")
+        }
+      (Some(o), None) => println("-\{o}")
+      (None, Some(f)) => println("+\{f}")
+      (None, None) => ()
+    }
+  }
+}
+
+///|
+/// Split a string into lines
+fn split_lines(s : String) -> Array[String] {
+  let lines : Array[String] = []
+  let current = StringBuilder::new()
+  for c in s {
+    if c == '\n' {
+      lines.push(current.to_string())
+      current.reset()
+    } else {
+      current.write_char(c)
+    }
+  }
+  // Add last line if non-empty
+  let last = current.to_string()
+  if last.length() > 0 {
+    lines.push(last)
+  }
+  lines
 }
 
 ///|

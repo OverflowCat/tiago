@@ -70,10 +70,14 @@ pub fn assign_coordinates(
       x_coords[node] = median4(v1, v2, v3, v4)
     }
   }
-  // Assign y coordinates based on layer
+  // Compute dynamic rank spacing based on edge labels
+  let rank_spacing = compute_dynamic_rank_spacing(
+    graph, layers, vertical_sep, cycle_result,
+  )
+  // Assign y coordinates based on layer with dynamic spacing
   let y_coords : Map[String, Double] = {}
   let mut y = 0.0
-  for layer in layers {
+  for i, layer in layers {
     // Find max height in this layer
     let mut max_height = 0.0
     for node in layer {
@@ -86,10 +90,72 @@ pub fn assign_coordinates(
     for node in layer {
       y_coords[node] = y
     }
-    // Move to next layer
-    y = y + max_height + vertical_sep
+    // Move to next layer using dynamic spacing
+    let spacing = if i < rank_spacing.length() {
+      rank_spacing[i]
+    } else {
+      vertical_sep
+    }
+    y = y + max_height + spacing
   }
   { x_coords, y_coords }
+}
+
+///|
+/// Compute dynamic rank spacing based on edge label heights
+/// Returns an array of spacing values, one for each layer gap (layers.length()-1 values)
+fn compute_dynamic_rank_spacing(
+  graph : @graph.Graph,
+  layers : Array[Array[String]],
+  base_spacing : Double,
+  cycle_result : CycleBreakResult,
+) -> Array[Double] {
+  if layers.length() <= 1 {
+    return []
+  }
+  // Build layer index for each node
+  let layer_idx : Map[String, Int] = {}
+  for i, layer in layers {
+    for node in layer {
+      layer_idx[node] = i
+    }
+  }
+  // Initialize spacing for each layer gap
+  let spacing : Array[Double] = []
+  for _ in 0..<(layers.length() - 1) {
+    spacing.push(base_spacing)
+  }
+  // Check each edge and increase spacing if label is tall
+  let label_padding = 10.0 // Extra padding around labels
+  let char_height = 14.0 // Approximate character height (font_size)
+  for edge in graph.edges {
+    if edge.label == "" {
+      continue
+    }
+    // Get source and destination layers (handle reversed edges)
+    let src = get_effective_src(edge, cycle_result)
+    let dst = get_effective_dst(edge, cycle_result)
+    let src_layer = layer_idx.get(src).unwrap_or(-1)
+    let dst_layer = layer_idx.get(dst).unwrap_or(-1)
+    if src_layer < 0 || dst_layer < 0 {
+      continue
+    }
+    // Calculate label height (simple estimate)
+    let label_height = char_height + label_padding * 2.0
+    // Apply to all layer gaps this edge spans
+    let min_layer = if src_layer < dst_layer { src_layer } else { dst_layer }
+    let max_layer = if src_layer > dst_layer { src_layer } else { dst_layer }
+    for gap_idx in min_layer..<max_layer {
+      if gap_idx < spacing.length() {
+        // Increase spacing if label needs more room
+        let required = label_height + label_padding
+        if required > spacing[gap_idx] {
+          spacing[gap_idx] = required
+        }
+      }
+    }
+  }
+  spacing
 }
 
 ///|

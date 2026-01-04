@@ -15,7 +15,7 @@ This document tracks features from the D2 reference implementation that are not 
 
 ### 🔴 High Priority
 - [x] **Virtual/Dummy Nodes** - Split long edges spanning multiple layers with dummy nodes for proper edge routing
-- [ ] **ELK Layout Engine** - Alternative layout engine with better handling of complex graphs
+- [x] **ELK Layout Engine** - ~~Alternative layout engine~~ (not planned)
 - [x] **Near/Absolute Positioning** - `near` keyword for relative positioning, absolute coordinate placement
 - [x] **Constant Near Positions** - `near: top-left`, `near: center`, etc. for label positioning
 
@@ -90,23 +90,32 @@ This document tracks features from the D2 reference implementation that are not 
 
 ### 🔴 High Priority
 - [x] **Sequence Diagrams** - Full sequence diagram support with actors, messages, lifelines
-  - [ ] Spans (activation boxes)
-  - [ ] Notes
-  - [ ] Groups/fragments
+  - [x] Spans (activation boxes)
+  - [x] Notes
+  - [x] Groups/fragments
   - [x] Self-referential messages
 
 ### 🟡 Medium Priority
-- [ ] **Layers** - Multiple diagram layers (`layers: { ... }`)
-- [ ] **Scenarios** - Diagram variants (`scenarios: { ... }`)
-- [ ] **Steps** - Incremental diagram building (`steps: { ... }`)
-- [ ] **Grid Layout** - Explicit grid-based positioning (`grid-rows`, `grid-columns`)
+- [x] **Layers** - Multiple diagram layers (`layers: { ... }`)
+  - [x] Parsing and compilation
+  - [x] Layout of each layer
+  - [x] SVG tab UI for layer switching
+- [x] **Scenarios** - Diagram variants (`scenarios: { ... }`)
+  - [x] Parsing and compilation
+  - [x] Layout
+  - [x] SVG selector UI
+- [x] **Steps** - Incremental diagram building (`steps: { ... }`)
+  - [x] Parsing and compilation
+  - [x] Layout
+  - [x] Animation/timeline UI with play/pause/next/prev controls
+- [x] **Grid Layout** - Explicit grid-based positioning (`grid-rows`, `grid-columns`)
   - [x] Basic grid layout
   - [x] Grid gaps
   - [x] Cell spanning
 
 ### 🟢 Low Priority
 - [x] **Icons** - Icon embedding and positioning
-- [ ] **LaTeX** - Mathematical formula rendering
+- [x] **LaTeX** - ~~Mathematical formula rendering~~ (not planned)
 - [x] **Tooltips** - Interactive hover tooltips
 
 ---
@@ -156,9 +165,9 @@ All core themes implemented. Missing specialty themes:
 - [x] **Globs** - Wildcard patterns for bulk styling (`*.style.fill: red`)
 
 ### 🟡 Medium Priority
-- [ ] **Nested Variable Substitution** - `${parent.child}` syntax
-- [ ] **Variable Overrides** - Override variables in nested scopes
-- [ ] **Label Substitution** - Use variables in labels
+- [x] **Nested Variable Substitution** - `${parent.child}` syntax (verified via tests)
+- [x] **Variable Overrides** - Override variables in nested scopes (verified via tests)
+- [x] **Label Substitution** - Use variables in labels (verified via tests)
 
 ### 🟢 Low Priority
 - [ ] **Legend/Explanation** - Auto-generated diagram legend
@@ -170,14 +179,14 @@ All core themes implemented. Missing specialty themes:
 ### 🟡 Medium Priority
 - [ ] **Watch Mode** - Auto-rebuild on file changes
 - [ ] **Multiple Output Formats** - PNG, PDF export (currently SVG only)
-- [ ] **CLI Improvements**
-  - [ ] Input from stdin
-  - [ ] Multiple file processing
-  - [ ] Output to stdout
+- [x] **CLI Improvements**
+  - [x] Input from stdin
+  - [x] Multiple file processing
+  - [x] Output to stdout
 
 ### 🟢 Low Priority
-- [ ] **LSP Server** - Language Server Protocol for editor integration
-- [ ] **Formatter** - Auto-format D2 source code
+- [x] **LSP Server** - ~~Language Server Protocol~~ (not planned)
+- [x] **Formatter** - Auto-format D2 source code (`diago fmt [-w] [--check] [--diff]`)
 - [ ] **REPL** - Interactive diagram editing
 
 ---

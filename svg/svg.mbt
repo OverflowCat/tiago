@@ -10,12 +10,13 @@ pub struct Svg {
   height : Double
   elements : Array[String]
   defs : Array[String]
+  scripts : Array[String]
 }
 
 ///|
 /// Create a new SVG document
 pub fn Svg::new(width : Double, height : Double) -> Svg {
-  { width, height, elements: [], defs: [] }
+  { width, height, elements: [], defs: [], scripts: [] }
 }
 
 ///|
@@ -56,9 +57,47 @@ pub fn Svg::open_group_with_tooltip(self : Svg, tooltip : String) -> Unit {
 }
 
 ///|
+/// Open a group with id and transform
+pub fn Svg::open_group_with_id(
+  self : Svg,
+  id : String,
+  transform : String,
+) -> Unit {
+  self.elements.push(
+    @xml_emit.Element::new("g")
+    .attr("id", id)
+    .attr_if("transform", transform)
+    .open_tag(),
+  )
+}
+
+///|
+/// Open a group with id, transform, and style
+pub fn Svg::open_group_with_id_style(
+  self : Svg,
+  id : String,
+  transform : String,
+  style : String,
+) -> Unit {
+  self.elements.push(
+    @xml_emit.Element::new("g")
+    .attr("id", id)
+    .attr_if("transform", transform)
+    .attr("style", style)
+    .open_tag(),
+  )
+}
+
+///|
 /// Close a group
 pub fn Svg::close_group(self : Svg) -> Unit {
   self.elements.push(@xml_emit.Element::new("g").close_tag())
+}
+
+///|
+/// Add a script element
+pub fn Svg::add_script(self : Svg, script : String) -> Unit {
+  self.scripts.push(script)
 }
 
 ///|
@@ -83,6 +122,15 @@ pub fn Svg::to_string(self : Svg) -> String {
     sb.write_string(elem)
     sb.write_char('\n')
   }
+  // Scripts (at the end, before closing svg)
+  if self.scripts.length() > 0 {
+    sb.write_string("<script type=\"text/javascript\">\n<![CDATA[\n")
+    for script in self.scripts {
+      sb.write_string(script)
+      sb.write_char('\n')
+    }
+    sb.write_string("]]>\n</script>\n")
+  }
   sb.write_string("</svg>")
   sb.to_string()
 }
@@ -106,21 +154,41 @@ pub fn rect(
   fill? : String = "none",
   stroke? : String = "black",
   stroke_width? : Double = 1.0,
-  rx? : Double = 0.0,
-  ry? : Double = 0.0,
+  rx? : Double? = None,
+  ry? : Double? = None,
+  id? : String? = None,
+  class? : String? = None,
+  onclick? : String? = None,
 ) -> String {
-  @xml_emit.Element::new("rect")
-  .attr_num("x", x)
-  .attr_num("y", y)
-  .attr_num("width", width)
-  .attr_num("height", height)
-  .attr_num_if("rx", rx, rx > 0.0)
-  .attr_num_if("ry", ry, ry > 0.0)
-  .attr("fill", fill)
-  .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
-  .self_close()
-  .build()
+  let elem = @xml_emit.Element::new("rect")
+    .attr_num("x", x)
+    .attr_num("y", y)
+    .attr_num("width", width)
+    .attr_num("height", height)
+    .attr("fill", fill)
+    .attr("stroke", stroke)
+    .attr_num("stroke-width", stroke_width)
+  let elem = match rx {
+    Some(v) => elem.attr_num("rx", v)
+    None => elem
+  }
+  let elem = match ry {
+    Some(v) => elem.attr_num("ry", v)
+    None => elem
+  }
+  let elem = match id {
+    Some(v) => elem.attr("id", v)
+    None => elem
+  }
+  let elem = match class {
+    Some(v) => elem.attr("class", v)
+    None => elem
+  }
+  let elem = match onclick {
+    Some(v) => elem.attr("onclick", v)
+    None => elem
+  }
+  elem.self_close().build()
 }
 
 ///|

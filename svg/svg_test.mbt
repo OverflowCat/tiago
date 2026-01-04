@@ -48,7 +48,7 @@ test "rect builder" {
 
 ///|
 test "rect with rounded corners" {
-  let r = rect(0.0, 0.0, 100.0, 50.0, rx=5.0, ry=5.0)
+  let r = rect(0.0, 0.0, 100.0, 50.0, rx=Some(5.0), ry=Some(5.0))
   assert_true(r.contains("rx=\"5\""))
   assert_true(r.contains("ry=\"5\""))
 }
