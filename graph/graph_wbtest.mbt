@@ -575,7 +575,9 @@ test "compile sequence diagram with root-level shape" {
   )
   ir.add_field(shape_field)
   // Add actors
-  ir.add_field(@ir.Field::new("alice", Some(@ir.Scalar::string("Alice")), None, []))
+  ir.add_field(
+    @ir.Field::new("alice", Some(@ir.Scalar::string("Alice")), None, []),
+  )
   ir.add_field(@ir.Field::new("bob", Some(@ir.Scalar::string("Bob")), None, []))
   // Compile
   let graph = compile("test", ir)

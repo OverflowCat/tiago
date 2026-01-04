@@ -87,38 +87,66 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     0.0
   }
   // Calculate bounds (include all layers/scenarios/steps for max size)
-  let (base_max_x, base_max_y) = compute_graph_bounds(graph)
+  let (base_min_x, base_min_y, base_max_x, base_max_y) = compute_graph_bounds(
+    graph,
+  )
+  let mut min_x = base_min_x
+  let mut min_y = base_min_y
   let mut max_x = base_max_x
   let mut max_y = base_max_y
   for layer in graph.layers {
-    let (lx, ly) = compute_graph_bounds(layer.graph)
-    if lx > max_x {
-      max_x = lx
+    let (lmin_x, lmin_y, lmax_x, lmax_y) = compute_graph_bounds(layer.graph)
+    if lmin_x < min_x {
+      min_x = lmin_x
     }
-    if ly > max_y {
-      max_y = ly
+    if lmin_y < min_y {
+      min_y = lmin_y
+    }
+    if lmax_x > max_x {
+      max_x = lmax_x
+    }
+    if lmax_y > max_y {
+      max_y = lmax_y
     }
   }
   for scenario in graph.scenarios {
-    let (sx, sy) = compute_graph_bounds(scenario.graph)
-    if sx > max_x {
-      max_x = sx
+    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(scenario.graph)
+    if smin_x < min_x {
+      min_x = smin_x
     }
-    if sy > max_y {
-      max_y = sy
+    if smin_y < min_y {
+      min_y = smin_y
+    }
+    if smax_x > max_x {
+      max_x = smax_x
+    }
+    if smax_y > max_y {
+      max_y = smax_y
     }
   }
   for step in graph.steps {
-    let (sx, sy) = compute_graph_bounds(step.graph)
-    if sx > max_x {
-      max_x = sx
+    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(step.graph)
+    if smin_x < min_x {
+      min_x = smin_x
     }
-    if sy > max_y {
-      max_y = sy
+    if smin_y < min_y {
+      min_y = smin_y
+    }
+    if smax_x > max_x {
+      max_x = smax_x
+    }
+    if smax_y > max_y {
+      max_y = smax_y
     }
   }
-  let width = max_x + config.padding * 2.0
-  let height = max_y + config.padding * 2.0 + control_height
+  // Calculate dimensions accounting for negative coordinates
+  let content_width = max_x - min_x
+  let content_height = max_y - min_y
+  let width = content_width + config.padding * 2.0
+  let height = content_height + config.padding * 2.0 + control_height
+  // Calculate offset to shift content into positive coordinate space
+  let offset_x = config.padding - min_x
+  let offset_y = config.padding + control_height - min_y
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
   // Get theme for special rules
@@ -139,12 +167,8 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   } else if has_steps {
     render_step_controls(svg, graph, config)
   }
-  // Main content group with padding offset (account for control height)
-  let content_y = config.padding + control_height
-  svg.open_group_with_id(
-    "base-layer",
-    "translate(\{config.padding},\{content_y})",
-  )
+  // Main content group with offset to shift content into positive coordinate space
+  svg.open_group_with_id("base-layer", "translate(\{offset_x},\{offset_y})")
   // Check if this is a sequence diagram (has activation boxes)
   let is_sequence = graph.activation_boxes.length() > 0
   if is_sequence {
@@ -197,7 +221,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     // Hidden by default (display: none)
     svg.open_group_with_id_style(
       layer_id,
-      "translate(\{config.padding},\{content_y})",
+      "translate(\{offset_x},\{offset_y})",
       "display: none",
     )
     // Render layer edges
@@ -216,7 +240,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     let scenario_id = "scenario-\{i}"
     svg.open_group_with_id_style(
       scenario_id,
-      "translate(\{config.padding},\{content_y})",
+      "translate(\{offset_x},\{offset_y})",
       "display: none",
     )
     for edge in scenario.graph.edges {
@@ -234,7 +258,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
     let step_id = "step-\{i}"
     svg.open_group_with_id_style(
       step_id,
-      "translate(\{config.padding},\{content_y})",
+      "translate(\{offset_x},\{offset_y})",
       "display: none",
     )
     for edge in step.graph.edges {
@@ -790,19 +814,38 @@ fn get_marker_url(arrowhead : String, reverse : Bool) -> String {
 }
 
 ///|
-fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
+fn compute_graph_bounds(graph : Graph) -> (Double, Double, Double, Double) {
+  let mut min_x = 0.0
+  let mut min_y = 0.0
   let mut max_x = 0.0
   let mut max_y = 0.0
+  let mut first = true
   for obj in graph.objects {
     match obj.box {
       Some(b) => {
+        let left = b.x
+        let top = b.y
         let right = b.x + b.width
         let bottom = b.y + b.height
-        if right > max_x {
+        if first {
+          min_x = left
+          min_y = top
           max_x = right
-        }
-        if bottom > max_y {
           max_y = bottom
+          first = false
+        } else {
+          if left < min_x {
+            min_x = left
+          }
+          if top < min_y {
+            min_y = top
+          }
+          if right > max_x {
+            max_x = right
+          }
+          if bottom > max_y {
+            max_y = bottom
+          }
         }
       }
       None => ()
@@ -811,27 +854,57 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double) {
   // Include activation boxes (for sequence diagrams)
   for ab in graph.activation_boxes {
     let b = ab.1
+    let left = b.x
+    let top = b.y
     let right = b.x + b.width
     let bottom = b.y + b.height
-    if right > max_x {
+    if first {
+      min_x = left
+      min_y = top
       max_x = right
-    }
-    if bottom > max_y {
       max_y = bottom
+      first = false
+    } else {
+      if left < min_x {
+        min_x = left
+      }
+      if top < min_y {
+        min_y = top
+      }
+      if right > max_x {
+        max_x = right
+      }
+      if bottom > max_y {
+        max_y = bottom
+      }
     }
   }
   // Include edge routes
   for edge in graph.edges {
     for point in edge.route {
-      if point.x > max_x {
+      if first {
+        min_x = point.x
+        min_y = point.y
         max_x = point.x
-      }
-      if point.y > max_y {
         max_y = point.y
+        first = false
+      } else {
+        if point.x < min_x {
+          min_x = point.x
+        }
+        if point.y < min_y {
+          min_y = point.y
+        }
+        if point.x > max_x {
+          max_x = point.x
+        }
+        if point.y > max_y {
+          max_y = point.y
+        }
       }
     }
   }
-  (max_x, max_y)
+  (min_x, min_y, max_x, max_y)
 }
 
 ///|
@@ -1854,8 +1927,10 @@ fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let cx = mx - dy / len * offset
       let cy = my + dx / len * offset
       let _ = pb.quad_to(cx, cy, p1.x, p1.y)
+
     } else {
       let _ = pb.line_to(p1.x, p1.y)
+
     }
     return
   }
