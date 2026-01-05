@@ -178,6 +178,10 @@ pub(all) struct Edge {
   mut src_column_index : Int?
   /// Destination SQL table column index (for field-level connections)
   mut dst_column_index : Int?
+  /// Assigned source port (computed during port assignment phase)
+  mut src_port : Port?
+  /// Assigned destination port (computed during port assignment phase)
+  mut dst_port : Port?
 } derive(Show)
 
 ///|
@@ -194,6 +198,26 @@ pub(all) struct Box {
 pub(all) struct Point {
   x : Double
   y : Double
+} derive(Eq, Show)
+
+///|
+/// Port side for edge connections
+pub(all) enum PortSide {
+  Top
+  Bottom
+  Left
+  Right
+} derive(Eq, Show)
+
+///|
+/// A port on a node where an edge connects
+pub(all) struct Port {
+  /// Which side of the node this port is on
+  side : PortSide
+  /// Position along the side (0.0 = start, 1.0 = end)
+  position : Double
+  /// Computed absolute coordinates (filled after assignment)
+  mut point : Point?
 } derive(Eq, Show)
 
 ///|
@@ -487,6 +511,8 @@ pub fn Edge::new(
     label_box: None,
     src_column_index: None,
     dst_column_index: None,
+    src_port: None,
+    dst_port: None,
   }
 }
 
@@ -508,6 +534,53 @@ pub fn Point::new(x : Double, y : Double) -> Point {
 ///|
 pub fn Point::zero() -> Point {
   { x: 0.0, y: 0.0 }
+}
+
+///|
+pub fn Port::new(side : PortSide, position : Double) -> Port {
+  { side, position, point: None }
+}
+
+///|
+/// Get the port's side
+pub fn Port::get_side(self : Port) -> PortSide {
+  self.side
+}
+
+///|
+/// Get the port's position along the side (0.0 to 1.0)
+pub fn Port::get_position(self : Port) -> Double {
+  self.position
+}
+
+///|
+/// Get the port's absolute point coordinates
+pub fn Port::get_point(self : Port) -> Point? {
+  self.point
+}
+
+///|
+/// Set the port's absolute point coordinates
+pub fn Port::set_point(self : Port, p : Point) -> Unit {
+  self.point = Some(p)
+}
+
+///|
+/// Check if this port connects vertically (top or bottom side)
+pub fn Port::is_vertical(self : Port) -> Bool {
+  match self.side {
+    Top | Bottom => true
+    Left | Right => false
+  }
+}
+
+///|
+/// Check if this port connects horizontally (left or right side)
+pub fn Port::is_horizontal(self : Port) -> Bool {
+  match self.side {
+    Left | Right => true
+    Top | Bottom => false
+  }
 }
 
 ///|

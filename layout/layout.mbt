@@ -135,16 +135,26 @@ pub fn layout(
   )
   // Phase 6: Apply near positioning
   apply_near_positioning(graph, config)
-  // Phase 7: Route edges using virtual node positions
-  route_edges_with_virtual(graph, config, virtual_result)
+  // Phase 6.5: Assign ports for perpendicular edge connections
+  assign_ports(graph, crossing_result.ordered_layers, config)
+  // Phase 7: Route edges using assigned ports (or fallback to virtual routing)
+  route_edges_with_ports(graph, config, virtual_result)
   // Phase 7.1: Route around obstacles
   route_around_obstacles(graph)
+  // Note: fix_perpendicularity disabled - route_around_obstacles can break
+  // perpendicularity in ways that are hard to fix without introducing other issues
+  // like redundant waypoints or serpentine routing.
   // Phase 7.2: Normalize coordinates to non-negative
   normalize_coordinates(graph)
   // Phase 7.5: Optimize edge routes by removing unnecessary bends
   eliminate_unnecessary_bends(graph)
   // Phase 7.6: Separate parallel edges (bidirectional duplicates)
   separate_parallel_edges(graph)
+  // Phase 7.7: Final perpendicularity fix (after all route modifications)
+  // This ensures first/last segments are perpendicular to node boundaries
+  fix_perpendicularity(graph)
+  // Phase 7.8: Clean up any redundant waypoints introduced by perpendicularity fix
+  eliminate_unnecessary_bends(graph)
   // Note: approach direction correction removed - handled upstream in routing functions
   // Phase 8: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)

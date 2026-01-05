@@ -10,6 +10,7 @@
 - [x] text_fits_container             # labels must not be clipped
 - [x] deterministic_output            # same input must produce same output
 - [ ] text_no_overlap                 # texts mut not overlap
+- [ ] edge_perpendicular_to_node_boundary   # edges must connect to nodes at right angles (port-based routing creates perpendicular routes, but route_around_obstacles post-processing can break them)
 
 # High priority
 
@@ -23,7 +24,7 @@
 - [x] never_use_diagonal_edges        # all edge segments must be orthogonal (horizontal or vertical)
 - [x] parallel_edges_no_overlap       # merged with parallel_edges_distinguishable (now checks full routes)
 - [x] arrowhead_direction_matches_node_position   # arrow points toward destination node (algorithm fixed!)
-- [x] edge_connects_to_correct_side              # edge connects to correct side based on approach direction (algorithm fixed!)
+- [x] edge_connects_to_correct_side   # edge connects to correct side based on approach direction (algorithm fixed!)
 
 # Also implemented
 
@@ -37,6 +38,7 @@
 
 - [ ] self_loop_visible               # Self-loops removed during cycle breaking, not re-routed
 - [ ] parallel_edges_distinguishable  # Parallel edge offset not working in all cases (now checks full routes, not just midpoints)
+- [ ] edge_perpendicular_to_node_boundary  # Port-based routing (Phase 6.5) creates perpendicular routes, but route_around_obstacles modifies routes to avoid obstacles, which can break perpendicularity
 
 # Smoke test
 

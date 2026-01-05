@@ -60,12 +60,24 @@ fn gen_dense_graph() -> @qc.Gen[@graph.Graph] {
 }
 
 ///|
-/// Generate a graph with nested containers
+/// Generate a graph with nested containers and top-level nodes
+/// This mimics real-world cases like: user -> aws.cdn where user is outside the container
 fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
   @qc.Gen::new(fn(size, state) {
     let graph = @graph.Graph::new("test")
-    // Generate 1-3 containers
-    let container_count = @qc.int_range(1, 3).run(size, state)
+    // Generate 1-2 top-level standalone nodes (like "user" in containers.d2)
+    let top_level_count = @qc.int_range(1, 3).run(size, state)
+    let top_level_nodes : Array[@graph.Object] = []
+    for i in 0..<top_level_count {
+      let label_len = @qc.int_range(1, 6).run(size, state)
+      let label = @proptest.string_of_length(label_len).run(size, state)
+      let node = @graph.Object::with_label("toplevel_" + i.to_string(), label)
+      graph.add_object(node)
+      top_level_nodes.push(node)
+    }
+    // Generate 1-2 containers with children
+    let container_count = @qc.int_range(1, 2).run(size, state)
+    let all_children : Array[@graph.Object] = []
     for i in 0..<container_count {
       let label_len = @qc.int_range(1, 8).run(size, state)
       let label = @proptest.string_of_length(label_len).run(size, state)
@@ -73,8 +85,8 @@ fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
         "container_" + i.to_string(),
         label,
       )
-      // Add 1-4 children to each container
-      let child_count = @qc.int_range(1, 4).run(size, state)
+      // Add 2-4 children to each container
+      let child_count = @qc.int_range(2, 4).run(size, state)
       for j in 0..<child_count {
         let child_label_len = @qc.int_range(1, 6).run(size, state)
         let child_label = @proptest.string_of_length(child_label_len).run(
@@ -85,10 +97,33 @@ fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
           child_label,
         )
         container.add_child(child)
+        all_children.push(child)
       }
       graph.add_object(container)
     }
-    // Add some edges between children of different containers
+    // CRITICAL: Add edges from top-level nodes to children inside containers
+    // This is the case that was missing: user -> aws.cdn
+    for top_node in top_level_nodes {
+      if all_children.length() > 0 {
+        // 70% chance to connect to a child inside a container
+        let should_connect = @qc.int_range(0, 100).run(size, state)
+        if should_connect < 70 {
+          let target_idx = @qc.int_range(0, all_children.length()).run(
+            size, state,
+          )
+          let target = all_children[target_idx]
+          let edge = @graph.Edge::new(
+            graph.edges.length(),
+            top_node.id,
+            target.id,
+            false,
+            true,
+          )
+          graph.add_edge(edge)
+        }
+      }
+    }
+    // Also add some edges between children of different containers
     let objects = graph.get_objects()
     for obj in objects {
       for child in obj.children {
@@ -1220,6 +1255,82 @@ pub fn never_use_diagonal_edges(graph : @graph.Graph) -> Bool {
 }
 
 ///|
+/// Check that edge segments at node boundaries are perpendicular to the boundary
+/// - Horizontal segments (dx != 0, dy ≈ 0) must connect to LEFT or RIGHT side
+/// - Vertical segments (dx ≈ 0, dy != 0) must connect to TOP or BOTTOM side
+/// - Diagonal segments (both dx and dy significant) are NOT perpendicular - always fail
+pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
+  let tolerance = 2.0
+  for edge in graph.get_edges() {
+    if edge.route.length() < 2 {
+      continue
+    }
+    // Check first segment against source node
+    let src_obj = graph.find_object(edge.src_id)
+    if src_obj is Some(obj) {
+      if obj.box is Some(box) {
+        let p0 = edge.route[0]
+        let p1 = edge.route[1]
+        let dx = (p1.x - p0.x).abs()
+        let dy = (p1.y - p0.y).abs()
+        let is_horizontal = dy < tolerance && dx > tolerance
+        let is_vertical = dx < tolerance && dy > tolerance
+        let is_diagonal = dx > tolerance && dy > tolerance
+        // Diagonal segments are NEVER perpendicular
+        if is_diagonal {
+          return false
+        }
+        // Check which side p0 is on
+        let on_left = (p0.x - box.x).abs() < tolerance
+        let on_right = (p0.x - (box.x + box.width)).abs() < tolerance
+        let on_top = (p0.y - box.y).abs() < tolerance
+        let on_bottom = (p0.y - (box.y + box.height)).abs() < tolerance
+        // Horizontal segment must connect to left/right side
+        if is_horizontal && !(on_left || on_right) {
+          return false
+        }
+        // Vertical segment must connect to top/bottom side
+        if is_vertical && !(on_top || on_bottom) {
+          return false
+        }
+      }
+    }
+    // Check last segment against destination node
+    let dst_obj = graph.find_object(edge.dst_id)
+    if dst_obj is Some(obj) {
+      if obj.box is Some(box) {
+        let last_idx = edge.route.length() - 1
+        let p0 = edge.route[last_idx - 1]
+        let p1 = edge.route[last_idx]
+        let dx = (p1.x - p0.x).abs()
+        let dy = (p1.y - p0.y).abs()
+        let is_horizontal = dy < tolerance && dx > tolerance
+        let is_vertical = dx < tolerance && dy > tolerance
+        let is_diagonal = dx > tolerance && dy > tolerance
+        // Diagonal segments are NEVER perpendicular
+        if is_diagonal {
+          return false
+        }
+        // Check which side p1 (endpoint) is on
+        let on_left = (p1.x - box.x).abs() < tolerance
+        let on_right = (p1.x - (box.x + box.width)).abs() < tolerance
+        let on_top = (p1.y - box.y).abs() < tolerance
+        let on_bottom = (p1.y - (box.y + box.height)).abs() < tolerance
+        // Horizontal segment must connect to left/right side
+        if is_horizontal && !(on_left || on_right) {
+          return false
+        }
+        // Vertical segment must connect to top/bottom side
+        if is_vertical && !(on_top || on_bottom) {
+          return false
+        }
+      }
+    }
+  }
+  true
+}
+
+///|
 /// Check that arrowhead direction matches the relative position of target node
 /// The last segment of the edge route should point toward the destination node
 pub fn arrowhead_direction_matches_node_position(graph : @graph.Graph) -> Bool {
@@ -1766,6 +1877,30 @@ test "property: cluster contains all members" {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       cluster_contains_members(graph)
+    }),
+    max_success=50,
+  )
+}
+
+///|
+test "property: edge perpendicular to node boundary" {
+  @qc.quick_check(
+    @qc.forall(gen_simple_graph(), fn(graph : @graph.Graph) {
+      let config = LayoutConfig::new()
+      layout(graph, config, Direction::Down)
+      edge_perpendicular_to_node_boundary(graph)
+    }),
+    max_success=50,
+  )
+}
+
+///|
+test "property: edge perpendicular to node boundary (containers)" {
+  @qc.quick_check(
+    @qc.forall(gen_graph_with_containers(), fn(graph : @graph.Graph) {
+      let config = LayoutConfig::new()
+      layout(graph, config, Direction::Down)
+      edge_perpendicular_to_node_boundary(graph)
     }),
     max_success=50,
   )

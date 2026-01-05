@@ -1,6 +1,7 @@
 // ============================================================================
 // Parallel Edge Separation
 // ============================================================================
+// NOTE: Uses port_side_to_side_string from routing.mbt (same package)
 
 ///|
 /// Ensure parallel edges (including bidirectional pairs) don't overlap.
@@ -232,6 +233,8 @@ fn clip_obstacle_away_from_box(
 }
 
 ///|
+/// Route edge with fixed ports using maze router, with extra obstacles
+/// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn route_fixed_ports_maze_with_extra_obstacles(
   edge : @graph.Edge,
   graph : @graph.Graph,
@@ -249,8 +252,16 @@ fn route_fixed_ports_maze_with_extra_obstacles(
   guard dst_obj1.box is Some(dst_box) else { return false }
   let start = edge.route[0]
   let goal = edge.route[edge.route.length() - 1]
-  let start_side = get_endpoint_side(start, src_box, 2.0)
-  let goal_side = get_endpoint_side(goal, dst_box, 2.0)
+
+  // Use assigned port sides from Phase 6.5 if available
+  let start_side = match edge.src_port {
+    Some(port) => port_side_to_side_string(port.side)
+    None => get_endpoint_side(start, src_box, 2.0)
+  }
+  let goal_side = match edge.dst_port {
+    Some(port) => port_side_to_side_string(port.side)
+    None => get_endpoint_side(goal, dst_box, 2.0)
+  }
 
   // Base obstacles: all node boxes except endpoints (+ SQL parent skip).
   let src_parent = get_parent_id_from_field(edge.src_id)
@@ -311,6 +322,8 @@ fn route_fixed_ports_maze_with_extra_obstacles(
 }
 
 ///|
+/// Route edge with port offset using maze router, with extra obstacles
+/// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn route_maze_with_port_offset_and_extra_obstacles(
   edge : @graph.Edge,
   graph : @graph.Graph,
@@ -328,21 +341,35 @@ fn route_maze_with_port_offset_and_extra_obstacles(
   guard so.box is Some(src_box) else { return false }
   guard dst_obj1.box is Some(dst_box) else { return false }
 
-  // Keep the same attachment side, but shift along that side.
+  // Use assigned port sides from Phase 6.5 if available (keep same side, shift position)
   let current_start = edge.route[0]
   let current_goal = edge.route[edge.route.length() - 1]
-  let start_side0 = get_endpoint_side(current_start, src_box, 2.0)
-  let goal_side0 = get_endpoint_side(current_goal, dst_box, 2.0)
   let (default_src_anchor, default_dst_anchor) = calculate_best_anchors(
     src_box, dst_box,
   )
-  let start_side = match start_side0 {
-    "top" | "bottom" | "left" | "right" => start_side0
-    _ => edge.src_anchor.unwrap_or(default_src_anchor)
+
+  // Get start side from assigned port or detect geometrically
+  let start_side = match edge.src_port {
+    Some(port) => port_side_to_side_string(port.side)
+    None => {
+      let start_side0 = get_endpoint_side(current_start, src_box, 2.0)
+      match start_side0 {
+        "top" | "bottom" | "left" | "right" => start_side0
+        _ => edge.src_anchor.unwrap_or(default_src_anchor)
+      }
+    }
   }
-  let goal_side = match goal_side0 {
-    "top" | "bottom" | "left" | "right" => goal_side0
-    _ => edge.dst_anchor.unwrap_or(default_dst_anchor)
+
+  // Get goal side from assigned port or detect geometrically
+  let goal_side = match edge.dst_port {
+    Some(port) => port_side_to_side_string(port.side)
+    None => {
+      let goal_side0 = get_endpoint_side(current_goal, dst_box, 2.0)
+      match goal_side0 {
+        "top" | "bottom" | "left" | "right" => goal_side0
+        _ => edge.dst_anchor.unwrap_or(default_dst_anchor)
+      }
+    }
   }
   let start = get_anchor_point(src_box, start_side, port_offset)
   let goal = get_anchor_point(dst_box, goal_side, port_offset)
@@ -477,6 +504,7 @@ fn get_endpoint_side(
 ///|
 /// Calculate the best bypass route around an obstacle, returning None if no valid bypass
 /// Respects endpoint side: only allows bypass routes that approach from the correct direction
+/// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn calculate_best_bypass_opt(
   p0 : @graph.Point,
   p1 : @graph.Point,
@@ -487,22 +515,82 @@ fn calculate_best_bypass_opt(
   // Determine which side the endpoint (p1) is on, if this is the last segment
   // This ensures the bypass approach direction matches the endpoint's side
   let last_point = edge.route[edge.route.length() - 1]
+  let first_point = edge.route[0]
   let is_last_segment = (p1.x - last_point.x).abs() < 1.0 &&
     (p1.y - last_point.y).abs() < 1.0
-  // Get destination box to determine endpoint side
+  let is_first_segment = (p0.x - first_point.x).abs() < 1.0 &&
+    (p0.y - first_point.y).abs() < 1.0
+
+  // IMPORTANT: Use assigned port sides from Phase 6.5 if available
+  // This ensures perpendicularity is maintained even after bypass routing
   let endpoint_side = if is_last_segment {
-    let dst_obj = graph.find_object(edge.dst_id)
-    match dst_obj {
-      Some(obj) =>
-        match obj.box {
-          Some(box) => get_endpoint_side(p1, box, 2.0)
+    // Check for assigned destination port first
+    match edge.dst_port {
+      Some(port) => port_side_to_side_string(port.side)
+      None => {
+        // Fallback to geometric detection
+        let dst_obj = graph.find_object(edge.dst_id)
+        match dst_obj {
+          Some(obj) =>
+            match obj.box {
+              Some(box) => get_endpoint_side(p1, box, 2.0)
+              None => "none"
+            }
           None => "none"
         }
-      None => "none"
+      }
     }
   } else {
     "none" // Not the last segment, no constraint
   }
+
+  // Also check source side constraint for first segment
+  let source_side = if is_first_segment {
+    match edge.src_port {
+      Some(port) => port_side_to_side_string(port.side)
+      None => {
+        let src_obj = graph.find_object(edge.src_id)
+        match src_obj {
+          Some(obj) =>
+            match obj.box {
+              Some(box) => get_endpoint_side(p0, box, 2.0)
+              None => "none"
+            }
+          None => "none"
+        }
+      }
+    }
+  } else {
+    "none" // Not the first segment, no constraint
+  }
+
+  // Helper to check if bypass first segment respects source side
+  fn bypass_respects_source_side(
+    p0 : @graph.Point,
+    bypass : Array[@graph.Point],
+    source_side : String,
+  ) -> Bool {
+    if source_side == "none" || bypass.is_empty() {
+      return true
+    }
+    let first_pt = bypass[0]
+    let dx = first_pt.x - p0.x
+    let dy = first_pt.y - p0.y
+    let tolerance = 0.01
+    // Check that exit direction matches source side
+    // bottom: must exit downward (dy > 0)
+    // top: must exit upward (dy < 0)
+    // left: must exit leftward (dx < 0)
+    // right: must exit rightward (dx > 0)
+    match source_side {
+      "bottom" => dy.abs() > tolerance && (dx.abs() < tolerance || dy > 0.0)
+      "top" => dy.abs() > tolerance && (dx.abs() < tolerance || dy < 0.0)
+      "left" => dx.abs() > tolerance && (dy.abs() < tolerance || dx < 0.0)
+      "right" => dx.abs() > tolerance && (dy.abs() < tolerance || dx > 0.0)
+      _ => true
+    }
+  }
+
   // Try multiple margin sizes for more options
   for margin in [10.0, 20.0, 40.0] {
     let obs_left = obstacle.x - margin
@@ -641,10 +729,14 @@ fn calculate_best_bypass_opt(
         ])
       }
     }
-    // Find the shortest valid route
+    // Find the shortest valid route that respects BOTH source and destination constraints
     let mut best_route : Array[@graph.Point]? = None
     let mut best_length = 1.0e10
     for route in routes {
+      // Check that route respects source side constraint (for first segment)
+      if !bypass_respects_source_side(p0, route, source_side) {
+        continue
+      }
       if is_bypass_valid(p0, route, p1, edge, graph) {
         let length = bypass_length(p0, route, p1)
         if length < best_length {

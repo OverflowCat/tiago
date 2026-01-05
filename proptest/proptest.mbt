@@ -327,6 +327,159 @@ pub fn shrink_towards(current : Int, target : Int) -> Iter[Int] {
 }
 
 // ============================================================================
+// Constrained Generators (for invariant relationships)
+// ============================================================================
+
+///|
+/// Generate values that satisfy a constraint, with retry limit.
+/// Unlike `such_that`, this keeps trying with new random seeds up to max_attempts.
+pub fn[T] constrained(
+  gen : @qc.Gen[T],
+  predicate : (T) -> Bool,
+  max_attempts? : Int = 100,
+) -> @qc.Gen[T] {
+  @qc.Gen::new(fn(size, state) {
+    for i = 0; i < max_attempts; i = i + 1 {
+      let value = gen.run(size + i, state) // Vary size to get different values
+      if predicate(value) {
+        return value
+      }
+    }
+    // Fallback: return last attempt (test will fail if constraint violated)
+    gen.run(size, state)
+  })
+}
+
+///|
+/// Generate a value dependent on a previously generated value.
+/// Useful for generating values that reference other generated values.
+pub fn[A, B] dependent(
+  first : @qc.Gen[A],
+  second : (A) -> @qc.Gen[B],
+) -> @qc.Gen[(A, B)] {
+  @qc.Gen::new(fn(size, state) {
+    let a = first.run(size, state)
+    let b = second(a).run(size, state)
+    (a, b)
+  })
+}
+
+///|
+/// Generate a value, then generate an array of dependent values.
+/// Useful for generating edges that reference valid node IDs.
+pub fn[A, B] one_to_many(
+  one : @qc.Gen[A],
+  make_many : (A) -> @qc.Gen[B],
+  count : Int,
+) -> @qc.Gen[(A, Array[B])] {
+  @qc.Gen::new(fn(size, state) {
+    let a = one.run(size, state)
+    let gen_b = make_many(a)
+    let bs : Array[B] = []
+    for _ in 0..<count {
+      bs.push(gen_b.run(size, state))
+    }
+    (a, bs)
+  })
+}
+
+///|
+/// Generate an array of unique IDs, then generate edges that only reference those IDs.
+/// This ensures edge invariants (src_id and dst_id reference valid objects).
+pub fn[ID : Eq, Node, Edge] gen_with_valid_references(
+  id_count : Int,
+  gen_id : @qc.Gen[ID],
+  make_node : (ID) -> Node,
+  edge_count : Int,
+  make_edge : (ID, ID) -> Edge,
+) -> @qc.Gen[(Array[Node], Array[Edge])] {
+  @qc.Gen::new(fn(size, state) {
+    // Generate unique IDs first
+    let ids : Array[ID] = []
+    let max_attempts = id_count * 2
+    for i = 0; i < max_attempts; i = i + 1 {
+      // Generate extra to ensure uniqueness
+      let id = gen_id.run(size, state)
+      if not(ids.contains(id)) && ids.length() < id_count {
+        ids.push(id)
+      }
+    }
+    // Create nodes from IDs
+    let nodes = ids.map(make_node)
+    // Generate edges that only reference valid IDs
+    let edges : Array[Edge] = []
+    if ids.length() >= 2 {
+      for i = 0; i < edge_count; i = i + 1 {
+        let src_idx = @qc.int_range(0, ids.length()).run(size, state)
+        let dst_idx = @qc.int_range(0, ids.length()).run(size, state)
+        if src_idx != dst_idx {
+          edges.push(make_edge(ids[src_idx], ids[dst_idx]))
+        }
+      }
+    }
+    (nodes, edges)
+  })
+}
+
+///|
+/// Pick a random element from an array.
+/// Useful for generating references to existing elements.
+pub fn[T] element_of(arr : Array[T]) -> @qc.Gen[T] {
+  @qc.Gen::new(fn(size, state) {
+    if arr.is_empty() {
+      abort("element_of: empty array")
+    }
+    let idx = @qc.int_range(0, arr.length()).run(size, state)
+    arr[idx]
+  })
+}
+
+///|
+/// Pick a random subset of elements from an array.
+pub fn[T] subset_of(
+  arr : Array[T],
+  min_size : Int,
+  max_size : Int,
+) -> @qc.Gen[Array[T]] {
+  @qc.Gen::new(fn(size, state) {
+    let count = @qc.int_range(min_size, max_size + 1).run(size, state)
+    let count = if count > arr.length() { arr.length() } else { count }
+    let indices : Array[Int] = []
+    while indices.length() < count {
+      let idx = @qc.int_range(0, arr.length()).run(size, state)
+      if not(indices.contains(idx)) {
+        indices.push(idx)
+      }
+    }
+    indices.map(fn(i) { arr[i] })
+  })
+}
+
+///|
+/// Generate a pair where second element references valid first element.
+/// Ensures referential integrity in generated data.
+pub fn[A, B] with_valid_ref(
+  gen_target : @qc.Gen[Array[A]],
+  get_id : (A) -> String,
+  make_ref : (String) -> B,
+) -> @qc.Gen[(Array[A], Array[B])] {
+  @qc.Gen::new(fn(size, state) {
+    let targets = gen_target.run(size, state)
+    if targets.is_empty() {
+      return (targets, [])
+    }
+    let ids = targets.map(get_id)
+    let ref_count = @qc.int_range(0, targets.length() * 2).run(size, state)
+    let refs : Array[B] = []
+    for _ in 0..<ref_count {
+      let id = element_of(ids).run(size, state)
+      refs.push(make_ref(id))
+    }
+    (targets, refs)
+  })
+}
+
+// ============================================================================
 // Test Runner Extensions
 // ============================================================================
 

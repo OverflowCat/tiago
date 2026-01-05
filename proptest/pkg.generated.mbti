@@ -20,7 +20,15 @@ pub fn[P : @moonbitlang/quickcheck.Testable] check_property(P) -> Bool
 
 pub fn[P : @moonbitlang/quickcheck.Testable] check_property_n(P, Int) -> Bool
 
+pub fn[T] constrained(@moonbitlang/quickcheck.Gen[T], (T) -> Bool, max_attempts? : Int) -> @moonbitlang/quickcheck.Gen[T]
+
+pub fn[A, B] dependent(@moonbitlang/quickcheck.Gen[A], (A) -> @moonbitlang/quickcheck.Gen[B]) -> @moonbitlang/quickcheck.Gen[(A, B)]
+
 pub fn double_range(Double, Double) -> @moonbitlang/quickcheck.Gen[Double]
+
+pub fn[T] element_of(Array[T]) -> @moonbitlang/quickcheck.Gen[T]
+
+pub fn[ID : Eq, Node, Edge] gen_with_valid_references(Int, @moonbitlang/quickcheck.Gen[ID], (ID) -> Node, Int, (ID, ID) -> Edge) -> @moonbitlang/quickcheck.Gen[(Array[Node], Array[Edge])]
 
 pub fn[P : @moonbitlang/quickcheck.Testable] implies(Bool, P) -> @moonbitlang/quickcheck.Property
 
@@ -33,6 +41,8 @@ pub fn[T : Compare] is_sorted(Array[T]) -> Bool
 pub fn[T : Compare] is_sorted_desc(Array[T]) -> Bool
 
 pub fn[T : @moonbitlang/core/quickcheck.Arbitrary] non_empty_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn[A, B] one_to_many(@moonbitlang/quickcheck.Gen[A], (A) -> @moonbitlang/quickcheck.Gen[B], Int) -> @moonbitlang/quickcheck.Gen[(A, Array[B])]
 
 pub fn[T] permutation(Array[T]) -> @moonbitlang/quickcheck.Gen[Array[T]]
 
@@ -48,11 +58,15 @@ pub fn[T : @moonbitlang/core/quickcheck.Arbitrary + Compare] sorted_array() -> @
 
 pub fn string_of_length(Int) -> @moonbitlang/quickcheck.Gen[String]
 
+pub fn[T] subset_of(Array[T], Int, Int) -> @moonbitlang/quickcheck.Gen[Array[T]]
+
 pub fn trivial() -> Bool
 
 pub fn[T : @moonbitlang/core/quickcheck.Arbitrary + Eq] unique_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
 
 pub fn unit_double() -> @moonbitlang/quickcheck.Gen[Double]
+
+pub fn[A, B] with_valid_ref(@moonbitlang/quickcheck.Gen[Array[A]], (A) -> String, (String) -> B) -> @moonbitlang/quickcheck.Gen[(Array[A], Array[B])]
 
 pub fn within_delta(Double, Double, Double) -> Bool
 

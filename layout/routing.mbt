@@ -80,9 +80,76 @@ fn position_objects_layered_with_virtual(
   }
 }
 
+// ============================================================================
+// Port-Based Routing (Phase 7 with pre-assigned ports)
+// ============================================================================
+
 ///|
-/// Route edges using virtual node positions for smoother paths
-fn route_edges_with_virtual(
+/// Convert PortSide to string for compatibility with legacy routing code
+fn port_side_to_side_string(side : @graph.PortSide) -> String {
+  match side {
+    @graph.Top => "top"
+    @graph.Bottom => "bottom"
+    @graph.Left => "left"
+    @graph.Right => "right"
+  }
+}
+
+///|
+/// Check if a route respects the assigned port side at the destination
+/// The final segment must approach from the correct direction
+fn route_respects_dst_port(
+  route : Array[@graph.Point],
+  dst_side : @graph.PortSide,
+) -> Bool {
+  if route.length() < 2 {
+    return true
+  }
+  let last_idx = route.length() - 1
+  let p0 = route[last_idx - 1]
+  let p1 = route[last_idx]
+  let dx = (p1.x - p0.x).abs()
+  let dy = (p1.y - p0.y).abs()
+  let tolerance = 0.01
+  match dst_side {
+    @graph.Top | @graph.Bottom =>
+      // Must approach vertically (dx ≈ 0)
+      dx < tolerance || dx < dy * 0.01
+    @graph.Left | @graph.Right =>
+      // Must approach horizontally (dy ≈ 0)
+      dy < tolerance || dy < dx * 0.01
+  }
+}
+
+///|
+/// Check if a route respects the assigned port side at the source
+/// The first segment must depart in the correct direction
+fn route_respects_src_port(
+  route : Array[@graph.Point],
+  src_side : @graph.PortSide,
+) -> Bool {
+  if route.length() < 2 {
+    return true
+  }
+  let p0 = route[0]
+  let p1 = route[1]
+  let dx = (p1.x - p0.x).abs()
+  let dy = (p1.y - p0.y).abs()
+  let tolerance = 0.01
+  match src_side {
+    @graph.Top | @graph.Bottom =>
+      // Must depart vertically (dx ≈ 0)
+      dx < tolerance || dx < dy * 0.01
+    @graph.Left | @graph.Right =>
+      // Must depart horizontally (dy ≈ 0)
+      dy < tolerance || dy < dx * 0.01
+  }
+}
+
+///|
+/// Route edges using pre-assigned ports
+/// This guarantees perpendicular connections since ports are on node sides
+pub fn route_edges_with_ports(
   graph : @graph.Graph,
   _config : LayoutConfig,
   virtual_result : VirtualNodeResult,
@@ -100,12 +167,35 @@ fn route_edges_with_virtual(
       route_self_loop(edge, box)
       continue
     }
-    // Handle SQL table field connections specially
+    // Calculate parallel edge offset
+    let edge_key = if edge.src_id < edge.dst_id {
+      edge.src_id + "->" + edge.dst_id
+    } else {
+      edge.dst_id + "->" + edge.src_id
+    }
+    let edge_index = edge_counts.get(edge_key).unwrap_or(0)
+    edge_counts[edge_key] = edge_index + 1
+    // Check if this edge has pre-assigned ports with computed points
+    let use_port_routing = match (edge.src_port, edge.dst_port) {
+      (Some(src_port), Some(dst_port)) =>
+        match (src_port.point, dst_port.point) {
+          (Some(_), Some(_)) => {
+            // Use port-based routing (guarantees perpendicular connections)
+            route_edge_with_ports(edge, src_port, dst_port, graph, edge_index)
+            true
+          }
+          _ => false // Fall through to legacy routing
+        }
+      _ => false
+    }
+    if use_port_routing {
+      continue
+    }
+    // Fallback to legacy routing for edges without ports
     let (src_box, src_num_cols, dst_box, dst_num_cols) = match
       get_sql_table_boxes(graph, edge) {
       Some(boxes) => boxes
       None => {
-        // Regular edge routing - find source and destination objects
         let src_obj = graph.find_object(edge.src_id)
         let dst_obj = graph.find_object(edge.dst_id)
         if src_obj is None || dst_obj is None {
@@ -119,29 +209,172 @@ fn route_edges_with_virtual(
         (src.box.unwrap(), 0, dst.box.unwrap(), 0)
       }
     }
-    // Calculate parallel edge offset
-    let edge_key = if edge.src_id < edge.dst_id {
-      edge.src_id + "->" + edge.dst_id
-    } else {
-      edge.dst_id + "->" + edge.src_id
-    }
-    let edge_index = edge_counts.get(edge_key).unwrap_or(0)
-    edge_counts[edge_key] = edge_index + 1
     // Check if this edge has virtual nodes
     if virtual_result.edge_virtual_nodes.get(edge.index) is Some(virtual_ids) &&
       virtual_ids.length() > 0 {
-      // Route through virtual nodes
       route_edge_through_virtual_sql(
         edge, src_box, dst_box, virtual_ids, virtual_result, src_num_cols, dst_num_cols,
         edge_index,
       )
     } else {
-      // Direct edge routing with parallel offset
       route_direct_edge_sql_parallel(
         edge, src_box, dst_box, src_num_cols, dst_num_cols, edge_index,
       )
     }
   }
+}
+
+///|
+/// Route an edge using pre-assigned ports
+/// Creates an orthogonal route that respects port sides
+fn route_edge_with_ports(
+  edge : @graph.Edge,
+  src_port : @graph.Port,
+  dst_port : @graph.Port,
+  _graph : @graph.Graph,
+  parallel_index : Int,
+) -> Unit {
+  // Get port points
+  let src_point = match src_port.point {
+    Some(p) => p
+    None => return // Port not computed yet
+  }
+  let dst_point = match dst_port.point {
+    Some(p) => p
+    None => return // Port not computed yet
+  }
+  // Calculate parallel offset for multiple edges
+  let offset_amount = 15.0
+  let offset = if parallel_index == 0 {
+    0.0
+  } else {
+    let sign = if parallel_index % 2 == 1 { 1.0 } else { -1.0 }
+    sign * ((parallel_index + 1) / 2).to_double() * offset_amount
+  }
+  // Create orthogonal route based on port sides
+  let route = create_orthogonal_route_from_ports(
+    src_point,
+    dst_point,
+    src_port.side,
+    dst_port.side,
+    offset,
+  )
+  // Apply route to edge
+  for pt in route {
+    edge.route.push(pt)
+  }
+}
+
+///|
+/// Create an orthogonal route between two ports
+/// The first segment is perpendicular to src_side
+/// The last segment is perpendicular to dst_side
+/// IMPORTANT: Endpoints are kept exactly on port points to ensure perpendicularity.
+/// Offset is applied to middle segments only for parallel edge separation.
+fn create_orthogonal_route_from_ports(
+  src : @graph.Point,
+  dst : @graph.Point,
+  src_side : @graph.PortSide,
+  dst_side : @graph.PortSide,
+  offset : Double,
+) -> Array[@graph.Point] {
+  let route : Array[@graph.Point] = []
+  // Keep source exactly on the port point (on node boundary)
+  route.push(src)
+  // Determine routing based on port sides
+  // For orthogonal routes, offset is applied to the middle segment coordinate
+  match (src_side, dst_side) {
+    (@graph.Top, @graph.Top) | (@graph.Bottom, @graph.Bottom) => {
+      // Both vertical sides - need horizontal middle segment
+      // Offset applied to mid_y for parallel edge separation
+      let mid_y = (src.y + dst.y) / 2.0 + offset
+      route.push(@graph.Point::new(src.x, mid_y))
+      route.push(@graph.Point::new(dst.x, mid_y))
+    }
+    (@graph.Top, @graph.Bottom) =>
+      // Source exits top, destination enters from bottom
+      if src.y > dst.y {
+        // src is below dst - need horizontal detour
+        let mid_x = (src.x + dst.x) / 2.0 + offset
+        route.push(@graph.Point::new(src.x, src.y - 30.0))
+        route.push(@graph.Point::new(mid_x, src.y - 30.0))
+        route.push(@graph.Point::new(mid_x, dst.y + 30.0))
+        route.push(@graph.Point::new(dst.x, dst.y + 30.0))
+      } else {
+        // Direct vertical connection possible
+        let mid_y = (src.y + dst.y) / 2.0 + offset
+        route.push(@graph.Point::new(src.x, mid_y))
+        route.push(@graph.Point::new(dst.x, mid_y))
+      }
+    (@graph.Bottom, @graph.Top) =>
+      // Source exits bottom, destination enters from top
+      // This is the typical case in Sugiyama layout (downward flow)
+      if src.y < dst.y {
+        // Direct vertical connection possible
+        let mid_y = (src.y + dst.y) / 2.0 + offset
+        route.push(@graph.Point::new(src.x, mid_y))
+        route.push(@graph.Point::new(dst.x, mid_y))
+      } else {
+        // src is below dst - need horizontal detour
+        let mid_x = (src.x + dst.x) / 2.0 + offset
+        route.push(@graph.Point::new(src.x, src.y + 30.0))
+        route.push(@graph.Point::new(mid_x, src.y + 30.0))
+        route.push(@graph.Point::new(mid_x, dst.y - 30.0))
+        route.push(@graph.Point::new(dst.x, dst.y - 30.0))
+      }
+    (@graph.Left, @graph.Left) | (@graph.Right, @graph.Right) => {
+      // Both horizontal sides - need vertical middle segment
+      // Offset applied to mid_x for parallel edge separation
+      let mid_x = (src.x + dst.x) / 2.0 + offset
+      route.push(@graph.Point::new(mid_x, src.y))
+      route.push(@graph.Point::new(mid_x, dst.y))
+    }
+    (@graph.Left, @graph.Right) =>
+      // Source exits left, destination enters from right
+      if src.x > dst.x {
+        // Direct horizontal connection possible
+        let mid_x = (src.x + dst.x) / 2.0 + offset
+        route.push(@graph.Point::new(mid_x, src.y))
+        route.push(@graph.Point::new(mid_x, dst.y))
+      } else {
+        // src is to the left of dst - need vertical detour
+        let mid_y = (src.y + dst.y) / 2.0 + offset
+        route.push(@graph.Point::new(src.x - 30.0, src.y))
+        route.push(@graph.Point::new(src.x - 30.0, mid_y))
+        route.push(@graph.Point::new(dst.x + 30.0, mid_y))
+        route.push(@graph.Point::new(dst.x + 30.0, dst.y))
+      }
+    (@graph.Right, @graph.Left) =>
+      // Source exits right, destination enters from left
+      if src.x < dst.x {
+        // Direct horizontal connection possible
+        let mid_x = (src.x + dst.x) / 2.0 + offset
+        route.push(@graph.Point::new(mid_x, src.y))
+        route.push(@graph.Point::new(mid_x, dst.y))
+      } else {
+        // src is to the right of dst - need vertical detour
+        let mid_y = (src.y + dst.y) / 2.0 + offset
+        route.push(@graph.Point::new(src.x + 30.0, src.y))
+        route.push(@graph.Point::new(src.x + 30.0, mid_y))
+        route.push(@graph.Point::new(dst.x - 30.0, mid_y))
+        route.push(@graph.Point::new(dst.x - 30.0, dst.y))
+      }
+    (@graph.Top, @graph.Left) | (@graph.Top, @graph.Right) =>
+      // L-shape: vertical then horizontal
+      route.push(@graph.Point::new(src.x, dst.y))
+    (@graph.Bottom, @graph.Left) | (@graph.Bottom, @graph.Right) =>
+      // L-shape: vertical then horizontal
+      route.push(@graph.Point::new(src.x, dst.y))
+    (@graph.Left, @graph.Top) | (@graph.Left, @graph.Bottom) =>
+      // L-shape: horizontal then vertical
+      route.push(@graph.Point::new(dst.x, src.y))
+    (@graph.Right, @graph.Top) | (@graph.Right, @graph.Bottom) =>
+      // L-shape: horizontal then vertical
+      route.push(@graph.Point::new(dst.x, src.y))
+  }
+  // Keep destination exactly on the port point (on node boundary)
+  route.push(dst)
+  route
 }
 
 ///|
@@ -547,6 +780,7 @@ fn route_edge_around_obstacles(
 /// Route edge around the canvas perimeter when local bypasses fail
 /// Uses complete U-shaped routes that respect endpoint approach direction
 /// Tries multiple margin sizes until a valid route is found
+/// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn route_via_canvas_edge(
   edge : @graph.Edge,
   graph : @graph.Graph,
@@ -559,16 +793,46 @@ fn route_via_canvas_edge(
   }
   let src = edge.route[0]
   let dst = edge.route[edge.route.length() - 1]
-  // Determine which side the destination endpoint is on
+
+  // Use assigned port sides from Phase 6.5 (port assignment)
+  // This ensures perpendicularity is maintained even after obstacle avoidance
+  let src_side_opt : @graph.PortSide? = match edge.src_port {
+    Some(p) => Some(p.side)
+    None => None
+  }
+  let dst_side_opt : @graph.PortSide? = match edge.dst_port {
+    Some(p) => Some(p.side)
+    None => None
+  }
+
+  // Determine endpoint sides - prefer assigned ports, fallback to geometric detection
   let dst_obj = graph.find_object(edge.dst_id)
-  let endpoint_side = match dst_obj {
-    Some(obj) =>
-      match obj.box {
-        Some(box) => get_endpoint_side(dst, box, 2.0)
+  let endpoint_side = match dst_side_opt {
+    Some(side) => port_side_to_side_string(side)
+    None =>
+      match dst_obj {
+        Some(obj) =>
+          match obj.box {
+            Some(box) => get_endpoint_side(dst, box, 2.0)
+            None => "none"
+          }
         None => "none"
       }
-    None => "none"
   }
+  let src_obj = graph.find_object(edge.src_id)
+  let src_side_str = match src_side_opt {
+    Some(side) => port_side_to_side_string(side)
+    None =>
+      match src_obj {
+        Some(obj) =>
+          match obj.box {
+            Some(box) => get_endpoint_side(src, box, 2.0)
+            None => "none"
+          }
+        None => "none"
+      }
+  }
+
   // Try multiple margins until we find a valid route
   let margins = [30.0, 60.0, 100.0, 150.0, 200.0]
   for margin in margins {
@@ -576,14 +840,41 @@ fn route_via_canvas_edge(
     let right = max_x + margin
     let top = min_y - margin
     let bottom = max_y + margin
-    // Create routes based on specific endpoint side
-    let routes = create_canvas_edge_routes(
+    // First, try port-aware routes that respect both source and destination sides
+    let port_aware_routes = create_canvas_edge_routes_port_aware(
+      src, dst, src_side_str, endpoint_side, left, right, top, bottom,
+    )
+    for route in port_aware_routes {
+      if is_bypass_valid(src, route, dst, edge, graph) {
+        let full_route : Array[@graph.Point] = [src]
+        for pt in route {
+          full_route.push(pt)
+        }
+        full_route.push(dst)
+        // Check perpendicularity only if we have assigned ports
+        let src_ok = match src_side_opt {
+          Some(side) => route_respects_src_port(full_route, side)
+          None => true
+        }
+        let dst_ok = match dst_side_opt {
+          Some(side) => route_respects_dst_port(full_route, side)
+          None => true
+        }
+        if src_ok && dst_ok {
+          edge.route.clear()
+          for pt in full_route {
+            edge.route.push(pt)
+          }
+          return
+        }
+      }
+    }
+    // Fall back to legacy routes (endpoint_side only) if port-aware routes fail
+    let legacy_routes = create_canvas_edge_routes(
       src, dst, endpoint_side, left, right, top, bottom,
     )
-    // Find the shortest valid route
-    for route in routes {
+    for route in legacy_routes {
       if is_bypass_valid(src, route, dst, edge, graph) {
-        // Found a valid route - apply it and return
         edge.route.clear()
         edge.route.push(src)
         for pt in route {
@@ -598,6 +889,183 @@ fn route_via_canvas_edge(
   // This is slower but avoids leaving an intersecting route behind.
   let _ = route_via_maze_router(edge, graph, canvas_bounds)
 
+}
+
+///|
+/// Create canvas edge routes that respect BOTH source and destination port sides
+/// This ensures perpendicularity is maintained at both endpoints
+fn create_canvas_edge_routes_port_aware(
+  src : @graph.Point,
+  dst : @graph.Point,
+  src_side : String,
+  dst_side : String,
+  left : Double,
+  right : Double,
+  top : Double,
+  bottom : Double,
+) -> Array[Array[@graph.Point]] {
+  let routes : Array[Array[@graph.Point]] = []
+
+  // Generate routes based on the combination of source and destination sides
+  // The key insight: we need to create routes where:
+  // - First segment from src is perpendicular to src_side
+  // - Last segment to dst is perpendicular to dst_side
+
+  match (src_side, dst_side) {
+    ("bottom", "top") => {
+      // Normal downward flow: src exits bottom, dst enters from top
+      // Route goes down from src, then up to dst via canvas edge
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(left, top),
+        @graph.Point::new(dst.x, top),
+      ])
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(right, top),
+        @graph.Point::new(dst.x, top),
+      ])
+    }
+    ("top", "bottom") => {
+      // Upward flow: src exits top, dst enters from bottom
+      routes.push([
+        @graph.Point::new(src.x, top),
+        @graph.Point::new(left, top),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(dst.x, bottom),
+      ])
+      routes.push([
+        @graph.Point::new(src.x, top),
+        @graph.Point::new(right, top),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(dst.x, bottom),
+      ])
+    }
+    ("right", "left") => {
+      // Horizontal flow: src exits right, dst enters from left
+      routes.push([
+        @graph.Point::new(right, src.y),
+        @graph.Point::new(right, top),
+        @graph.Point::new(left, top),
+        @graph.Point::new(left, dst.y),
+      ])
+      routes.push([
+        @graph.Point::new(right, src.y),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(left, dst.y),
+      ])
+    }
+    ("left", "right") => {
+      // Reverse horizontal: src exits left, dst enters from right
+      routes.push([
+        @graph.Point::new(left, src.y),
+        @graph.Point::new(left, top),
+        @graph.Point::new(right, top),
+        @graph.Point::new(right, dst.y),
+      ])
+      routes.push([
+        @graph.Point::new(left, src.y),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(right, dst.y),
+      ])
+    }
+    ("bottom", "bottom") => {
+      // Both exit/enter from bottom
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(dst.x, bottom),
+      ])
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(left, bottom - 30.0),
+        @graph.Point::new(dst.x, bottom - 30.0),
+        @graph.Point::new(dst.x, bottom),
+      ])
+    }
+    ("top", "top") => {
+      // Both exit/enter from top
+      routes.push([@graph.Point::new(src.x, top), @graph.Point::new(dst.x, top)])
+      routes.push([
+        @graph.Point::new(src.x, top),
+        @graph.Point::new(left, top),
+        @graph.Point::new(left, top + 30.0),
+        @graph.Point::new(dst.x, top + 30.0),
+        @graph.Point::new(dst.x, top),
+      ])
+    }
+    ("left", "left") =>
+      // Both exit/enter from left
+      routes.push([
+        @graph.Point::new(left, src.y),
+        @graph.Point::new(left, dst.y),
+      ])
+    ("right", "right") =>
+      // Both exit/enter from right
+      routes.push([
+        @graph.Point::new(right, src.y),
+        @graph.Point::new(right, dst.y),
+      ])
+    // Mixed vertical/horizontal cases
+    ("bottom", "left") =>
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(left, dst.y),
+      ])
+    ("bottom", "right") =>
+      routes.push([
+        @graph.Point::new(src.x, bottom),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(right, dst.y),
+      ])
+    ("top", "left") =>
+      routes.push([
+        @graph.Point::new(src.x, top),
+        @graph.Point::new(left, top),
+        @graph.Point::new(left, dst.y),
+      ])
+    ("top", "right") =>
+      routes.push([
+        @graph.Point::new(src.x, top),
+        @graph.Point::new(right, top),
+        @graph.Point::new(right, dst.y),
+      ])
+    ("left", "top") =>
+      routes.push([
+        @graph.Point::new(left, src.y),
+        @graph.Point::new(left, top),
+        @graph.Point::new(dst.x, top),
+      ])
+    ("left", "bottom") =>
+      routes.push([
+        @graph.Point::new(left, src.y),
+        @graph.Point::new(left, bottom),
+        @graph.Point::new(dst.x, bottom),
+      ])
+    ("right", "top") =>
+      routes.push([
+        @graph.Point::new(right, src.y),
+        @graph.Point::new(right, top),
+        @graph.Point::new(dst.x, top),
+      ])
+    ("right", "bottom") =>
+      routes.push([
+        @graph.Point::new(right, src.y),
+        @graph.Point::new(right, bottom),
+        @graph.Point::new(dst.x, bottom),
+      ])
+    _ =>
+      // Fallback: use legacy route generation
+      return create_canvas_edge_routes(
+        src, dst, dst_side, left, right, top, bottom,
+      )
+  }
+  routes
 }
 
 ///|
@@ -738,6 +1206,7 @@ impl Compare for AStarEntry with compare(a, b) {
 ///|
 /// Maze-router fallback: sparse grid A* in free space.
 /// Returns true if it rewrote `edge.route`.
+/// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn route_via_maze_router(
   edge : @graph.Edge,
   graph : @graph.Graph,
@@ -754,15 +1223,66 @@ fn route_via_maze_router(
   guard dst_obj1.box is Some(dst_box) else { return false }
   let src = edge.route[0]
   let dst = edge.route[edge.route.length() - 1]
-  let src_side = get_endpoint_side(src, src_box, 2.0)
-  let dst_side = get_endpoint_side(dst, dst_box, 2.0)
 
-  // Candidate ports: keep current endpoints first, then try all sides.
-  let src_ports : Array[(String, @graph.Point)] = [(src_side, src)]
-  let dst_ports : Array[(String, @graph.Point)] = [(dst_side, dst)]
+  // Use assigned port sides from Phase 6.5 as PRIMARY candidates
+  // Fall back to other ports if no valid route found with assigned ports
+  let src_ports : Array[(String, @graph.Point)] = []
+  let dst_ports : Array[(String, @graph.Point)] = []
+
+  // Add assigned port first if available (primary candidate)
+  match edge.src_port {
+    Some(port) => {
+      let side = port_side_to_side_string(port.side)
+      let pt = match port.point {
+        Some(p) => p
+        None => src
+      }
+      src_ports.push((side, pt))
+    }
+    None => ()
+  }
+  // Add current endpoint and all other sides as fallbacks
+  let src_side = get_endpoint_side(src, src_box, 2.0)
+  let src_assigned_side = match edge.src_port {
+    Some(p) => port_side_to_side_string(p.side)
+    None => ""
+  }
+  if src_ports.length() == 0 || src_side != src_assigned_side {
+    src_ports.push((src_side, src))
+  }
   for side in ["top", "bottom", "left", "right"] {
-    src_ports.push((side, get_anchor_point(src_box, side, 0.0)))
-    dst_ports.push((side, get_anchor_point(dst_box, side, 0.0)))
+    let already_added = src_ports.iter().any(fn(p) { p.0 == side })
+    if !already_added {
+      src_ports.push((side, get_anchor_point(src_box, side, 0.0)))
+    }
+  }
+
+  // Add assigned port first if available (primary candidate)
+  match edge.dst_port {
+    Some(port) => {
+      let side = port_side_to_side_string(port.side)
+      let pt = match port.point {
+        Some(p) => p
+        None => dst
+      }
+      dst_ports.push((side, pt))
+    }
+    None => ()
+  }
+  // Add current endpoint and all other sides as fallbacks
+  let dst_side = get_endpoint_side(dst, dst_box, 2.0)
+  let dst_assigned_side = match edge.dst_port {
+    Some(p) => port_side_to_side_string(p.side)
+    None => ""
+  }
+  if dst_ports.length() == 0 || dst_side != dst_assigned_side {
+    dst_ports.push((dst_side, dst))
+  }
+  for side in ["top", "bottom", "left", "right"] {
+    let already_added = dst_ports.iter().any(fn(p) { p.0 == side })
+    if !already_added {
+      dst_ports.push((side, get_anchor_point(dst_box, side, 0.0)))
+    }
   }
 
   // Build obstacle list (exclude endpoints; also skip SQL parent tables if present).
@@ -802,15 +1322,26 @@ fn route_via_maze_router(
         match path_opt {
           None => ()
           Some(path) => {
-            let cost = path_cost(path)
-            if ci < best_clearance_idx ||
-              (ci == best_clearance_idx && cost < best_cost) {
-              best_clearance_idx = ci
-              best_cost = cost
-              best_route = Some(path)
+            // Validate that the route respects port constraints
+            let src_ok = match edge.src_port {
+              Some(port) => route_respects_src_port(path, port.side)
+              None => true
             }
-            // If we found a path at this clearance for this pair, don't try tighter.
-            break
+            let dst_ok = match edge.dst_port {
+              Some(port) => route_respects_dst_port(path, port.side)
+              None => true
+            }
+            if src_ok && dst_ok {
+              let cost = path_cost(path)
+              if ci < best_clearance_idx ||
+                (ci == best_clearance_idx && cost < best_cost) {
+                best_clearance_idx = ci
+                best_cost = cost
+                best_route = Some(path)
+              }
+              // If we found a valid path at this clearance for this pair, don't try tighter.
+              break
+            }
           }
         }
       }

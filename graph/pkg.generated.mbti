@@ -127,6 +127,8 @@ pub(all) struct Edge {
   mut label_box : Box?
   mut src_column_index : Int?
   mut dst_column_index : Int?
+  mut src_port : Port?
+  mut dst_port : Port?
 }
 pub fn Edge::add_route_point(Self, Point) -> Unit
 pub fn Edge::arrow_string(Self) -> String
@@ -327,6 +329,30 @@ pub fn Point::sub(Self, Self) -> Self
 pub fn Point::zero() -> Self
 pub impl Eq for Point
 pub impl Show for Point
+
+pub(all) struct Port {
+  side : PortSide
+  position : Double
+  mut point : Point?
+}
+pub fn Port::get_point(Self) -> Point?
+pub fn Port::get_position(Self) -> Double
+pub fn Port::get_side(Self) -> PortSide
+pub fn Port::is_horizontal(Self) -> Bool
+pub fn Port::is_vertical(Self) -> Bool
+pub fn Port::new(PortSide, Double) -> Self
+pub fn Port::set_point(Self, Point) -> Unit
+pub impl Eq for Port
+pub impl Show for Port
+
+pub(all) enum PortSide {
+  Top
+  Bottom
+  Left
+  Right
+}
+pub impl Eq for PortSide
+pub impl Show for PortSide
 
 pub enum RenderPass {
   Background

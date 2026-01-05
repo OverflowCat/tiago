@@ -16,6 +16,8 @@ pub fn assign_coordinates_simple(CrossingResult, Map[String, Double], Map[String
 
 pub fn assign_layers(@graph.Graph, CycleBreakResult) -> LayerAssignment
 
+pub fn assign_ports(@graph.Graph, Array[Array[String]], LayoutConfig) -> Unit
+
 pub fn break_cycles(@graph.Graph) -> CycleBreakResult
 
 pub fn compute_container_ranks(@graph.Graph, Array[Array[String]]) -> ContainerRanks
@@ -37,6 +39,8 @@ pub fn expand_containers_to_fit(CoordinateResult, @graph.Graph, Array[Array[Stri
 pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
 
 pub fn fit_container_padding(CoordinateResult, @graph.Graph, Array[Array[String]], Double, Bool) -> Unit
+
+pub fn fix_perpendicularity(@graph.Graph) -> Unit
 
 pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
 
@@ -63,6 +67,8 @@ pub fn layout_sequence_with_messages(@graph.Object, @graph.Graph, LayoutConfig) 
 pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> CrossingResult
 
 pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
+
+pub fn route_edges_with_ports(@graph.Graph, LayoutConfig, VirtualNodeResult) -> Unit
 
 // Errors
 pub(all) suberror LayoutError {
