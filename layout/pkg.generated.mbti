@@ -73,6 +73,10 @@ pub impl Eq for LayoutError
 pub impl Show for LayoutError
 
 // Types and methods
+type AStarEntry
+pub impl Eq for AStarEntry
+pub impl Show for AStarEntry
+
 pub(all) struct ActivationBox {
   actor_id : String
   x : Double

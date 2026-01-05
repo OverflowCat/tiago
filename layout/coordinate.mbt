@@ -537,15 +537,14 @@ pub fn assign_coordinates_simple(
 // ============================================================================
 
 ///|
-/// Adjust rank (layer) spacing to fix overlaps between layers
-/// Only shifts nodes when there's actual overlap (not to enforce minimum separation)
+/// Adjust rank (layer) spacing to enforce minimum separation between layers
 /// For horizontal layout: adjusts x-spacing between ranks
 /// For vertical layout: adjusts y-spacing between ranks
 pub fn adjust_rank_spacing(
   coords : CoordinateResult,
   layers : Array[Array[String]],
   node_sizes : Map[String, Double], // widths for horizontal, heights for vertical
-  _rank_sep : Double,
+  rank_sep : Double,
   is_horizontal : Bool,
 ) -> Unit {
   if layers.length() <= 1 {
@@ -567,7 +566,7 @@ pub fn adjust_rank_spacing(
     }
     rank_maxes.push(max_pos)
   }
-  // Only fix actual overlaps (where next layer starts before previous layer ends)
+  // Enforce minimum spacing between ranks
   let mut cumulative_shift = 0.0
   for i = 1; i < layers.length(); i = i + 1 {
     // Find minimum position in this rank
@@ -578,11 +577,12 @@ pub fn adjust_rank_spacing(
         min_pos = pos
       }
     }
-    // Check if there's actual overlap (not just less than rank_sep)
+    // Required minimum position is prev_max + rank_sep
     let prev_max = rank_maxes[i - 1] + cumulative_shift
-    // Only shift if there's actual overlap (min_pos < prev_max)
-    if min_pos < prev_max {
-      let shift = prev_max - min_pos + 1.0 // Add small margin
+    let required_min = prev_max + rank_sep
+    // Shift if current position is less than required
+    if min_pos < required_min {
+      let shift = required_min - min_pos
       cumulative_shift = cumulative_shift + shift
       // Shift all nodes in this and subsequent ranks
       for j = i; j < layers.length(); j = j + 1 {
@@ -596,15 +596,14 @@ pub fn adjust_rank_spacing(
 }
 
 ///|
-/// Adjust cross-rank spacing to fix node overlaps within ranks
-/// Only shifts nodes when there's actual overlap (not to enforce minimum separation)
+/// Adjust cross-rank spacing to enforce minimum separation within ranks
 /// For horizontal layout: adjusts y-spacing (nodes in same rank)
 /// For vertical layout: adjusts x-spacing (nodes in same rank)
 pub fn adjust_cross_rank_spacing(
   coords : CoordinateResult,
   layers : Array[Array[String]],
   node_sizes : Map[String, Double], // heights for horizontal, widths for vertical
-  _sep : Double,
+  sep : Double,
   is_horizontal : Bool,
 ) -> Unit {
   // Get the coordinate map to adjust (y for horizontal layout, x for vertical)
@@ -616,17 +615,18 @@ pub fn adjust_cross_rank_spacing(
     }
     // Sort nodes by their current position
     let sorted = sort_nodes_by_coord(layer, coord_map)
-    // Only fix actual overlaps between adjacent nodes
+    // Enforce minimum spacing between adjacent nodes
     for i = 1; i < sorted.length(); i = i + 1 {
       let prev_node = sorted[i - 1]
       let curr_node = sorted[i]
       let prev_pos = coord_map.get(prev_node).unwrap_or(0.0)
       let prev_size = node_sizes.get(prev_node).unwrap_or(60.0)
       let curr_pos = coord_map.get(curr_node).unwrap_or(0.0)
-      let prev_end = prev_pos + prev_size
-      // Only shift if there's actual overlap (curr starts before prev ends)
-      if curr_pos < prev_end {
-        let shift = prev_end - curr_pos + 1.0 // Add small margin
+      // Required minimum position is prev_end + sep
+      let required_min = prev_pos + prev_size + sep
+      // Shift if current position is less than required
+      if curr_pos < required_min {
+        let shift = required_min - curr_pos
         // Shift this and all subsequent nodes
         for j = i; j < sorted.length(); j = j + 1 {
           let node = sorted[j]

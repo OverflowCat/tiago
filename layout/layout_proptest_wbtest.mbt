@@ -1310,11 +1310,9 @@ pub fn edge_connects_to_correct_side(graph : @graph.Graph) -> Bool {
         if (endpoint.y - box.y).abs() > tolerance {
           return false
         }
-      } else {
         // Approaching from below (going up) → should connect to BOTTOM edge
-        if (endpoint.y - (box.y + box.height)).abs() > tolerance {
-          return false
-        }
+      } else if (endpoint.y - (box.y + box.height)).abs() > tolerance {
+        return false
       }
     } else if dx.abs() > tolerance {
       // Primarily horizontal approach
@@ -1323,11 +1321,9 @@ pub fn edge_connects_to_correct_side(graph : @graph.Graph) -> Bool {
         if (endpoint.x - box.x).abs() > tolerance {
           return false
         }
-      } else {
         // Approaching from right (going left) → should connect to RIGHT edge
-        if (endpoint.x - (box.x + box.width)).abs() > tolerance {
-          return false
-        }
+      } else if (endpoint.x - (box.x + box.width)).abs() > tolerance {
+        return false
       }
     }
   }
@@ -1727,18 +1723,17 @@ test "property: never use diagonal edges" {
   )
 }
 
-// ///|
-// test "property: parallel edges are distinguishable" {
-//   // KNOWN ISSUE: Parallel edge offset not working correctly in all cases
-//   @qc.quick_check(
-//     @qc.forall(gen_dense_graph(), fn(graph : @graph.Graph) {
-//       let config = LayoutConfig::new()
-//       layout(graph, config, Direction::Down)
-//       parallel_edges_distinguishable(graph)
-//     }),
-//     max_success=50,
-//   )
-// }
+///|
+test "property: parallel edges are distinguishable" {
+  @qc.quick_check(
+    @qc.forall(gen_dense_graph(), fn(graph : @graph.Graph) {
+      let config = LayoutConfig::new()
+      layout(graph, config, Direction::Down)
+      parallel_edges_distinguishable(graph)
+    }),
+    max_success=50,
+  )
+}
 
 ///|
 test "property: arrowhead direction matches node position" {
