@@ -2,83 +2,104 @@
 /// Property-based tests for layout algorithm constraints
 
 // ============================================================================
-// Graph Generators
+// Graph Generators (using constraint-based generation)
 // ============================================================================
 
 ///|
-/// Generate a random graph with n nodes and random edges
-fn gen_graph(node_count : Int, edge_probability : Int) -> @qc.Gen[@graph.Graph] {
+/// Generate a unique node ID
+fn gen_node_id() -> @qc.Gen[String] {
   @qc.Gen::new(fn(size, state) {
+    let suffix = @qc.int_range(0, 10000).run(size, state)
+    "node_" + suffix.to_string()
+  })
+}
+
+///|
+/// Generate a random graph using constraint-based generation.
+/// Ensures all edges reference valid node IDs (invariant preserved).
+fn gen_graph(node_count : Int, edge_count : Int) -> @qc.Gen[@graph.Graph] {
+  @qc.Gen::new(fn(size, state) {
+    // Use gen_with_valid_references to ensure edge invariants
+    let (nodes, edges) = @proptest.gen_with_valid_references(
+      node_count,
+      gen_node_id(),
+      fn(id) {
+        let label_len = @qc.int_range(1, 10).run(size, state)
+        let label = @proptest.string_of_length(label_len).run(size, state)
+        @graph.Object::with_label(id, label)
+      },
+      edge_count,
+      fn(src_id, dst_id) {
+        @graph.Edge::new(0, src_id, dst_id, false, true) // index fixed later
+      },
+    ).run(size, state)
+    // Build graph from generated components
     let graph = @graph.Graph::new("test")
-    // Generate nodes with random labels
-    let nodes : Array[@graph.Object] = []
-    for i in 0..<node_count {
-      let label_len = @qc.int_range(1, 10).run(size, state)
-      let label = @proptest.string_of_length(label_len).run(size, state)
-      let obj = @graph.Object::with_label("node_" + i.to_string(), label)
-      graph.add_object(obj)
-      nodes.push(obj)
+    for node in nodes {
+      graph.add_object(node)
     }
-    // Generate random edges based on probability (0-100)
-    for i in 0..<node_count {
-      for j in 0..<node_count {
-        if i != j {
-          let should_connect = @qc.int_range(0, 100).run(size, state)
-          if should_connect < edge_probability {
-            let edge = @graph.Edge::new(
-              graph.edges.length(),
-              nodes[i].id,
-              nodes[j].id,
-              false,
-              true,
-            )
-            graph.add_edge(edge)
-          }
-        }
-      }
+    for i, edge in edges {
+      // Create edge with correct index
+      let indexed_edge = @graph.Edge::new(
+        i,
+        edge.src_id,
+        edge.dst_id,
+        edge.src_arrow,
+        edge.dst_arrow,
+      )
+      graph.add_edge(indexed_edge)
     }
     graph
   })
 }
 
 ///|
-/// Generate a simple graph with 2-10 nodes and sparse edges
+/// Generate a simple graph with 2-10 nodes and sparse edges.
+/// Uses constraint-based generation for valid references.
 fn gen_simple_graph() -> @qc.Gen[@graph.Graph] {
   @qc.Gen::new(fn(size, state) {
     let node_count = @qc.int_range(2, 10).run(size, state)
-    gen_graph(node_count, 20).run(size, state)
+    let edge_count = @qc.int_range(1, node_count * 2).run(size, state)
+    gen_graph(node_count, edge_count).run(size, state)
   })
 }
 
 ///|
-/// Generate a denser graph with more edges
+/// Generate a denser graph with more edges.
+/// Uses constraint-based generation for valid references.
 fn gen_dense_graph() -> @qc.Gen[@graph.Graph] {
   @qc.Gen::new(fn(size, state) {
     let node_count = @qc.int_range(3, 8).run(size, state)
-    gen_graph(node_count, 50).run(size, state)
+    let edge_count = @qc.int_range(node_count, node_count * 3).run(size, state)
+    gen_graph(node_count, edge_count).run(size, state)
   })
 }
 
 ///|
-/// Generate a graph with nested containers and top-level nodes
-/// This mimics real-world cases like: user -> aws.cdn where user is outside the container
+/// Generate a graph with nested containers and top-level nodes.
+/// Uses constraint-based generation to ensure edge references are valid.
+/// This mimics real-world cases like: user -> aws.cdn where user is outside the container.
 fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
   @qc.Gen::new(fn(size, state) {
     let graph = @graph.Graph::new("test")
+    // Collect all valid node IDs for edge generation
+    let all_node_ids : Array[String] = []
+    let child_ids : Array[String] = []
     // Generate 1-2 top-level standalone nodes (like "user" in containers.d2)
     let top_level_count = @qc.int_range(1, 3).run(size, state)
-    let top_level_nodes : Array[@graph.Object] = []
-    for i in 0..<top_level_count {
+    let top_level_ids : Array[String] = []
+    for i = 0; i < top_level_count; i = i + 1 {
+      let id = "toplevel_" + i.to_string()
       let label_len = @qc.int_range(1, 6).run(size, state)
       let label = @proptest.string_of_length(label_len).run(size, state)
-      let node = @graph.Object::with_label("toplevel_" + i.to_string(), label)
+      let node = @graph.Object::with_label(id, label)
       graph.add_object(node)
-      top_level_nodes.push(node)
+      top_level_ids.push(id)
+      all_node_ids.push(id)
     }
     // Generate 1-2 containers with children
     let container_count = @qc.int_range(1, 2).run(size, state)
-    let all_children : Array[@graph.Object] = []
-    for i in 0..<container_count {
+    for i = 0; i < container_count; i = i + 1 {
       let label_len = @qc.int_range(1, 8).run(size, state)
       let label = @proptest.string_of_length(label_len).run(size, state)
       let container = @graph.Object::with_label(
@@ -87,35 +108,32 @@ fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
       )
       // Add 2-4 children to each container
       let child_count = @qc.int_range(2, 4).run(size, state)
-      for j in 0..<child_count {
+      for j = 0; j < child_count; j = j + 1 {
+        let child_id = "container_" + i.to_string() + "_child_" + j.to_string()
         let child_label_len = @qc.int_range(1, 6).run(size, state)
         let child_label = @proptest.string_of_length(child_label_len).run(
           size, state,
         )
-        let child = @graph.Object::with_label(
-          "container_" + i.to_string() + "_child_" + j.to_string(),
-          child_label,
-        )
+        let child = @graph.Object::with_label(child_id, child_label)
         container.add_child(child)
-        all_children.push(child)
+        child_ids.push(child_id)
+        all_node_ids.push(child_id)
       }
       graph.add_object(container)
     }
     // CRITICAL: Add edges from top-level nodes to children inside containers
-    // This is the case that was missing: user -> aws.cdn
-    for top_node in top_level_nodes {
-      if all_children.length() > 0 {
+    // This tests the case: user -> aws.cdn (external to internal)
+    if child_ids.length() > 0 {
+      for top_id in top_level_ids {
         // 70% chance to connect to a child inside a container
         let should_connect = @qc.int_range(0, 100).run(size, state)
         if should_connect < 70 {
-          let target_idx = @qc.int_range(0, all_children.length()).run(
-            size, state,
-          )
-          let target = all_children[target_idx]
+          // Use element_of to pick a valid child ID
+          let target_id = @proptest.element_of(child_ids).run(size, state)
           let edge = @graph.Edge::new(
             graph.edges.length(),
-            top_node.id,
-            target.id,
+            top_id,
+            target_id,
             false,
             true,
           )
@@ -123,31 +141,21 @@ fn gen_graph_with_containers() -> @qc.Gen[@graph.Graph] {
         }
       }
     }
-    // Also add some edges between children of different containers
-    let objects = graph.get_objects()
-    for obj in objects {
-      for child in obj.children {
-        // 30% chance to connect to a child in another container
-        let should_connect = @qc.int_range(0, 100).run(size, state)
-        if should_connect < 30 {
-          // Find another child in a different container
-          for other_obj in objects {
-            if other_obj.id != obj.id && other_obj.children.length() > 0 {
-              let target_idx = @qc.int_range(0, other_obj.children.length()).run(
-                size, state,
-              )
-              let target = other_obj.children[target_idx]
-              let edge = @graph.Edge::new(
-                graph.edges.length(),
-                child.id,
-                target.id,
-                false,
-                true,
-              )
-              graph.add_edge(edge)
-              break
-            }
-          }
+    // Add edges between children (internal to internal)
+    if child_ids.length() >= 2 {
+      let edge_count = @qc.int_range(1, child_ids.length()).run(size, state)
+      for i = 0; i < edge_count; i = i + 1 {
+        let src_id = @proptest.element_of(child_ids).run(size, state)
+        let dst_id = @proptest.element_of(child_ids).run(size, state)
+        if src_id != dst_id {
+          let edge = @graph.Edge::new(
+            graph.edges.length(),
+            src_id,
+            dst_id,
+            false,
+            true,
+          )
+          graph.add_edge(edge)
         }
       }
     }
