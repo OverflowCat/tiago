@@ -20,8 +20,13 @@ fn position_objects_layered_with_virtual(
     return
   }
   // Collect node dimensions (virtual nodes get minimal size)
+  // For Right/Left direction, we swap width↔height because layers are vertical columns
   let node_widths : Map[String, Double] = {}
   let node_heights : Map[String, Double] = {}
+  let is_horizontal = match direction {
+    Right | Left => true
+    Down | Up => false
+  }
   for layer in crossing_result.ordered_layers {
     for node_id in layer {
       if is_virtual_node(node_id) {
@@ -30,8 +35,17 @@ fn position_objects_layered_with_virtual(
         node_heights[node_id] = 1.0
       } else if graph.find_object(node_id) is Some(obj) {
         if obj.box is Some(b) {
-          node_widths[node_id] = b.width
-          node_heights[node_id] = b.height
+          if is_horizontal {
+            // Swap dimensions for horizontal layout
+            node_widths[node_id] = b.height
+            node_heights[node_id] = b.width
+          } else {
+            node_widths[node_id] = b.width
+            node_heights[node_id] = b.height
+          }
+        } else if is_horizontal {
+          node_widths[node_id] = config.default_height
+          node_heights[node_id] = config.default_width
         } else {
           node_widths[node_id] = config.default_width
           node_heights[node_id] = config.default_height
@@ -40,14 +54,14 @@ fn position_objects_layered_with_virtual(
     }
   }
   // Assign coordinates using Brandes-Köpf algorithm
+  // For Right/Left, swap horizontal↔vertical spacing to match swapped dimensions
+  let (h_spacing, v_spacing) = if is_horizontal {
+    (config.vertical_spacing, config.horizontal_spacing)
+  } else {
+    (config.horizontal_spacing, config.vertical_spacing)
+  }
   let coords = assign_coordinates(
-    graph,
-    crossing_result,
-    cycle_result,
-    node_widths,
-    node_heights,
-    config.horizontal_spacing,
-    config.vertical_spacing,
+    graph, crossing_result, cycle_result, node_widths, node_heights, h_spacing, v_spacing,
   )
   // Store virtual node positions in a map for edge routing
   // (Stored in the graph's edge metadata later)
