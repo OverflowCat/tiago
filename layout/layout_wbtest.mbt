@@ -479,7 +479,7 @@ test "sequence layout with opt group creates fragment" {
   graph.add_edge(edge2)
   let config = LayoutConfig::new()
   // Run layout
-  let result = layout_sequence_with_activations(container, graph, config)
+  layout_sequence_with_activations(container, graph, config) |> ignore
   // Should have a fragment for the opt group
   assert_true(graph.has_fragments())
   assert_eq(graph.sequence_fragments.length(), 1)

@@ -1,0 +1,66 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/proptest"
+
+// Values
+pub fn absurd() -> Bool
+
+pub fn[T : Eq] all_unique(Array[T]) -> Bool
+
+pub fn alpha_string() -> @moonbitlang/quickcheck.Gen[String]
+
+pub fn alphanumeric_string() -> @moonbitlang/quickcheck.Gen[String]
+
+pub fn approx_eq(Double, Double) -> Bool
+
+pub fn[T : @moonbitlang/core/quickcheck.Arbitrary] array_with_bounds(Int, Int) -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn ascii_string() -> @moonbitlang/quickcheck.Gen[String]
+
+pub fn[P : @moonbitlang/quickcheck.Testable] check_property(P) -> Bool
+
+pub fn[P : @moonbitlang/quickcheck.Testable] check_property_n(P, Int) -> Bool
+
+pub fn double_range(Double, Double) -> @moonbitlang/quickcheck.Gen[Double]
+
+pub fn[P : @moonbitlang/quickcheck.Testable] implies(Bool, P) -> @moonbitlang/quickcheck.Property
+
+pub fn[P : @moonbitlang/quickcheck.Testable] imply((Bool, P)) -> @moonbitlang/quickcheck.Property
+
+pub fn int_near(Int, Int) -> @moonbitlang/quickcheck.Gen[Int]
+
+pub fn[T : Compare] is_sorted(Array[T]) -> Bool
+
+pub fn[T : Compare] is_sorted_desc(Array[T]) -> Bool
+
+pub fn[T : @moonbitlang/core/quickcheck.Arbitrary] non_empty_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn[T] permutation(Array[T]) -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn positive_int() -> @moonbitlang/quickcheck.Gen[Int]
+
+pub fn prop_and(Bool, Bool) -> Bool
+
+pub fn prop_or(Bool, Bool) -> Bool
+
+pub fn shrink_towards(Int, Int) -> Iter[Int]
+
+pub fn[T : @moonbitlang/core/quickcheck.Arbitrary + Compare] sorted_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn string_of_length(Int) -> @moonbitlang/quickcheck.Gen[String]
+
+pub fn trivial() -> Bool
+
+pub fn[T : @moonbitlang/core/quickcheck.Arbitrary + Eq] unique_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
+
+pub fn unit_double() -> @moonbitlang/quickcheck.Gen[Double]
+
+pub fn within_delta(Double, Double, Double) -> Bool
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

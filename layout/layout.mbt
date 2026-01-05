@@ -1503,8 +1503,9 @@ fn can_remove_waypoint(
   graph : @graph.Graph,
   edge : @graph.Edge,
 ) -> Bool {
-  // Check if this forms an S-shape (direction reversal)
-  if not(is_s_shape(p0, p1, p2)) {
+  // Remove if points are collinear (on same line) - middle point is redundant
+  // Also remove if this forms an S-shape (direction reversal)
+  if not(are_collinear(p0, p1, p2)) && not(is_s_shape(p0, p1, p2)) {
     return false
   }
   // Check if the direct line would intersect any objects
@@ -1512,6 +1513,24 @@ fn can_remove_waypoint(
     return false
   }
   true
+}
+
+///|
+/// Check if three points are collinear (on the same line)
+/// Uses cross product: if (p1-p0) × (p2-p0) ≈ 0, points are collinear
+fn are_collinear(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+) -> Bool {
+  let dx1 = p1.x - p0.x
+  let dy1 = p1.y - p0.y
+  let dx2 = p2.x - p0.x
+  let dy2 = p2.y - p0.y
+  // Cross product: dx1*dy2 - dy1*dx2
+  // If close to zero, points are collinear
+  let cross = dx1 * dy2 - dy1 * dx2
+  cross.abs() < 1.0
 }
 
 ///|
