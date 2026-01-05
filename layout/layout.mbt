@@ -139,8 +139,11 @@ pub fn layout(
   route_edges_with_virtual(graph, config, virtual_result)
   // Phase 7.1: Route around obstacles
   route_around_obstacles(graph)
+  // Phase 7.2: Normalize coordinates to non-negative
+  normalize_coordinates(graph)
   // Phase 7.5: Optimize edge routes by removing unnecessary bends
   eliminate_unnecessary_bends(graph)
+  // Note: approach direction correction removed - handled upstream in routing functions
   // Phase 8: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
   // Phase 9: Layout layers, scenarios, and steps recursively
@@ -396,6 +399,53 @@ fn get_sql_row_anchor_point(
   // Return exact edge position - extend_edge_endpoints will add outward extension
   let x = if is_left_side { table_box.x } else { table_box.x + table_box.width }
   @graph.Point::new(x, row_center_y)
+}
+
+///|
+/// Calculate the best anchor points for an edge based on relative box positions.
+/// Returns (src_anchor, dst_anchor) strings.
+///
+/// IMPORTANT: The dst_anchor is chosen based on the direction from src_point to
+/// dst_center (not center-to-center). This ensures the approach direction matches
+/// the anchor side (required by edge_connects_to_correct_side constraint).
+fn calculate_best_anchors(
+  src_box : @graph.Box,
+  dst_box : @graph.Box,
+) -> (String, String) {
+  let src_cx = src_box.center().get_x()
+  let src_cy = src_box.center().get_y()
+  let dst_cx = dst_box.center().get_x()
+  let dst_cy = dst_box.center().get_y()
+  let dx_center = dst_cx - src_cx
+  let dy_center = dst_cy - src_cy
+  // Step 1: Pick src_anchor based on center-to-center direction
+  let src_anchor = if dy_center.abs() >= dx_center.abs() {
+    if dy_center > 0.0 { "bottom" } else { "top" }
+  } else {
+    if dx_center > 0.0 { "right" } else { "left" }
+  }
+  // Step 2: Calculate src_point
+  let src_point = get_anchor_point(src_box, src_anchor, 0.0)
+  // Step 3: Pick dst_anchor based on direction from src_point to dst_center
+  // This ensures the final segment approaches from the correct direction
+  let dx_to_dst = dst_cx - src_point.x
+  let dy_to_dst = dst_cy - src_point.y
+  let dst_anchor = if dy_to_dst.abs() >= dx_to_dst.abs() {
+    // Approach is more vertical
+    if dy_to_dst > 0.0 {
+      "top" // Approaching from above (going down) → connect to top
+    } else {
+      "bottom" // Approaching from below (going up) → connect to bottom
+    }
+  } else {
+    // Approach is more horizontal
+    if dx_to_dst > 0.0 {
+      "left" // Approaching from left (going right) → connect to left
+    } else {
+      "right" // Approaching from right (going left) → connect to right
+    }
+  }
+  (src_anchor, dst_anchor)
 }
 
 ///|
@@ -835,40 +885,82 @@ fn position_edge_labels(graph : @graph.Graph, config : LayoutConfig) -> Unit {
         )
         // Calculate perpendicular direction to the edge
         let (perp_x, perp_y) = compute_perpendicular_direction(edge)
-        // Try to find a non-overlapping position
-        // Check up to 5 positions: center, then alternating offsets
-        let offsets = [
-          0.0,
-          config.edge_padding,
-          -config.edge_padding,
-          config.edge_padding * 2.0,
-          -config.edge_padding * 2.0,
-        ]
-        for offset in offsets {
-          label_x = mid.x - label_width / 2.0 + perp_x * offset
-          label_y = mid.y - label_height / 2.0 + perp_y * offset
-          label_box = @graph.Box::new(
-            label_x, label_y, label_width, label_height,
-          )
-          // Check for overlaps with nodes
-          let mut overlaps = false
-          for node_box in node_boxes {
-            if boxes_overlap(label_box, node_box) {
-              overlaps = true
+        // Also get the edge direction for along-edge offsets
+        let route = edge.get_route()
+        let (edge_dx, edge_dy) = if route.length() >= 2 {
+          let p1 = route[0]
+          let p2 = route[route.length() - 1]
+          let dx = p2.x - p1.x
+          let dy = p2.y - p1.y
+          let len = (dx * dx + dy * dy).sqrt()
+          if len > 0.001 {
+            (dx / len, dy / len)
+          } else {
+            (1.0, 0.0)
+          }
+        } else {
+          (1.0, 0.0)
+        }
+        // Try to find a non-overlapping position using grid search
+        let mut found = false
+        // Increase step size based on number of existing labels to spread them out
+        let base_step = config.edge_padding
+        let label_count = label_boxes.length()
+        // Try positions in expanding circles around midpoint
+        for radius in [0, 1, 2, 3, 4, 5] {
+          if found {
+            break
+          }
+          // Also try vertical stacking based on label index
+          let stack_offset = label_count.to_double() * (label_height + 5.0)
+          for perp_mult in [-radius, 0, radius] {
+            if found {
               break
             }
-          }
-          // Check for overlaps with other labels
-          if not(overlaps) {
-            for other_box in label_boxes {
-              if boxes_overlap(label_box, other_box) {
-                overlaps = true
+            for along_mult in [-radius, 0, radius] {
+              if radius == 0 && (perp_mult != 0 || along_mult != 0) {
+                continue
+              }
+              // Try without stack offset first, then with
+              for stack in [0.0, stack_offset, -stack_offset] {
+                label_x = mid.x -
+                  label_width / 2.0 +
+                  perp_x * (perp_mult.to_double() * base_step) +
+                  edge_dx * (along_mult.to_double() * base_step)
+                label_y = mid.y -
+                  label_height / 2.0 +
+                  perp_y * (perp_mult.to_double() * base_step) +
+                  edge_dy * (along_mult.to_double() * base_step) +
+                  stack
+                label_box = @graph.Box::new(
+                  label_x, label_y, label_width, label_height,
+                )
+                // Check for overlaps with nodes
+                let mut overlaps = false
+                for node_box in node_boxes {
+                  if boxes_overlap(label_box, node_box) {
+                    overlaps = true
+                    break
+                  }
+                }
+                // Check for overlaps with other labels
+                if !overlaps {
+                  for other_box in label_boxes {
+                    if boxes_overlap(label_box, other_box) {
+                      overlaps = true
+                      break
+                    }
+                  }
+                }
+                if !overlaps {
+                  found = true
+                  break
+                }
+              }
+              if found {
                 break
               }
             }
-          }
-          if not(overlaps) {
-            break // Found a good position
           }
         }
         // Store the computed label box
@@ -1009,9 +1101,19 @@ fn route_edges_with_virtual(
   _config : LayoutConfig,
   virtual_result : VirtualNodeResult,
 ) -> Unit {
+  // Track parallel edge counts for offset calculation
+  let edge_counts : Map[String, Int] = {}
   for edge in graph.edges {
     // Clear existing route
     edge.route.clear()
+    // Handle self-loops specially
+    if edge.src_id == edge.dst_id {
+      let src_obj = graph.find_object(edge.src_id)
+      guard src_obj is Some(src) else { continue }
+      guard src.box is Some(box) else { continue }
+      route_self_loop(edge, box)
+      continue
+    }
     // Handle SQL table field connections specially
     let (src_box, src_num_cols, dst_box, dst_num_cols) = match
       get_sql_table_boxes(graph, edge) {
@@ -1031,6 +1133,14 @@ fn route_edges_with_virtual(
         (src.box.unwrap(), 0, dst.box.unwrap(), 0)
       }
     }
+    // Calculate parallel edge offset
+    let edge_key = if edge.src_id < edge.dst_id {
+      edge.src_id + "->" + edge.dst_id
+    } else {
+      edge.dst_id + "->" + edge.src_id
+    }
+    let edge_index = edge_counts.get(edge_key).unwrap_or(0)
+    edge_counts[edge_key] = edge_index + 1
     // Check if this edge has virtual nodes
     if virtual_result.edge_virtual_nodes.get(edge.index) is Some(virtual_ids) &&
       virtual_ids.length() > 0 {
@@ -1039,10 +1149,41 @@ fn route_edges_with_virtual(
         edge, src_box, dst_box, virtual_ids, virtual_result, src_num_cols, dst_num_cols,
       )
     } else {
-      // Direct edge routing
-      route_direct_edge_sql(edge, src_box, dst_box, src_num_cols, dst_num_cols)
+      // Direct edge routing with parallel offset
+      route_direct_edge_sql_parallel(
+        edge, src_box, dst_box, src_num_cols, dst_num_cols, edge_index,
+      )
     }
   }
+}
+
+///|
+/// Route a self-loop edge (where source and destination are the same node)
+fn route_self_loop(edge : @graph.Edge, box : @graph.Box) -> Unit {
+  // Create a loop that goes out from the right side, curves up/right, and comes back
+  let loop_size = 30.0
+  let right = box.x + box.width
+  let top = box.y
+  let center_y = box.y + box.height / 2.0
+  // Start from right side, slightly above center
+  let start_x = right
+  let start_y = center_y - 10.0
+  // End at right side, slightly below center
+  let end_x = right
+  let end_y = center_y + 10.0
+  // Control points for the loop
+  let ctrl1_x = right + loop_size
+  let ctrl1_y = start_y - loop_size
+  let ctrl2_x = right + loop_size * 1.5
+  let ctrl2_y = top - loop_size
+  let ctrl3_x = right + loop_size
+  let ctrl3_y = end_y + loop_size
+  // Add route points
+  edge.add_route_point(@graph.Point::new(start_x, start_y))
+  edge.add_route_point(@graph.Point::new(ctrl1_x, ctrl1_y))
+  edge.add_route_point(@graph.Point::new(ctrl2_x, ctrl2_y))
+  edge.add_route_point(@graph.Point::new(ctrl3_x, ctrl3_y))
+  edge.add_route_point(@graph.Point::new(end_x, end_y))
 }
 
 ///|
@@ -1124,16 +1265,21 @@ fn route_edge_through_virtual_sql(
   // Port constraint approach for SQL tables:
   // - Source column connections use RIGHT side (srcSide = East)
   // - Destination column connections use LEFT side (dstSide = West)
+  // Calculate best anchors based on relative positions if not specified
+  let (default_src_anchor, default_dst_anchor) = calculate_best_anchors(
+    src_box,
+    dst_box,
+  )
   let src_point = if edge.src_column_index is Some(col_idx) && src_num_cols > 0 {
     get_sql_row_anchor_point(src_box, col_idx, src_num_cols, false)
   } else {
-    let src_anchor = edge.src_anchor.unwrap_or("bottom")
+    let src_anchor = edge.src_anchor.unwrap_or(default_src_anchor)
     get_anchor_point(src_box, src_anchor, 0.0)
   }
   let dst_point = if edge.dst_column_index is Some(col_idx) && dst_num_cols > 0 {
     get_sql_row_anchor_point(dst_box, col_idx, dst_num_cols, true)
   } else {
-    let dst_anchor = edge.dst_anchor.unwrap_or("top")
+    let dst_anchor = edge.dst_anchor.unwrap_or(default_dst_anchor)
     get_anchor_point(dst_box, dst_anchor, 0.0)
   }
   if is_sql_edge {
@@ -1144,57 +1290,115 @@ fn route_edge_through_virtual_sql(
     edge.route.push(@graph.Point::new(mid_x, dst_point.y))
     edge.route.push(dst_point)
   } else {
-    // Regular edge: use standard orthogonal routing
+    // Regular edge: use orthogonal routing that respects anchor direction
+    // The final segment must approach from the correct direction for the anchor
+    let dst_anchor = edge.dst_anchor.unwrap_or(default_dst_anchor)
+    let is_vertical_anchor = dst_anchor == "top" || dst_anchor == "bottom"
     edge.route.push(src_point)
-    let mid_y = (src_point.y + dst_point.y) / 2.0
-    if (src_point.x - dst_point.x).abs() > 1.0 {
-      edge.route.push(@graph.Point::new(src_point.x, mid_y))
-      edge.route.push(@graph.Point::new(dst_point.x, mid_y))
+    if is_vertical_anchor {
+      // Vertical approach: route horizontally first, then vertically to dst
+      let mid_y = (src_point.y + dst_point.y) / 2.0
+      if (src_point.x - dst_point.x).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(src_point.x, mid_y))
+        edge.route.push(@graph.Point::new(dst_point.x, mid_y))
+      }
+    } else {
+      // Horizontal approach: route vertically first, then horizontally to dst
+      let mid_x = (src_point.x + dst_point.x) / 2.0
+      if (src_point.y - dst_point.y).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(mid_x, src_point.y))
+        edge.route.push(@graph.Point::new(mid_x, dst_point.y))
+      }
     }
     edge.route.push(dst_point)
   }
 }
 
 ///|
-/// Route a direct edge with SQL table support
-fn route_direct_edge_sql(
+/// Route a direct edge with SQL table support and parallel edge offset
+fn route_direct_edge_sql_parallel(
   edge : @graph.Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
   src_num_cols : Int,
   dst_num_cols : Int,
+  parallel_index : Int,
 ) -> Unit {
   // Check if this is an SQL table edge
   let is_sql_src = edge.src_column_index is Some(_) && src_num_cols > 0
   let is_sql_dst = edge.dst_column_index is Some(_) && dst_num_cols > 0
   let is_sql_edge = is_sql_src || is_sql_dst
-
+  // Calculate parallel offset (alternate left/right)
+  let offset_amount = 15.0 // Pixels between parallel edges
+  let offset = if parallel_index == 0 {
+    0.0
+  } else {
+    let sign = if parallel_index % 2 == 1 { 1.0 } else { -1.0 }
+    sign * ((parallel_index + 1) / 2).to_double() * offset_amount
+  }
   // Port constraint approach for SQL tables:
   // - Source column connections use RIGHT side (srcSide = East)
   // - Destination column connections use LEFT side (dstSide = West)
+  // Calculate best anchors based on relative positions if not specified
+  let (default_src_anchor, default_dst_anchor) = calculate_best_anchors(
+    src_box,
+    dst_box,
+  )
   let src_point = if edge.src_column_index is Some(col_idx) && src_num_cols > 0 {
     get_sql_row_anchor_point(src_box, col_idx, src_num_cols, false)
   } else {
-    let src_anchor = edge.src_anchor.unwrap_or("bottom")
-    get_anchor_point(src_box, src_anchor, 0.0)
+    let src_anchor = edge.src_anchor.unwrap_or(default_src_anchor)
+    get_anchor_point(src_box, src_anchor, offset)
   }
   let dst_point = if edge.dst_column_index is Some(col_idx) && dst_num_cols > 0 {
     get_sql_row_anchor_point(dst_box, col_idx, dst_num_cols, true)
   } else {
-    let dst_anchor = edge.dst_anchor.unwrap_or("top")
-    get_anchor_point(dst_box, dst_anchor, 0.0)
+    let dst_anchor = edge.dst_anchor.unwrap_or(default_dst_anchor)
+    get_anchor_point(dst_box, dst_anchor, offset)
   }
   if is_sql_edge {
     // SQL table edge: simple 4-point zig-zag
     // The railroad path builder will add rounded corners at the 2 turns
-    let mid_x = (src_point.x + dst_point.x) / 2.0
+    let mid_x = (src_point.x + dst_point.x) / 2.0 + offset
     edge.route.push(src_point)
     edge.route.push(@graph.Point::new(mid_x, src_point.y))
     edge.route.push(@graph.Point::new(mid_x, dst_point.y))
     edge.route.push(dst_point)
-  } else {
-    // Regular edge: simple 2-point route
+  } else if parallel_index > 0 {
+    // Parallel edge: use orthogonal L-shape routing (offset is in anchor points)
+    // The approach direction must match the anchor side
+    let is_vertical_anchor = default_dst_anchor == "top" ||
+      default_dst_anchor == "bottom"
     edge.route.push(src_point)
+    if is_vertical_anchor {
+      // Vertical approach: L-shape with horizontal first, then vertical to dst
+      if (src_point.x - dst_point.x).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(dst_point.x, src_point.y))
+      }
+    } else {
+      // Horizontal approach: L-shape with vertical first, then horizontal to dst
+      if (src_point.y - dst_point.y).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(src_point.x, dst_point.y))
+      }
+    }
+    edge.route.push(dst_point)
+  } else {
+    // Regular edge: use orthogonal routing to ensure correct approach direction
+    // The final segment must approach from the direction matching the anchor side
+    let is_vertical_anchor = default_dst_anchor == "top" ||
+      default_dst_anchor == "bottom"
+    edge.route.push(src_point)
+    if is_vertical_anchor {
+      // Vertical approach needed: route to dst's x first, then vertically to dst
+      if (src_point.x - dst_point.x).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(dst_point.x, src_point.y))
+      }
+    } else {
+      // Horizontal approach needed: route to dst's y first, then horizontally to dst
+      if (src_point.y - dst_point.y).abs() > 1.0 {
+        edge.route.push(@graph.Point::new(src_point.x, dst_point.y))
+      }
+    }
     edge.route.push(dst_point)
   }
 }
@@ -1204,34 +1408,486 @@ fn route_direct_edge_sql(
 // ============================================================================
 
 ///|
+/// Compute bounding box of all objects in the graph
+/// Returns (min_x, min_y, max_x, max_y)
+fn compute_all_bounds(graph : @graph.Graph) -> (Double, Double, Double, Double) {
+  let mut min_x = 1.0e10
+  let mut min_y = 1.0e10
+  let mut max_x = -1.0e10
+  let mut max_y = -1.0e10
+  for obj in graph.objects {
+    guard obj.box is Some(box) else { continue }
+    if box.x < min_x {
+      min_x = box.x
+    }
+    if box.y < min_y {
+      min_y = box.y
+    }
+    if box.x + box.width > max_x {
+      max_x = box.x + box.width
+    }
+    if box.y + box.height > max_y {
+      max_y = box.y + box.height
+    }
+  }
+  (min_x, min_y, max_x, max_y)
+}
+
+///|
+/// Normalize coordinates to ensure all elements have non-negative positions
+/// This shifts the entire graph if any element has negative coordinates
+fn normalize_coordinates(graph : @graph.Graph) -> Unit {
+  // Find minimum x and y across all elements (nodes and edge routes)
+  let mut min_x = 0.0
+  let mut min_y = 0.0
+  // Check object boxes
+  for obj in graph.objects {
+    if obj.box is Some(box) {
+      if box.x < min_x {
+        min_x = box.x
+      }
+      if box.y < min_y {
+        min_y = box.y
+      }
+    }
+  }
+  // Check edge route points
+  for edge in graph.edges {
+    for pt in edge.route {
+      if pt.x < min_x {
+        min_x = pt.x
+      }
+      if pt.y < min_y {
+        min_y = pt.y
+      }
+    }
+    // Check edge label positions
+    if edge.label_box is Some(lb) {
+      if lb.x < min_x {
+        min_x = lb.x
+      }
+      if lb.y < min_y {
+        min_y = lb.y
+      }
+    }
+  }
+  // If everything is already non-negative, nothing to do
+  if min_x >= 0.0 && min_y >= 0.0 {
+    return
+  }
+  // Calculate shift amounts
+  let shift_x = if min_x < 0.0 { -min_x } else { 0.0 }
+  let shift_y = if min_y < 0.0 { -min_y } else { 0.0 }
+  // Shift all object boxes
+  for obj in graph.objects {
+    if obj.box is Some(box) {
+      obj.box = Some(
+        @graph.Box::new(box.x + shift_x, box.y + shift_y, box.width, box.height),
+      )
+    }
+  }
+  // Shift all edge route points
+  for edge in graph.edges {
+    for i = 0; i < edge.route.length(); i = i + 1 {
+      let pt = edge.route[i]
+      edge.route[i] = @graph.Point::new(pt.x + shift_x, pt.y + shift_y)
+    }
+    // Shift edge label positions
+    if edge.label_box is Some(lb) {
+      edge.label_box = Some(
+        @graph.Box::new(lb.x + shift_x, lb.y + shift_y, lb.width, lb.height),
+      )
+    }
+  }
+}
+
+///|
 /// Route edges around obstacles (objects that would be intersected)
 fn route_around_obstacles(graph : @graph.Graph) -> Unit {
+  // Compute canvas bounds once for fallback routing
+  let canvas_bounds = compute_all_bounds(graph)
   for edge in graph.edges {
-    route_edge_around_obstacles(edge, graph)
+    route_edge_around_obstacles(edge, graph, canvas_bounds)
   }
 }
 
 ///|
 /// Route a single edge around any obstacles it would intersect
+/// Uses quality-first approach with canvas-edge fallback
 fn route_edge_around_obstacles(
   edge : @graph.Edge,
   graph : @graph.Graph,
+  canvas_bounds : (Double, Double, Double, Double),
 ) -> Unit {
   // Skip SQL table field-to-field edges - they use a zig-zag route that
   // naturally avoids obstacles (the vertical segment is between tables)
   if edge.src_column_index is Some(_) || edge.dst_column_index is Some(_) {
     return
   }
-  // Process iteratively until no more intersections (max 10 iterations to prevent infinite loops)
-  for _iteration = 0; _iteration < 10; _iteration = _iteration + 1 {
+  // Skip edges without routes
+  if edge.route.length() < 2 {
+    return
+  }
+  // Quality-first: iterate until no more intersections (max 50 iterations)
+  let max_iterations = 50
+  let mut iteration = 0
+  while iteration < max_iterations {
     let obstacle = find_intersecting_obstacle(edge, graph)
     if obstacle is None {
-      break // No more obstacles
+      return // Success - no more obstacles
     }
     let obs_box = obstacle.unwrap()
-    // Find which segment intersects and reroute around
-    reroute_around_obstacle(edge, obs_box, graph)
+    // Try to reroute around the obstacle
+    let success = reroute_around_obstacle_with_fallback(
+      edge, obs_box, graph, canvas_bounds,
+    )
+    if !success {
+      // Local bypass failed - use canvas edge fallback
+      route_via_canvas_edge(edge, graph, canvas_bounds)
+      return
+    }
+    iteration = iteration + 1
   }
+  // Max iterations reached - use canvas edge fallback
+  route_via_canvas_edge(edge, graph, canvas_bounds)
+}
+
+///|
+/// Route edge around the canvas perimeter when local bypasses fail
+/// Uses complete U-shaped routes that respect endpoint approach direction
+fn route_via_canvas_edge(
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+  canvas_bounds : (Double, Double, Double, Double),
+) -> Unit {
+  let (min_x, min_y, max_x, max_y) = canvas_bounds
+  let margin = 30.0
+  // Get source and destination points
+  if edge.route.length() < 2 {
+    return
+  }
+  let src = edge.route[0]
+  let dst = edge.route[edge.route.length() - 1]
+  // Determine which side the destination endpoint is on
+  let dst_obj = graph.find_object(edge.dst_id)
+  let endpoint_side = match dst_obj {
+    Some(obj) =>
+      match obj.box {
+        Some(box) => get_endpoint_side(dst, box, 2.0)
+        None => "none"
+      }
+    None => "none"
+  }
+  // Compute canvas edge positions
+  let left = min_x - margin
+  let right = max_x + margin
+  let top = min_y - margin
+  let bottom = max_y + margin
+  // Create routes based on specific endpoint side
+  // Each side requires a specific approach direction:
+  // - top: approach from above (dy > 0), so route ends ABOVE dst
+  // - bottom: approach from below (dy < 0), so route ends BELOW dst
+  // - left: approach from left (dx > 0), so route ends LEFT of dst
+  // - right: approach from right (dx < 0), so route ends RIGHT of dst
+  let routes : Array[Array[@graph.Point]] = []
+  if endpoint_side == "top" {
+    // Must approach from ABOVE (dy > 0) - route via top of canvas
+    routes.push([
+      @graph.Point::new(src.x, top),
+      @graph.Point::new(dst.x, top),
+    ])
+    routes.push([
+      @graph.Point::new(left, src.y),
+      @graph.Point::new(left, top),
+      @graph.Point::new(dst.x, top),
+    ])
+    routes.push([
+      @graph.Point::new(right, src.y),
+      @graph.Point::new(right, top),
+      @graph.Point::new(dst.x, top),
+    ])
+  } else if endpoint_side == "bottom" {
+    // Must approach from BELOW (dy < 0) - route via bottom of canvas
+    routes.push([
+      @graph.Point::new(src.x, bottom),
+      @graph.Point::new(dst.x, bottom),
+    ])
+    routes.push([
+      @graph.Point::new(left, src.y),
+      @graph.Point::new(left, bottom),
+      @graph.Point::new(dst.x, bottom),
+    ])
+    routes.push([
+      @graph.Point::new(right, src.y),
+      @graph.Point::new(right, bottom),
+      @graph.Point::new(dst.x, bottom),
+    ])
+  } else if endpoint_side == "left" {
+    // Must approach from LEFT (dx > 0) - route via left of canvas
+    routes.push([
+      @graph.Point::new(left, src.y),
+      @graph.Point::new(left, dst.y),
+    ])
+    routes.push([
+      @graph.Point::new(src.x, top),
+      @graph.Point::new(left, top),
+      @graph.Point::new(left, dst.y),
+    ])
+    routes.push([
+      @graph.Point::new(src.x, bottom),
+      @graph.Point::new(left, bottom),
+      @graph.Point::new(left, dst.y),
+    ])
+  } else if endpoint_side == "right" {
+    // Must approach from RIGHT (dx < 0) - route via right of canvas
+    routes.push([
+      @graph.Point::new(right, src.y),
+      @graph.Point::new(right, dst.y),
+    ])
+    routes.push([
+      @graph.Point::new(src.x, top),
+      @graph.Point::new(right, top),
+      @graph.Point::new(right, dst.y),
+    ])
+    routes.push([
+      @graph.Point::new(src.x, bottom),
+      @graph.Point::new(right, bottom),
+      @graph.Point::new(right, dst.y),
+    ])
+  } else {
+    // No constraint - use any valid route (prefer shortest)
+    routes.push([
+      @graph.Point::new(src.x, top),
+      @graph.Point::new(dst.x, top),
+    ])
+    routes.push([
+      @graph.Point::new(left, src.y),
+      @graph.Point::new(left, dst.y),
+    ])
+  }
+  // Find the shortest valid route
+  let mut best_route : Array[@graph.Point]? = None
+  let mut best_length = 1.0e10
+  for route in routes {
+    if is_bypass_valid(src, route, dst, edge, graph) {
+      let length = bypass_length(src, route, dst)
+      if length < best_length {
+        best_length = length
+        best_route = Some(route)
+      }
+    }
+  }
+  // If no valid route found, use the first one anyway (best effort)
+  let final_route = match best_route {
+    Some(r) => r
+    None => routes[0]
+  }
+  // Apply the canvas-edge route
+  edge.route.clear()
+  edge.route.push(src)
+  for pt in final_route {
+    edge.route.push(pt)
+  }
+  edge.route.push(dst)
+}
+
+///|
+/// Attempt to reroute around obstacle, return false if no valid bypass found
+fn reroute_around_obstacle_with_fallback(
+  edge : @graph.Edge,
+  obstacle : @graph.Box,
+  graph : @graph.Graph,
+  _canvas_bounds : (Double, Double, Double, Double),
+) -> Bool {
+  if edge.route.length() < 2 {
+    return false
+  }
+  // Find the segment that intersects the obstacle
+  for i = 0; i < edge.route.length() - 1; i = i + 1 {
+    let p0 = edge.route[i]
+    let p1 = edge.route[i + 1]
+    if line_intersects_box(p0, p1, obstacle) {
+      // Calculate bypass routes and pick the best one
+      let bypass_opt = calculate_best_bypass_opt(p0, p1, obstacle, edge, graph)
+      match bypass_opt {
+        Some(bypass) => {
+          // Replace segment with bypass route
+          let new_route : Array[@graph.Point] = []
+          for j = 0; j <= i; j = j + 1 {
+            new_route.push(edge.route[j])
+          }
+          for pt in bypass {
+            new_route.push(pt)
+          }
+          for j = i + 1; j < edge.route.length(); j = j + 1 {
+            new_route.push(edge.route[j])
+          }
+          edge.route.clear()
+          for pt in new_route {
+            edge.route.push(pt)
+          }
+          return true // Successfully rerouted
+        }
+        None => return false // No valid bypass found
+      }
+    }
+  }
+  true // No intersection found (shouldn't happen, but safe default)
+}
+
+///|
+/// Determine which side of a box a point is on (for endpoint approach direction)
+/// Returns: "top", "bottom", "left", "right", or "none" if not on any edge
+fn get_endpoint_side(
+  point : @graph.Point,
+  box : @graph.Box,
+  tolerance : Double,
+) -> String {
+  let on_top = (point.y - box.y).abs() < tolerance
+  let on_bottom = (point.y - (box.y + box.height)).abs() < tolerance
+  let on_left = (point.x - box.x).abs() < tolerance
+  let on_right = (point.x - (box.x + box.width)).abs() < tolerance
+  // Prefer vertical sides (top/bottom) when point is on a corner
+  if on_top {
+    "top"
+  } else if on_bottom {
+    "bottom"
+  } else if on_left {
+    "left"
+  } else if on_right {
+    "right"
+  } else {
+    "none"
+  }
+}
+
+///|
+/// Calculate the best bypass route around an obstacle, returning None if no valid bypass
+/// Respects endpoint side: only allows bypass routes that approach from the correct direction
+fn calculate_best_bypass_opt(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  obstacle : @graph.Box,
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> Array[@graph.Point]? {
+  // Determine which side the endpoint (p1) is on, if this is the last segment
+  // This ensures the bypass approach direction matches the endpoint's side
+  let last_point = edge.route[edge.route.length() - 1]
+  let is_last_segment = (p1.x - last_point.x).abs() < 1.0 &&
+    (p1.y - last_point.y).abs() < 1.0
+  // Get destination box to determine endpoint side
+  let endpoint_side = if is_last_segment {
+    let dst_obj = graph.find_object(edge.dst_id)
+    match dst_obj {
+      Some(obj) =>
+        match obj.box {
+          Some(box) => get_endpoint_side(p1, box, 2.0)
+          None => "none"
+        }
+      None => "none"
+    }
+  } else {
+    "none" // Not the last segment, no constraint
+  }
+  // Try multiple margin sizes for more options
+  for margin in [10.0, 20.0, 40.0] {
+    let obs_left = obstacle.x - margin
+    let obs_right = obstacle.x + obstacle.width + margin
+    let obs_top = obstacle.y - margin
+    let obs_bottom = obstacle.y + obstacle.height + margin
+    // Try bypass routes based on endpoint side constraint
+    let routes : Array[Array[@graph.Point]] = []
+    // Route 1: Go above obstacle → approaches from above (dy > 0) → for TOP edge
+    // Only add if endpoint is on TOP or no constraint
+    if (endpoint_side == "top" || endpoint_side == "none") &&
+      (p0.x - p1.x).abs() > 1.0 {
+      routes.push([
+        @graph.Point::new(p0.x, obs_top),
+        @graph.Point::new(p1.x, obs_top),
+      ])
+    }
+    // Route 2: Go below obstacle → approaches from below (dy < 0) → for BOTTOM edge
+    if (endpoint_side == "bottom" || endpoint_side == "none") &&
+      (p0.x - p1.x).abs() > 1.0 {
+      routes.push([
+        @graph.Point::new(p0.x, obs_bottom),
+        @graph.Point::new(p1.x, obs_bottom),
+      ])
+    }
+    // Route 3: Go left of obstacle → approaches from left (dx > 0) → for LEFT edge
+    if (endpoint_side == "left" || endpoint_side == "none") &&
+      (p0.y - p1.y).abs() > 1.0 {
+      routes.push([
+        @graph.Point::new(obs_left, p0.y),
+        @graph.Point::new(obs_left, p1.y),
+      ])
+    }
+    // Route 4: Go right of obstacle → approaches from right (dx < 0) → for RIGHT edge
+    if (endpoint_side == "right" || endpoint_side == "none") &&
+      (p0.y - p1.y).abs() > 1.0 {
+      routes.push([
+        @graph.Point::new(obs_right, p0.y),
+        @graph.Point::new(obs_right, p1.y),
+      ])
+    }
+    // Fallback for degenerate segments - create routes matching endpoint side
+    if routes.is_empty() {
+      // For degenerate segments, we need a 3-point bypass to change approach direction
+      // This handles vertical segments to top/bottom and horizontal segments to left/right
+      if endpoint_side == "top" {
+        // Vertical segment to TOP: go left/right, then up, then to endpoint
+        routes.push([
+          @graph.Point::new(obs_left, p0.y),
+          @graph.Point::new(obs_left, obs_top),
+          @graph.Point::new(p1.x, obs_top),
+        ])
+      } else if endpoint_side == "bottom" {
+        // Vertical segment to BOTTOM: go left/right, then down, then to endpoint
+        routes.push([
+          @graph.Point::new(obs_left, p0.y),
+          @graph.Point::new(obs_left, obs_bottom),
+          @graph.Point::new(p1.x, obs_bottom),
+        ])
+      } else if endpoint_side == "left" {
+        // Horizontal segment to LEFT: go up/down, then left, then to endpoint
+        routes.push([
+          @graph.Point::new(p0.x, obs_top),
+          @graph.Point::new(obs_left, obs_top),
+          @graph.Point::new(obs_left, p1.y),
+        ])
+      } else if endpoint_side == "right" {
+        // Horizontal segment to RIGHT: go up/down, then right, then to endpoint
+        routes.push([
+          @graph.Point::new(p0.x, obs_top),
+          @graph.Point::new(obs_right, obs_top),
+          @graph.Point::new(obs_right, p1.y),
+        ])
+      } else {
+        // No constraint - use simple bypass
+        routes.push([
+          @graph.Point::new(p0.x, obs_top),
+          @graph.Point::new(p1.x, obs_top),
+        ])
+      }
+    }
+    // Find the shortest valid route
+    let mut best_route : Array[@graph.Point]? = None
+    let mut best_length = 1.0e10
+    for route in routes {
+      if is_bypass_valid(p0, route, p1, edge, graph) {
+        let length = bypass_length(p0, route, p1)
+        if length < best_length {
+          best_length = length
+          best_route = Some(route)
+        }
+      }
+    }
+    if best_route is Some(_) {
+      return best_route
+    }
+  }
+  None // No valid bypass found at any margin
 }
 
 ///|
@@ -1268,112 +1924,6 @@ fn find_intersecting_obstacle(
     }
   }
   None
-}
-
-///|
-/// Reroute edge around a specific obstacle
-fn reroute_around_obstacle(
-  edge : @graph.Edge,
-  obstacle : @graph.Box,
-  graph : @graph.Graph,
-) -> Unit {
-  if edge.route.length() < 2 {
-    return
-  }
-  // Find the segment that intersects the obstacle
-  for i = 0; i < edge.route.length() - 1; i = i + 1 {
-    let p0 = edge.route[i]
-    let p1 = edge.route[i + 1]
-    if line_intersects_box(p0, p1, obstacle) {
-      // Calculate bypass routes and pick the best one
-      let bypass = calculate_best_bypass(p0, p1, obstacle, edge, graph)
-      // Replace segment with bypass route
-      let new_route : Array[@graph.Point] = []
-      for j = 0; j <= i; j = j + 1 {
-        new_route.push(edge.route[j])
-      }
-      for pt in bypass {
-        new_route.push(pt)
-      }
-      for j = i + 1; j < edge.route.length(); j = j + 1 {
-        new_route.push(edge.route[j])
-      }
-      edge.route.clear()
-      for pt in new_route {
-        edge.route.push(pt)
-      }
-      return // Only fix one segment per call
-    }
-  }
-}
-
-///|
-/// Calculate the best bypass route around an obstacle
-fn calculate_best_bypass(
-  p0 : @graph.Point,
-  p1 : @graph.Point,
-  obstacle : @graph.Box,
-  edge : @graph.Edge,
-  graph : @graph.Graph,
-) -> Array[@graph.Point] {
-  let margin = 10.0 // Distance to keep from obstacle
-  let obs_left = obstacle.x - margin
-  let obs_right = obstacle.x + obstacle.width + margin
-  let obs_top = obstacle.y - margin
-  let obs_bottom = obstacle.y + obstacle.height + margin
-  // Try 4 bypass routes and pick the shortest valid one
-  let routes : Array[Array[@graph.Point]] = []
-  // Route 1: Go above obstacle (only if segment is not vertical)
-  // For vertical segments, above/below routes create degenerate points
-  if (p0.x - p1.x).abs() > 1.0 {
-    let route_above = [
-      @graph.Point::new(p0.x, obs_top),
-      @graph.Point::new(p1.x, obs_top),
-    ]
-    routes.push(route_above)
-    // Route 2: Go below obstacle
-    let route_below = [
-      @graph.Point::new(p0.x, obs_bottom),
-      @graph.Point::new(p1.x, obs_bottom),
-    ]
-    routes.push(route_below)
-  }
-  // Route 3: Go left of obstacle (only if segment is not horizontal)
-  if (p0.y - p1.y).abs() > 1.0 {
-    let route_left = [
-      @graph.Point::new(obs_left, p0.y),
-      @graph.Point::new(obs_left, p1.y),
-    ]
-    routes.push(route_left)
-    // Route 4: Go right of obstacle
-    let route_right = [
-      @graph.Point::new(obs_right, p0.y),
-      @graph.Point::new(obs_right, p1.y),
-    ]
-    routes.push(route_right)
-  }
-  // If no valid routes (segment is a point), use above as fallback
-  if routes.is_empty() {
-    routes.push([
-      @graph.Point::new(obs_left, obs_top),
-      @graph.Point::new(obs_right, obs_top),
-    ])
-  }
-  // Find the shortest route that doesn't intersect any obstacles
-  let mut best_route : Array[@graph.Point] = routes[0] // Default to first
-  let mut best_length = 1.0e10
-  for route in routes {
-    // Check if this route is valid (doesn't intersect obstacles)
-    let valid = is_bypass_valid(p0, route, p1, edge, graph)
-    if valid {
-      let length = bypass_length(p0, route, p1)
-      if length < best_length {
-        best_length = length
-        best_route = route
-      }
-    }
-  }
-  best_route
 }
 
 ///|
