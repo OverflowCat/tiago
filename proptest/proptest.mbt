@@ -518,3 +518,189 @@ pub fn[P : @qc.Testable] check_property_n(prop : P, n : Int) -> Bool {
     _ => false
   }
 }
+
+// ============================================================================
+// Memory-Efficient Property Testing (No Shrinking)
+// ============================================================================
+
+///|
+/// Error type for property test failures
+suberror PropTestFailure {
+  PropFailed(String)
+  GaveUp(String)
+} derive(Show)
+
+///|
+/// A simple, memory-efficient property test runner.
+///
+/// Unlike `quick_check`, this runner:
+/// - Does NOT build shrink trees (saves memory)
+/// - Generates and tests values one at a time
+/// - Immediately discards passed test cases
+/// - Only keeps the failing case (if any)
+///
+/// Use this for high-iteration tests where memory is a concern.
+/// Trade-off: No automatic shrinking of failing cases.
+pub fn[T : Show] check_forall(
+  gen : @qc.Gen[T],
+  prop : (T) -> Bool,
+  iterations? : Int = 100,
+) -> Unit raise PropTestFailure {
+  let state = @qc.RandomState::new(seed=42UL)
+  for i in 0..<iterations {
+    let size = i % 100 + 1 // Vary size like QuickCheck does
+    let value = gen.run(size, state)
+    if not(prop(value)) {
+      let msg = "Failed after \{i + 1} tests.\nFailing case: \{value}"
+      raise PropFailed(msg)
+    }
+  }
+  println("+++ [\{iterations}/0/\{iterations}] Ok, passed!")
+}
+
+///|
+/// Memory-efficient property test with two generators.
+pub fn[A : Show, B : Show] check_forall2(
+  gen_a : @qc.Gen[A],
+  gen_b : @qc.Gen[B],
+  prop : (A, B) -> Bool,
+  iterations? : Int = 100,
+) -> Unit raise PropTestFailure {
+  let state = @qc.RandomState::new(seed=42UL)
+  for i in 0..<iterations {
+    let size = i % 100 + 1
+    let a = gen_a.run(size, state)
+    let b = gen_b.run(size, state)
+    if not(prop(a, b)) {
+      let msg = "Failed after \{i + 1} tests.\nFailing case: (\{a}, \{b})"
+      raise PropFailed(msg)
+    }
+  }
+  println("+++ [\{iterations}/0/\{iterations}] Ok, passed!")
+}
+
+///|
+/// Memory-efficient property test with three generators.
+pub fn[A : Show, B : Show, C : Show] check_forall3(
+  gen_a : @qc.Gen[A],
+  gen_b : @qc.Gen[B],
+  gen_c : @qc.Gen[C],
+  prop : (A, B, C) -> Bool,
+  iterations? : Int = 100,
+) -> Unit raise PropTestFailure {
+  let state = @qc.RandomState::new(seed=42UL)
+  for i in 0..<iterations {
+    let size = i % 100 + 1
+    let a = gen_a.run(size, state)
+    let b = gen_b.run(size, state)
+    let c = gen_c.run(size, state)
+    if not(prop(a, b, c)) {
+      let msg = "Failed after \{i + 1} tests.\nFailing case: (\{a}, \{b}, \{c})"
+      raise PropFailed(msg)
+    }
+  }
+  println("+++ [\{iterations}/0/\{iterations}] Ok, passed!")
+}
+
+///|
+/// Memory-efficient property test that allows discarding test cases.
+/// Return `None` to discard, `Some(true)` for pass, `Some(false)` for fail.
+pub fn[T : Show] check_forall_filter(
+  gen : @qc.Gen[T],
+  prop : (T) -> Bool?,
+  iterations? : Int = 100,
+  max_discards? : Int = 1000,
+) -> Unit raise PropTestFailure {
+  let state = @qc.RandomState::new(seed=42UL)
+  let mut passed = 0
+  let mut discarded = 0
+  let mut attempts = 0
+  while passed < iterations && discarded < max_discards {
+    attempts += 1
+    let size = attempts % 100 + 1
+    let value = gen.run(size, state)
+    match prop(value) {
+      Some(true) => passed += 1
+      Some(false) => {
+        let msg = "Failed after \{passed + 1} tests (\{discarded} discarded).\nFailing case: \{value}"
+        raise PropFailed(msg)
+      }
+      None => discarded += 1
+    }
+  }
+  if passed < iterations {
+    let msg = "Gave up after \{discarded} discards. Only passed \{passed}/\{iterations} tests."
+    raise GaveUp(msg)
+  }
+  println("+++ [\{passed}/\{discarded}/\{iterations}] Ok, passed!")
+}
+
+// ============================================================================
+// Lightweight RNG (QuickCheck-free)
+// ============================================================================
+
+///|
+/// Simple Linear Congruential Generator for lightweight randomness.
+/// Uses same parameters as glibc for good statistical properties.
+/// This is QuickCheck-free and has minimal memory overhead.
+pub(all) struct Rng {
+  mut state : UInt64
+}
+
+///|
+pub fn Rng::new(seed : UInt64) -> Rng {
+  { state: seed }
+}
+
+///|
+pub fn Rng::next(self : Rng) -> UInt64 {
+  // LCG parameters (same as glibc)
+  self.state = self.state * 1103515245UL + 12345UL
+  self.state
+}
+
+///|
+pub fn Rng::next_int(self : Rng, max : Int) -> Int {
+  if max <= 0 {
+    return 0
+  }
+  (self.next() % max.reinterpret_as_uint().to_uint64()).to_int()
+}
+
+///|
+pub fn Rng::next_int_range(self : Rng, min : Int, max : Int) -> Int {
+  if max <= min {
+    return min
+  }
+  min + self.next_int(max - min)
+}
+
+///|
+pub fn Rng::next_bool(self : Rng) -> Bool {
+  self.next() % 2UL == 0UL
+}
+
+// ============================================================================
+// QuickCheck-free Property Testing
+// ============================================================================
+
+///|
+/// Ultra-lightweight property test runner that uses no QuickCheck at all.
+/// Takes a generator function that receives an Rng and iteration index.
+/// This avoids all QuickCheck memory overhead.
+pub fn[T : Show] run_property_test(
+  gen : (Rng, Int) -> T,
+  prop : (T) -> Bool,
+  iterations? : Int = 100,
+  seed? : UInt64 = 42UL,
+) -> Unit raise PropTestFailure {
+  let rng = Rng::new(seed)
+  for i in 0..<iterations {
+    let value = gen(rng, i)
+    if not(prop(value)) {
+      let msg = "Failed after \{i + 1} tests.\nFailing case: \{value}"
+      raise PropFailed(msg)
+    }
+  }
+  println("+++ [\{iterations}/0/\{iterations}] Ok, passed!")
+}

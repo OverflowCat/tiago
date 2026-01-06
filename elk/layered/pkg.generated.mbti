@@ -6,26 +6,55 @@ import(
 )
 
 // Values
+pub fn greedy_switch(LGraph, Int) -> Unit
+
+pub fn greedy_switch_two_sided(LGraph, Int) -> Unit
+
 pub fn layout(@elk.ElkNode, @elk.LayoutOptions) -> Unit raise @elk.LayoutError
+
+pub fn network_simplex_layer_assignment(LGraph) -> Unit
+
+pub fn route_edges_orthogonal(LGraph, @elk.LayoutDirection, Double) -> Unit
+
+pub fn route_self_loops(LGraph, @elk.LayoutDirection) -> Unit
+
+pub fn run_brandes_koepf(LGraph, @elk.LayoutOptions, @elk.LayoutDirection) -> Unit
+
+pub fn straighten_edges(LGraph) -> Unit
 
 // Errors
 
 // Types and methods
+type BlockInfo
+pub impl Show for BlockInfo
+
+type EdgeSegment
+pub impl Show for EdgeSegment
+
+pub(all) enum HDirection {
+  Left
+  Right
+}
+pub impl Eq for HDirection
+pub impl Show for HDirection
+
 pub(all) struct LEdge {
   id : String
   mut original_id : String?
-  mut source : LNode
-  mut target : LNode
-  source_port : LPort?
-  target_port : LPort?
+  mut source_id : String
+  mut target_id : String
+  mut source_port_id : String?
+  mut target_port_id : String?
   labels : Array[LLabel]
   bend_points : Array[@elk.ElkPoint]
   mut reversed : Bool
   mut priority : Int
   properties : @elk.ElkProperties
 }
+pub fn LEdge::get_source(Self, LGraph) -> LNode?
+pub fn LEdge::get_target(Self, LGraph) -> LNode?
 pub fn LEdge::is_self_loop(Self) -> Bool
-pub fn LEdge::new(String, LNode, LNode) -> Self
+pub fn LEdge::new(String, String, String) -> Self
 pub fn LEdge::reverse(Self) -> Unit
 pub impl Show for LEdge
 
@@ -34,14 +63,16 @@ pub(all) struct LGraph {
   nodes : Array[LNode]
   edges : Array[LEdge]
   layers : Array[LLayer]
-  parent_node : LNode?
+  node_map : Map[String, LNode]
   mut width : Double
   mut height : Double
   properties : @elk.ElkProperties
 }
+pub fn LGraph::add_node(Self, LNode) -> Unit
 pub fn LGraph::from_elk_node(@elk.ElkNode) -> Self
 pub fn LGraph::get_layer_nodes(Self, Int) -> Array[LNode]
 pub fn LGraph::get_long_edges(Self) -> Array[LEdge]
+pub fn LGraph::get_node(Self, String) -> LNode?
 pub fn LGraph::initialize_layers(Self) -> Unit
 pub fn LGraph::new(String) -> Self
 pub fn LGraph::to_elk_node(Self, @elk.ElkNode) -> Unit
@@ -113,14 +144,27 @@ pub(all) struct LPort {
   mut y : Double
   mut width : Double
   mut height : Double
-  incoming_edges : Array[LEdge]
-  outgoing_edges : Array[LEdge]
   labels : Array[LLabel]
   properties : @elk.ElkProperties
 }
 pub fn LPort::from_elk_port(@elk.ElkPort) -> Self
 pub fn LPort::new(String) -> Self
 pub impl Show for LPort
+
+type NSEdge
+pub impl Show for NSEdge
+
+type NSNode
+pub impl Show for NSNode
+
+type NetworkSimplex
+
+pub(all) enum VDirection {
+  Up
+  Down
+}
+pub impl Eq for VDirection
+pub impl Show for VDirection
 
 // Type aliases
 

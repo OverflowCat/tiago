@@ -16,6 +16,14 @@ pub fn[T : @moonbitlang/core/quickcheck.Arbitrary] array_with_bounds(Int, Int) -
 
 pub fn ascii_string() -> @moonbitlang/quickcheck.Gen[String]
 
+pub fn[T : Show] check_forall(@moonbitlang/quickcheck.Gen[T], (T) -> Bool, iterations? : Int) -> Unit raise PropTestFailure
+
+pub fn[A : Show, B : Show] check_forall2(@moonbitlang/quickcheck.Gen[A], @moonbitlang/quickcheck.Gen[B], (A, B) -> Bool, iterations? : Int) -> Unit raise PropTestFailure
+
+pub fn[A : Show, B : Show, C : Show] check_forall3(@moonbitlang/quickcheck.Gen[A], @moonbitlang/quickcheck.Gen[B], @moonbitlang/quickcheck.Gen[C], (A, B, C) -> Bool, iterations? : Int) -> Unit raise PropTestFailure
+
+pub fn[T : Show] check_forall_filter(@moonbitlang/quickcheck.Gen[T], (T) -> Bool?, iterations? : Int, max_discards? : Int) -> Unit raise PropTestFailure
+
 pub fn[P : @moonbitlang/quickcheck.Testable] check_property(P) -> Bool
 
 pub fn[P : @moonbitlang/quickcheck.Testable] check_property_n(P, Int) -> Bool
@@ -52,6 +60,8 @@ pub fn prop_and(Bool, Bool) -> Bool
 
 pub fn prop_or(Bool, Bool) -> Bool
 
+pub fn[T : Show] run_property_test((Rng, Int) -> T, (T) -> Bool, iterations? : Int, seed? : UInt64) -> Unit raise PropTestFailure
+
 pub fn shrink_towards(Int, Int) -> Iter[Int]
 
 pub fn[T : @moonbitlang/core/quickcheck.Arbitrary + Compare] sorted_array() -> @moonbitlang/quickcheck.Gen[Array[T]]
@@ -71,8 +81,18 @@ pub fn[A, B] with_valid_ref(@moonbitlang/quickcheck.Gen[Array[A]], (A) -> String
 pub fn within_delta(Double, Double, Double) -> Bool
 
 // Errors
+type PropTestFailure
+pub impl Show for PropTestFailure
 
 // Types and methods
+pub(all) struct Rng {
+  mut state : UInt64
+}
+pub fn Rng::new(UInt64) -> Self
+pub fn Rng::next(Self) -> UInt64
+pub fn Rng::next_bool(Self) -> Bool
+pub fn Rng::next_int(Self, Int) -> Int
+pub fn Rng::next_int_range(Self, Int, Int) -> Int
 
 // Type aliases
 

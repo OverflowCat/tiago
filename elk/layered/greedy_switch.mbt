@@ -34,7 +34,6 @@ fn count_crossings_between_layers(upper : LLayer, lower : LLayer) -> Int {
   // Build position maps
   let upper_pos : Map[String, Int] = {}
   let lower_pos : Map[String, Int] = {}
-
   for i, node in upper.nodes {
     upper_pos[node.id] = i
   }
@@ -44,14 +43,12 @@ fn count_crossings_between_layers(upper : LLayer, lower : LLayer) -> Int {
 
   // Collect edges between layers as (upper_pos, lower_pos) pairs
   let edges : Array[(Int, Int)] = []
-
   for node in upper.nodes {
     for edge in node.outgoing_edges {
-      if edge.target.layer == lower.index {
-        match (upper_pos.get(node.id), lower_pos.get(edge.target.id)) {
-          (Some(u), Some(l)) => edges.push((u, l))
-          _ => ()
-        }
+      // Check if target is in lower layer by looking up in lower_pos map
+      match (upper_pos.get(node.id), lower_pos.get(edge.target_id)) {
+        (Some(u), Some(l)) => edges.push((u, l))
+        _ => ()
       }
     }
   }
@@ -79,7 +76,6 @@ fn count_crossings_between_layers(upper : LLayer, lower : LLayer) -> Int {
       }
     }
   }
-
   crossings
 }
 
@@ -112,7 +108,6 @@ fn count_crossings_if_swapped(
   let temp2 = layer.nodes[pos1]
   layer.nodes[pos1] = layer.nodes[pos2]
   layer.nodes[pos2] = temp2
-
   crossings
 }
 
@@ -149,14 +144,18 @@ fn greedy_switch_layer(
   if layer.nodes.length() <= 1 {
     return false
   }
-
   let mut improved = false
 
   // Try swapping each pair of adjacent nodes
   for i = 0; i < layer.nodes.length() - 1; i = i + 1 {
     let crossings_before = count_crossings_no_swap(layer, upper, lower)
-    let crossings_after = count_crossings_if_swapped(layer, i, i + 1, upper, lower)
-
+    let crossings_after = count_crossings_if_swapped(
+      layer,
+      i,
+      i + 1,
+      upper,
+      lower,
+    )
     if crossings_after < crossings_before {
       // Swap improves layout - do it permanently
       let temp = layer.nodes[i]
@@ -165,7 +164,6 @@ fn greedy_switch_layer(
       improved = true
     }
   }
-
   improved
 }
 
@@ -188,7 +186,6 @@ pub fn greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
       } else {
         None
       }
-
       if greedy_switch_layer(graph.layers[i], upper, lower) {
         any_improved = true
       }
@@ -202,12 +199,10 @@ pub fn greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
       } else {
         None
       }
-
       if greedy_switch_layer(graph.layers[i], upper, lower) {
         any_improved = true
       }
     }
-
     if !any_improved {
       break
     }
@@ -245,10 +240,8 @@ fn crossing_difference_for_swap(
   } else {
     None
   }
-
   let before = count_crossings_no_swap(layer, upper, lower)
   let after = count_crossings_if_swapped(layer, pos1, pos2, upper, lower)
-
   after - before // Negative means improvement
 }
 
@@ -258,10 +251,8 @@ pub fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
-
   for iter = 0; iter < max_iterations; iter = iter + 1 {
     let mut any_improved = false
-
     for layer in graph.layers {
       if layer.nodes.length() <= 1 {
         continue
@@ -275,7 +266,6 @@ pub fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
         // Find the best swap in this layer
         let mut best_i = -1
         let mut best_diff = 0
-
         for i = 0; i < layer.nodes.length() - 1; i = i + 1 {
           let diff = crossing_difference_for_swap(layer, i, i + 1, graph)
           if diff < best_diff {
@@ -294,7 +284,6 @@ pub fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
         }
       }
     }
-
     if !any_improved {
       break
     }

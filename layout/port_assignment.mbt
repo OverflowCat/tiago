@@ -440,6 +440,16 @@ fn fix_source_perpendicularity(
     let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
     if !too_close_p0 && !too_close_p1 {
       insert_waypoint_at(edge, 1, waypoint)
+    } else if too_close_p0 {
+      // Vertical segment from vertical side - need to step away first
+      // Insert TWO waypoints: first step horizontal, then vertical
+      let step = 20.0
+      let step_x = if on_right { p0.x + step } else { p0.x - step }
+      let w1 = @graph.Point::new(step_x, p0.y) // go horizontal from source
+      let w2 = @graph.Point::new(step_x, p1.y) // go vertical
+      // Insert in reverse order so they end up: p0 → w1 → w2 → p1 → ...
+      insert_waypoint_at(edge, 1, w2)
+      insert_waypoint_at(edge, 1, w1)
     }
   } else if on_horizontal_side && !is_vertical {
     // Insert waypoint at (p0.x, p1.y) to create vertical first segment
@@ -448,6 +458,16 @@ fn fix_source_perpendicularity(
     let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
     if !too_close_p0 && !too_close_p1 {
       insert_waypoint_at(edge, 1, waypoint)
+    } else if too_close_p0 {
+      // Horizontal segment from horizontal side - need to step away first
+      // Insert TWO waypoints: first step perpendicular, then horizontal
+      let step = 20.0
+      let step_y = if on_bottom { p0.y + step } else { p0.y - step }
+      let w1 = @graph.Point::new(p0.x, step_y) // go vertical from source
+      let w2 = @graph.Point::new(p1.x, step_y) // go horizontal
+      // Insert in reverse order so they end up: p0 → w1 → w2 → p1 → ...
+      insert_waypoint_at(edge, 1, w2)
+      insert_waypoint_at(edge, 1, w1)
     }
   }
 }
@@ -483,17 +503,39 @@ fn fix_dest_perpendicularity(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     // Insert waypoint at (p0.x, p1.y) to create horizontal last segment
     // Segment from (p0.x, p1.y) to (p1.x, p1.y) is horizontal
     let waypoint = @graph.Point::new(p0.x, p1.y)
-    if not(points_approximately_equal(waypoint, p0, tolerance)) &&
-      not(points_approximately_equal(waypoint, p1, tolerance)) {
+    let too_close_p0 = points_approximately_equal(waypoint, p0, tolerance)
+    let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
+    if !too_close_p0 && !too_close_p1 {
       insert_waypoint_at(edge, last_idx, waypoint)
+    } else if too_close_p1 {
+      // Vertical segment to vertical side - need to step away first
+      // Insert TWO waypoints: vertical detour, then horizontal approach
+      let step = 20.0
+      let step_x = if on_right { p1.x + step } else { p1.x - step }
+      let w1 = @graph.Point::new(step_x, p0.y) // vertical from prev
+      let w2 = @graph.Point::new(step_x, p1.y) // then horizontal to dest
+      // Insert: ... → p0 → w1 → w2 → p1
+      insert_waypoint_at(edge, last_idx, w2)
+      insert_waypoint_at(edge, last_idx, w1)
     }
   } else if on_horizontal_side && !is_vertical {
     // Insert waypoint at (p1.x, p0.y) to create vertical last segment
     // Segment from (p1.x, p0.y) to (p1.x, p1.y) is vertical
     let waypoint = @graph.Point::new(p1.x, p0.y)
-    if not(points_approximately_equal(waypoint, p0, tolerance)) &&
-      not(points_approximately_equal(waypoint, p1, tolerance)) {
+    let too_close_p0 = points_approximately_equal(waypoint, p0, tolerance)
+    let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
+    if !too_close_p0 && !too_close_p1 {
       insert_waypoint_at(edge, last_idx, waypoint)
+    } else if too_close_p1 {
+      // Horizontal segment to horizontal side - need to step away first
+      // Insert TWO waypoints: horizontal detour, then vertical approach
+      let step = 20.0
+      let step_y = if on_bottom { p1.y + step } else { p1.y - step }
+      let w1 = @graph.Point::new(p0.x, step_y) // horizontal from prev
+      let w2 = @graph.Point::new(p1.x, step_y) // then vertical to dest
+      // Insert: ... → p0 → w1 → w2 → p1
+      insert_waypoint_at(edge, last_idx, w2)
+      insert_waypoint_at(edge, last_idx, w1)
     }
   }
 }

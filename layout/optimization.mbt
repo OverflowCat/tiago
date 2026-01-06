@@ -22,7 +22,6 @@
 /// This runs after obstacle routing and bend elimination, so it must not rely on
 /// later cleanup passes.
 fn separate_parallel_edges(graph : @graph.Graph) -> Unit {
-  let canvas_bounds = compute_all_bounds(graph)
   let edge_groups : Map[String, Array[@graph.Edge]] = {}
   for edge in graph.edges {
     if edge.route.length() < 2 {
@@ -38,64 +37,119 @@ fn separate_parallel_edges(graph : @graph.Graph) -> Unit {
       None => edge_groups[key] = [edge]
     }
   }
-  let min_separation = 3.0
-  let corridor_widths = [8.0, 6.0]
+  let min_separation = 8.0 // Minimum separation between parallel edges
   for group in edge_groups.values() {
     if group.length() <= 1 {
       continue
     }
-    for i in 0..<group.length() {
-      for j in (i + 1)..<group.length() {
-        let e1 = group[i]
-        let e2 = group[j]
-        if !edges_overlap_min_sep(e1, e2, min_separation) {
-          continue
+
+    // Strategy: Assign unique horizontal offsets to each edge in the group.
+    // For bidirectional edges (A→B and B→A), offset them in opposite directions.
+    // For same-direction duplicates, offset them incrementally.
+    //
+    // Group edges by direction to handle same-direction duplicates
+    let forward_edges : Array[@graph.Edge] = []
+    let backward_edges : Array[@graph.Edge] = []
+
+    // Determine which direction is "forward" (smaller src_id first)
+    let first_edge = group[0]
+    let is_forward = first_edge.src_id < first_edge.dst_id
+    for edge in group {
+      let edge_is_forward = edge.src_id < edge.dst_id
+      if edge_is_forward == is_forward {
+        forward_edges.push(edge)
+      } else {
+        backward_edges.push(edge)
+      }
+    }
+
+    // If we have both forward and backward edges, offset them to opposite sides
+    // Forward edges go positive, backward edges go negative
+    if forward_edges.length() > 0 && backward_edges.length() > 0 {
+      // Offset all forward edges to positive side
+      for i, edge in forward_edges {
+        let offset = (i.to_double() + 0.5) * min_separation
+        offset_edge_route(edge, offset)
+      }
+      // Offset all backward edges to negative side
+      for i, edge in backward_edges {
+        let offset = (i.to_double() + 0.5) * min_separation
+        offset_edge_route(edge, -offset)
+      }
+    } else if forward_edges.length() > 1 {
+      // Only same-direction edges - offset incrementally
+      for i, edge in forward_edges {
+        if i > 0 {
+          let offset = i.to_double() * min_separation
+          offset_edge_route(edge, offset)
         }
-        let mut fixed = false
-        for w in corridor_widths {
-          let corridor = build_edge_corridor_obstacles(e1.route, w)
-          if route_fixed_ports_maze_with_extra_obstacles(
-              e2, graph, canvas_bounds, corridor,
-            ) &&
-            !edges_overlap_min_sep(e1, e2, min_separation) {
-            fixed = true
-            break
-          }
-        }
-        if !fixed {
-          // If the overlap is caused by shared endpoints (common for bidirectional edges),
-          // reroute again with shifted ports on both nodes.
-          for port_offset in [15.0, -15.0, 30.0, -30.0] {
-            for w in corridor_widths {
-              let corridor = build_edge_corridor_obstacles(e1.route, w)
-              if route_maze_with_port_offset_and_extra_obstacles(
-                  e2, graph, canvas_bounds, corridor, port_offset,
-                ) &&
-                !edges_overlap_min_sep(e1, e2, min_separation) {
-                fixed = true
-                break
-              }
-            }
-            if fixed {
-              break
-            }
-          }
-        }
-        if fixed {
-          continue
-        }
-        // Try the opposite direction (reroute e1) if rerouting e2 couldn't separate.
-        for w in corridor_widths {
-          let corridor = build_edge_corridor_obstacles(e2.route, w)
-          if route_fixed_ports_maze_with_extra_obstacles(
-              e1, graph, canvas_bounds, corridor,
-            ) &&
-            !edges_overlap_min_sep(e1, e2, min_separation) {
-            break
-          }
+      }
+    } else if backward_edges.length() > 1 {
+      // Only same-direction edges - offset incrementally
+      for i, edge in backward_edges {
+        if i > 0 {
+          let offset = i.to_double() * min_separation
+          offset_edge_route(edge, -offset)
         }
       }
     }
+  }
+}
+
+///|
+/// Check if two routes are nearly identical (within tolerance)
+fn routes_nearly_identical(
+  r1 : Array[@graph.Point],
+  r2 : Array[@graph.Point],
+) -> Bool {
+  if r1.length() != r2.length() {
+    return false
+  }
+  let tolerance = 1.0
+  for i in 0..<r1.length() {
+    let dx = (r1[i].x - r2[i].x).abs()
+    let dy = (r1[i].y - r2[i].y).abs()
+    if dx > tolerance || dy > tolerance {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// Offset an edge route to separate it from overlapping parallel edges.
+/// For 2-point routes, adds intermediate waypoints to create a separated path.
+/// For 3+ point routes, offsets the intermediate points.
+fn offset_edge_route(edge : @graph.Edge, offset : Double) -> Unit {
+  // Only offset routes with 3+ points (intermediate waypoints)
+  // 2-point routes can't be offset without breaking perpendicularity
+  if edge.route.length() < 3 {
+    return
+  }
+  // Skip zero offset
+  if offset.abs() < 0.1 {
+    return
+  }
+  let p0 = edge.route[0]
+  let p1 = edge.route[edge.route.length() - 1]
+  let is_vertical = (p1.x - p0.x).abs() < (p1.y - p0.y).abs()
+  // 3+ point route: offset intermediate points only
+  let new_route : Array[@graph.Point] = []
+  for i, p in edge.route {
+    if i == 0 || i == edge.route.length() - 1 {
+      // Keep endpoints as-is to maintain perpendicularity
+      new_route.push(p)
+    } else if is_vertical {
+      // Vertical edge - offset intermediate points horizontally
+      new_route.push(@graph.Point::new(p.x + offset, p.y))
+    } else {
+      // Horizontal edge - offset intermediate points vertically
+      new_route.push(@graph.Point::new(p.x, p.y + offset))
+    }
+  }
+  edge.route.clear()
+  for p in new_route {
+    edge.route.push(p)
   }
 }
 

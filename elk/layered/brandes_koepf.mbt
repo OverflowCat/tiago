@@ -63,7 +63,6 @@ pub fn run_brandes_koepf(
   if graph.nodes.length() == 0 {
     return
   }
-
   let node_spacing = options.node_node_spacing.unwrap_or(20.0)
   let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
   let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))
@@ -75,7 +74,6 @@ pub fn run_brandes_koepf(
   // Try all four direction combinations
   let v_dirs : Array[VDirection] = [Up, Down]
   let h_dirs : Array[HDirection] = [Left, Right]
-
   for vdir in v_dirs {
     for hdir in h_dirs {
       let positions = compute_layout(graph, vdir, hdir, node_spacing)
@@ -100,7 +98,6 @@ fn compute_layout(
 ) -> Map[String, Double] {
   // Initialize block info for all nodes
   let info : Map[String, BlockInfo] = {}
-
   for node in graph.nodes {
     info[node.id] = {
       root: node.id,
@@ -128,7 +125,6 @@ fn compute_layout(
       None => positions[node.id] = 0.0
     }
   }
-
   positions
 }
 
@@ -156,7 +152,6 @@ fn vertical_alignment(
     }
     order
   }
-
   for layer_idx in layer_order {
     let layer = graph.layers[layer_idx]
 
@@ -176,27 +171,23 @@ fn vertical_alignment(
       }
       order
     }
-
     let mut r = -1 // Rightmost position of aligned neighbor
-
     for pos in node_order {
       let node = layer.nodes[pos]
 
       // Find neighbors in adjacent layer
-      let neighbors = get_neighbors(node, vdir)
-
+      let neighbors = get_neighbors(graph, node, vdir)
       if neighbors.length() > 0 {
         // Get median neighbor(s)
         let medians = get_medians(neighbors, hdir)
-
         for median in medians {
           match info.get(node.id) {
             Some(node_info) =>
               if node_info.align == node.id {
                 // Node not yet aligned
                 let median_pos = median.position
-                if (hdir == Left && median_pos > r) || (hdir == Right && median_pos <
-                  r) ||
+                if (hdir == Left && median_pos > r) ||
+                  (hdir == Right && median_pos < r) ||
                   r < 0 {
                   // Align with median
                   match info.get(median.id) {
@@ -223,21 +214,32 @@ fn vertical_alignment(
 
 ///|
 /// Get neighbors in the adjacent layer based on direction
-fn get_neighbors(node : LNode, vdir : VDirection) -> Array[LNode] {
+fn get_neighbors(
+  graph : LGraph,
+  node : LNode,
+  vdir : VDirection,
+) -> Array[LNode] {
   let neighbors : Array[LNode] = []
-
   if vdir == Up {
     // Look at incoming edges (from upper layer)
     for edge in node.incoming_edges {
-      if edge.source.layer == node.layer - 1 {
-        neighbors.push(edge.source)
+      match graph.get_node(edge.source_id) {
+        Some(source) =>
+          if source.layer == node.layer - 1 {
+            neighbors.push(source)
+          }
+        None => ()
       }
     }
   } else {
     // Look at outgoing edges (to lower layer)
     for edge in node.outgoing_edges {
-      if edge.target.layer == node.layer + 1 {
-        neighbors.push(edge.target)
+      match graph.get_node(edge.target_id) {
+        Some(target) =>
+          if target.layer == node.layer + 1 {
+            neighbors.push(target)
+          }
+        None => ()
       }
     }
   }
@@ -254,7 +256,6 @@ fn get_medians(neighbors : Array[LNode], hdir : HDirection) -> Array[LNode] {
   if n == 0 {
     return []
   }
-
   let mid = n / 2
   if n % 2 == 1 {
     // Odd number - single median
@@ -280,10 +281,7 @@ fn horizontal_compaction(
   let roots : Array[LNode] = []
   for node in graph.nodes {
     match info.get(node.id) {
-      Some(block_info) =>
-        if block_info.root == node.id {
-          roots.push(node)
-        }
+      Some(block_info) => if block_info.root == node.id { roots.push(node) }
       None => ()
     }
   }
@@ -300,7 +298,6 @@ fn horizontal_compaction(
   // Assign x coordinates to roots
   // Process layer by layer
   let layer_x : Map[Int, Double] = {}
-
   for root in roots {
     match info.get(root.id) {
       Some(root_info) => {
@@ -359,7 +356,6 @@ fn select_best_layout(
 
   // Use the balanced median approach: for each node, take median of 4 positions
   let balanced : Map[String, Double] = {}
-
   for node in graph.nodes {
     let positions : Array[Double] = []
     for layout in layouts {
@@ -368,7 +364,6 @@ fn select_best_layout(
         None => ()
       }
     }
-
     if positions.length() > 0 {
       positions.sort_by(fn(a, b) {
         if a < b {
@@ -384,7 +379,6 @@ fn select_best_layout(
       balanced[node.id] = positions[mid]
     }
   }
-
   balanced
 }
 
@@ -400,7 +394,6 @@ fn apply_layout(
   // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let default_node_spacing = 20.0
-
   for layer in graph.layers {
     // Calculate layer size
     let mut layer_size = 0.0
@@ -415,7 +408,6 @@ fn apply_layout(
     // Position nodes within layer
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
-
       if is_horizontal {
         node.x = layer_offset
         node.y = cross_pos + padding.top
@@ -468,7 +460,6 @@ fn apply_layout(
         }
       }
     }
-
     layer_offset = layer_offset + layer_size + layer_spacing
   }
 

@@ -137,8 +137,6 @@ pub(all) struct LPort {
   mut y : Double
   mut width : Double
   mut height : Double
-  incoming_edges : Array[LEdge]
-  outgoing_edges : Array[LEdge]
   labels : Array[LLabel]
   properties : @elk.ElkProperties
 } derive(Show)
@@ -153,8 +151,6 @@ pub fn LPort::new(id : String) -> LPort {
     y: 0.0,
     width: 0.0,
     height: 0.0,
-    incoming_edges: [],
-    outgoing_edges: [],
     labels: [],
     properties: @elk.ElkProperties::new(),
   }
@@ -224,13 +220,15 @@ pub fn LLabel::from_elk_label(elk_label : @elk.ElkLabel) -> LLabel {
 
 ///|
 /// An edge in the layered graph
+/// Uses node IDs instead of direct references to avoid circular references
 pub(all) struct LEdge {
   id : String
   mut original_id : String?
-  mut source : LNode
-  mut target : LNode
-  source_port : LPort?
-  target_port : LPort?
+  mut source_id : String
+  mut target_id : String
+  // Port IDs for edge routing (optional)
+  mut source_port_id : String?
+  mut target_port_id : String?
   labels : Array[LLabel]
   // Edge routing
   bend_points : Array[@elk.ElkPoint]
@@ -242,14 +240,14 @@ pub(all) struct LEdge {
 } derive(Show)
 
 ///|
-pub fn LEdge::new(id : String, source : LNode, target : LNode) -> LEdge {
+pub fn LEdge::new(id : String, source_id : String, target_id : String) -> LEdge {
   {
     id,
     original_id: None,
-    source,
-    target,
-    source_port: None,
-    target_port: None,
+    source_id,
+    target_id,
+    source_port_id: None,
+    target_port_id: None,
     labels: [],
     bend_points: [],
     reversed: false,
@@ -261,16 +259,28 @@ pub fn LEdge::new(id : String, source : LNode, target : LNode) -> LEdge {
 ///|
 /// Reverse this edge (swap source and target)
 pub fn LEdge::reverse(self : LEdge) -> Unit {
-  let temp = self.source
-  self.source = self.target
-  self.target = temp
+  let temp = self.source_id
+  self.source_id = self.target_id
+  self.target_id = temp
   self.reversed = !self.reversed
 }
 
 ///|
 /// Check if this edge is a self-loop
 pub fn LEdge::is_self_loop(self : LEdge) -> Bool {
-  self.source.id == self.target.id
+  self.source_id == self.target_id
+}
+
+///|
+/// Get the source node from a graph
+pub fn LEdge::get_source(self : LEdge, graph : LGraph) -> LNode? {
+  graph.node_map.get(self.source_id)
+}
+
+///|
+/// Get the target node from a graph
+pub fn LEdge::get_target(self : LEdge, graph : LGraph) -> LNode? {
+  graph.node_map.get(self.target_id)
 }
 
 // ============================================================================
@@ -307,8 +317,8 @@ pub(all) struct LGraph {
   nodes : Array[LNode]
   edges : Array[LEdge]
   layers : Array[LLayer]
-  // Parent node if this is a nested graph
-  parent_node : LNode?
+  // Node lookup map for O(1) access by ID
+  node_map : Map[String, LNode]
   // Graph properties
   mut width : Double
   mut height : Double
@@ -322,11 +332,24 @@ pub fn LGraph::new(id : String) -> LGraph {
     nodes: [],
     edges: [],
     layers: [],
-    parent_node: None,
+    node_map: {},
     width: 0.0,
     height: 0.0,
     properties: @elk.ElkProperties::new(),
   }
+}
+
+///|
+/// Get a node by ID
+pub fn LGraph::get_node(self : LGraph, id : String) -> LNode? {
+  self.node_map.get(id)
+}
+
+///|
+/// Add a node and update the lookup map
+pub fn LGraph::add_node(self : LGraph, node : LNode) -> Unit {
+  self.nodes.push(node)
+  self.node_map[node.id] = node
 }
 
 ///|
@@ -337,14 +360,10 @@ pub fn LGraph::from_elk_node(elk_node : @elk.ElkNode) -> LGraph {
   graph.height = elk_node.height
   graph.properties.copy_from(elk_node.properties)
 
-  // Create a map for quick node lookup
-  let node_map : Map[String, LNode] = {}
-
   // Convert all children to LNodes
   for child in elk_node.children {
     let lnode = LNode::from_elk_node(child)
-    graph.nodes.push(lnode)
-    node_map[child.id] = lnode
+    graph.add_node(lnode)
 
     // Handle nested graphs recursively
     if child.children.length() > 0 {
@@ -352,27 +371,32 @@ pub fn LGraph::from_elk_node(elk_node : @elk.ElkNode) -> LGraph {
     }
   }
 
-  // Convert all edges
+  // Convert all edges - now using IDs instead of node references
   for elk_edge in elk_node.edges {
     // Handle hyperedges - for now, assume simple edges
     if elk_edge.sources.length() > 0 && elk_edge.targets.length() > 0 {
       let source_id = elk_edge.sources[0]
       let target_id = elk_edge.targets[0]
-      match (node_map.get(source_id), node_map.get(target_id)) {
-        (Some(source), Some(target)) => {
-          let ledge = LEdge::new(elk_edge.id, source, target)
-          ledge.original_id = Some(elk_edge.id)
-          ledge.properties.copy_from(elk_edge.properties)
-          // Convert labels
-          for label in elk_edge.labels {
-            ledge.labels.push(LLabel::from_elk_label(label))
-          }
-          // Link edge to nodes
-          source.outgoing_edges.push(ledge)
-          target.incoming_edges.push(ledge)
-          graph.edges.push(ledge)
+      // Only create edge if both nodes exist
+      if graph.node_map.contains(source_id) &&
+        graph.node_map.contains(target_id) {
+        let ledge = LEdge::new(elk_edge.id, source_id, target_id)
+        ledge.original_id = Some(elk_edge.id)
+        ledge.properties.copy_from(elk_edge.properties)
+        // Convert labels
+        for label in elk_edge.labels {
+          ledge.labels.push(LLabel::from_elk_label(label))
         }
-        _ => () // Skip edges with missing endpoints
+        // Link edge to nodes (nodes still reference edges for algorithm efficiency)
+        match graph.node_map.get(source_id) {
+          Some(source) => source.outgoing_edges.push(ledge)
+          None => ()
+        }
+        match graph.node_map.get(target_id) {
+          Some(target) => target.incoming_edges.push(ledge)
+          None => ()
+        }
+        graph.edges.push(ledge)
       }
     }
   }
@@ -414,36 +438,49 @@ pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
   }
 
   // Apply edge routes
+  // Only map the first edge with each original_id (the original edge, not dummy edges)
   let ledge_map : Map[String, LEdge] = {}
   for ledge in self.edges {
     match ledge.original_id {
-      Some(id) => ledge_map[id] = ledge
+      Some(id) => if !ledge_map.contains(id) { ledge_map[id] = ledge }
       None => ()
     }
   }
   for elk_edge in elk_node.edges {
     match ledge_map.get(elk_edge.id) {
-      Some(ledge) =>
-        // Create edge section from bend points
-        if ledge.bend_points.length() > 0 || true {
-          let section = @elk.ElkEdgeSection::new(elk_edge.id + "_s0")
-          // Start point (from source node)
-          section.start_point = @elk.ElkPoint::new(
-            ledge.source.x + ledge.source.width / 2.0,
-            ledge.source.y + ledge.source.height,
-          )
-          // End point (to target node)
-          section.end_point = @elk.ElkPoint::new(
-            ledge.target.x + ledge.target.width / 2.0,
-            ledge.target.y,
-          )
-          // Copy bend points
-          for bp in ledge.bend_points {
-            section.bend_points.push(bp)
-          }
-          elk_edge.sections.clear()
-          elk_edge.sections.push(section)
+      Some(ledge) => {
+        let section = @elk.ElkEdgeSection::new(elk_edge.id + "_s0")
+
+        // Look up source and target nodes by ID
+        let source_node = self.node_map.get(ledge.source_id)
+        let target_node = self.node_map.get(ledge.target_id)
+
+        // In ELK, start/end points come from port anchors.
+        // Since we use port IDs, look up ports and compute anchor points.
+        // Fall back to node boundary based on layout direction.
+        // The layout package can adjust these for perpendicularity if needed.
+        let (start_x, start_y) = match source_node {
+          Some(src) =>
+            // Default: bottom center of source (for Down direction)
+            (src.x + src.width / 2.0, src.y + src.height)
+          _ => (0.0, 0.0)
         }
+        let (end_x, end_y) = match target_node {
+          Some(tgt) =>
+            // Default: top center of target (for Down direction)
+            (tgt.x + tgt.width / 2.0, tgt.y)
+          _ => (0.0, 0.0)
+        }
+        section.start_point = @elk.ElkPoint::new(start_x, start_y)
+        section.end_point = @elk.ElkPoint::new(end_x, end_y)
+
+        // Copy bend points
+        for bp in ledge.bend_points {
+          section.bend_points.push(bp)
+        }
+        elk_edge.sections.clear()
+        elk_edge.sections.push(section)
+      }
       None => ()
     }
   }
@@ -454,9 +491,17 @@ pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
 pub fn LGraph::get_long_edges(self : LGraph) -> Array[LEdge] {
   let result : Array[LEdge] = []
   for edge in self.edges {
-    if edge.source.layer >= 0 &&
-      edge.target.layer >= 0 &&
-      (edge.target.layer - edge.source.layer).abs() > 1 {
+    let source_layer = match self.node_map.get(edge.source_id) {
+      Some(n) => n.layer
+      None => -1
+    }
+    let target_layer = match self.node_map.get(edge.target_id) {
+      Some(n) => n.layer
+      None => -1
+    }
+    if source_layer >= 0 &&
+      target_layer >= 0 &&
+      (target_layer - source_layer).abs() > 1 {
       result.push(edge)
     }
   }

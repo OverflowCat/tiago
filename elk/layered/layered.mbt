@@ -121,8 +121,8 @@ pub fn layout(
   // Phase 4: Node Placement
   let placement_strategy = match options.node_placement_strategy {
     Some(s) => s
-    None => @elk.BrandesKoepf // Default to Brandes-Koepf like ELK
-  }
+    None => @elk.BrandesKoepf
+  } // Default to Brandes-Koepf like ELK
   place_nodes(lgraph, options, placement_strategy, direction)
 
   // Phase 5: Edge Routing
@@ -223,19 +223,18 @@ fn greedy_cycle_breaker(graph : LGraph) -> Unit {
 
     // Update degrees of neighbors
     for edge in node.outgoing_edges {
-      let target_id = edge.target.id
-      in_degree[target_id] = in_degree.get(target_id).unwrap_or(1) - 1
+      in_degree[edge.target_id] = in_degree.get(edge.target_id).unwrap_or(1) - 1
     }
     for edge in node.incoming_edges {
-      let source_id = edge.source.id
-      out_degree[source_id] = out_degree.get(source_id).unwrap_or(1) - 1
+      out_degree[edge.source_id] = out_degree.get(edge.source_id).unwrap_or(1) -
+        1
     }
   }
 
   // Reverse edges that go against the order (back edges)
   for edge in graph.edges {
-    let source_order = node_order.get(edge.source.id).unwrap_or(0)
-    let target_order = node_order.get(edge.target.id).unwrap_or(0)
+    let source_order = node_order.get(edge.source_id).unwrap_or(0)
+    let target_order = node_order.get(edge.target_id).unwrap_or(0)
     if source_order > target_order {
       edge.reverse()
     }
@@ -247,16 +246,19 @@ fn greedy_cycle_breaker(graph : LGraph) -> Unit {
 fn dfs_cycle_breaker(graph : LGraph) -> Unit {
   let visited : Map[String, Bool] = {}
   let in_stack : Map[String, Bool] = {}
-  fn dfs(node : LNode) -> Unit {
+  fn dfs(node : LNode, graph : LGraph) -> Unit {
     visited[node.id] = true
     in_stack[node.id] = true
     for edge in node.outgoing_edges {
-      let target = edge.target
-      if in_stack.get(target.id).unwrap_or(false) {
+      let target_id = edge.target_id
+      if in_stack.get(target_id).unwrap_or(false) {
         // Back edge found - reverse it
         edge.reverse()
-      } else if !visited.get(target.id).unwrap_or(false) {
-        dfs(target)
+      } else if !visited.get(target_id).unwrap_or(false) {
+        match graph.get_node(target_id) {
+          Some(target) => dfs(target, graph)
+          None => ()
+        }
       }
     }
     in_stack[node.id] = false
@@ -265,7 +267,7 @@ fn dfs_cycle_breaker(graph : LGraph) -> Unit {
   // Start DFS from each unvisited node
   for node in graph.nodes {
     if !visited.get(node.id).unwrap_or(false) {
-      dfs(node)
+      dfs(node, graph)
     }
   }
 }
@@ -335,14 +337,17 @@ fn longest_path_layering(graph : LGraph) -> Unit {
     visited[node.id] = true
     let node_layer = layer.get(node.id).unwrap_or(0)
     for edge in node.outgoing_edges {
-      let target = edge.target
-      let target_layer = layer.get(target.id).unwrap_or(-1)
+      let target_id = edge.target_id
+      let target_layer = layer.get(target_id).unwrap_or(-1)
       let new_layer = node_layer + 1
       if new_layer > target_layer {
-        layer[target.id] = new_layer
+        layer[target_id] = new_layer
         // Add to queue if not already visited
-        if !visited.get(target.id).unwrap_or(false) {
-          queue.push(target)
+        if !visited.get(target_id).unwrap_or(false) {
+          match graph.get_node(target_id) {
+            Some(target) => queue.push(target)
+            None => ()
+          }
         }
       }
     }
@@ -358,7 +363,7 @@ fn longest_path_layering(graph : LGraph) -> Unit {
         // Look at incoming edges to determine layer
         let mut max_incoming = -1
         for edge in node.incoming_edges {
-          let src_layer = layer.get(edge.source.id).unwrap_or(-1)
+          let src_layer = layer.get(edge.source_id).unwrap_or(-1)
           if src_layer > max_incoming {
             max_incoming = src_layer
           }
@@ -402,8 +407,11 @@ fn insert_dummy_nodes(graph : LGraph) -> Unit {
   let long_edges = graph.get_long_edges()
   let mut dummy_count = 0
   for edge in long_edges {
-    let source_layer = edge.source.layer
-    let target_layer = edge.target.layer
+    let source_node = graph.get_node(edge.source_id)
+    let target_node = graph.get_node(edge.target_id)
+    guard source_node is Some(src) && target_node is Some(tgt) else { continue }
+    let source_layer = src.layer
+    let target_layer = tgt.layer
 
     // Skip if not spanning multiple layers
     if (target_layer - source_layer).abs() <= 1 {
@@ -411,7 +419,7 @@ fn insert_dummy_nodes(graph : LGraph) -> Unit {
     }
 
     // Create dummy nodes for each intermediate layer
-    let mut prev_node = edge.source
+    let mut prev_node_id = edge.source_id
     let direction = if target_layer > source_layer { 1 } else { -1 }
     let mut layer_idx = source_layer + direction
     while layer_idx != target_layer {
@@ -425,43 +433,50 @@ fn insert_dummy_nodes(graph : LGraph) -> Unit {
       dummy.height = 1.0
 
       // Add to graph
-      graph.nodes.push(dummy)
+      graph.add_node(dummy)
 
       // Create edge from prev_node to dummy
       let edge_to_dummy = LEdge::new(
-        "e_" + prev_node.id + "_" + dummy_id,
-        prev_node,
-        dummy,
+        "e_" + prev_node_id + "_" + dummy_id,
+        prev_node_id,
+        dummy_id,
       )
       edge_to_dummy.original_id = edge.original_id
-      prev_node.outgoing_edges.push(edge_to_dummy)
+      // Link edge to nodes
+      match graph.get_node(prev_node_id) {
+        Some(prev) => prev.outgoing_edges.push(edge_to_dummy)
+        None => ()
+      }
       dummy.incoming_edges.push(edge_to_dummy)
       graph.edges.push(edge_to_dummy)
-      prev_node = dummy
+      prev_node_id = dummy_id
       layer_idx = layer_idx + direction
     }
 
     // Create final edge from last dummy to target
     let final_edge = LEdge::new(
-      "e_" + prev_node.id + "_" + edge.target.id,
-      prev_node,
-      edge.target,
+      "e_" + prev_node_id + "_" + edge.target_id,
+      prev_node_id,
+      edge.target_id,
     )
     final_edge.original_id = edge.original_id
-    prev_node.outgoing_edges.push(final_edge)
-    edge.target.incoming_edges.push(final_edge)
+    match graph.get_node(prev_node_id) {
+      Some(prev) => prev.outgoing_edges.push(final_edge)
+      None => ()
+    }
+    tgt.incoming_edges.push(final_edge)
     graph.edges.push(final_edge)
 
     // Remove original edge from source's outgoing
-    let src_idx = find_edge_index(edge.source.outgoing_edges, edge.id)
+    let src_idx = find_edge_index(src.outgoing_edges, edge.id)
     if src_idx >= 0 {
-      edge.source.outgoing_edges.remove(src_idx) |> ignore
+      src.outgoing_edges.remove(src_idx) |> ignore
     }
 
     // Remove original edge from target's incoming
-    let tgt_idx = find_edge_index(edge.target.incoming_edges, edge.id)
+    let tgt_idx = find_edge_index(tgt.incoming_edges, edge.id)
     if tgt_idx >= 0 {
-      edge.target.incoming_edges.remove(tgt_idx) |> ignore
+      tgt.incoming_edges.remove(tgt_idx) |> ignore
     }
   }
 
@@ -474,8 +489,10 @@ fn insert_dummy_nodes(graph : LGraph) -> Unit {
 fn remove_dummy_nodes(graph : LGraph) -> Unit {
   // Group dummy nodes by their origin edge
   let dummy_chains : Map[String, Array[LNode]] = {}
+  let dummy_node_ids : Array[String] = []
   for node in graph.nodes {
     if node.node_type is LongEdgeDummy {
+      dummy_node_ids.push(node.id)
       match node.origin_edge {
         Some(edge_id) => {
           if !dummy_chains.contains(edge_id) {
@@ -492,27 +509,31 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
   }
 
   // Sort dummy nodes in each chain by layer and create bend points
+  // Only add bend points to original edges (not dummy edges)
   for edge in graph.edges {
     match edge.original_id {
       Some(orig_id) =>
-        match dummy_chains.get(orig_id) {
-          Some(dummies) => {
-            // Sort by layer
-            dummies.sort_by(fn(a, b) { a.layer - b.layer })
-            // Add bend points from dummy positions
-            for dummy in dummies {
-              let bend_x = dummy.x + dummy.width / 2.0
-              let bend_y = dummy.y + dummy.height / 2.0
-              edge.bend_points.push(@elk.ElkPoint::new(bend_x, bend_y))
+        // Only process edges that start from a real (non-dummy) source
+        if !edge.source_id.has_prefix("dummy_") {
+          match dummy_chains.get(orig_id) {
+            Some(dummies) => {
+              // Sort by layer
+              dummies.sort_by(fn(a, b) { a.layer - b.layer })
+              // Add bend points from dummy positions
+              for dummy in dummies {
+                let bend_x = dummy.x + dummy.width / 2.0
+                let bend_y = dummy.y + dummy.height / 2.0
+                edge.bend_points.push(@elk.ElkPoint::new(bend_x, bend_y))
+              }
             }
+            None => ()
           }
-          None => ()
         }
       None => ()
     }
   }
 
-  // Remove dummy nodes from graph
+  // Remove dummy nodes from graph.nodes and graph.node_map
   let non_dummy_nodes : Array[LNode] = []
   for node in graph.nodes {
     if !node.is_dummy() {
@@ -522,6 +543,54 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
   graph.nodes.clear()
   for node in non_dummy_nodes {
     graph.nodes.push(node)
+  }
+
+  // Remove dummy nodes from node_map
+  for dummy_id in dummy_node_ids {
+    graph.node_map.remove(dummy_id) |> ignore
+  }
+
+  // Remove dummy edges from graph.edges
+  let non_dummy_edges : Array[LEdge] = []
+  for edge in graph.edges {
+    // Keep edges that don't involve dummy nodes
+    let source_is_dummy = edge.source_id.has_prefix("dummy_")
+    let target_is_dummy = edge.target_id.has_prefix("dummy_")
+    if !source_is_dummy && !target_is_dummy {
+      non_dummy_edges.push(edge)
+    }
+  }
+  graph.edges.clear()
+  for edge in non_dummy_edges {
+    graph.edges.push(edge)
+  }
+
+  // Clear and rebuild layers without dummy nodes
+  graph.layers.clear()
+
+  // Clear incoming/outgoing edge references to dummy edges from real nodes
+  for node in graph.nodes {
+    // Filter out edges that reference dummy nodes
+    let real_incoming : Array[LEdge] = []
+    for e in node.incoming_edges {
+      if !e.source_id.has_prefix("dummy_") && !e.target_id.has_prefix("dummy_") {
+        real_incoming.push(e)
+      }
+    }
+    node.incoming_edges.clear()
+    for e in real_incoming {
+      node.incoming_edges.push(e)
+    }
+    let real_outgoing : Array[LEdge] = []
+    for e in node.outgoing_edges {
+      if !e.source_id.has_prefix("dummy_") && !e.target_id.has_prefix("dummy_") {
+        real_outgoing.push(e)
+      }
+    }
+    node.outgoing_edges.clear()
+    for e in real_outgoing {
+      node.outgoing_edges.push(e)
+    }
   }
 }
 
@@ -553,12 +622,22 @@ fn layer_sweep_crossing_min(graph : LGraph, thoroughness : Int) -> Unit {
   for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
     // Forward sweep (top to bottom for Down direction)
     for i = 1; i < graph.layers.length(); i = i + 1 {
-      order_layer_by_barycenter(graph.layers[i], graph.layers[i - 1], true)
+      order_layer_by_barycenter(
+        graph,
+        graph.layers[i],
+        graph.layers[i - 1],
+        true,
+      )
     }
 
     // Backward sweep (bottom to top)
     for i = graph.layers.length() - 2; i >= 0; i = i - 1 {
-      order_layer_by_barycenter(graph.layers[i], graph.layers[i + 1], false)
+      order_layer_by_barycenter(
+        graph,
+        graph.layers[i],
+        graph.layers[i + 1],
+        false,
+      )
     }
   }
 
@@ -576,6 +655,7 @@ fn layer_sweep_crossing_min(graph : LGraph, thoroughness : Int) -> Unit {
 ///|
 /// Order nodes in a layer using barycenter heuristic
 fn order_layer_by_barycenter(
+  graph : LGraph,
   layer : LLayer,
   fixed_layer : LLayer,
   forward : Bool,
@@ -587,17 +667,23 @@ fn order_layer_by_barycenter(
     if forward {
       // Use incoming edges (connect to fixed layer above)
       for edge in node.incoming_edges {
-        let source = edge.source
-        if source.layer == fixed_layer.index {
-          connected_positions.push(source.position)
+        match graph.get_node(edge.source_id) {
+          Some(source) =>
+            if source.layer == fixed_layer.index {
+              connected_positions.push(source.position)
+            }
+          None => ()
         }
       }
     } else {
       // Use outgoing edges (connect to fixed layer below)
       for edge in node.outgoing_edges {
-        let target = edge.target
-        if target.layer == fixed_layer.index {
-          connected_positions.push(target.position)
+        match graph.get_node(edge.target_id) {
+          Some(target) =>
+            if target.layer == fixed_layer.index {
+              connected_positions.push(target.position)
+            }
+          None => ()
         }
       }
     }

@@ -17,6 +17,18 @@
 /// Converts D2 Graph to ELK format, runs layout, and converts back
 
 ///|
+/// Clamp a value to a range [min_val, max_val]
+fn clamp(value : Double, min_val : Double, max_val : Double) -> Double {
+  if value < min_val {
+    min_val
+  } else if value > max_val {
+    max_val
+  } else {
+    value
+  }
+}
+
+///|
 /// Convert a D2 Graph to an ELK ElkNode for layout
 fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
   let root = @elk.ElkNode::new("root")
@@ -110,6 +122,7 @@ fn elk_to_graph(
   elk_root : @elk.ElkNode,
   graph : @graph.Graph,
   _config : LayoutConfig,
+  direction : Direction,
 ) -> Unit {
   // Create map of ELK nodes by ID
   let elk_map : Map[String, @elk.ElkNode] = {}
@@ -135,7 +148,7 @@ fn elk_to_graph(
   }
 
   // Apply edge routes
-  apply_edge_routes(elk_root, graph, elk_map)
+  apply_edge_routes(elk_root, graph, elk_map, direction)
 }
 
 ///|
@@ -177,11 +190,12 @@ fn apply_children_positions(
 }
 
 ///|
-/// Apply edge routes from ELK to Graph
+/// Apply edge routes from ELK to Graph with perpendicularity adjustment
 fn apply_edge_routes(
   elk_root : @elk.ElkNode,
   graph : @graph.Graph,
   elk_map : Map[String, @elk.ElkNode],
+  direction : Direction,
 ) -> Unit {
   // Match ELK edges to graph edges by index (order is preserved)
   for i, elk_edge in elk_root.edges {
@@ -192,32 +206,252 @@ fn apply_edge_routes(
       // Apply route from ELK edge sections
       if elk_edge.sections.length() > 0 {
         for section in elk_edge.sections {
-          // Start point
-          edge.route.push(
-            @graph.Point::new(section.start_point.x, section.start_point.y),
-          )
+          // Get source and target boxes for perpendicularity adjustment
+          let src_box = elk_map.get(elk_edge.sources[0])
+          let tgt_box = elk_map.get(elk_edge.targets[0])
+
+          // Adjust start point for perpendicularity
+          let start_point = match src_box {
+            Some(src) =>
+              adjust_start_point_perpendicular(
+                section.start_point.x,
+                section.start_point.y,
+                src,
+                section.bend_points,
+                section.end_point.x,
+                section.end_point.y,
+                direction,
+              )
+            None =>
+              @graph.Point::new(section.start_point.x, section.start_point.y)
+          }
+
+          // Adjust end point for perpendicularity
+          let end_point = match tgt_box {
+            Some(tgt) =>
+              adjust_end_point_perpendicular(
+                section.end_point.x,
+                section.end_point.y,
+                tgt,
+                section.bend_points,
+                section.start_point.x,
+                section.start_point.y,
+                direction,
+              )
+            None => @graph.Point::new(section.end_point.x, section.end_point.y)
+          }
+          edge.route.push(start_point)
           // Bend points
           for bp in section.bend_points {
             edge.route.push(@graph.Point::new(bp.x, bp.y))
           }
-          // End point
-          edge.route.push(
-            @graph.Point::new(section.end_point.x, section.end_point.y),
-          )
+          edge.route.push(end_point)
         }
         // Fallback: create direct route from source to target
+        // Determine direction based on node positions
       } else if elk_edge.sources.length() > 0 && elk_edge.targets.length() > 0 {
         match
           (elk_map.get(elk_edge.sources[0]), elk_map.get(elk_edge.targets[0])) {
           (Some(src), Some(tgt)) => {
-            edge.route.push(
-              @graph.Point::new(src.x + src.width / 2.0, src.y + src.height),
-            )
-            edge.route.push(@graph.Point::new(tgt.x + tgt.width / 2.0, tgt.y))
+            let src_cx = src.x + src.width / 2.0
+            let src_cy = src.y + src.height / 2.0
+            let tgt_cx = tgt.x + tgt.width / 2.0
+            let tgt_cy = tgt.y + tgt.height / 2.0
+
+            // Determine if connection is more horizontal or vertical
+            let dx = (tgt_cx - src_cx).abs()
+            let dy = (tgt_cy - src_cy).abs()
+            if dy > dx {
+              // More vertical - connect from top/bottom
+              let (start_y, end_y) = if tgt_cy > src_cy {
+                (src.y + src.height, tgt.y) // Bottom to top
+              } else {
+                (src.y, tgt.y + tgt.height) // Top to bottom
+              }
+              edge.route.push(@graph.Point::new(src_cx, start_y))
+              edge.route.push(@graph.Point::new(tgt_cx, end_y))
+            } else {
+              // More horizontal - connect from left/right
+              let (start_x, end_x) = if tgt_cx > src_cx {
+                (src.x + src.width, tgt.x) // Right to left
+              } else {
+                (src.x, tgt.x + tgt.width) // Left to right
+              }
+              edge.route.push(@graph.Point::new(start_x, src_cy))
+              edge.route.push(@graph.Point::new(end_x, tgt_cy))
+            }
           }
           _ => ()
         }
       }
+    }
+  }
+}
+
+///|
+/// Adjust start point to be perpendicular to first segment
+fn adjust_start_point_perpendicular(
+  elk_start_x : Double,
+  elk_start_y : Double,
+  src : @elk.ElkNode,
+  bend_points : Array[@elk.ElkPoint],
+  end_x : Double,
+  end_y : Double,
+  direction : Direction,
+) -> @graph.Point {
+  let src_cx = src.x + src.width / 2.0
+  let src_cy = src.y + src.height / 2.0
+
+  // Get the next point (first bend or end point)
+  let (next_x, next_y) = if bend_points.length() > 0 {
+    (bend_points[0].x, bend_points[0].y)
+  } else {
+    (end_x, end_y)
+  }
+
+  // Determine segment direction from ELK's suggested start to next point
+  // This tells us what direction ELK intended for the first segment
+  let elk_dx = (next_x - elk_start_x).abs()
+  let elk_dy = (next_y - elk_start_y).abs()
+
+  // If ELK's segment is horizontal (same y), connect from left/right
+  // If ELK's segment is vertical (same x), connect from top/bottom
+  let tolerance = 1.0
+  let elk_is_horizontal = elk_dy < tolerance && elk_dx > tolerance
+  let elk_is_vertical = elk_dx < tolerance && elk_dy > tolerance
+
+  // For horizontal layouts (Right/Left), edges should exit from left/right sides
+  // For vertical layouts (Down/Up), edges should exit from top/bottom sides
+  let is_horizontal_layout = direction is Right || direction is Left
+  if elk_is_horizontal {
+    // ELK intended horizontal segment - connect from left or right side
+    let start_x = if next_x > src_cx {
+      src.x + src.width // Right side
+    } else {
+      src.x // Left side
+    }
+    // Clamp y to node bounds
+    let start_y = clamp(next_y, src.y, src.y + src.height)
+    @graph.Point::new(start_x, start_y)
+  } else if elk_is_vertical {
+    // ELK intended vertical segment - connect from top or bottom side
+    let start_y = if next_y > src_cy {
+      src.y + src.height // Bottom side
+    } else {
+      src.y // Top side
+    }
+    // Clamp x to node bounds
+    let start_x = clamp(next_x, src.x, src.x + src.width)
+    @graph.Point::new(start_x, start_y)
+  } else if is_horizontal_layout {
+    // Horizontal layout with diagonal segment - prefer left/right exit
+    // This is the key fix: for Right/Left direction, edges should exit horizontally
+    let start_x = match direction {
+      Right => src.x + src.width // Exit from right side
+      Left => src.x // Exit from left side
+      _ => if next_x > src_cx { src.x + src.width } else { src.x }
+    }
+    // For horizontal exit, use the node center y, clamped to bounds
+    let start_y = clamp(next_y, src.y, src.y + src.height)
+    @graph.Point::new(start_x, start_y)
+  } else {
+    // Vertical layout with diagonal segment - prefer top/bottom exit
+    let dx = (next_x - src_cx).abs()
+    let dy = (next_y - src_cy).abs()
+    if dx > dy {
+      // More horizontal - connect from left/right
+      let start_x = if next_x > src_cx { src.x + src.width } else { src.x }
+      let start_y = clamp(next_y, src.y, src.y + src.height)
+      @graph.Point::new(start_x, start_y)
+    } else {
+      // More vertical - connect from top/bottom
+      let start_y = if next_y > src_cy { src.y + src.height } else { src.y }
+      let start_x = clamp(next_x, src.x, src.x + src.width)
+      @graph.Point::new(start_x, start_y)
+    }
+  }
+}
+
+///|
+/// Adjust end point to be perpendicular to last segment
+fn adjust_end_point_perpendicular(
+  elk_end_x : Double,
+  elk_end_y : Double,
+  tgt : @elk.ElkNode,
+  bend_points : Array[@elk.ElkPoint],
+  start_x : Double,
+  start_y : Double,
+  direction : Direction,
+) -> @graph.Point {
+  let tgt_cx = tgt.x + tgt.width / 2.0
+  let tgt_cy = tgt.y + tgt.height / 2.0
+
+  // Get the previous point (last bend or start point)
+  let (prev_x, prev_y) = if bend_points.length() > 0 {
+    let last = bend_points[bend_points.length() - 1]
+    (last.x, last.y)
+  } else {
+    (start_x, start_y)
+  }
+
+  // Determine segment direction from previous point to ELK's suggested end
+  // This tells us what direction ELK intended for the last segment
+  let elk_dx = (elk_end_x - prev_x).abs()
+  let elk_dy = (elk_end_y - prev_y).abs()
+
+  // If ELK's segment is horizontal (same y), connect to left/right
+  // If ELK's segment is vertical (same x), connect to top/bottom
+  let tolerance = 1.0
+  let elk_is_horizontal = elk_dy < tolerance && elk_dx > tolerance
+  let elk_is_vertical = elk_dx < tolerance && elk_dy > tolerance
+
+  // For horizontal layouts (Right/Left), edges should enter from left/right sides
+  // For vertical layouts (Down/Up), edges should enter from top/bottom sides
+  let is_horizontal_layout = direction is Right || direction is Left
+  if elk_is_horizontal {
+    // ELK intended horizontal segment - connect to left or right side
+    let end_x = if prev_x < tgt_cx {
+      tgt.x // Left side
+    } else {
+      tgt.x + tgt.width // Right side
+    }
+    // Clamp y to node bounds
+    let end_y = clamp(prev_y, tgt.y, tgt.y + tgt.height)
+    @graph.Point::new(end_x, end_y)
+  } else if elk_is_vertical {
+    // ELK intended vertical segment - connect to top or bottom side
+    let end_y = if prev_y < tgt_cy {
+      tgt.y // Top side
+    } else {
+      tgt.y + tgt.height // Bottom side
+    }
+    // Clamp x to node bounds
+    let end_x = clamp(prev_x, tgt.x, tgt.x + tgt.width)
+    @graph.Point::new(end_x, end_y)
+  } else if is_horizontal_layout {
+    // Horizontal layout with diagonal segment - prefer left/right entry
+    let end_x = match direction {
+      Right => tgt.x // Enter from left side
+      Left => tgt.x + tgt.width // Enter from right side
+      _ => if prev_x < tgt_cx { tgt.x } else { tgt.x + tgt.width }
+    }
+    // For horizontal entry, use the previous y, clamped to bounds
+    let end_y = clamp(prev_y, tgt.y, tgt.y + tgt.height)
+    @graph.Point::new(end_x, end_y)
+  } else {
+    // Vertical layout with diagonal segment - prefer top/bottom entry
+    let dx = (prev_x - tgt_cx).abs()
+    let dy = (prev_y - tgt_cy).abs()
+    if dx > dy {
+      // More horizontal - connect to left/right
+      let end_x = if prev_x < tgt_cx { tgt.x } else { tgt.x + tgt.width }
+      let end_y = clamp(prev_y, tgt.y, tgt.y + tgt.height)
+      @graph.Point::new(end_x, end_y)
+    } else {
+      // More vertical - connect to top/bottom
+      let end_y = if prev_y < tgt_cy { tgt.y } else { tgt.y + tgt.height }
+      let end_x = clamp(prev_x, tgt.x, tgt.x + tgt.width)
+      @graph.Point::new(end_x, end_y)
     }
   }
 }
@@ -255,9 +489,12 @@ pub fn run_elk_layout(
 
   // Run ELK layered layout (using the proper implementation)
   @layered.layout(elk_root, options) catch {
-    _ => () // Layout errors are handled gracefully
+    _ => {
+      println("DEBUG: ELK layout threw an error")
+      abort("ELK layout failed")
+    }
   }
 
   // Convert back to Graph format
-  elk_to_graph(elk_root, graph, config)
+  elk_to_graph(elk_root, graph, config, direction)
 }

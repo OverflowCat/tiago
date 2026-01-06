@@ -514,7 +514,6 @@ test "debug: simple linear graph" {
   // Simple chain: A -> B -> C
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
-
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
 
@@ -522,15 +521,23 @@ test "debug: simple linear graph" {
   let objA = graph.find_object("A").unwrap()
   let objB = graph.find_object("B").unwrap()
   let objC = graph.find_object("C").unwrap()
-
   guard objA.box is Some(boxA) else { fail("expected box for A") }
   guard objB.box is Some(boxB) else { fail("expected box for B") }
   guard objC.box is Some(boxC) else { fail("expected box for C") }
 
   // Debug: print positions
-  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(20, 20, 100, 60)")
-  inspect((boxB.x, boxB.y, boxB.width, boxB.height), content="(20, 180, 100, 60)")
-  inspect((boxC.x, boxC.y, boxC.width, boxC.height), content="(20, 340, 100, 60)")
+  inspect(
+    (boxA.x, boxA.y, boxA.width, boxA.height),
+    content="(20, 20, 100, 60)",
+  )
+  inspect(
+    (boxB.x, boxB.y, boxB.width, boxB.height),
+    content="(20, 180, 100, 60)",
+  )
+  inspect(
+    (boxC.x, boxC.y, boxC.width, boxC.height),
+    content="(20, 340, 100, 60)",
+  )
 
   // In DOWN direction:
   // A should be at top (smallest y)
@@ -569,7 +576,6 @@ test "debug: cyclic graph with bidirectional edges" {
   graph.add_edge(@graph.Edge::new(3, "A", "I", false, true))
   graph.add_edge(@graph.Edge::new(4, "I", "5", false, true))
   graph.add_edge(@graph.Edge::new(5, "5", "I", false, true))
-
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
 
@@ -577,15 +583,23 @@ test "debug: cyclic graph with bidirectional edges" {
   let obj5 = graph.find_object("5").unwrap()
   let objI = graph.find_object("I").unwrap()
   let objA = graph.find_object("A").unwrap()
-
   guard obj5.box is Some(box5) else { fail("expected box for 5") }
   guard objI.box is Some(boxI) else { fail("expected box for I") }
   guard objA.box is Some(boxA) else { fail("expected box for A") }
 
   // Debug: print positions
-  inspect((box5.x, box5.y, box5.width, box5.height), content="(20, 20, 100, 60)")
-  inspect((boxI.x, boxI.y, boxI.width, boxI.height), content="(20, 180, 100, 60)")
-  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(140, 180, 100, 60)")
+  inspect(
+    (box5.x, box5.y, box5.width, box5.height),
+    content="(20, 20, 100, 60)",
+  )
+  inspect(
+    (boxI.x, boxI.y, boxI.width, boxI.height),
+    content="(20, 180, 100, 60)",
+  )
+  inspect(
+    (boxA.x, boxA.y, boxA.width, boxA.height),
+    content="(140, 180, 100, 60)",
+  )
 
   // No overlaps - this is the key constraint
   fn boxes_overlap(b1 : @graph.Box, b2 : @graph.Box) -> Bool {

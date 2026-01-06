@@ -30,16 +30,16 @@ struct NSNode {
   mut layer : Int // Layer assignment
   mut low : Int // Lowest postorder number in subtree
   mut lim : Int // Postorder number (limit)
-  mut parent : NSNode? // Parent in spanning tree
+  mut parent_id : String? // Parent ID in spanning tree (avoid circular refs)
   mut parent_edge : NSEdge? // Edge connecting to parent
 } derive(Show)
 
 ///|
-/// An edge in the network simplex graph
+/// An edge in the network simplex graph (uses IDs to avoid circular refs)
 struct NSEdge {
   id : String
-  source : NSNode
-  target : NSNode
+  source_id : String
+  target_id : String
   weight : Int // Edge weight (typically 1)
   min_length : Int // Minimum length (typically 1)
   mut is_tree_edge : Bool // Part of spanning tree?
@@ -52,6 +52,7 @@ struct NetworkSimplex {
   nodes : Array[NSNode]
   edges : Array[NSEdge]
   tree_edges : Array[NSEdge]
+  node_map : Map[String, NSNode] // For O(1) node lookup by ID
   mut postorder_count : Int
 }
 
@@ -61,14 +62,19 @@ struct NetworkSimplex {
 
 ///|
 fn NetworkSimplex::new() -> NetworkSimplex {
-  { nodes: [], edges: [], tree_edges: [], postorder_count: 0 }
+  { nodes: [], edges: [], tree_edges: [], node_map: {}, postorder_count: 0 }
+}
+
+///|
+/// Get node by ID
+fn NetworkSimplex::get_node(self : NetworkSimplex, id : String) -> NSNode? {
+  self.node_map.get(id)
 }
 
 ///|
 /// Create network simplex problem from LGraph
 fn NetworkSimplex::from_lgraph(graph : LGraph) -> NetworkSimplex {
   let ns = NetworkSimplex::new()
-  let node_map : Map[String, NSNode] = {}
 
   // Create NS nodes
   for lnode in graph.nodes {
@@ -77,35 +83,33 @@ fn NetworkSimplex::from_lgraph(graph : LGraph) -> NetworkSimplex {
       layer: 0,
       low: 0,
       lim: 0,
-      parent: None,
+      parent_id: None,
       parent_edge: None,
     }
     ns.nodes.push(nsnode)
-    node_map[lnode.id] = nsnode
+    ns.node_map[lnode.id] = nsnode
   }
 
-  // Create NS edges
+  // Create NS edges (using IDs to avoid circular refs)
   for ledge in graph.edges {
-    match (node_map.get(ledge.source.id), node_map.get(ledge.target.id)) {
-      (Some(src), Some(tgt)) => {
-        // Skip self-loops
-        if src.id != tgt.id {
-          let nsedge : NSEdge = {
-            id: ledge.id,
-            source: src,
-            target: tgt,
-            weight: 1,
-            min_length: 1,
-            is_tree_edge: false,
-            cut_value: 0,
-          }
-          ns.edges.push(nsedge)
+    // Skip self-loops
+    if ledge.source_id != ledge.target_id {
+      // Only add edge if both nodes exist
+      if ns.node_map.contains(ledge.source_id) &&
+        ns.node_map.contains(ledge.target_id) {
+        let nsedge : NSEdge = {
+          id: ledge.id,
+          source_id: ledge.source_id,
+          target_id: ledge.target_id,
+          weight: 1,
+          min_length: 1,
+          is_tree_edge: false,
+          cut_value: 0,
         }
+        ns.edges.push(nsedge)
       }
-      _ => ()
     }
   }
-
   ns
 }
 
@@ -126,13 +130,12 @@ fn NetworkSimplex::execute(self : NetworkSimplex) -> Unit {
     let leave = self.leave_edge()
     match leave {
       None => break // Optimal solution found
-      Some(leave_edge) => {
+      Some(leave_edge) =>
         // Find entering edge
         match self.enter_edge(leave_edge) {
           Some(enter_edge) => self.exchange(leave_edge, enter_edge)
           None => break // No improvement possible
         }
-      }
     }
   }
 
@@ -146,24 +149,21 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
   // Initialize all nodes to layer 0
   for node in self.nodes {
     node.layer = 0
-    node.parent = None
+    node.parent_id = None
     node.parent_edge = None
   }
-
   self.tree_edges.clear()
 
   // Assign layers using longest path from sources
   let in_degree : Map[String, Int] = {}
   let out_edges : Map[String, Array[NSEdge]] = {}
-
   for node in self.nodes {
     in_degree[node.id] = 0
     out_edges[node.id] = []
   }
-
   for edge in self.edges {
-    in_degree[edge.target.id] = in_degree.get(edge.target.id).unwrap_or(0) + 1
-    match out_edges.get(edge.source.id) {
+    in_degree[edge.target_id] = in_degree.get(edge.target_id).unwrap_or(0) + 1
+    match out_edges.get(edge.source_id) {
       Some(arr) => arr.push(edge)
       None => ()
     }
@@ -176,21 +176,24 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
       queue.push(node)
     }
   }
-
   while queue.length() > 0 {
     let node = queue.remove(0)
     for edge in out_edges.get(node.id).unwrap_or([]) {
-      let target = edge.target
-      // Layer must be at least source layer + min_length
-      let required_layer = node.layer + edge.min_length
-      if target.layer < required_layer {
-        target.layer = required_layer
-      }
-      // Decrease in-degree and add to queue when ready
-      let new_degree = in_degree.get(target.id).unwrap_or(1) - 1
-      in_degree[target.id] = new_degree
-      if new_degree == 0 {
-        queue.push(target)
+      match self.get_node(edge.target_id) {
+        Some(target) => {
+          // Layer must be at least source layer + min_length
+          let required_layer = node.layer + edge.min_length
+          if target.layer < required_layer {
+            target.layer = required_layer
+          }
+          // Decrease in-degree and add to queue when ready
+          let new_degree = in_degree.get(target.id).unwrap_or(1) - 1
+          in_degree[target.id] = new_degree
+          if new_degree == 0 {
+            queue.push(target)
+          }
+        }
+        None => ()
       }
     }
   }
@@ -198,7 +201,6 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
   // Build spanning tree from tight edges (edges where length == min_length)
   let in_tree : Map[String, Bool] = {}
   in_tree[self.nodes[0].id] = true
-
   let mut tree_size = 1
   let target_size = self.nodes.length()
 
@@ -209,23 +211,33 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
       let slack = self.slack(edge)
       if slack == 0 {
         // Tight edge
-        let src_in = in_tree.get(edge.source.id).unwrap_or(false)
-        let tgt_in = in_tree.get(edge.target.id).unwrap_or(false)
+        let src_in = in_tree.get(edge.source_id).unwrap_or(false)
+        let tgt_in = in_tree.get(edge.target_id).unwrap_or(false)
         if src_in && !tgt_in {
           // Add target to tree
-          in_tree[edge.target.id] = true
+          in_tree[edge.target_id] = true
           edge.is_tree_edge = true
-          edge.target.parent = Some(edge.source)
-          edge.target.parent_edge = Some(edge)
+          match self.get_node(edge.target_id) {
+            Some(tgt) => {
+              tgt.parent_id = Some(edge.source_id)
+              tgt.parent_edge = Some(edge)
+            }
+            _ => ()
+          }
           self.tree_edges.push(edge)
           tree_size = tree_size + 1
           added = true
         } else if !src_in && tgt_in {
           // Add source to tree
-          in_tree[edge.source.id] = true
+          in_tree[edge.source_id] = true
           edge.is_tree_edge = true
-          edge.source.parent = Some(edge.target)
-          edge.source.parent_edge = Some(edge)
+          match self.get_node(edge.source_id) {
+            Some(src) => {
+              src.parent_id = Some(edge.target_id)
+              src.parent_edge = Some(edge)
+            }
+            _ => ()
+          }
           self.tree_edges.push(edge)
           tree_size = tree_size + 1
           added = true
@@ -237,10 +249,9 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
     if !added && tree_size < target_size {
       let mut min_slack = @int.max_value
       let mut best_edge : NSEdge? = None
-
       for edge in self.edges {
-        let src_in = in_tree.get(edge.source.id).unwrap_or(false)
-        let tgt_in = in_tree.get(edge.target.id).unwrap_or(false)
+        let src_in = in_tree.get(edge.source_id).unwrap_or(false)
+        let tgt_in = in_tree.get(edge.target_id).unwrap_or(false)
         if src_in != tgt_in {
           let slack = self.slack(edge)
           if slack > 0 && slack < min_slack {
@@ -253,7 +264,7 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
       // Adjust layers to make this edge tight
       match best_edge {
         Some(edge) => {
-          let src_in = in_tree.get(edge.source.id).unwrap_or(false)
+          let src_in = in_tree.get(edge.source_id).unwrap_or(false)
           if src_in {
             // Target not in tree, increase its layer
             for node in self.nodes {
@@ -283,8 +294,15 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
 ///|
 /// Calculate slack of an edge (current length - minimum length)
 fn NetworkSimplex::slack(self : NetworkSimplex, edge : NSEdge) -> Int {
-  let _ = self
-  edge.target.layer - edge.source.layer - edge.min_length
+  let target_layer = match self.get_node(edge.target_id) {
+    Some(n) => n.layer
+    None => 0
+  }
+  let source_layer = match self.get_node(edge.source_id) {
+    Some(n) => n.layer
+    None => 0
+  }
+  target_layer - source_layer - edge.min_length
 }
 
 ///|
@@ -294,7 +312,7 @@ fn NetworkSimplex::postorder(self : NetworkSimplex) -> Unit {
 
   // Find root (node with no parent)
   for node in self.nodes {
-    if node.parent is None {
+    if node.parent_id is None {
       self.postorder_dfs(node)
       break
     }
@@ -307,14 +325,25 @@ fn NetworkSimplex::postorder_dfs(self : NetworkSimplex, node : NSNode) -> Unit {
 
   // Visit children
   for edge in self.tree_edges {
-    if edge.source.id == node.id && edge.target.parent is Some(p) && p.id == node.id {
-      self.postorder_dfs(edge.target)
+    match self.get_node(edge.target_id) {
+      Some(target) =>
+        if edge.source_id == node.id &&
+          target.parent_id is Some(pid) &&
+          pid == node.id {
+          self.postorder_dfs(target)
+        }
+      None => ()
     }
-    if edge.target.id == node.id && edge.source.parent is Some(p) && p.id == node.id {
-      self.postorder_dfs(edge.source)
+    match self.get_node(edge.source_id) {
+      Some(source) =>
+        if edge.target_id == node.id &&
+          source.parent_id is Some(pid) &&
+          pid == node.id {
+          self.postorder_dfs(source)
+        }
+      None => ()
     }
   }
-
   node.lim = self.postorder_count
   self.postorder_count = self.postorder_count + 1
 }
@@ -327,9 +356,8 @@ fn NetworkSimplex::compute_cut_values(self : NetworkSimplex) -> Unit {
 
     // For each edge, check if it contributes to cut value
     for edge in self.edges {
-      let src_in_tail = self.in_head_component(tree_edge, edge.source)
-      let tgt_in_tail = self.in_head_component(tree_edge, edge.target)
-
+      let src_in_tail = self.in_head_component_by_id(tree_edge, edge.source_id)
+      let tgt_in_tail = self.in_head_component_by_id(tree_edge, edge.target_id)
       if src_in_tail && !tgt_in_tail {
         // Edge from tail to head component
         cut_value = cut_value + edge.weight
@@ -338,8 +366,21 @@ fn NetworkSimplex::compute_cut_values(self : NetworkSimplex) -> Unit {
         cut_value = cut_value - edge.weight
       }
     }
-
     tree_edge.cut_value = cut_value
+  }
+}
+
+///|
+/// Check if node is in the head component of the tree edge (by node ID)
+fn NetworkSimplex::in_head_component_by_id(
+  self : NetworkSimplex,
+  tree_edge : NSEdge,
+  node_id : String,
+) -> Bool {
+  // Node is in head component if it's in the subtree rooted at tree_edge.target
+  match (self.get_node(tree_edge.target_id), self.get_node(node_id)) {
+    (Some(head), Some(node)) => node.lim >= head.low && node.lim <= head.lim
+    _ => false
   }
 }
 
@@ -350,10 +391,7 @@ fn NetworkSimplex::in_head_component(
   tree_edge : NSEdge,
   node : NSNode,
 ) -> Bool {
-  let _ = self
-  // Node is in head component if it's in the subtree rooted at tree_edge.target
-  let head = tree_edge.target
-  node.lim >= head.low && node.lim <= head.lim
+  self.in_head_component_by_id(tree_edge, node.id)
 }
 
 ///|
@@ -375,16 +413,14 @@ fn NetworkSimplex::enter_edge(
 ) -> NSEdge? {
   let mut best_edge : NSEdge? = None
   let mut min_slack = @int.max_value
-
   for edge in self.edges {
     if edge.is_tree_edge {
       continue
     }
 
     // Check if edge crosses the cut in the right direction
-    let src_in_head = self.in_head_component(leave_edge, edge.source)
-    let tgt_in_head = self.in_head_component(leave_edge, edge.target)
-
+    let src_in_head = self.in_head_component_by_id(leave_edge, edge.source_id)
+    let tgt_in_head = self.in_head_component_by_id(leave_edge, edge.target_id)
     if src_in_head != tgt_in_head {
       let slack = self.slack(edge)
       if slack >= 0 && slack < min_slack {
@@ -393,7 +429,6 @@ fn NetworkSimplex::enter_edge(
       }
     }
   }
-
   best_edge
 }
 
@@ -440,14 +475,12 @@ fn NetworkSimplex::normalize(self : NetworkSimplex) -> Unit {
   if self.nodes.length() == 0 {
     return
   }
-
   let mut min_layer = self.nodes[0].layer
   for node in self.nodes {
     if node.layer < min_layer {
       min_layer = node.layer
     }
   }
-
   for node in self.nodes {
     node.layer = node.layer - min_layer
   }
@@ -463,7 +496,6 @@ fn NetworkSimplex::apply_to_lgraph(
   for node in self.nodes {
     layer_map[node.id] = node.layer
   }
-
   for lnode in graph.nodes {
     lnode.layer = layer_map.get(lnode.id).unwrap_or(0)
   }
@@ -487,7 +519,6 @@ pub fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
     }
     return
   }
-
   let ns = NetworkSimplex::from_lgraph(graph)
   ns.execute()
   ns.apply_to_lgraph(graph)

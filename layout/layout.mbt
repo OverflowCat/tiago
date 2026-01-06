@@ -133,6 +133,9 @@ pub fn layout(
   // Phase 3: Run ELK layout (handles node positioning and edge routing)
   run_elk_layout(graph, config, direction)
 
+  // Phase 3.5: Fix any overlapping nodes that ELK may have left
+  fix_node_overlaps(graph, config)
+
   // Phase 4: Apply near positioning
   apply_near_positioning(graph, config)
 
@@ -143,10 +146,16 @@ pub fn layout(
   normalize_coordinates(graph)
   // Optimize edge routes by removing unnecessary bends (before perpendicularity fixes)
   eliminate_unnecessary_bends(graph)
+  // Perpendicularity fix
+  fix_perpendicularity(graph)
+  // Clean up any S-shapes or redundant points created by perpendicularity fix
+  eliminate_unnecessary_bends(graph)
   // Separate parallel edges (bidirectional duplicates)
   separate_parallel_edges(graph)
-  // Final perpendicularity fix (must be LAST - don't run eliminate_unnecessary_bends after)
+  // Fix perpendicularity again after separation
   fix_perpendicularity(graph)
+  // Final cleanup
+  eliminate_unnecessary_bends(graph)
 
   // Phase 6: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
@@ -487,4 +496,89 @@ pub fn find_edge_intersection(
     }
   }
   @graph.Point::new(center.x + dx * t, center.y + dy * t)
+}
+
+///|
+/// Fix any overlapping nodes left by the ELK layout algorithm
+fn fix_node_overlaps(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+  let objects = graph.get_objects()
+  let min_spacing = config.horizontal_spacing
+
+  // Keep fixing until no overlaps remain (may need multiple passes)
+  let mut changed = true
+  let mut iterations = 0
+  let max_iterations = objects.length() * 2 // Safety limit
+  while changed && iterations < max_iterations {
+    changed = false
+    iterations += 1
+
+    // Check all pairs for overlaps
+    for i in 0..<objects.length() {
+      for j in (i + 1)..<objects.length() {
+        let obj1 = objects[i]
+        let obj2 = objects[j]
+
+        // Skip if either object has no box
+        guard obj1.box is Some(box1) else { continue }
+        guard obj2.box is Some(box2) else { continue }
+
+        // Skip children of containers
+        if is_child_of_obj(obj1, obj2) || is_child_of_obj(obj2, obj1) {
+          continue
+        }
+
+        // Check if boxes overlap
+        if box1.intersects(box2) {
+          // Determine which direction to separate
+          // Push the object with larger x/y value further away
+          let dx = box2.x - box1.x
+          let dy = box2.y - box1.y
+          if dy.abs() > dx.abs() {
+            // Overlapping more horizontally - separate vertically
+            if dy >= 0.0 {
+              // obj2 is below obj1 - push obj2 down
+              let new_y = box1.y + box1.height + min_spacing
+              obj2.set_box(
+                @graph.Box::new(box2.x, new_y, box2.width, box2.height),
+              )
+            } else {
+              // obj2 is above obj1 - push obj1 down
+              let new_y = box2.y + box2.height + min_spacing
+              obj1.set_box(
+                @graph.Box::new(box1.x, new_y, box1.width, box1.height),
+              )
+            }
+            // Overlapping more vertically - separate horizontally
+          } else if dx >= 0.0 {
+            // obj2 is to the right of obj1 - push obj2 right
+            let new_x = box1.x + box1.width + min_spacing
+            obj2.set_box(
+              @graph.Box::new(new_x, box2.y, box2.width, box2.height),
+            )
+          } else {
+            // obj2 is to the left of obj1 - push obj1 right
+            let new_x = box2.x + box2.width + min_spacing
+            obj1.set_box(
+              @graph.Box::new(new_x, box1.y, box1.width, box1.height),
+            )
+          }
+          changed = true
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Check if obj1 is a child of obj2 (helper for overlap fix)
+fn is_child_of_obj(obj1 : @graph.Object, obj2 : @graph.Object) -> Bool {
+  for child in obj2.children {
+    if child.id == obj1.id {
+      return true
+    }
+    if is_child_of_obj(obj1, child) {
+      return true
+    }
+  }
+  false
 }

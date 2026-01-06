@@ -62,11 +62,12 @@ pub fn route_edges_orthogonal(
 /// Route edges for vertical (top-to-bottom) layouts
 fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
   for edge in graph.edges {
-    let source = edge.source
-    let target = edge.target
+    let source = graph.get_node(edge.source_id)
+    let target = graph.get_node(edge.target_id)
+    guard source is Some(src) && target is Some(tgt) else { continue }
 
     // Skip edges within the same layer
-    if source.layer == target.layer {
+    if src.layer == tgt.layer {
       continue
     }
 
@@ -74,10 +75,10 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
     edge.bend_points.clear()
 
     // Calculate source and target connection points
-    let src_x = source.x + source.width / 2.0
-    let src_y = source.y + source.height // Bottom of source
-    let tgt_x = target.x + target.width / 2.0
-    let tgt_y = target.y // Top of target
+    let src_x = src.x + src.width / 2.0
+    let src_y = src.y + src.height // Bottom of source
+    let tgt_x = tgt.x + tgt.width / 2.0
+    let tgt_y = tgt.y // Top of target
 
     // Calculate routing
     if (src_x - tgt_x).abs() < 1.0 {
@@ -89,20 +90,17 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
       let mid_y = (src_y + tgt_y) / 2.0
 
       // For edges spanning multiple layers, we might need intermediate bends
-      let layer_diff = (target.layer - source.layer).abs()
-
+      let layer_diff = (tgt.layer - src.layer).abs()
       if layer_diff == 1 {
         // Adjacent layers - simple L-shape or Z-shape routing
         edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
         edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
-      } else {
         // Multi-layer edge - route through intermediate space
         // Use existing dummy node positions if available
-        if edge.bend_points.length() == 0 {
-          // Fallback: create simple Z-shape
-          edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
-          edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
-        }
+      } else if edge.bend_points.length() == 0 {
+        // Fallback: create simple Z-shape
+        edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
+        edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
       }
     }
   }
@@ -115,11 +113,12 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
 /// Route edges for horizontal (left-to-right) layouts
 fn route_horizontal_layout(graph : LGraph, edge_spacing : Double) -> Unit {
   for edge in graph.edges {
-    let source = edge.source
-    let target = edge.target
+    let source = graph.get_node(edge.source_id)
+    let target = graph.get_node(edge.target_id)
+    guard source is Some(src) && target is Some(tgt) else { continue }
 
     // Skip edges within the same layer
-    if source.layer == target.layer {
+    if src.layer == tgt.layer {
       continue
     }
 
@@ -127,10 +126,10 @@ fn route_horizontal_layout(graph : LGraph, edge_spacing : Double) -> Unit {
     edge.bend_points.clear()
 
     // Calculate source and target connection points
-    let src_x = source.x + source.width // Right of source
-    let src_y = source.y + source.height / 2.0
-    let tgt_x = target.x // Left of target
-    let tgt_y = target.y + target.height / 2.0
+    let src_x = src.x + src.width // Right of source
+    let src_y = src.y + src.height / 2.0
+    let tgt_x = tgt.x // Left of target
+    let tgt_y = tgt.y + tgt.height / 2.0
 
     // Calculate routing
     if (src_y - tgt_y).abs() < 1.0 {
@@ -142,7 +141,6 @@ fn route_horizontal_layout(graph : LGraph, edge_spacing : Double) -> Unit {
       edge.bend_points.push(@elk.ElkPoint::new(mid_x, tgt_y))
     }
   }
-
   assign_routing_slots(graph, edge_spacing, false)
 }
 
@@ -153,15 +151,28 @@ fn assign_routing_slots(
   edge_spacing : Double,
   is_vertical : Bool,
 ) -> Unit {
+  // Pre-compute source positions for sorting
+  let edge_sort_keys : Map[String, Double] = {}
+  for edge in graph.edges {
+    match graph.get_node(edge.source_id) {
+      Some(src) =>
+        if is_vertical {
+          edge_sort_keys[edge.id] = src.x + src.width / 2.0
+        } else {
+          edge_sort_keys[edge.id] = src.y + src.height / 2.0
+        }
+      None => ()
+    }
+  }
+
   // Group edges by the layer pair they cross
   let layer_edges : Map[String, Array[LEdge]] = {}
-
   for edge in graph.edges {
-    let src_layer = edge.source.layer
-    let tgt_layer = edge.target.layer
-
-    if src_layer != tgt_layer {
-      let key = src_layer.to_string() + "_" + tgt_layer.to_string()
+    let src_node = graph.get_node(edge.source_id)
+    let tgt_node = graph.get_node(edge.target_id)
+    guard src_node is Some(src) && tgt_node is Some(tgt) else { continue }
+    if src.layer != tgt.layer {
+      let key = src.layer.to_string() + "_" + tgt.layer.to_string()
       if !layer_edges.contains(key) {
         layer_edges[key] = []
       }
@@ -180,31 +191,17 @@ fn assign_routing_slots(
     }
 
     // Sort edges by their source position to minimize crossings
-    if is_vertical {
-      edges.sort_by(fn(a, b) {
-        let a_x = a.source.x + a.source.width / 2.0
-        let b_x = b.source.x + b.source.width / 2.0
-        if a_x < b_x {
-          -1
-        } else if a_x > b_x {
-          1
-        } else {
-          0
-        }
-      })
-    } else {
-      edges.sort_by(fn(a, b) {
-        let a_y = a.source.y + a.source.height / 2.0
-        let b_y = b.source.y + b.source.height / 2.0
-        if a_y < b_y {
-          -1
-        } else if a_y > b_y {
-          1
-        } else {
-          0
-        }
-      })
-    }
+    edges.sort_by(fn(a, b) {
+      let a_key = edge_sort_keys.get(a.id).unwrap_or(0.0)
+      let b_key = edge_sort_keys.get(b.id).unwrap_or(0.0)
+      if a_key < b_key {
+        -1
+      } else if a_key > b_key {
+        1
+      } else {
+        0
+      }
+    })
 
     // Adjust bend points to use different routing slots
     for i, edge in edges {
@@ -237,23 +234,32 @@ fn assign_routing_slots(
 
 ///|
 /// Route self-loop edges
-pub fn route_self_loops(graph : LGraph, _direction : @elk.LayoutDirection) -> Unit {
+pub fn route_self_loops(
+  graph : LGraph,
+  _direction : @elk.LayoutDirection,
+) -> Unit {
   for edge in graph.edges {
-    if edge.source.id == edge.target.id {
+    if edge.source_id == edge.target_id {
       // This is a self-loop
-      let node = edge.source
-      edge.bend_points.clear()
+      match graph.get_node(edge.source_id) {
+        Some(node) => {
+          edge.bend_points.clear()
 
-      // Route around the right side of the node
-      let right_x = node.x + node.width + 20.0
-      let top_y = node.y
-      let bottom_y = node.y + node.height
+          // Route around the right side of the node
+          let right_x = node.x + node.width + 20.0
+          let top_y = node.y
+          let bottom_y = node.y + node.height
 
-      // Create loop path: bottom-right, top-right, back to top
-      edge.bend_points.push(@elk.ElkPoint::new(node.x + node.width, bottom_y))
-      edge.bend_points.push(@elk.ElkPoint::new(right_x, bottom_y))
-      edge.bend_points.push(@elk.ElkPoint::new(right_x, top_y))
-      edge.bend_points.push(@elk.ElkPoint::new(node.x + node.width, top_y))
+          // Create loop path: bottom-right, top-right, back to top
+          edge.bend_points.push(
+            @elk.ElkPoint::new(node.x + node.width, bottom_y),
+          )
+          edge.bend_points.push(@elk.ElkPoint::new(right_x, bottom_y))
+          edge.bend_points.push(@elk.ElkPoint::new(right_x, top_y))
+          edge.bend_points.push(@elk.ElkPoint::new(node.x + node.width, top_y))
+        }
+        None => ()
+      }
     }
   }
 }
@@ -273,10 +279,9 @@ pub fn straighten_edges(graph : LGraph) -> Unit {
     // Remove collinear bend points
     let new_bends : Array[@elk.ElkPoint] = []
     let mut prev : @elk.ElkPoint? = None
-
     for bp in edge.bend_points {
       match prev {
-        Some(p) => {
+        Some(p) =>
           // Check if this point is collinear with the previous segment
           if new_bends.length() > 0 {
             let last = new_bends[new_bends.length() - 1]
@@ -287,7 +292,6 @@ pub fn straighten_edges(graph : LGraph) -> Unit {
           } else {
             new_bends.push(p)
           }
-        }
         None => ()
       }
       prev = Some(bp)
@@ -309,7 +313,11 @@ pub fn straighten_edges(graph : LGraph) -> Unit {
 
 ///|
 /// Check if three points are collinear
-fn is_collinear(p1 : @elk.ElkPoint, p2 : @elk.ElkPoint, p3 : @elk.ElkPoint) -> Bool {
+fn is_collinear(
+  p1 : @elk.ElkPoint,
+  p2 : @elk.ElkPoint,
+  p3 : @elk.ElkPoint,
+) -> Bool {
   let dx1 = p2.x - p1.x
   let dy1 = p2.y - p1.y
   let dx2 = p3.x - p2.x
