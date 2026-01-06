@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 ///|
 /// Bridge between Graph and ELK types
 /// Converts D2 Graph to ELK format, runs layout, and converts back
@@ -121,7 +135,7 @@ fn elk_to_graph(
   }
 
   // Apply edge routes
-  apply_edge_routes(elk_root, graph)
+  apply_edge_routes(elk_root, graph, elk_map)
 }
 
 ///|
@@ -164,7 +178,11 @@ fn apply_children_positions(
 
 ///|
 /// Apply edge routes from ELK to Graph
-fn apply_edge_routes(elk_root : @elk.ElkNode, graph : @graph.Graph) -> Unit {
+fn apply_edge_routes(
+  elk_root : @elk.ElkNode,
+  graph : @graph.Graph,
+  elk_map : Map[String, @elk.ElkNode],
+) -> Unit {
   // Match ELK edges to graph edges by index (order is preserved)
   for i, elk_edge in elk_root.edges {
     if i < graph.edges.length() {
@@ -172,19 +190,33 @@ fn apply_edge_routes(elk_root : @elk.ElkNode, graph : @graph.Graph) -> Unit {
       // Clear existing route
       edge.route.clear()
       // Apply route from ELK edge sections
-      for section in elk_edge.sections {
-        // Start point
-        edge.route.push(
-          @graph.Point::new(section.start_point.x, section.start_point.y),
-        )
-        // Bend points
-        for bp in section.bend_points {
-          edge.route.push(@graph.Point::new(bp.x, bp.y))
+      if elk_edge.sections.length() > 0 {
+        for section in elk_edge.sections {
+          // Start point
+          edge.route.push(
+            @graph.Point::new(section.start_point.x, section.start_point.y),
+          )
+          // Bend points
+          for bp in section.bend_points {
+            edge.route.push(@graph.Point::new(bp.x, bp.y))
+          }
+          // End point
+          edge.route.push(
+            @graph.Point::new(section.end_point.x, section.end_point.y),
+          )
         }
-        // End point
-        edge.route.push(
-          @graph.Point::new(section.end_point.x, section.end_point.y),
-        )
+        // Fallback: create direct route from source to target
+      } else if elk_edge.sources.length() > 0 && elk_edge.targets.length() > 0 {
+        match
+          (elk_map.get(elk_edge.sources[0]), elk_map.get(elk_edge.targets[0])) {
+          (Some(src), Some(tgt)) => {
+            edge.route.push(
+              @graph.Point::new(src.x + src.width / 2.0, src.y + src.height),
+            )
+            edge.route.push(@graph.Point::new(tgt.x + tgt.width / 2.0, tgt.y))
+          }
+          _ => ()
+        }
       }
     }
   }
@@ -221,8 +253,8 @@ pub fn run_elk_layout(
     )
     .with_edge_routing(@elk.Orthogonal)
 
-  // Run ELK layout
-  @elk.layout(elk_root, options) catch {
+  // Run ELK layered layout (using the proper implementation)
+  @layered.layout(elk_root, options) catch {
     _ => () // Layout errors are handled gracefully
   }
 

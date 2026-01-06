@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // ============================================================================
 // Port Assignment Phase
 // ============================================================================
@@ -390,6 +404,9 @@ pub fn fix_perpendicularity(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Fix the first segment to be perpendicular to the source node boundary
+/// Strategy: Insert waypoint to create perpendicular first segment
+/// For left/right sides: insert waypoint at (p1.x, p0.y) for horizontal first segment
+/// For top/bottom sides: insert waypoint at (p0.x, p1.y) for vertical first segment
 fn fix_source_perpendicularity(
   edge : @graph.Edge,
   graph : @graph.Graph,
@@ -400,69 +417,46 @@ fn fix_source_perpendicularity(
   guard edge.route.length() >= 2 else { return }
   let p0 = edge.route[0]
   let p1 = edge.route[1]
-  // Determine which side p0 is on
   let tolerance = 2.0
+  // Determine which side p0 is on
   let on_left = (p0.x - box.x).abs() < tolerance
   let on_right = (p0.x - (box.x + box.width)).abs() < tolerance
   let on_top = (p0.y - box.y).abs() < tolerance
   let on_bottom = (p0.y - (box.y + box.height)).abs() < tolerance
-  // Check if first segment is perpendicular
+  let on_vertical_side = on_left || on_right
+  let on_horizontal_side = on_top || on_bottom
+  // Check segment direction
   let dx = (p1.x - p0.x).abs()
   let dy = (p1.y - p0.y).abs()
   let is_horizontal = dy < tolerance && dx > tolerance
   let is_vertical = dx < tolerance && dy > tolerance
-  // If on left/right, first segment should be horizontal
-  // Priority: left/right takes precedence over top/bottom
-  if (on_left || on_right) && !is_horizontal {
-    // For left/right sides, we need a horizontal first segment
-    // If p1.x == p0.x (vertical segment), relocate p0 to top or bottom edge
-    if (p1.x - p0.x).abs() < tolerance {
-      // Vertical segment from left/right side - relocate p0 to top or bottom
-      let new_y = if p1.y < p0.y { box.y } else { box.y + box.height }
-      edge.route[0] = @graph.Point::new(p0.x, new_y)
-      // Also update the approach point to maintain perpendicularity
-      let new_p1 = @graph.Point::new(p1.x, new_y)
-      if not(points_approximately_equal(new_p1, edge.route[0], tolerance)) &&
-        not(points_approximately_equal(new_p1, p1, tolerance)) {
-        insert_waypoint_at(edge, 1, new_p1)
-      }
-    } else {
-      // p1.x != p0.x, insert waypoint at (p1.x, p0.y) to create horizontal first segment
-      let new_p1 = @graph.Point::new(p1.x, p0.y)
-      if not(points_approximately_equal(new_p1, p0, tolerance)) &&
-        not(points_approximately_equal(new_p1, p1, tolerance)) {
-        insert_waypoint_at(edge, 1, new_p1)
-      }
+  // DEBUG
+  // println("FIX_SRC: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) v_side=\{on_vertical_side} h_side=\{on_horizontal_side} is_h=\{is_horizontal} is_v=\{is_vertical}")
+  // If on vertical side (left/right) and segment is not horizontal, add waypoint
+  if on_vertical_side && !is_horizontal {
+    // Insert waypoint at (p1.x, p0.y) to create horizontal first segment
+    let waypoint = @graph.Point::new(p1.x, p0.y)
+    let too_close_p0 = points_approximately_equal(waypoint, p0, tolerance)
+    let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
+    if !too_close_p0 && !too_close_p1 {
+      insert_waypoint_at(edge, 1, waypoint)
     }
-    return // Only insert one waypoint set
-  }
-  // If on top/bottom (and not on left/right), first segment should be vertical
-  if (on_top || on_bottom) && !is_vertical {
-    // For top/bottom sides, we need a vertical first segment
-    // If p1.y == p0.y (horizontal segment), relocate p0 to left or right edge
-    if (p1.y - p0.y).abs() < tolerance {
-      // Horizontal segment from top/bottom side - relocate p0 to left or right
-      let new_x = if p1.x < p0.x { box.x } else { box.x + box.width }
-      edge.route[0] = @graph.Point::new(new_x, p0.y)
-      // Also update the approach point to maintain perpendicularity
-      let new_p1 = @graph.Point::new(new_x, p1.y)
-      if not(points_approximately_equal(new_p1, edge.route[0], tolerance)) &&
-        not(points_approximately_equal(new_p1, p1, tolerance)) {
-        insert_waypoint_at(edge, 1, new_p1)
-      }
-    } else {
-      // p1.y != p0.y, insert waypoint at (p0.x, p1.y) to create vertical first segment
-      let new_p1 = @graph.Point::new(p0.x, p1.y)
-      if not(points_approximately_equal(new_p1, p0, tolerance)) &&
-        not(points_approximately_equal(new_p1, p1, tolerance)) {
-        insert_waypoint_at(edge, 1, new_p1)
-      }
+  } else if on_horizontal_side && !is_vertical {
+    // Insert waypoint at (p0.x, p1.y) to create vertical first segment
+    let waypoint = @graph.Point::new(p0.x, p1.y)
+    let too_close_p0 = points_approximately_equal(waypoint, p0, tolerance)
+    let too_close_p1 = points_approximately_equal(waypoint, p1, tolerance)
+    if !too_close_p0 && !too_close_p1 {
+      insert_waypoint_at(edge, 1, waypoint)
     }
   }
 }
 
 ///|
 /// Fix the last segment to be perpendicular to the destination node boundary
+/// Strategy: Insert waypoint to create perpendicular last segment
+/// For left/right sides: insert waypoint at (p1.x, p0.y) for horizontal last segment
+/// For top/bottom sides: insert waypoint at (p0.x, p1.y) for vertical last segment
 fn fix_dest_perpendicularity(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
   let dst_obj = graph.find_object(edge.dst_id)
   guard dst_obj is Some(obj) else { return }
@@ -471,63 +465,35 @@ fn fix_dest_perpendicularity(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
   let last_idx = edge.route.length() - 1
   let p0 = edge.route[last_idx - 1]
   let p1 = edge.route[last_idx]
-  // Determine which side p1 is on
   let tolerance = 2.0
+  // Determine which side p1 is on
   let on_left = (p1.x - box.x).abs() < tolerance
   let on_right = (p1.x - (box.x + box.width)).abs() < tolerance
   let on_top = (p1.y - box.y).abs() < tolerance
   let on_bottom = (p1.y - (box.y + box.height)).abs() < tolerance
-  // Check if last segment is perpendicular
+  let on_vertical_side = on_left || on_right
+  let on_horizontal_side = on_top || on_bottom
+  // Check segment direction
   let dx = (p1.x - p0.x).abs()
   let dy = (p1.y - p0.y).abs()
   let is_horizontal = dy < tolerance && dx > tolerance
   let is_vertical = dx < tolerance && dy > tolerance
-  // If on left/right, last segment should be horizontal
-  // Priority: left/right takes precedence over top/bottom
-  if (on_left || on_right) && !is_horizontal {
-    // For left/right sides, we need a horizontal last segment
-    // If p1.x == p0.x (vertical segment), relocate p1 to top or bottom edge
-    if (p1.x - p0.x).abs() < tolerance {
-      // Vertical segment to left/right side - relocate p1 to top or bottom
-      let new_y = if p0.y < p1.y { box.y } else { box.y + box.height }
-      edge.route[last_idx] = @graph.Point::new(p1.x, new_y)
-      // Also update the approach point to maintain perpendicularity
-      let new_p = @graph.Point::new(p0.x, new_y)
-      if not(points_approximately_equal(new_p, p0, tolerance)) &&
-        not(points_approximately_equal(new_p, edge.route[last_idx], tolerance)) {
-        insert_waypoint_at(edge, last_idx, new_p)
-      }
-    } else {
-      // p1.x != p0.x, insert waypoint at (p1.x, p0.y) to create horizontal last segment
-      let new_p = @graph.Point::new(p1.x, p0.y)
-      if not(points_approximately_equal(new_p, p0, tolerance)) &&
-        not(points_approximately_equal(new_p, p1, tolerance)) {
-        insert_waypoint_at(edge, last_idx, new_p)
-      }
+  // If on vertical side (left/right) and segment is not horizontal, add waypoint
+  if on_vertical_side && !is_horizontal {
+    // Insert waypoint at (p0.x, p1.y) to create horizontal last segment
+    // Segment from (p0.x, p1.y) to (p1.x, p1.y) is horizontal
+    let waypoint = @graph.Point::new(p0.x, p1.y)
+    if not(points_approximately_equal(waypoint, p0, tolerance)) &&
+      not(points_approximately_equal(waypoint, p1, tolerance)) {
+      insert_waypoint_at(edge, last_idx, waypoint)
     }
-    return // Only insert one waypoint set
-  }
-  // If on top/bottom (and not on left/right), last segment should be vertical
-  if (on_top || on_bottom) && !is_vertical {
-    // For top/bottom sides, we need a vertical last segment
-    // If p1.y == p0.y (horizontal segment), relocate p1 to left or right edge
-    if (p1.y - p0.y).abs() < tolerance {
-      // Horizontal segment to top/bottom side - relocate p1 to left or right
-      let new_x = if p0.x < p1.x { box.x } else { box.x + box.width }
-      edge.route[last_idx] = @graph.Point::new(new_x, p1.y)
-      // Also update the approach point to maintain perpendicularity
-      let new_p = @graph.Point::new(new_x, p0.y)
-      if not(points_approximately_equal(new_p, p0, tolerance)) &&
-        not(points_approximately_equal(new_p, edge.route[last_idx], tolerance)) {
-        insert_waypoint_at(edge, last_idx, new_p)
-      }
-    } else {
-      // p1.y != p0.y, insert waypoint at (p0.x, p1.y) to create vertical last segment
-      let new_p = @graph.Point::new(p0.x, p1.y)
-      if not(points_approximately_equal(new_p, p0, tolerance)) &&
-        not(points_approximately_equal(new_p, p1, tolerance)) {
-        insert_waypoint_at(edge, last_idx, new_p)
-      }
+  } else if on_horizontal_side && !is_vertical {
+    // Insert waypoint at (p1.x, p0.y) to create vertical last segment
+    // Segment from (p1.x, p0.y) to (p1.x, p1.y) is vertical
+    let waypoint = @graph.Point::new(p1.x, p0.y)
+    if not(points_approximately_equal(waypoint, p0, tolerance)) &&
+      not(points_approximately_equal(waypoint, p1, tolerance)) {
+      insert_waypoint_at(edge, last_idx, waypoint)
     }
   }
 }

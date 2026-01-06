@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 ///|
 /// ELK.js Port for MoonBit - Main Entry Point
 /// Eclipse Layout Kernel algorithm registry and dispatch
@@ -217,7 +231,27 @@ fn layout_layered(
     }
   }
 
-  // Position nodes
+  // First, recursively layout compound nodes to determine their final sizes
+  for node in graph.children {
+    if node.children.length() > 0 {
+      layout_layered(node, options) catch {
+        _ => ()
+      }
+      // Update node size to contain its children
+      let (child_w, child_h) = node.calculate_bounds()
+      node.width = child_w + padding.left + padding.right
+      node.height = child_h + padding.top + padding.bottom
+    }
+    // Ensure minimum size for all nodes
+    if node.width < 1.0 {
+      node.width = 60.0
+    }
+    if node.height < 1.0 {
+      node.height = 40.0
+    }
+  }
+
+  // Position nodes using their final sizes
   let is_horizontal = direction.is_horizontal()
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   for layer in layers {
@@ -239,25 +273,58 @@ fn layout_layered(
     layer_offset = layer_offset + max_size + layer_spacing
   }
 
-  // Recursively layout compound nodes (nodes with children)
-  for node in graph.children {
-    if node.children.length() > 0 {
-      // Layout the nested graph
-      layout_layered(node, options) catch {
-        _ => ()
-      }
-      // Update node size to contain its children
-      let (child_w, child_h) = node.calculate_bounds()
-      node.width = child_w + padding.left + padding.right
-      node.height = child_h + padding.top + padding.bottom
-    }
-  }
+  // Resolve any remaining overlaps
+  resolve_overlaps(graph.children, node_spacing, is_horizontal)
 
   // Route edges with orthogonal bends
   route_edges_orthogonal(graph, direction)
 
   // Update graph bounds
   update_graph_bounds(graph, padding)
+}
+
+///|
+/// Resolve any overlapping nodes by shifting them apart
+fn resolve_overlaps(
+  nodes : Array[ElkNode],
+  spacing : Double,
+  is_horizontal : Bool,
+) -> Unit {
+  // Simple O(n^2) overlap resolution
+  let mut changed = true
+  let mut iterations = 0
+  let max_iterations = 100
+  while changed && iterations < max_iterations {
+    changed = false
+    iterations = iterations + 1
+    for i in 0..<nodes.length() {
+      for j in (i + 1)..<nodes.length() {
+        let a = nodes[i]
+        let b = nodes[j]
+
+        // Check for overlap
+        let overlap_x = a.x < b.x + b.width && a.x + a.width > b.x
+        let overlap_y = a.y < b.y + b.height && a.y + a.height > b.y
+        if overlap_x && overlap_y {
+          // Nodes overlap - separate them
+          changed = true
+          if is_horizontal {
+            // Separate horizontally first
+            if a.x <= b.x {
+              b.x = a.x + a.width + spacing
+            } else {
+              a.x = b.x + b.width + spacing
+            }
+            // Separate vertically first
+          } else if a.y <= b.y {
+            b.y = a.y + a.height + spacing
+          } else {
+            a.y = b.y + b.height + spacing
+          }
+        }
+      }
+    }
+  }
 }
 
 ///|
@@ -278,10 +345,17 @@ fn route_edges_orthogonal(graph : ElkNode, direction : LayoutDirection) -> Unit 
       (Some(source), Some(target)) => {
         let section = ElkEdgeSection::new(edge.id + "_s0")
         if is_vertical {
+          // Determine if this is a forward or backward edge
+          let src_center_y = source.y + source.height / 2.0
+          let tgt_center_y = target.y + target.height / 2.0
+          let is_forward = tgt_center_y > src_center_y
           let src_x = source.x + source.width / 2.0
-          let src_y = source.y + source.height
           let tgt_x = target.x + target.width / 2.0
-          let tgt_y = target.y
+          let (src_y, tgt_y) = if is_forward {
+            (source.y + source.height, target.y)
+          } else {
+            (source.y, target.y + target.height)
+          }
           section.start_point = ElkPoint::new(src_x, src_y)
           section.end_point = ElkPoint::new(tgt_x, tgt_y)
 
@@ -292,10 +366,17 @@ fn route_edges_orthogonal(graph : ElkNode, direction : LayoutDirection) -> Unit 
             section.bend_points.push(ElkPoint::new(tgt_x, mid_y))
           }
         } else {
-          let src_x = source.x + source.width
+          // Horizontal layout
+          let src_center_x = source.x + source.width / 2.0
+          let tgt_center_x = target.x + target.width / 2.0
+          let is_forward = tgt_center_x > src_center_x
           let src_y = source.y + source.height / 2.0
-          let tgt_x = target.x
           let tgt_y = target.y + target.height / 2.0
+          let (src_x, tgt_x) = if is_forward {
+            (source.x + source.width, target.x)
+          } else {
+            (source.x, target.x + target.width)
+          }
           section.start_point = ElkPoint::new(src_x, src_y)
           section.end_point = ElkPoint::new(tgt_x, tgt_y)
           if abs_double(src_y - tgt_y) > 1.0 {

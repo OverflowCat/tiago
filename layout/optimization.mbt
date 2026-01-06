@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // ============================================================================
 // Parallel Edge Separation
 // ============================================================================
@@ -83,6 +97,103 @@ fn separate_parallel_edges(graph : @graph.Graph) -> Unit {
       }
     }
   }
+}
+
+///|
+/// Re-route edges that cross through unrelated nodes using A* maze routing
+pub fn reroute_crossing_edges(graph : @graph.Graph) -> Unit {
+  let canvas_bounds = compute_all_bounds(graph)
+  for edge in graph.edges {
+    if edge.route.length() < 2 {
+      continue
+    }
+    // Check if this edge crosses any unrelated nodes
+    if edge_crosses_unrelated_nodes(edge, graph) {
+      // Try to re-route using maze routing
+      route_fixed_ports_maze_with_extra_obstacles(edge, graph, canvas_bounds, [])
+      |> ignore
+    }
+  }
+}
+
+///|
+/// Check if an edge route crosses through any unrelated nodes
+fn edge_crosses_unrelated_nodes(
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> Bool {
+  for i in 0..<(edge.route.length() - 1) {
+    let p1 = edge.route[i]
+    let p2 = edge.route[i + 1]
+    for obj in graph.objects {
+      if obj.id == edge.src_id || obj.id == edge.dst_id {
+        continue
+      }
+      guard obj.box is Some(box) else { continue }
+      if line_segment_crosses_box_interior(p1, p2, box) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+/// Check if a line segment crosses through the interior of a box (not just touches edges)
+fn line_segment_crosses_box_interior(
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  box : @graph.Box,
+) -> Bool {
+  // Shrink the box slightly to allow edges to touch node boundaries
+  let margin = 1.0
+  let left = box.x + margin
+  let right = box.x + box.width - margin
+  let top = box.y + margin
+  let bottom = box.y + box.height - margin
+  if right <= left || bottom <= top {
+    return false // Box too small
+  }
+  // If both endpoints are outside on the same side, no intersection
+  if (p1.x < left && p2.x < left) || (p1.x > right && p2.x > right) {
+    return false
+  }
+  if (p1.y < top && p2.y < top) || (p1.y > bottom && p2.y > bottom) {
+    return false
+  }
+  // Check if either endpoint is inside the box
+  let p1_inside = p1.x > left && p1.x < right && p1.y > top && p1.y < bottom
+  let p2_inside = p2.x > left && p2.x < right && p2.y > top && p2.y < bottom
+  if p1_inside || p2_inside {
+    return true
+  }
+  // Check line-box intersection using parametric clipping
+  let dx = p2.x - p1.x
+  let dy = p2.y - p1.y
+  let mut t_min = 0.0
+  let mut t_max = 1.0
+  // Check x bounds
+  if dx != 0.0 {
+    let t1 = (left - p1.x) / dx
+    let t2 = (right - p1.x) / dx
+    let (tx_min, tx_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if tx_min > t_min { tx_min } else { t_min }
+    t_max = if tx_max < t_max { tx_max } else { t_max }
+  } else if p1.x < left || p1.x > right {
+    return false
+  }
+  // Check y bounds
+  if dy != 0.0 {
+    let t1 = (top - p1.y) / dy
+    let t2 = (bottom - p1.y) / dy
+    let (ty_min, ty_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if ty_min > t_min { ty_min } else { t_min }
+    t_max = if ty_max < t_max { ty_max } else { t_max }
+  } else if p1.y < top || p1.y > bottom {
+    return false
+  }
+  // If t_min <= t_max, segment crosses through interior
+  t_min < t_max
 }
 
 ///|

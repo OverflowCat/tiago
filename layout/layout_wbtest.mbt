@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 ///|
 test "layout config defaults" {
   let config = LayoutConfig::new()
@@ -485,6 +499,105 @@ test "sequence layout with opt group creates fragment" {
   assert_eq(graph.sequence_fragments.length(), 1)
   let fragment = graph.sequence_fragments[0]
   assert_eq(fragment.fragment_type, "opt")
+}
+
+///|
+test "debug: simple linear graph" {
+  // Simple case: 3 nodes, linear arrangement
+  let graph = @graph.Graph::new("test")
+
+  // 3 nodes with clear parent-child relationship
+  graph.add_object(@graph.Object::with_label("A", "Node A"))
+  graph.add_object(@graph.Object::with_label("B", "Node B"))
+  graph.add_object(@graph.Object::with_label("C", "Node C"))
+
+  // Simple chain: A -> B -> C
+  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
+  graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
+
+  let config = LayoutConfig::new()
+  layout(graph, config, Direction::Down)
+
+  // Get node boxes
+  let objA = graph.find_object("A").unwrap()
+  let objB = graph.find_object("B").unwrap()
+  let objC = graph.find_object("C").unwrap()
+
+  guard objA.box is Some(boxA) else { fail("expected box for A") }
+  guard objB.box is Some(boxB) else { fail("expected box for B") }
+  guard objC.box is Some(boxC) else { fail("expected box for C") }
+
+  // Debug: print positions
+  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(20, 20, 100, 60)")
+  inspect((boxB.x, boxB.y, boxB.width, boxB.height), content="(20, 180, 100, 60)")
+  inspect((boxC.x, boxC.y, boxC.width, boxC.height), content="(20, 340, 100, 60)")
+
+  // In DOWN direction:
+  // A should be at top (smallest y)
+  // B should be in middle
+  // C should be at bottom (largest y)
+  assert_true(boxA.y < boxB.y)
+  assert_true(boxB.y < boxC.y)
+
+  // No overlaps
+  fn boxes_overlap(b1 : @graph.Box, b2 : @graph.Box) -> Bool {
+    b1.x < b2.x + b2.width &&
+    b1.x + b1.width > b2.x &&
+    b1.y < b2.y + b2.height &&
+    b1.y + b1.height > b2.y
+  }
+
+  assert_false(boxes_overlap(boxA, boxB))
+  assert_false(boxes_overlap(boxB, boxC))
+  assert_false(boxes_overlap(boxA, boxC))
+}
+
+///|
+test "debug: cyclic graph with bidirectional edges" {
+  // Failing case from property tests: cyclic graph
+  let graph = @graph.Graph::new("test")
+
+  // 3 nodes
+  graph.add_object(@graph.Object::with_label("5", "o"))
+  graph.add_object(@graph.Object::with_label("I", "O"))
+  graph.add_object(@graph.Object::with_label("A", "2"))
+
+  // 6 edges (cyclic with bidirectional)
+  graph.add_edge(@graph.Edge::new(0, "5", "I", false, true))
+  graph.add_edge(@graph.Edge::new(1, "A", "5", false, true))
+  graph.add_edge(@graph.Edge::new(2, "5", "A", false, true))
+  graph.add_edge(@graph.Edge::new(3, "A", "I", false, true))
+  graph.add_edge(@graph.Edge::new(4, "I", "5", false, true))
+  graph.add_edge(@graph.Edge::new(5, "5", "I", false, true))
+
+  let config = LayoutConfig::new()
+  layout(graph, config, Direction::Down)
+
+  // Get node boxes
+  let obj5 = graph.find_object("5").unwrap()
+  let objI = graph.find_object("I").unwrap()
+  let objA = graph.find_object("A").unwrap()
+
+  guard obj5.box is Some(box5) else { fail("expected box for 5") }
+  guard objI.box is Some(boxI) else { fail("expected box for I") }
+  guard objA.box is Some(boxA) else { fail("expected box for A") }
+
+  // Debug: print positions
+  inspect((box5.x, box5.y, box5.width, box5.height), content="(20, 20, 100, 60)")
+  inspect((boxI.x, boxI.y, boxI.width, boxI.height), content="(20, 180, 100, 60)")
+  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(140, 180, 100, 60)")
+
+  // No overlaps - this is the key constraint
+  fn boxes_overlap(b1 : @graph.Box, b2 : @graph.Box) -> Bool {
+    b1.x < b2.x + b2.width &&
+    b1.x + b1.width > b2.x &&
+    b1.y < b2.y + b2.height &&
+    b1.y + b1.height > b2.y
+  }
+
+  assert_false(boxes_overlap(box5, boxI))
+  assert_false(boxes_overlap(box5, boxA))
+  assert_false(boxes_overlap(boxI, boxA))
 }
 
 ///|

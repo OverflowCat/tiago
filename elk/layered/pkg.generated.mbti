@@ -1,0 +1,128 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/elk/layered"
+
+import(
+  "Milky2018/diago/elk"
+)
+
+// Values
+pub fn layout(@elk.ElkNode, @elk.LayoutOptions) -> Unit raise @elk.LayoutError
+
+// Errors
+
+// Types and methods
+pub(all) struct LEdge {
+  id : String
+  mut original_id : String?
+  mut source : LNode
+  mut target : LNode
+  source_port : LPort?
+  target_port : LPort?
+  labels : Array[LLabel]
+  bend_points : Array[@elk.ElkPoint]
+  mut reversed : Bool
+  mut priority : Int
+  properties : @elk.ElkProperties
+}
+pub fn LEdge::is_self_loop(Self) -> Bool
+pub fn LEdge::new(String, LNode, LNode) -> Self
+pub fn LEdge::reverse(Self) -> Unit
+pub impl Show for LEdge
+
+pub(all) struct LGraph {
+  id : String
+  nodes : Array[LNode]
+  edges : Array[LEdge]
+  layers : Array[LLayer]
+  parent_node : LNode?
+  mut width : Double
+  mut height : Double
+  properties : @elk.ElkProperties
+}
+pub fn LGraph::from_elk_node(@elk.ElkNode) -> Self
+pub fn LGraph::get_layer_nodes(Self, Int) -> Array[LNode]
+pub fn LGraph::get_long_edges(Self) -> Array[LEdge]
+pub fn LGraph::initialize_layers(Self) -> Unit
+pub fn LGraph::new(String) -> Self
+pub fn LGraph::to_elk_node(Self, @elk.ElkNode) -> Unit
+pub impl Show for LGraph
+
+pub(all) struct LLabel {
+  id : String
+  text : String
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  properties : @elk.ElkProperties
+}
+pub fn LLabel::from_elk_label(@elk.ElkLabel) -> Self
+pub fn LLabel::new(String, String) -> Self
+pub impl Show for LLabel
+
+pub(all) struct LLayer {
+  index : Int
+  nodes : Array[LNode]
+}
+pub fn LLayer::add_node(Self, LNode) -> Unit
+pub fn LLayer::new(Int) -> Self
+pub impl Show for LLayer
+
+pub(all) struct LNode {
+  id : String
+  mut original_id : String?
+  node_type : LNodeType
+  mut layer : Int
+  mut position : Int
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  incoming_edges : Array[LEdge]
+  outgoing_edges : Array[LEdge]
+  ports : Array[LPort]
+  labels : Array[LLabel]
+  mut origin_edge : String?
+  mut nested_graph : LGraph?
+  properties : @elk.ElkProperties
+}
+pub fn LNode::degree(Self) -> Int
+pub fn LNode::from_elk_node(@elk.ElkNode) -> Self
+pub fn LNode::in_degree(Self) -> Int
+pub fn LNode::is_dummy(Self) -> Bool
+pub fn LNode::new(String, LNodeType) -> Self
+pub fn LNode::out_degree(Self) -> Int
+pub impl Show for LNode
+
+pub(all) enum LNodeType {
+  Normal
+  LongEdgeDummy
+  NorthSouthPort
+  ExternalPort
+  LabelDummy
+  BreakPoint
+}
+pub impl Eq for LNodeType
+pub impl Show for LNodeType
+
+pub(all) struct LPort {
+  id : String
+  mut original_id : String?
+  mut side : @elk.PortSide
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  incoming_edges : Array[LEdge]
+  outgoing_edges : Array[LEdge]
+  labels : Array[LLabel]
+  properties : @elk.ElkProperties
+}
+pub fn LPort::from_elk_port(@elk.ElkPort) -> Self
+pub fn LPort::new(String) -> Self
+pub impl Show for LPort
+
+// Type aliases
+
+// Traits
+

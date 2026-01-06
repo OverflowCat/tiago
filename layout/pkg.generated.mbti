@@ -68,7 +68,11 @@ pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> Cr
 
 pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
 
+pub fn reroute_crossing_edges(@graph.Graph) -> Unit
+
 pub fn route_edges_with_ports(@graph.Graph, LayoutConfig, VirtualNodeResult) -> Unit
+
+pub fn run_elk_layout(@graph.Graph, LayoutConfig, Direction) -> Unit
 
 // Errors
 pub(all) suberror LayoutError {

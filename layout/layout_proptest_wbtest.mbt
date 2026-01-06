@@ -1,3 +1,17 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 ///|
 /// Property-based tests for layout algorithm constraints
 
@@ -1062,9 +1076,13 @@ pub fn never_use_diagonal_edges(graph : @graph.Graph) -> Bool {
 
 ///|
 /// Check that edge segments at node boundaries are perpendicular to the boundary
-/// - Horizontal segments (dx != 0, dy ≈ 0) must connect to LEFT or RIGHT side
-/// - Vertical segments (dx ≈ 0, dy != 0) must connect to TOP or BOTTOM side
-/// - Diagonal segments (both dx and dy significant) are NOT perpendicular - always fail
+/// Bidirectional constraint:
+/// - Horizontal segments must connect to LEFT or RIGHT side
+/// - Vertical segments must connect to TOP or BOTTOM side
+/// - Left/Right connections must have horizontal segments
+/// - Top/Bottom connections must have vertical segments
+/// - Corners are special: must match at least one valid direction
+/// - Diagonal segments are NEVER perpendicular
 pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
   let tolerance = 2.0
   for edge in graph.get_edges() {
@@ -1091,12 +1109,21 @@ pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
         let on_right = (p0.x - (box.x + box.width)).abs() < tolerance
         let on_top = (p0.y - box.y).abs() < tolerance
         let on_bottom = (p0.y - (box.y + box.height)).abs() < tolerance
-        // Horizontal segment must connect to left/right side
-        if is_horizontal && !(on_left || on_right) {
+        let on_vertical_side = on_left || on_right
+        let on_horizontal_side = on_top || on_bottom
+        // Forward constraint: segment direction → must be on matching side
+        if is_horizontal && !on_vertical_side {
           return false
         }
-        // Vertical segment must connect to top/bottom side
-        if is_vertical && !(on_top || on_bottom) {
+        if is_vertical && !on_horizontal_side {
+          return false
+        }
+        // Reverse constraint: side → must have matching segment direction
+        // Only enforce when EXCLUSIVELY on one type of side (not at corner)
+        if on_vertical_side && !on_horizontal_side && !is_horizontal {
+          return false
+        }
+        if on_horizontal_side && !on_vertical_side && !is_vertical {
           return false
         }
       }
@@ -1122,12 +1149,21 @@ pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
         let on_right = (p1.x - (box.x + box.width)).abs() < tolerance
         let on_top = (p1.y - box.y).abs() < tolerance
         let on_bottom = (p1.y - (box.y + box.height)).abs() < tolerance
-        // Horizontal segment must connect to left/right side
-        if is_horizontal && !(on_left || on_right) {
+        let on_vertical_side = on_left || on_right
+        let on_horizontal_side = on_top || on_bottom
+        // Forward constraint: segment direction → must be on matching side
+        if is_horizontal && !on_vertical_side {
           return false
         }
-        // Vertical segment must connect to top/bottom side
-        if is_vertical && !(on_top || on_bottom) {
+        if is_vertical && !on_horizontal_side {
+          return false
+        }
+        // Reverse constraint: side → must have matching segment direction
+        // Only enforce when EXCLUSIVELY on one type of side (not at corner)
+        if on_vertical_side && !on_horizontal_side && !is_horizontal {
+          return false
+        }
+        if on_horizontal_side && !on_vertical_side && !is_vertical {
           return false
         }
       }
@@ -1694,8 +1730,119 @@ test "property: edge perpendicular to node boundary" {
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
-      edge_perpendicular_to_node_boundary(graph)
+      edge_perpendicular_to_node_boundary_debug(graph)
     }),
     max_success=200,
   )
+}
+
+///|
+/// Debug version that prints which edge fails
+fn edge_perpendicular_to_node_boundary_debug(graph : @graph.Graph) -> Bool {
+  let tolerance = 2.0
+  for edge in graph.get_edges() {
+    if edge.route.length() < 2 {
+      continue
+    }
+    // Check first segment against source node
+    let src_obj = graph.find_object(edge.src_id)
+    if src_obj is Some(obj) {
+      if obj.box is Some(box) {
+        let p0 = edge.route[0]
+        let p1 = edge.route[1]
+        let dx = (p1.x - p0.x).abs()
+        let dy = (p1.y - p0.y).abs()
+        let is_horizontal = dy < tolerance && dx > tolerance
+        let is_vertical = dx < tolerance && dy > tolerance
+        let is_diagonal = dx > tolerance && dy > tolerance
+        if is_diagonal {
+          println(
+            "FAIL SRC DIAG: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y})",
+          )
+          return false
+        }
+        let on_left = (p0.x - box.x).abs() < tolerance
+        let on_right = (p0.x - (box.x + box.width)).abs() < tolerance
+        let on_top = (p0.y - box.y).abs() < tolerance
+        let on_bottom = (p0.y - (box.y + box.height)).abs() < tolerance
+        let on_vertical_side = on_left || on_right
+        let on_horizontal_side = on_top || on_bottom
+        if is_horizontal && !on_vertical_side {
+          println(
+            "FAIL SRC FWD H: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p0=(\{p0.x},\{p0.y})",
+          )
+          return false
+        }
+        if is_vertical && !on_horizontal_side {
+          println(
+            "FAIL SRC FWD V: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p0=(\{p0.x},\{p0.y})",
+          )
+          return false
+        }
+        if on_vertical_side && !on_horizontal_side && !is_horizontal {
+          println(
+            "FAIL SRC REV V->H: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_l=\{on_left} on_r=\{on_right}",
+          )
+          return false
+        }
+        if on_horizontal_side && !on_vertical_side && !is_vertical {
+          println(
+            "FAIL SRC REV H->V: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_t=\{on_top} on_b=\{on_bottom}",
+          )
+          return false
+        }
+      }
+    }
+    // Check last segment against destination node
+    let dst_obj = graph.find_object(edge.dst_id)
+    if dst_obj is Some(obj) {
+      if obj.box is Some(box) {
+        let last_idx = edge.route.length() - 1
+        let p0 = edge.route[last_idx - 1]
+        let p1 = edge.route[last_idx]
+        let dx = (p1.x - p0.x).abs()
+        let dy = (p1.y - p0.y).abs()
+        let is_horizontal = dy < tolerance && dx > tolerance
+        let is_vertical = dx < tolerance && dy > tolerance
+        let is_diagonal = dx > tolerance && dy > tolerance
+        if is_diagonal {
+          println(
+            "FAIL DST DIAG: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y})",
+          )
+          return false
+        }
+        let on_left = (p1.x - box.x).abs() < tolerance
+        let on_right = (p1.x - (box.x + box.width)).abs() < tolerance
+        let on_top = (p1.y - box.y).abs() < tolerance
+        let on_bottom = (p1.y - (box.y + box.height)).abs() < tolerance
+        let on_vertical_side = on_left || on_right
+        let on_horizontal_side = on_top || on_bottom
+        if is_horizontal && !on_vertical_side {
+          println(
+            "FAIL DST FWD H: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p1=(\{p1.x},\{p1.y})",
+          )
+          return false
+        }
+        if is_vertical && !on_horizontal_side {
+          println(
+            "FAIL DST FWD V: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p1=(\{p1.x},\{p1.y})",
+          )
+          return false
+        }
+        if on_vertical_side && !on_horizontal_side && !is_horizontal {
+          println(
+            "FAIL DST REV V->H: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_l=\{on_left} on_r=\{on_right}",
+          )
+          return false
+        }
+        if on_horizontal_side && !on_vertical_side && !is_vertical {
+          println(
+            "FAIL DST REV H->V: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_t=\{on_top} on_b=\{on_bottom}",
+          )
+          return false
+        }
+      }
+    }
+  }
+  true
 }

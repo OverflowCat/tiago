@@ -1,0 +1,596 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/elk"
+
+import(
+  "Milky2018/diago/graph"
+)
+
+// Values
+pub fn available_algorithms() -> Array[LayoutAlgorithm]
+
+pub fn create_edge(String, String, String) -> ElkEdge
+
+pub fn create_graph(String) -> ElkNode
+
+pub fn create_labeled_node(String, String) -> ElkNode
+
+pub fn default_options(LayoutAlgorithm) -> LayoutOptions
+
+pub fn elk_port_side_to_graph(PortSide) -> @graph.PortSide
+
+pub fn from_graph(@graph.Graph) -> ElkNode
+
+pub fn graph_port_side_to_elk(@graph.PortSide) -> PortSide
+
+pub fn is_algorithm_implemented(LayoutAlgorithm) -> Bool
+
+pub fn layout(ElkNode, LayoutOptions) -> Unit raise LayoutError
+
+pub fn layout_d2_graph(@graph.Graph, LayoutOptions) -> Unit raise LayoutError
+
+pub fn to_graph(ElkNode, @graph.Graph) -> Unit
+
+// Errors
+pub suberror LayoutError {
+  UnknownAlgorithm(String)
+  InvalidGraph(String)
+  CycleDetected(String)
+  LayoutFailed(String)
+}
+pub fn LayoutError::to_string(Self) -> String
+
+// Types and methods
+pub(all) enum BKNodePlacementMode {
+  Average
+  LeftUp
+  LeftDown
+  RightUp
+  RightDown
+}
+pub impl Eq for BKNodePlacementMode
+pub impl Show for BKNodePlacementMode
+
+pub(all) enum CompactionStrategy {
+  None
+  Polyomino
+  Rectangle
+}
+pub impl Eq for CompactionStrategy
+pub impl Show for CompactionStrategy
+
+pub(all) enum ContentAlignment {
+  None
+  Horizontal
+  Vertical
+  HorizontalVertical
+}
+pub impl Eq for ContentAlignment
+pub impl Show for ContentAlignment
+
+pub(all) enum CrossingMinimizationStrategy {
+  LayerSweep
+  InteractiveCrossMin
+  None
+}
+pub impl Eq for CrossingMinimizationStrategy
+pub impl Show for CrossingMinimizationStrategy
+
+pub(all) enum CycleBreakingStrategy {
+  GreedyCycleBreaker
+  DepthFirst
+  InteractiveCycleBreaker
+  ModelOrder
+  GreedyModelOrder
+}
+pub impl Eq for CycleBreakingStrategy
+pub impl Show for CycleBreakingStrategy
+
+pub(all) enum EdgeLabelPlacement {
+  Undefined
+  Center
+  Head
+  Tail
+}
+pub impl Eq for EdgeLabelPlacement
+pub impl Show for EdgeLabelPlacement
+
+pub(all) enum EdgeLabelSideSelection {
+  AlwaysUp
+  AlwaysDown
+  DirectionUp
+  DirectionDown
+  SmartUp
+  SmartDown
+}
+pub impl Eq for EdgeLabelSideSelection
+pub impl Show for EdgeLabelSideSelection
+
+pub(all) enum EdgeRouting {
+  Undefined
+  Polyline
+  Orthogonal
+  Splines
+}
+pub impl Eq for EdgeRouting
+pub impl Show for EdgeRouting
+
+pub(all) enum EdgeStraighteningStrategy {
+  None
+  ImproveStraightness
+}
+pub impl Eq for EdgeStraighteningStrategy
+pub impl Show for EdgeStraighteningStrategy
+
+pub(all) enum EdgeType {
+  Undefined
+  Directed
+  Undirected
+  Association
+  Generalization
+  Dependency
+}
+pub impl Eq for EdgeType
+pub impl Show for EdgeType
+
+pub(all) struct ElkEdge {
+  id : String
+  sources : Array[String]
+  targets : Array[String]
+  labels : Array[ElkLabel]
+  sections : Array[ElkEdgeSection]
+  container_id : String?
+  properties : ElkProperties
+}
+pub fn ElkEdge::hyperedge(String, Array[String], Array[String]) -> Self
+pub fn ElkEdge::is_simple(Self) -> Bool
+pub fn ElkEdge::new(String, String, String) -> Self
+pub fn ElkEdge::source(Self) -> String?
+pub fn ElkEdge::target(Self) -> String?
+pub impl Eq for ElkEdge
+pub impl Show for ElkEdge
+
+pub(all) struct ElkEdgeSection {
+  id : String
+  mut start_point : ElkPoint
+  mut end_point : ElkPoint
+  bend_points : Array[ElkPoint]
+  incoming_shape : String?
+  outgoing_shape : String?
+  incoming_sections : Array[String]
+  outgoing_sections : Array[String]
+  properties : ElkProperties
+}
+pub fn ElkEdgeSection::new(String) -> Self
+pub impl Eq for ElkEdgeSection
+pub impl Show for ElkEdgeSection
+
+pub(all) struct ElkLabel {
+  id : String
+  text : String
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  properties : ElkProperties
+}
+pub fn ElkLabel::new(String, String) -> Self
+pub impl Eq for ElkLabel
+pub impl Show for ElkLabel
+
+pub(all) struct ElkNode {
+  id : String
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  labels : Array[ElkLabel]
+  ports : Array[ElkPort]
+  children : Array[ElkNode]
+  edges : Array[ElkEdge]
+  properties : ElkProperties
+}
+pub fn ElkNode::add_child(Self, Self) -> Unit
+pub fn ElkNode::add_edge(Self, ElkEdge) -> Unit
+pub fn ElkNode::add_label(Self, ElkLabel) -> Unit
+pub fn ElkNode::add_port(Self, ElkPort) -> Unit
+pub fn ElkNode::all_edges(Self) -> Array[ElkEdge]
+pub fn ElkNode::all_nodes(Self) -> Array[Self]
+pub fn ElkNode::calculate_bounds(Self) -> (Double, Double)
+pub fn ElkNode::find_child(Self, String) -> Self?
+pub fn ElkNode::find_node(Self, String) -> Self?
+pub fn ElkNode::find_port(Self, String) -> ElkPort?
+pub fn ElkNode::is_compound(Self) -> Bool
+pub fn ElkNode::is_leaf(Self) -> Bool
+pub fn ElkNode::new(String) -> Self
+pub fn ElkNode::with_size(String, Double, Double) -> Self
+pub impl Eq for ElkNode
+pub impl Show for ElkNode
+
+pub(all) struct ElkPadding {
+  top : Double
+  right : Double
+  bottom : Double
+  left : Double
+}
+pub fn ElkPadding::new(Double, Double, Double, Double) -> Self
+pub fn ElkPadding::uniform(Double) -> Self
+pub fn ElkPadding::zero() -> Self
+pub impl Eq for ElkPadding
+pub impl Show for ElkPadding
+
+pub(all) struct ElkPoint {
+  x : Double
+  y : Double
+}
+pub fn ElkPoint::new(Double, Double) -> Self
+pub fn ElkPoint::zero() -> Self
+pub impl Eq for ElkPoint
+pub impl Show for ElkPoint
+
+pub(all) struct ElkPort {
+  id : String
+  mut x : Double
+  mut y : Double
+  mut width : Double
+  mut height : Double
+  side : PortSide
+  labels : Array[ElkLabel]
+  properties : ElkProperties
+}
+pub fn ElkPort::new(String) -> Self
+pub fn ElkPort::with_side(String, PortSide) -> Self
+pub impl Eq for ElkPort
+pub impl Show for ElkPort
+
+pub(all) struct ElkProperties {
+  values : Map[String, PropertyValue]
+}
+pub fn ElkProperties::copy_from(Self, Self) -> Unit
+pub fn ElkProperties::get(Self, String) -> PropertyValue?
+pub fn ElkProperties::get_bool(Self, String) -> Bool?
+pub fn ElkProperties::get_double(Self, String) -> Double?
+pub fn ElkProperties::get_int(Self, String) -> Int?
+pub fn ElkProperties::get_string(Self, String) -> String?
+pub fn ElkProperties::new() -> Self
+pub fn ElkProperties::set(Self, String, PropertyValue) -> Unit
+pub impl Eq for ElkProperties
+pub impl Show for ElkProperties
+
+pub(all) enum ForceModelType {
+  Eades
+  FruchtermanReingold
+}
+pub impl Eq for ForceModelType
+pub impl Show for ForceModelType
+
+pub(all) enum GraphCompactionStrategy {
+  None
+  LeftToRight
+  RightToLeft
+  TopToBottom
+  BottomToTop
+}
+pub impl Eq for GraphCompactionStrategy
+pub impl Show for GraphCompactionStrategy
+
+pub(all) enum GreedySwitchType {
+  Off
+  OneSided
+  TwoSided
+}
+pub impl Eq for GreedySwitchType
+pub impl Show for GreedySwitchType
+
+pub(all) enum HierarchyHandling {
+  Inherit
+  Include
+  Separate
+}
+pub impl Eq for HierarchyHandling
+pub impl Show for HierarchyHandling
+
+pub(all) enum LayeringStrategy {
+  NetworkSimplex
+  LongestPath
+  InteractiveLayering
+  CoffmanGraham
+  StretchWidth
+  MinWidth
+  BreadthFirstModelOrder
+  DepthFirstModelOrder
+}
+pub impl Eq for LayeringStrategy
+pub impl Show for LayeringStrategy
+
+pub(all) enum LayoutAlgorithm {
+  Layered
+  Force
+  Stress
+  Radial
+  MrTree
+  Box
+  RectPacking
+  TopDownPacking
+  DisCo
+  Fixed
+  Random
+  SporeCompaction
+  SporeOverlap
+}
+pub impl Eq for LayoutAlgorithm
+pub impl Show for LayoutAlgorithm
+
+pub(all) enum LayoutDirection {
+  Undefined
+  Right
+  Left
+  Down
+  Up
+}
+pub fn LayoutDirection::is_horizontal(Self) -> Bool
+pub fn LayoutDirection::is_vertical(Self) -> Bool
+pub impl Eq for LayoutDirection
+pub impl Show for LayoutDirection
+
+pub(all) struct LayoutOptions {
+  algorithm : LayoutAlgorithm?
+  direction : LayoutDirection?
+  node_node_spacing : Double?
+  node_node_between_layers_spacing : Double?
+  edge_node_spacing : Double?
+  edge_node_between_layers_spacing : Double?
+  edge_edge_spacing : Double?
+  edge_edge_between_layers_spacing : Double?
+  edge_label_spacing : Double?
+  label_node_spacing : Double?
+  label_port_horizontal_spacing : Double?
+  label_port_vertical_spacing : Double?
+  label_label_spacing : Double?
+  port_port_spacing : Double?
+  component_component_spacing : Double?
+  padding : ElkPadding?
+  edge_routing : EdgeRouting?
+  edge_type : EdgeType?
+  port_constraints : PortConstraints?
+  port_alignment : PortAlignment?
+  port_alignment_north : PortAlignment?
+  port_alignment_south : PortAlignment?
+  port_alignment_east : PortAlignment?
+  port_alignment_west : PortAlignment?
+  port_label_placement : Array[PortLabelPlacement]?
+  port_sorting_strategy : PortSortingStrategy?
+  port_border_offset : Double?
+  node_size_constraints : Array[NodeSizeConstraints]?
+  node_size_options : Array[NodeSizeOptions]?
+  node_size_minimum : (Double, Double)?
+  node_size_fixed_graph_size : Bool?
+  node_label_placement : Array[NodeLabelPlacement]?
+  edge_label_placement : EdgeLabelPlacement?
+  edge_label_side_selection : EdgeLabelSideSelection?
+  center_edge_label_placement_strategy : Bool?
+  cycle_breaking_strategy : CycleBreakingStrategy?
+  layering_strategy : LayeringStrategy?
+  crossing_min_strategy : CrossingMinimizationStrategy?
+  greedy_switch : GreedySwitchType?
+  node_placement_strategy : NodePlacementStrategy?
+  bk_fixed_alignment : BKNodePlacementMode?
+  bk_edge_straightening : EdgeStraighteningStrategy?
+  linear_segments_deflection_dampening : Double?
+  node_flexibility : NodeFlexibility?
+  hierarchy_handling : HierarchyHandling?
+  content_alignment : ContentAlignment?
+  thoroughness : Int?
+  aspect_ratio : Double?
+  interactive : Bool?
+  interactive_reference_point : (Double, Double)?
+  compaction_strategy : CompactionStrategy?
+  post_compaction_strategy : GraphCompactionStrategy?
+  self_loop_distribution : SelfLoopDistribution?
+  self_loop_ordering : SelfLoopOrdering?
+  force_model : ForceModelType?
+  force_iterations : Int?
+  force_repulsion : Double?
+  force_repulsive_power : Int?
+  force_temperature : Double?
+  separate_connected_components : Bool?
+  consider_model_order_strategy : Bool?
+  merge_edges : Bool?
+  merge_hierarchy_crossing_edges : Bool?
+  wrap_graphs : Bool?
+  feedback_edges : Bool?
+  partition_cycle : Bool?
+  layer_constraint : Int?
+  position_constraint : Int?
+  priority : Int?
+  long_edge_priority : Int?
+  custom : Map[String, PropertyValue]?
+}
+pub fn LayoutOptions::force() -> Self
+pub fn LayoutOptions::interactive(Self) -> Self
+pub fn LayoutOptions::layered() -> Self
+pub fn LayoutOptions::merge(Self, Self) -> Self
+pub fn LayoutOptions::new() -> Self
+pub fn LayoutOptions::radial() -> Self
+pub fn LayoutOptions::stress() -> Self
+pub fn LayoutOptions::to_properties(Self) -> ElkProperties
+pub fn LayoutOptions::tree() -> Self
+pub fn LayoutOptions::with_algorithm(Self, LayoutAlgorithm) -> Self
+pub fn LayoutOptions::with_aspect_ratio(Self, Double) -> Self
+pub fn LayoutOptions::with_crossing_min(Self, CrossingMinimizationStrategy) -> Self
+pub fn LayoutOptions::with_custom(Self, String, PropertyValue) -> Self
+pub fn LayoutOptions::with_cycle_breaking(Self, CycleBreakingStrategy) -> Self
+pub fn LayoutOptions::with_direction(Self, LayoutDirection) -> Self
+pub fn LayoutOptions::with_edge_routing(Self, EdgeRouting) -> Self
+pub fn LayoutOptions::with_edge_spacing(Self, Double) -> Self
+pub fn LayoutOptions::with_hierarchy_handling(Self, HierarchyHandling) -> Self
+pub fn LayoutOptions::with_layer_spacing(Self, Double) -> Self
+pub fn LayoutOptions::with_layering(Self, LayeringStrategy) -> Self
+pub fn LayoutOptions::with_node_placement(Self, NodePlacementStrategy) -> Self
+pub fn LayoutOptions::with_node_spacing(Self, Double) -> Self
+pub fn LayoutOptions::with_padding(Self, ElkPadding) -> Self
+pub fn LayoutOptions::with_port_constraints(Self, PortConstraints) -> Self
+pub fn LayoutOptions::with_thoroughness(Self, Int) -> Self
+pub fn LayoutOptions::with_uniform_padding(Self, Double) -> Self
+pub impl Eq for LayoutOptions
+pub impl Show for LayoutOptions
+
+pub(all) enum NodeFlexibility {
+  None
+  NodeSize
+  NodeSizeWhereSpacePermits
+}
+pub impl Eq for NodeFlexibility
+pub impl Show for NodeFlexibility
+
+pub(all) enum NodeLabelPlacement {
+  Inside
+  Outside
+  Horizontal
+  Vertical
+  Top
+  Center
+  Bottom
+  Left
+  Right
+}
+pub impl Eq for NodeLabelPlacement
+pub impl Show for NodeLabelPlacement
+
+pub(all) enum NodePlacementStrategy {
+  BrandesKoepf
+  LinearSegments
+  Simple
+  NetworkSimplex
+}
+pub impl Eq for NodePlacementStrategy
+pub impl Show for NodePlacementStrategy
+
+pub(all) enum NodeSizeConstraints {
+  None
+  Ports
+  PortLabels
+  NodeLabels
+  MinimumSize
+  MinimumSizeAccountsForPadding
+}
+pub impl Eq for NodeSizeConstraints
+pub impl Show for NodeSizeConstraints
+
+pub(all) enum NodeSizeOptions {
+  DefaultMinimumSize
+  MinimumSizeAccountsForPadding
+  ComputePadding
+  OutsidePortLabelsOverhang
+  PortsOverhang
+  UniformPortSpacing
+  SpaceEfficientPortLabels
+  ForceTabularNodeLabels
+  AsymmetricalSpacing
+}
+pub impl Eq for NodeSizeOptions
+pub impl Show for NodeSizeOptions
+
+pub(all) enum PortAlignment {
+  Undefined
+  Distributed
+  Justified
+  Begin
+  Center
+  End
+}
+pub impl Eq for PortAlignment
+pub impl Show for PortAlignment
+
+pub(all) enum PortConstraints {
+  Undefined
+  Free
+  FixedSide
+  FixedOrder
+  FixedRatio
+  FixedPos
+}
+pub impl Eq for PortConstraints
+pub impl Show for PortConstraints
+
+pub(all) enum PortLabelPlacement {
+  Inside
+  Outside
+  NextToPortIfPossible
+  AlwaysOther
+  AlwaysSameSide
+}
+pub impl Eq for PortLabelPlacement
+pub impl Show for PortLabelPlacement
+
+pub(all) enum PortSide {
+  Undefined
+  North
+  East
+  South
+  West
+}
+pub fn PortSide::is_horizontal(Self) -> Bool
+pub fn PortSide::is_vertical(Self) -> Bool
+pub fn PortSide::opposite(Self) -> Self
+pub impl Eq for PortSide
+pub impl Show for PortSide
+
+pub(all) enum PortSortingStrategy {
+  InputOrder
+  PortDegree
+}
+pub impl Eq for PortSortingStrategy
+pub impl Show for PortSortingStrategy
+
+pub(all) enum PropertyValue {
+  Bool(Bool)
+  Int(Int)
+  Double(Double)
+  String(String)
+  Enum(String)
+  Point(ElkPoint)
+  Padding(ElkPadding)
+  Array(Array[PropertyValue])
+}
+pub impl Eq for PropertyValue
+pub impl Show for PropertyValue
+
+pub(all) enum SelfLoopDistribution {
+  North
+  NorthSouth
+  Equally
+}
+pub impl Eq for SelfLoopDistribution
+pub impl Show for SelfLoopDistribution
+
+pub(all) enum SelfLoopOrdering {
+  Stacked
+  Sequenced
+}
+pub impl Eq for SelfLoopOrdering
+pub impl Show for SelfLoopOrdering
+
+pub(all) struct SpacingOptions {
+  node_node : Double
+  node_node_between_layers : Double
+  edge_node : Double
+  edge_node_between_layers : Double
+  edge_edge : Double
+  edge_edge_between_layers : Double
+  edge_label : Double
+  label_node : Double
+  label_port_horizontal : Double
+  label_port_vertical : Double
+  label_label : Double
+  port_port : Double
+  component_component : Double
+  port_surrounding : ElkPadding
+}
+pub fn SpacingOptions::default() -> Self
+pub impl Eq for SpacingOptions
+pub impl Show for SpacingOptions
+
+// Type aliases
+
+// Traits
+

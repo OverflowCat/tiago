@@ -1,7 +1,8 @@
 {
   "import": [
     "Milky2018/diago/graph",
-    "Milky2018/diago/elk"
+    "Milky2018/diago/elk",
+    { "path": "Milky2018/diago/elk/layered", "alias": "layered" }
   ],
   "test-import": [
     "Milky2018/diago/parser",
