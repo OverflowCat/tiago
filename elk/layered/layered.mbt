@@ -60,16 +60,11 @@ fn max_double(a : Double, b : Double) -> Double {
 
 ///|
 /// Execute the layered layout algorithm
-pub fn layout(
-  graph : @elk.ElkNode,
-  options : @elk.LayoutOptions,
-) -> Unit raise @elk.LayoutError {
+pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   // First, recursively layout compound nodes (children with their own children)
   for child in graph.children {
     if child.children.length() > 0 {
-      layout(child, options) catch {
-        _ => () // Ignore layout errors in nested graphs
-      }
+      layout(child, options)
       // Update child size to contain its children
       let (child_w, child_h) = child.calculate_bounds()
       let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))

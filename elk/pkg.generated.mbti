@@ -32,10 +32,7 @@ pub fn to_graph(ElkNode, @graph.Graph) -> Unit
 
 // Errors
 pub suberror LayoutError {
-  UnknownAlgorithm(String)
   InvalidGraph(String)
-  CycleDetected(String)
-  LayoutFailed(String)
 }
 pub fn LayoutError::to_string(Self) -> String
 

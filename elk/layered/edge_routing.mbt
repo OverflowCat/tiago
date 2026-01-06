@@ -23,21 +23,6 @@
 /// Based on ELK's OrthogonalRoutingGenerator concepts
 
 // ============================================================================
-// Edge Segment Types
-// ============================================================================
-
-///|
-/// Represents a vertical segment of an edge between layers
-struct EdgeSegment {
-  edge_id : String
-  source_y : Double // Y coordinate of source connection
-  target_y : Double // Y coordinate of target connection
-  slot : Int // Routing slot (horizontal position between layers)
-} derive(Show)
-
-// Note: EdgeSegment is currently unused but kept for future hyperedge support
-
-// ============================================================================
 // Improved Orthogonal Routing
 // ============================================================================
 
@@ -61,6 +46,20 @@ pub fn route_edges_orthogonal(
 ///|
 /// Route edges for vertical (top-to-bottom) layouts
 fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
+  // First, count parallel edges between same source-target pairs
+  // Use normalized keys so (A->B) and (B->A) are counted together
+  let edge_counts : Map[String, Int] = {}
+  let edge_indices : Map[String, Int] = {}
+  for edge in graph.edges {
+    // Normalize key so parallel edges in both directions are counted together
+    let key = if edge.source_id < edge.target_id {
+      edge.source_id + "->" + edge.target_id
+    } else {
+      edge.target_id + "->" + edge.source_id
+    }
+    let count = edge_counts.get(key).unwrap_or(0)
+    edge_counts[key] = count + 1
+  }
   for edge in graph.edges {
     let source = graph.get_node(edge.source_id)
     let target = graph.get_node(edge.target_id)
@@ -80,27 +79,65 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
     let tgt_x = tgt.x + tgt.width / 2.0
     let tgt_y = tgt.y // Top of target
 
+    // Track parallel edge index using normalized key
+    let key = if edge.source_id < edge.target_id {
+      edge.source_id + "->" + edge.target_id
+    } else {
+      edge.target_id + "->" + edge.source_id
+    }
+    let parallel_count = edge_counts.get(key).unwrap_or(1)
+    let parallel_index = edge_indices.get(key).unwrap_or(0)
+    edge_indices[key] = parallel_index + 1
+
+    // Calculate offset for parallel edges - ALWAYS non-zero for parallel edges
+    // This ensures all parallel edges have distinct routes from start to end
+    let parallel_offset = if parallel_count > 1 {
+      // Use alternating offsets that are always non-zero
+      // Sequence: -0.5*spacing, +0.5*spacing, -1.5*spacing, +1.5*spacing, ...
+      let half_spacing = edge_spacing / 2.0
+      let slot = (parallel_index / 2).to_double() + 0.5
+      if parallel_index % 2 == 0 {
+        -slot * half_spacing
+      } else {
+        slot * half_spacing
+      }
+    } else {
+      0.0
+    }
+
+    // Store the parallel offset so apply_to_elk_graph can use it for start/end points
+    edge.parallel_offset = parallel_offset
+
     // Calculate routing
-    if (src_x - tgt_x).abs() < 1.0 {
-      // Nodes are aligned - straight edge, no bend points needed
+    if (src_x - tgt_x).abs() < 1.0 && parallel_count == 1 {
+      // Nodes are aligned and single edge - straight edge, no bend points needed
       // Bend points will be empty, edge goes straight
     } else {
       // Need orthogonal routing with bends
       // Find midpoint Y between layers
       let mid_y = (src_y + tgt_y) / 2.0
 
-      // For edges spanning multiple layers, we might need intermediate bends
-      let layer_diff = (tgt.layer - src.layer).abs()
-      if layer_diff == 1 {
-        // Adjacent layers - simple L-shape or Z-shape routing
-        edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
-        edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
-        // Multi-layer edge - route through intermediate space
-        // Use existing dummy node positions if available
-      } else if edge.bend_points.length() == 0 {
-        // Fallback: create simple Z-shape
-        edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
-        edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
+      // For aligned nodes with parallel edges, create a detour with X offset
+      if (src_x - tgt_x).abs() < 1.0 {
+        // Parallel edge on aligned nodes - route with horizontal offset
+        // Create a route that doesn't share start/end with other parallel edges
+        // Start vertical segment offset from center
+        edge.bend_points.push(
+          @elk.ElkPoint::new(src_x + parallel_offset, src_y),
+        )
+        edge.bend_points.push(
+          @elk.ElkPoint::new(src_x + parallel_offset, tgt_y),
+        )
+      } else {
+        // Non-aligned nodes - Z-shape routing
+        // Apply offset to the horizontal segment's Y position for parallel edges
+        let offset_mid_y = mid_y + parallel_offset
+        edge.bend_points.push(
+          @elk.ElkPoint::new(src_x + parallel_offset, offset_mid_y),
+        )
+        edge.bend_points.push(
+          @elk.ElkPoint::new(tgt_x + parallel_offset, offset_mid_y),
+        )
       }
     }
   }
@@ -204,9 +241,16 @@ fn assign_routing_slots(
     })
 
     // Adjust bend points to use different routing slots
+    // Use alternating offsets (0, -1, +1, -2, +2, ...) to spread edges around midpoint
     for i, edge in edges {
       if edge.bend_points.length() >= 2 {
-        let offset = i.to_double() * edge_spacing * 0.5
+        // Calculate alternating offset: 0, -spacing, +spacing, -2*spacing, +2*spacing, ...
+        let slot_index = (i + 1) / 2
+        let offset = if i % 2 == 0 {
+          -slot_index.to_double() * edge_spacing * 0.5
+        } else {
+          slot_index.to_double() * edge_spacing * 0.5
+        }
         // Create new bend points with adjusted coordinates
         let new_bends : Array[@elk.ElkPoint] = []
         for bp in edge.bend_points {

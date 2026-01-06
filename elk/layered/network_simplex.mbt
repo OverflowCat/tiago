@@ -48,7 +48,7 @@ struct NSEdge {
 
 ///|
 /// Network Simplex solver
-struct NetworkSimplex {
+priv struct NetworkSimplex {
   nodes : Array[NSNode]
   edges : Array[NSEdge]
   tree_edges : Array[NSEdge]

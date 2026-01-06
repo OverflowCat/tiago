@@ -236,6 +236,8 @@ pub(all) struct LEdge {
   mut reversed : Bool
   // Priority for crossing minimization
   mut priority : Int
+  // Offset for parallel edge routing (to distinguish parallel edges)
+  mut parallel_offset : Double
   properties : @elk.ElkProperties
 } derive(Show)
 
@@ -252,6 +254,7 @@ pub fn LEdge::new(id : String, source_id : String, target_id : String) -> LEdge 
     bend_points: [],
     reversed: false,
     priority: 0,
+    parallel_offset: 0.0,
     properties: @elk.ElkProperties::new(),
   }
 }
@@ -459,16 +462,20 @@ pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
         // Since we use port IDs, look up ports and compute anchor points.
         // Fall back to node boundary based on layout direction.
         // The layout package can adjust these for perpendicularity if needed.
+        // Apply parallel_offset to ensure parallel edges have distinct start/end points
+        let offset = ledge.parallel_offset
         let (start_x, start_y) = match source_node {
           Some(src) =>
             // Default: bottom center of source (for Down direction)
-            (src.x + src.width / 2.0, src.y + src.height)
+            // Add parallel_offset to X to distinguish parallel edges
+            (src.x + src.width / 2.0 + offset, src.y + src.height)
           _ => (0.0, 0.0)
         }
         let (end_x, end_y) = match target_node {
           Some(tgt) =>
             // Default: top center of target (for Down direction)
-            (tgt.x + tgt.width / 2.0, tgt.y)
+            // Add parallel_offset to X to distinguish parallel edges
+            (tgt.x + tgt.width / 2.0 + offset, tgt.y)
           _ => (0.0, 0.0)
         }
         section.start_point = @elk.ElkPoint::new(start_x, start_y)

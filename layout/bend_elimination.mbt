@@ -148,36 +148,6 @@ fn line_intersects_objects(
 }
 
 ///|
-/// Check if a line segment intersects any object boxes (with parent skip for SQL tables)
-fn line_intersects_objects_with_skip(
-  p0 : @graph.Point,
-  p1 : @graph.Point,
-  graph : @graph.Graph,
-  edge : @graph.Edge,
-  src_parent : String?,
-  dst_parent : String?,
-) -> Bool {
-  for obj in graph.objects {
-    // Skip source and destination objects
-    if obj.id == edge.src_id || obj.id == edge.dst_id {
-      continue
-    }
-    // Skip parent tables for SQL field connections
-    if src_parent is Some(p) && obj.id == p {
-      continue
-    }
-    if dst_parent is Some(p) && obj.id == p {
-      continue
-    }
-    match obj.box {
-      Some(b) => if line_intersects_box(p0, p1, b) { return true }
-      None => ()
-    }
-  }
-  false
-}
-
-///|
 /// Check if a line segment intersects a box
 fn line_intersects_box(
   p0 : @graph.Point,

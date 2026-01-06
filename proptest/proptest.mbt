@@ -546,7 +546,7 @@ pub fn[T : Show] check_forall(
   prop : (T) -> Bool,
   iterations? : Int = 100,
 ) -> Unit raise PropTestFailure {
-  let state = @qc.RandomState::new(seed=42UL)
+  let state = @quickcheck/splitmix.new(seed=42UL)
   for i in 0..<iterations {
     let size = i % 100 + 1 // Vary size like QuickCheck does
     let value = gen.run(size, state)
@@ -566,7 +566,7 @@ pub fn[A : Show, B : Show] check_forall2(
   prop : (A, B) -> Bool,
   iterations? : Int = 100,
 ) -> Unit raise PropTestFailure {
-  let state = @qc.RandomState::new(seed=42UL)
+  let state = @quickcheck/splitmix.new(seed=42UL)
   for i in 0..<iterations {
     let size = i % 100 + 1
     let a = gen_a.run(size, state)
@@ -588,7 +588,7 @@ pub fn[A : Show, B : Show, C : Show] check_forall3(
   prop : (A, B, C) -> Bool,
   iterations? : Int = 100,
 ) -> Unit raise PropTestFailure {
-  let state = @qc.RandomState::new(seed=42UL)
+  let state = @quickcheck/splitmix.new(seed=42UL)
   for i in 0..<iterations {
     let size = i % 100 + 1
     let a = gen_a.run(size, state)
@@ -611,7 +611,7 @@ pub fn[T : Show] check_forall_filter(
   iterations? : Int = 100,
   max_discards? : Int = 1000,
 ) -> Unit raise PropTestFailure {
-  let state = @qc.RandomState::new(seed=42UL)
+  let state = @quickcheck/splitmix.new(seed=42UL)
   let mut passed = 0
   let mut discarded = 0
   let mut attempts = 0

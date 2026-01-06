@@ -335,10 +335,18 @@ fn adjust_start_point_perpendicular(
     @graph.Point::new(start_x, start_y)
   } else if elk_is_vertical {
     // ELK intended vertical segment - connect from top or bottom side
-    let start_y = if next_y > src_cy {
-      src.y + src.height // Bottom side
-    } else {
-      src.y // Top side
+    // For vertical layouts, use layout direction to determine exit side
+    // This prevents routing slot Y-shifts from causing wrong side connections
+    let start_y = match direction {
+      Down => src.y + src.height // Always exit from bottom when layout flows down
+      Up => src.y // Always exit from top when layout flows up
+      // For horizontal layouts with vertical segments, use next_y comparison
+      _ =>
+        if next_y > src_cy {
+          src.y + src.height // Bottom side
+        } else {
+          src.y // Top side
+        }
     }
     // Clamp x to node bounds
     let start_x = clamp(next_x, src.x, src.x + src.width)
@@ -420,10 +428,18 @@ fn adjust_end_point_perpendicular(
     @graph.Point::new(end_x, end_y)
   } else if elk_is_vertical {
     // ELK intended vertical segment - connect to top or bottom side
-    let end_y = if prev_y < tgt_cy {
-      tgt.y // Top side
-    } else {
-      tgt.y + tgt.height // Bottom side
+    // For vertical layouts, use layout direction to determine entry side
+    // This prevents routing slot Y-shifts from causing wrong side connections
+    let end_y = match direction {
+      Down => tgt.y // Always enter from top when layout flows down
+      Up => tgt.y + tgt.height // Always enter from bottom when layout flows up
+      // For horizontal layouts with vertical segments, use prev_y comparison
+      _ =>
+        if prev_y < tgt_cy {
+          tgt.y // Top side
+        } else {
+          tgt.y + tgt.height // Bottom side
+        }
     }
     // Clamp x to node bounds
     let end_x = clamp(prev_x, tgt.x, tgt.x + tgt.width)
@@ -488,12 +504,7 @@ pub fn run_elk_layout(
     .with_edge_routing(@elk.Orthogonal)
 
   // Run ELK layered layout (using the proper implementation)
-  @layered.layout(elk_root, options) catch {
-    _ => {
-      println("DEBUG: ELK layout threw an error")
-      abort("ELK layout failed")
-    }
-  }
+  @layered.layout(elk_root, options)
 
   // Convert back to Graph format
   elk_to_graph(elk_root, graph, config, direction)

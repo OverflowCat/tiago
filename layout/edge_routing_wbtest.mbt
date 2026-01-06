@@ -355,8 +355,8 @@ test "edge routing: parallel edges" {
   }
 
   // Check that boxes are assigned
-  inspect(graph.find_object("A").unwrap().box.is_some(), content="true")
-  inspect(graph.find_object("B").unwrap().box.is_some(), content="true")
+  inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
+  inspect(graph.find_object("B").unwrap().box is Some(_), content="true")
   // Check that routes are assigned
   inspect(graph.edges[0].route.length() >= 2, content="true")
   inspect(graph.edges[1].route.length() >= 2, content="true")
@@ -395,8 +395,8 @@ test "edge routing: bidirectional edges" {
   }
 
   // Check that boxes are assigned
-  inspect(graph.find_object("A").unwrap().box.is_some(), content="true")
-  inspect(graph.find_object("B").unwrap().box.is_some(), content="true")
+  inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
+  inspect(graph.find_object("B").unwrap().box is Some(_), content="true")
 }
 
 ///|

@@ -23,19 +23,13 @@
 ///|
 /// Errors that can occur during layout
 pub suberror LayoutError {
-  UnknownAlgorithm(String)
   InvalidGraph(String)
-  CycleDetected(String)
-  LayoutFailed(String)
 }
 
 ///|
 pub fn LayoutError::to_string(self : LayoutError) -> String {
   match self {
-    UnknownAlgorithm(msg) => "Unknown algorithm: " + msg
     InvalidGraph(msg) => "Invalid graph: " + msg
-    CycleDetected(msg) => "Cycle detected: " + msg
-    LayoutFailed(msg) => "Layout failed: " + msg
   }
 }
 
@@ -120,10 +114,7 @@ pub fn layout(
 
 ///|
 /// Layered (Sugiyama) layout algorithm - simplified inline version
-fn layout_layered(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_layered(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -234,9 +225,7 @@ fn layout_layered(
   // First, recursively layout compound nodes to determine their final sizes
   for node in graph.children {
     if node.children.length() > 0 {
-      layout_layered(node, options) catch {
-        _ => ()
-      }
+      layout_layered(node, options)
       // Update node size to contain its children
       let (child_w, child_h) = node.calculate_bounds()
       node.width = child_w + padding.left + padding.right
@@ -399,10 +388,7 @@ fn route_edges_orthogonal(graph : ElkNode, direction : LayoutDirection) -> Unit 
 
 ///|
 /// Force-directed layout using Fruchterman-Reingold algorithm
-fn layout_force(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_force(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -518,10 +504,7 @@ fn layout_force(
 
 ///|
 /// Stress majorization layout
-fn layout_stress(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_stress(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -634,10 +617,7 @@ fn layout_stress(
 
 ///|
 /// Radial layout - nodes arranged in concentric circles
-fn layout_radial(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_radial(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -744,10 +724,7 @@ fn layout_radial(
 
 ///|
 /// Tree layout - hierarchical tree structure
-fn layout_tree(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_tree(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -896,10 +873,7 @@ fn layout_tree(
 
 ///|
 /// Box packing - simple row-based packing
-fn layout_box(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_box(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -930,10 +904,7 @@ fn layout_box(
 
 ///|
 /// Rectangle packing - more sophisticated bin packing
-fn layout_rectpacking(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_rectpacking(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -959,7 +930,7 @@ fn layout_rectpacking(
     let mut best_shelf = -1
     let mut best_waste = 1000000.0
     for i, shelf in shelves {
-      let (_, shelf_height, next_x) = shelf
+      let (_, shelf_height, _) = shelf
       if node.height <= shelf_height {
         let waste = shelf_height - node.height
         if waste < best_waste {
@@ -996,10 +967,7 @@ fn layout_rectpacking(
 
 ///|
 /// Top-down packing - vertical stack layout
-fn layout_topdown(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_topdown(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -1027,10 +995,7 @@ fn layout_topdown(
 
 ///|
 /// DisCo - handle disconnected components
-fn layout_disco(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_disco(graph : ElkNode, options : LayoutOptions) -> Unit {
   if graph.children.is_empty() {
     return
   }
@@ -1125,10 +1090,7 @@ fn layout_fixed(
 
 ///|
 /// Random layout algorithm
-fn layout_random(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_random(graph : ElkNode, options : LayoutOptions) -> Unit {
   let spacing = options.node_node_spacing.unwrap_or(20.0)
   let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
   let mut x = padding.left
@@ -1156,10 +1118,7 @@ fn layout_random(
 
 ///|
 /// SPOrE compaction algorithm
-fn layout_spore_compaction(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_spore_compaction(graph : ElkNode, options : LayoutOptions) -> Unit {
   let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
 
   // Simple compaction: remove gaps
@@ -1207,10 +1166,7 @@ fn layout_spore_compaction(
 
 ///|
 /// SPOrE overlap removal algorithm
-fn layout_spore_overlap(
-  graph : ElkNode,
-  options : LayoutOptions,
-) -> Unit raise LayoutError {
+fn layout_spore_overlap(graph : ElkNode, options : LayoutOptions) -> Unit {
   let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
   let spacing = options.node_node_spacing.unwrap_or(10.0)
 

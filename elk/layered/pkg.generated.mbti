@@ -10,7 +10,7 @@ pub fn greedy_switch(LGraph, Int) -> Unit
 
 pub fn greedy_switch_two_sided(LGraph, Int) -> Unit
 
-pub fn layout(@elk.ElkNode, @elk.LayoutOptions) -> Unit raise @elk.LayoutError
+pub fn layout(@elk.ElkNode, @elk.LayoutOptions) -> Unit
 
 pub fn network_simplex_layer_assignment(LGraph) -> Unit
 
@@ -27,9 +27,6 @@ pub fn straighten_edges(LGraph) -> Unit
 // Types and methods
 type BlockInfo
 pub impl Show for BlockInfo
-
-type EdgeSegment
-pub impl Show for EdgeSegment
 
 pub(all) enum HDirection {
   Left
@@ -49,6 +46,7 @@ pub(all) struct LEdge {
   bend_points : Array[@elk.ElkPoint]
   mut reversed : Bool
   mut priority : Int
+  mut parallel_offset : Double
   properties : @elk.ElkProperties
 }
 pub fn LEdge::get_source(Self, LGraph) -> LNode?
@@ -156,8 +154,6 @@ pub impl Show for NSEdge
 
 type NSNode
 pub impl Show for NSNode
-
-type NetworkSimplex
 
 pub(all) enum VDirection {
   Up

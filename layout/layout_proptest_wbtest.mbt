@@ -16,61 +16,6 @@
 /// Property-based tests for layout algorithm constraints
 
 // ============================================================================
-// Graph Generator (fully random with constraint-based invariants)
-// ============================================================================
-
-///|
-/// Generate a completely random graph.
-/// Uses constraint-based generation to ensure invariants:
-/// - All edge.src_id and edge.dst_id reference valid object IDs
-/// - Node count and edge count are random
-/// - Labels are random strings
-fn gen_graph() -> @qc.Gen[@graph.Graph] {
-  @qc.Gen::new(fn(size, state) {
-    // Random node count (2-10)
-    let node_count = @qc.int_range(2, 10).run(size, state)
-    // Random edge count (1-15)
-    let edge_count = @qc.int_range(1, 15).run(size, state)
-    // Generate the graph using constraint-based generation
-    let (nodes, edges) = @proptest.gen_with_valid_references(
-      node_count,
-      @proptest.alphanumeric_string(), // Random node ID generator
-      fn(id) {
-        let label = @proptest.alphanumeric_string().run(size, state)
-        @graph.Object::with_label(id, label)
-      },
-      edge_count,
-      fn(src_id, dst_id) { @graph.Edge::new(0, src_id, dst_id, false, true) },
-    ).run(size, state)
-    // Build the graph from generated nodes and edges
-    let graph = @graph.Graph::new("test")
-    nodes.each(fn(n) { graph.add_object(n) })
-    edges
-    .iter()
-    .eachi(fn(i, e) {
-      graph.add_edge(
-        @graph.Edge::new(i, e.src_id, e.dst_id, e.src_arrow, e.dst_arrow),
-      )
-    })
-    graph
-  })
-}
-
-///|
-/// Generate a graph with edge labels (uses gen_graph and adds random labels)
-fn gen_graph_with_edge_labels() -> @qc.Gen[@graph.Graph] {
-  @qc.Gen::new(fn(size, state) {
-    let graph = gen_graph().run(size, state)
-    // Add random labels to edges
-    for edge in graph.get_edges() {
-      let label_len = @qc.int_range(1, 10).run(size, state)
-      edge.label = @proptest.string_of_length(label_len).run(size, state)
-    }
-    graph
-  })
-}
-
-// ============================================================================
 // QuickCheck-free Graph Generation (for 50-iteration tests)
 // ============================================================================
 
@@ -159,7 +104,7 @@ fn gen_graph_with_edge_labels_rng(
     let label = StringBuilder::new()
     for _ in 0..<label_len {
       let c = rng.next_int_range(97, 123)
-      label.write_char(Char::from_int(c))
+      label.write_char(c.unsafe_to_char())
     }
     edge.label = label.to_string()
     graph.add_edge(edge)

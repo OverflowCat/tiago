@@ -9,7 +9,6 @@
     "Milky2018/diago/ir"
   ],
   "wbtest-import": [
-    "Milky2018/diago/proptest",
-    { "path": "moonbitlang/quickcheck", "alias": "qc" }
+    "Milky2018/diago/proptest"
   ]
 }
