@@ -71,32 +71,15 @@ test "edge routing: two nodes vertical - A above B" {
 
   // Get node boxes
   let a_box = graph.find_object("A").unwrap().box.unwrap()
-  let b_box = graph.find_object("B").unwrap().box.unwrap()
-  println(
-    "A box: (\{a_box.x}, \{a_box.y}, w=\{a_box.width}, h=\{a_box.height})",
-  )
-  println(
-    "B box: (\{b_box.x}, \{b_box.y}, w=\{b_box.width}, h=\{b_box.height})",
-  )
-
-  // Print route
-  println("Route points:")
-  for i, p in edge.route {
-    println("  p\{i}: (\{p.x}, \{p.y})")
-  }
 
   // Check first segment
   let p0 = edge.route[0]
   let p1 = edge.route[1]
   let first_horiz = is_horizontal(p0, p1, 2.0)
   let first_vert = is_vertical(p0, p1, 2.0)
-  println("First segment: horiz=\{first_horiz}, vert=\{first_vert}")
 
   // Check start point is on correct side
   let (on_left, on_right, on_top, on_bottom) = point_on_boundary(p0, a_box, 2.0)
-  println(
-    "Start on: left=\{on_left}, right=\{on_right}, top=\{on_top}, bottom=\{on_bottom}",
-  )
 
   // For vertical first segment, start should be on top or bottom
   // For horizontal first segment, start should be on left or right
@@ -122,26 +105,11 @@ test "edge routing: two nodes horizontal - A left of B" {
   let edge = graph.edges[0]
   inspect(edge.route.length() >= 2, content="true")
   let a_box = graph.find_object("A").unwrap().box.unwrap()
-  let b_box = graph.find_object("B").unwrap().box.unwrap()
-  println(
-    "A box: (\{a_box.x}, \{a_box.y}, w=\{a_box.width}, h=\{a_box.height})",
-  )
-  println(
-    "B box: (\{b_box.x}, \{b_box.y}, w=\{b_box.width}, h=\{b_box.height})",
-  )
-  println("Route points:")
-  for i, p in edge.route {
-    println("  p\{i}: (\{p.x}, \{p.y})")
-  }
   let p0 = edge.route[0]
   let p1 = edge.route[1]
   let first_horiz = is_horizontal(p0, p1, 2.0)
   let first_vert = is_vertical(p0, p1, 2.0)
-  println("First segment: horiz=\{first_horiz}, vert=\{first_vert}")
   let (on_left, on_right, on_top, on_bottom) = point_on_boundary(p0, a_box, 2.0)
-  println(
-    "Start on: left=\{on_left}, right=\{on_right}, top=\{on_top}, bottom=\{on_bottom}",
-  )
   if first_vert {
     inspect(on_top || on_bottom, content="true")
   }
@@ -161,17 +129,9 @@ test "edge routing: chain A -> B -> C" {
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Chain A -> B -> C ===")
-  for obj in graph.objects {
-    let box = obj.box.unwrap()
-    println("\{obj.id}: (\{box.x}, \{box.y}, w=\{box.width}, h=\{box.height})")
-  }
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    for j, p in edge.route {
-      println("  p\{j}: (\{p.x}, \{p.y})")
-    }
-  }
+  // Verify all edges have routes
+  inspect(graph.edges[0].route.length() >= 2, content="true")
+  inspect(graph.edges[1].route.length() >= 2, content="true")
 }
 
 ///|
@@ -184,16 +144,8 @@ test "edge routing: cycle A <-> B" {
   graph.add_edge(@graph.Edge::new(1, "B", "A", false, true))
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Cycle A <-> B ===")
-  for obj in graph.objects {
-    let box = obj.box.unwrap()
-    println("\{obj.id}: (\{box.x}, \{box.y}, w=\{box.width}, h=\{box.height})")
-  }
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    for j, p in edge.route {
-      println("  p\{j}: (\{p.x}, \{p.y})")
-    }
+  let mut errors = 0
+  for edge in graph.edges {
     if edge.route.length() >= 2 {
       let src_obj = graph.find_object(edge.src_id).unwrap()
       let src_box = src_obj.box.unwrap()
@@ -204,20 +156,17 @@ test "edge routing: cycle A <-> B" {
       let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
         p0, src_box, 2.0,
       )
-      println("  First segment: horiz=\{first_horiz}, vert=\{first_vert}")
-      println(
-        "  Start on: left=\{on_left}, right=\{on_right}, top=\{on_top}, bottom=\{on_bottom}",
-      )
 
       // Check perpendicularity
       if first_vert && !(on_top || on_bottom) {
-        println("  ERROR: vertical segment but not on top/bottom!")
+        errors = errors + 1
       }
       if first_horiz && !(on_left || on_right) {
-        println("  ERROR: horizontal segment but not on left/right!")
+        errors = errors + 1
       }
     }
   }
+  inspect(errors, content="0")
 }
 
 ///|
@@ -234,17 +183,8 @@ test "edge routing: same layer - multiple sources to one target" {
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Same layer test ===")
-  for obj in graph.objects {
-    let box = obj.box.unwrap()
-    println("\{obj.id}: (\{box.x}, \{box.y}, w=\{box.width}, h=\{box.height})")
-  }
   let mut errors = 0
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    for j, p in edge.route {
-      println("  p\{j}: (\{p.x}, \{p.y})")
-    }
+  for edge in graph.edges {
     if edge.route.length() >= 2 {
       let src_obj = graph.find_object(edge.src_id).unwrap()
       let src_box = src_obj.box.unwrap()
@@ -255,16 +195,10 @@ test "edge routing: same layer - multiple sources to one target" {
       let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
         p0, src_box, 2.0,
       )
-      println("  First: horiz=\{first_horiz}, vert=\{first_vert}")
-      println(
-        "  Start on: L=\{on_left}, R=\{on_right}, T=\{on_top}, B=\{on_bottom}",
-      )
       if first_vert && !(on_top || on_bottom) {
-        println("  ERROR: vertical segment but start not on top/bottom!")
         errors = errors + 1
       }
       if first_horiz && !(on_left || on_right) {
-        println("  ERROR: horizontal segment but start not on left/right!")
         errors = errors + 1
       }
     }
@@ -286,17 +220,8 @@ test "edge routing: complex with cycle" {
   graph.add_edge(@graph.Edge::new(2, "N3", "N1", false, true)) // Back edge
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Complex with cycle ===")
-  for obj in graph.objects {
-    let box = obj.box.unwrap()
-    println("\{obj.id}: (\{box.x}, \{box.y}, w=\{box.width}, h=\{box.height})")
-  }
   let mut errors = 0
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    for j, p in edge.route {
-      println("  p\{j}: (\{p.x}, \{p.y})")
-    }
+  for edge in graph.edges {
     if edge.route.length() >= 2 {
       let src_obj = graph.find_object(edge.src_id).unwrap()
       let src_box = src_obj.box.unwrap()
@@ -307,16 +232,10 @@ test "edge routing: complex with cycle" {
       let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
         p0, src_box, 2.0,
       )
-      println("  First: horiz=\{first_horiz}, vert=\{first_vert}")
-      println(
-        "  Start on: L=\{on_left}, R=\{on_right}, T=\{on_top}, B=\{on_bottom}",
-      )
       if first_vert && !(on_top || on_bottom) {
-        println("  ERROR: vertical segment but start not on top/bottom!")
         errors = errors + 1
       }
       if first_horiz && !(on_left || on_right) {
-        println("  ERROR: horizontal segment but start not on left/right!")
         errors = errors + 1
       }
     }
@@ -334,25 +253,6 @@ test "edge routing: parallel edges" {
   graph.add_edge(@graph.Edge::new(1, "A", "B", false, true)) // Duplicate
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Parallel edges A -> B (twice) ===")
-  for obj in graph.objects {
-    let box = obj.box
-    match box {
-      Some(b) =>
-        println("\{obj.id}: (\{b.x}, \{b.y}, w=\{b.width}, h=\{b.height})")
-      None => println("\{obj.id}: box=None")
-    }
-  }
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    if edge.route.length() > 0 {
-      for j, p in edge.route {
-        println("  p\{j}: (\{p.x}, \{p.y})")
-      }
-    } else {
-      println("  route=[]")
-    }
-  }
 
   // Check that boxes are assigned
   inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
@@ -374,25 +274,6 @@ test "edge routing: bidirectional edges" {
   graph.add_edge(@graph.Edge::new(3, "B", "A", false, true)) // Duplicate
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Bidirectional A <-> B (with duplicates) ===")
-  for obj in graph.objects {
-    let box = obj.box
-    match box {
-      Some(b) =>
-        println("\{obj.id}: (\{b.x}, \{b.y}, w=\{b.width}, h=\{b.height})")
-      None => println("\{obj.id}: box=None")
-    }
-  }
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    if edge.route.length() > 0 {
-      for j, p in edge.route {
-        println("  p\{j}: (\{p.x}, \{p.y})")
-      }
-    } else {
-      println("  route=[]")
-    }
-  }
 
   // Check that boxes are assigned
   inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
@@ -413,17 +294,8 @@ test "edge routing: diamond pattern" {
   graph.add_edge(@graph.Edge::new(3, "C", "D", false, true))
   let config = LayoutConfig::new()
   layout(graph, config, Direction::Down)
-  println("=== Diamond A -> B,C -> D ===")
-  for obj in graph.objects {
-    let box = obj.box.unwrap()
-    println("\{obj.id}: (\{box.x}, \{box.y}, w=\{box.width}, h=\{box.height})")
-  }
   let mut errors = 0
-  for i, edge in graph.edges {
-    println("Edge \{i} (\{edge.src_id} -> \{edge.dst_id}):")
-    for j, p in edge.route {
-      println("  p\{j}: (\{p.x}, \{p.y})")
-    }
+  for edge in graph.edges {
     if edge.route.length() >= 2 {
       let src_obj = graph.find_object(edge.src_id).unwrap()
       let src_box = src_obj.box.unwrap()
@@ -435,11 +307,9 @@ test "edge routing: diamond pattern" {
         p0, src_box, 2.0,
       )
       if first_vert && !(on_top || on_bottom) {
-        println("  ERROR: vertical segment but start not on top/bottom!")
         errors = errors + 1
       }
       if first_horiz && !(on_left || on_right) {
-        println("  ERROR: horizontal segment but start not on left/right!")
         errors = errors + 1
       }
     }

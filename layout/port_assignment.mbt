@@ -430,8 +430,6 @@ fn fix_source_perpendicularity(
   let dy = (p1.y - p0.y).abs()
   let is_horizontal = dy < tolerance && dx > tolerance
   let is_vertical = dx < tolerance && dy > tolerance
-  // DEBUG
-  // println("FIX_SRC: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) v_side=\{on_vertical_side} h_side=\{on_horizontal_side} is_h=\{is_horizontal} is_v=\{is_vertical}")
   // If on vertical side (left/right) and segment is not horizontal, add waypoint
   if on_vertical_side && !is_horizontal {
     // Insert waypoint at (p1.x, p0.y) to create horizontal first segment

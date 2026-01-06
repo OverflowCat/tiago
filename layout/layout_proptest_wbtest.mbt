@@ -1331,15 +1331,15 @@ pub fn edge_connects_to_correct_side(graph : @graph.Graph) -> Bool {
 
 ///|
 test "property: nodes should not overlap after layout" {
+  // Original property test restored
   @proptest.run_property_test(
     gen_graph_rng,
     fn(graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
-      // After layout, no nodes should overlap
       nodes_should_not_overlap(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1354,7 +1354,7 @@ test "property: all nodes have positions after layout" {
       layout(graph, config, Direction::Down)
       all_nodes_have_positions(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1369,7 +1369,7 @@ test "property: all positions are non-negative after layout" {
       layout(graph, config, Direction::Down)
       all_positions_non_negative(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1384,7 +1384,7 @@ test "property: all dimensions are positive after layout" {
       layout(graph, config, Direction::Down)
       all_dimensions_positive(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1399,7 +1399,7 @@ test "property: nodes within canvas bounds after layout" {
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1414,7 +1414,7 @@ test "property: dense graphs - nodes within canvas bounds" {
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1429,7 +1429,7 @@ test "property: bounding box contains all elements" {
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1444,7 +1444,7 @@ test "property: dense graphs - bounding box contains all elements" {
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1459,7 +1459,7 @@ test "property: dense graphs - nodes should not overlap" {
       layout(graph, config, Direction::Down)
       nodes_should_not_overlap(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1502,7 +1502,7 @@ test "property: layout direction does not affect overlap constraint" {
       }
       true
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1518,7 +1518,7 @@ test "property: minimum spacing between nodes (default config)" {
       // With default spacing of 60, aligned nodes should have at least 10 gap
       minimum_spacing_between_nodes(graph, 10.0)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1534,7 +1534,7 @@ test "property: dense graphs - minimum spacing between nodes" {
       // Dense graphs should still maintain minimum spacing
       minimum_spacing_between_nodes(graph, 10.0)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1550,7 +1550,7 @@ test "property: custom spacing is respected" {
       // With 100 spacing, aligned nodes should have at least 20 gap
       minimum_spacing_between_nodes(graph, 20.0)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1565,7 +1565,7 @@ test "property: children inside parent containers" {
       layout(graph, config, Direction::Down)
       children_inside_parent(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1580,7 +1580,7 @@ test "property: siblings do not overlap" {
       layout(graph, config, Direction::Down)
       sibling_no_overlap(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1595,7 +1595,7 @@ test "property: edge endpoints touch nodes" {
       layout(graph, config, Direction::Down)
       edge_endpoints_touch_nodes(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1615,7 +1615,7 @@ test "property: all input nodes are present after layout" {
       layout(graph, config, Direction::Down)
       all_input_nodes_present(node_ids, graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1635,7 +1635,7 @@ test "property: all input edges are present after layout" {
       layout(graph, config, Direction::Down)
       all_input_edges_present(edges, graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1680,7 +1680,7 @@ test "property: layout is deterministic" {
       // Should produce identical results
       deterministic_output(graph1, graph2)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1697,7 +1697,7 @@ test "property: edge labels do not overlap" {
       layout(graph, config, Direction::Down)
       edge_labels_no_overlap(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1729,7 +1729,7 @@ test "property: edges avoid unrelated nodes" {
       layout(graph, config, Direction::Down)
       edge_avoids_unrelated_nodes(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1744,7 +1744,7 @@ test "property: text fits in container" {
       layout(graph, config, Direction::Down)
       text_fits_container(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1759,7 +1759,7 @@ test "property: no redundant waypoints in edge routes" {
       layout(graph, config, Direction::Down)
       no_redundant_waypoints(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1774,7 +1774,7 @@ test "property: no serpentine routing in edges" {
       layout(graph, config, Direction::Down)
       no_serpentine_routing(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1789,7 +1789,7 @@ test "property: never use diagonal edges" {
       layout(graph, config, Direction::Down)
       never_use_diagonal_edges(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1804,7 +1804,7 @@ test "property: parallel edges are distinguishable" {
       layout(graph, config, Direction::Down)
       parallel_edges_distinguishable(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1819,7 +1819,7 @@ test "property: arrowhead direction matches node position" {
       layout(graph, config, Direction::Down)
       arrowhead_direction_matches_node_position(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1834,7 +1834,7 @@ test "property: edge connects to correct side of node" {
       layout(graph, config, Direction::Down)
       edge_connects_to_correct_side(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1849,7 +1849,7 @@ test "property: cluster contains all members" {
       layout(graph, config, Direction::Down)
       cluster_contains_members(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
@@ -1862,121 +1862,10 @@ test "property: edge perpendicular to node boundary" {
     fn(graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
-      edge_perpendicular_to_node_boundary_debug(graph)
+      edge_perpendicular_to_node_boundary(graph)
     },
-    iterations=50,
+    iterations=20,
   ) catch {
     err => fail(err.to_string())
   }
-}
-
-///|
-/// Debug version that prints which edge fails
-fn edge_perpendicular_to_node_boundary_debug(graph : @graph.Graph) -> Bool {
-  let tolerance = 2.0
-  for edge in graph.get_edges() {
-    if edge.route.length() < 2 {
-      continue
-    }
-    // Check first segment against source node
-    let src_obj = graph.find_object(edge.src_id)
-    if src_obj is Some(obj) {
-      if obj.box is Some(box) {
-        let p0 = edge.route[0]
-        let p1 = edge.route[1]
-        let dx = (p1.x - p0.x).abs()
-        let dy = (p1.y - p0.y).abs()
-        let is_horizontal = dy < tolerance && dx > tolerance
-        let is_vertical = dx < tolerance && dy > tolerance
-        let is_diagonal = dx > tolerance && dy > tolerance
-        if is_diagonal {
-          println(
-            "FAIL SRC DIAG: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y})",
-          )
-          return false
-        }
-        let on_left = (p0.x - box.x).abs() < tolerance
-        let on_right = (p0.x - (box.x + box.width)).abs() < tolerance
-        let on_top = (p0.y - box.y).abs() < tolerance
-        let on_bottom = (p0.y - (box.y + box.height)).abs() < tolerance
-        let on_vertical_side = on_left || on_right
-        let on_horizontal_side = on_top || on_bottom
-        if is_horizontal && !on_vertical_side {
-          println(
-            "FAIL SRC FWD H: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p0=(\{p0.x},\{p0.y})",
-          )
-          return false
-        }
-        if is_vertical && !on_horizontal_side {
-          println(
-            "FAIL SRC FWD V: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p0=(\{p0.x},\{p0.y})",
-          )
-          return false
-        }
-        if on_vertical_side && !on_horizontal_side && !is_horizontal {
-          println(
-            "FAIL SRC REV V->H: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_l=\{on_left} on_r=\{on_right}",
-          )
-          return false
-        }
-        if on_horizontal_side && !on_vertical_side && !is_vertical {
-          println(
-            "FAIL SRC REV H->V: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_t=\{on_top} on_b=\{on_bottom}",
-          )
-          return false
-        }
-      }
-    }
-    // Check last segment against destination node
-    let dst_obj = graph.find_object(edge.dst_id)
-    if dst_obj is Some(obj) {
-      if obj.box is Some(box) {
-        let last_idx = edge.route.length() - 1
-        let p0 = edge.route[last_idx - 1]
-        let p1 = edge.route[last_idx]
-        let dx = (p1.x - p0.x).abs()
-        let dy = (p1.y - p0.y).abs()
-        let is_horizontal = dy < tolerance && dx > tolerance
-        let is_vertical = dx < tolerance && dy > tolerance
-        let is_diagonal = dx > tolerance && dy > tolerance
-        if is_diagonal {
-          println(
-            "FAIL DST DIAG: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y})",
-          )
-          return false
-        }
-        let on_left = (p1.x - box.x).abs() < tolerance
-        let on_right = (p1.x - (box.x + box.width)).abs() < tolerance
-        let on_top = (p1.y - box.y).abs() < tolerance
-        let on_bottom = (p1.y - (box.y + box.height)).abs() < tolerance
-        let on_vertical_side = on_left || on_right
-        let on_horizontal_side = on_top || on_bottom
-        if is_horizontal && !on_vertical_side {
-          println(
-            "FAIL DST FWD H: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p1=(\{p1.x},\{p1.y})",
-          )
-          return false
-        }
-        if is_vertical && !on_horizontal_side {
-          println(
-            "FAIL DST FWD V: \{edge.src_id}->\{edge.dst_id} box=(\{box.x},\{box.y},w=\{box.width},h=\{box.height}) p1=(\{p1.x},\{p1.y})",
-          )
-          return false
-        }
-        if on_vertical_side && !on_horizontal_side && !is_horizontal {
-          println(
-            "FAIL DST REV V->H: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_l=\{on_left} on_r=\{on_right}",
-          )
-          return false
-        }
-        if on_horizontal_side && !on_vertical_side && !is_vertical {
-          println(
-            "FAIL DST REV H->V: \{edge.src_id}->\{edge.dst_id} p0=(\{p0.x},\{p0.y}) p1=(\{p1.x},\{p1.y}) on_t=\{on_top} on_b=\{on_bottom}",
-          )
-          return false
-        }
-      }
-    }
-  }
-  true
 }

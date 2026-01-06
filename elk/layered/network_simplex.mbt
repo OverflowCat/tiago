@@ -262,21 +262,27 @@ fn NetworkSimplex::feasible_tree(self : NetworkSimplex) -> Unit {
       }
 
       // Adjust layers to make this edge tight
+      // slack = target_layer - source_layer - min_length
+      // To make slack = 0, we need to adjust layers by `slack`
       match best_edge {
         Some(edge) => {
           let src_in = in_tree.get(edge.source_id).unwrap_or(false)
           if src_in {
-            // Target not in tree, increase its layer
-            for node in self.nodes {
-              if !in_tree.get(node.id).unwrap_or(false) {
-                node.layer = node.layer + min_slack
-              }
-            }
-          } else {
-            // Source not in tree, decrease its layer
+            // Source in tree, target not in tree
+            // slack > 0 means target is too "high" relative to source
+            // Need to DECREASE non-tree layers to bring target closer to source
             for node in self.nodes {
               if !in_tree.get(node.id).unwrap_or(false) {
                 node.layer = node.layer - min_slack
+              }
+            }
+          } else {
+            // Source not in tree, target in tree
+            // slack > 0 means source is too "low" relative to target
+            // Need to INCREASE non-tree layers to bring source closer to target
+            for node in self.nodes {
+              if !in_tree.get(node.id).unwrap_or(false) {
+                node.layer = node.layer + min_slack
               }
             }
           }
