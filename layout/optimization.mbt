@@ -394,5 +394,3 @@ fn get_endpoint_side(
     "none"
   }
 }
-
-

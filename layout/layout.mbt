@@ -139,23 +139,16 @@ pub fn layout(
   // Phase 4: Apply near positioning
   apply_near_positioning(graph, config)
 
-  // Phase 5: Post-processing for edge routes
-  // Re-route edges that cross through unrelated nodes
-  reroute_crossing_edges(graph)
+  // Phase 5: Unified Edge Routing
+  // Route all edges using the unified router (single pass, handles all constraints)
+  route_all_edges(graph, config, direction)
   // Normalize coordinates to non-negative
   normalize_coordinates(graph)
-  // Optimize edge routes by removing unnecessary bends (before perpendicularity fixes)
-  eliminate_unnecessary_bends(graph)
-  // Perpendicularity fix
-  fix_perpendicularity(graph)
-  // Clean up any S-shapes or redundant points created by perpendicularity fix
-  eliminate_unnecessary_bends(graph)
-  // Separate parallel edges (bidirectional duplicates)
-  separate_parallel_edges(graph)
-  // Fix perpendicularity again after separation
-  fix_perpendicularity(graph)
-  // Final cleanup
-  eliminate_unnecessary_bends(graph)
+  // Compress routes to remove collinear waypoints
+  compress_all_routes(graph)
+  // Fix endpoint approach directions (must be after compression!)
+  fix_all_endpoint_approaches(graph)
+  // Note: fix_wrong_approach_direction disabled - causes more issues than it solves
 
   // Phase 6: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)

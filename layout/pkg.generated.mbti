@@ -20,6 +20,10 @@ pub fn assign_ports(@graph.Graph, Array[Array[String]], LayoutConfig) -> Unit
 
 pub fn break_cycles(@graph.Graph) -> CycleBreakResult
 
+pub fn cleanup_tiny_endpoint_segments(@graph.Graph) -> Unit
+
+pub fn compress_all_routes(@graph.Graph) -> Unit
+
 pub fn compute_container_ranks(@graph.Graph, Array[Array[String]]) -> ContainerRanks
 
 pub fn copy_layers(Array[Array[String]]) -> Array[Array[String]]
@@ -40,7 +44,11 @@ pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.
 
 pub fn fit_container_padding(CoordinateResult, @graph.Graph, Array[Array[String]], Double, Bool) -> Unit
 
+pub fn fix_all_endpoint_approaches(@graph.Graph) -> Unit
+
 pub fn fix_perpendicularity(@graph.Graph) -> Unit
+
+pub fn fix_wrong_approach_direction(@graph.Graph) -> Unit
 
 pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
 
@@ -69,6 +77,8 @@ pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> Cr
 pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
 
 pub fn reroute_crossing_edges(@graph.Graph) -> Unit
+
+pub fn route_all_edges(@graph.Graph, LayoutConfig, Direction) -> Unit
 
 pub fn route_edges_with_ports(@graph.Graph, LayoutConfig, VirtualNodeResult) -> Unit
 
