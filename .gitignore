@@ -6,3 +6,5 @@ web/*.wasm
 web/examples
 TODO.md
 .playwright-mcp
+AGENTS.md
+CLAUDE.md
