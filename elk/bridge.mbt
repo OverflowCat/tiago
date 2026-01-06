@@ -1,0 +1,254 @@
+///|
+/// ELK.js Port for MoonBit - Bridge Functions
+/// Convert between existing @graph types and ELK types
+
+// ============================================================================
+// Convert Graph -> ElkNode
+// ============================================================================
+
+///|
+/// Convert a D2 Graph to an ELK graph structure
+pub fn from_graph(graph : @graph.Graph) -> ElkNode {
+  // Create root ELK node
+  let root = ElkNode::new(graph.root.id)
+
+  // Set root properties
+  match graph.root.box {
+    Some(b) => {
+      root.x = b.x
+      root.y = b.y
+      root.width = b.width
+      root.height = b.height
+    }
+    None => ()
+  }
+
+  // Add label if present
+  if graph.root.label.length() > 0 {
+    root.add_label(ElkLabel::new(graph.root.id + "_label", graph.root.label))
+  }
+
+  // Convert all objects to children
+  for obj in graph.objects {
+    root.add_child(convert_object(obj))
+  }
+
+  // Convert all edges
+  for edge in graph.edges {
+    root.add_edge(convert_edge(edge))
+  }
+
+  // Handle nested children from root
+  for child in graph.root.children {
+    root.add_child(convert_object(child))
+  }
+  root
+}
+
+///|
+/// Convert a D2 Object to an ElkNode
+fn convert_object(obj : @graph.Object) -> ElkNode {
+  let node = ElkNode::new(obj.id)
+
+  // Set size/position from box
+  match obj.box {
+    Some(b) => {
+      node.x = b.x
+      node.y = b.y
+      node.width = b.width
+      node.height = b.height
+    }
+    None => {
+      // Default size
+      node.width = 100.0
+      node.height = 60.0
+    }
+  }
+
+  // Add label
+  if obj.label.length() > 0 {
+    let label = ElkLabel::new(obj.id + "_label", obj.label)
+    // Estimate label size
+    label.width = obj.label.length().to_double() * 8.0
+    label.height = 14.0
+    node.add_label(label)
+  }
+
+  // Convert children recursively
+  for child in obj.children {
+    node.add_child(convert_object(child))
+  }
+  node
+}
+
+///|
+/// Convert a D2 Edge to an ElkEdge
+fn convert_edge(edge : @graph.Edge) -> ElkEdge {
+  let elk_edge = ElkEdge::new(
+    "e" + edge.index.to_string(),
+    edge.src_id,
+    edge.dst_id,
+  )
+
+  // Add label if present
+  if edge.label.length() > 0 {
+    let label = ElkLabel::new(
+      "e" + edge.index.to_string() + "_label",
+      edge.label,
+    )
+    label.width = edge.label.length().to_double() * 8.0
+    label.height = 14.0
+    elk_edge.labels.push(label)
+  }
+
+  // Convert route to sections if present
+  if edge.route.length() >= 2 {
+    let section = ElkEdgeSection::new("s" + edge.index.to_string())
+    section.start_point = ElkPoint::new(edge.route[0].x, edge.route[0].y)
+    let last_idx = edge.route.length() - 1
+    section.end_point = ElkPoint::new(
+      edge.route[last_idx].x,
+      edge.route[last_idx].y,
+    )
+
+    // Add intermediate points as bends
+    for i = 1; i < edge.route.length() - 1; i = i + 1 {
+      section.bend_points.push(ElkPoint::new(edge.route[i].x, edge.route[i].y))
+    }
+    elk_edge.sections.push(section)
+  }
+  elk_edge
+}
+
+// ============================================================================
+// Convert ElkNode -> Graph (apply layout results)
+// ============================================================================
+
+///|
+/// Apply ELK layout results back to a D2 Graph
+pub fn to_graph(elk_node : ElkNode, graph : @graph.Graph) -> Unit {
+  // Apply root size
+  graph.root.box = Some(
+    @graph.Box::new(elk_node.x, elk_node.y, elk_node.width, elk_node.height),
+  )
+
+  // Apply positions to all objects
+  for obj in graph.objects {
+    apply_node_position(elk_node, obj)
+  }
+
+  // Apply positions to root's children
+  for child in graph.root.children {
+    apply_node_position(elk_node, child)
+  }
+
+  // Apply routes to all edges
+  for edge in graph.edges {
+    apply_edge_route(elk_node, edge)
+  }
+}
+
+///|
+/// Find and apply position from ELK node to D2 object
+fn apply_node_position(elk_node : ElkNode, obj : @graph.Object) -> Unit {
+  // Try to find matching ELK node
+  match elk_node.find_node(obj.id) {
+    Some(elk) => {
+      obj.box = Some(@graph.Box::new(elk.x, elk.y, elk.width, elk.height))
+
+      // Recursively apply to children
+      for child in obj.children {
+        apply_node_position(elk_node, child)
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+/// Find and apply route from ELK edge to D2 edge
+fn apply_edge_route(elk_node : ElkNode, edge : @graph.Edge) -> Unit {
+  let edge_id = "e" + edge.index.to_string()
+
+  // Search all edges in the ELK graph
+  for elk_edge in elk_node.all_edges() {
+    if elk_edge.id == edge_id {
+      // Clear existing route
+      edge.route.clear()
+
+      // Apply sections as route points
+      for section in elk_edge.sections {
+        // Add start point
+        edge.route.push(
+          @graph.Point::new(section.start_point.x, section.start_point.y),
+        )
+
+        // Add bend points
+        for bend in section.bend_points {
+          edge.route.push(@graph.Point::new(bend.x, bend.y))
+        }
+
+        // Add end point
+        edge.route.push(
+          @graph.Point::new(section.end_point.x, section.end_point.y),
+        )
+      }
+
+      // Apply label position if present
+      if elk_edge.labels.length() > 0 {
+        let label = elk_edge.labels[0]
+        edge.label_box = Some(
+          @graph.Box::new(label.x, label.y, label.width, label.height),
+        )
+      }
+      return
+    }
+  }
+}
+
+// ============================================================================
+// Port Conversion
+// ============================================================================
+
+///|
+/// Convert ELK PortSide to D2 PortSide
+pub fn elk_port_side_to_graph(side : PortSide) -> @graph.PortSide {
+  match side {
+    North => @graph.Top
+    South => @graph.Bottom
+    East => @graph.Right
+    West => @graph.Left
+    Undefined => @graph.Top
+  } // Default
+}
+
+///|
+/// Convert D2 PortSide to ELK PortSide
+pub fn graph_port_side_to_elk(side : @graph.PortSide) -> PortSide {
+  match side {
+    @graph.Top => North
+    @graph.Bottom => South
+    @graph.Left => West
+    @graph.Right => East
+  }
+}
+
+// ============================================================================
+// High-Level Layout Function
+// ============================================================================
+
+///|
+/// Layout a D2 graph using ELK algorithms
+pub fn layout_d2_graph(
+  graph : @graph.Graph,
+  options : LayoutOptions,
+) -> Unit raise LayoutError {
+  // Convert to ELK format
+  let elk_graph = from_graph(graph)
+
+  // Run ELK layout
+  layout(elk_graph, options)
+
+  // Apply results back
+  to_graph(elk_graph, graph)
+}

@@ -1,0 +1,720 @@
+///|
+/// ELK Layered Algorithm - Main Coordinator
+/// Implements the Sugiyama-style layered layout algorithm with 5 phases:
+/// 1. Cycle Breaking
+/// 2. Layer Assignment
+/// 3. Crossing Minimization
+/// 4. Node Placement
+/// 5. Edge Routing
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+///|
+fn find_node_index(nodes : Array[LNode], id : String) -> Int {
+  for i, n in nodes {
+    if n.id == id {
+      return i
+    }
+  }
+  -1
+}
+
+///|
+fn find_edge_index(edges : Array[LEdge], id : String) -> Int {
+  for i, e in edges {
+    if e.id == id {
+      return i
+    }
+  }
+  -1
+}
+
+///|
+fn max_double(a : Double, b : Double) -> Double {
+  if a > b {
+    a
+  } else {
+    b
+  }
+}
+
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
+///|
+/// Execute the layered layout algorithm
+pub fn layout(
+  graph : @elk.ElkNode,
+  options : @elk.LayoutOptions,
+) -> Unit raise @elk.LayoutError {
+  // Convert ElkNode to internal LGraph representation
+  let lgraph = LGraph::from_elk_node(graph)
+
+  // Get options with defaults
+  let direction = match options.direction {
+    Some(d) => d
+    None => @elk.Down
+  }
+  let thoroughness = match options.thoroughness {
+    Some(t) => t
+    None => 7
+  }
+
+  // Phase 1: Cycle Breaking
+  let cycle_strategy = match options.cycle_breaking_strategy {
+    Some(s) => s
+    None => @elk.GreedyModelOrder
+  }
+  break_cycles(lgraph, cycle_strategy)
+
+  // Phase 2: Layer Assignment
+  let layer_strategy = match options.layering_strategy {
+    Some(s) => s
+    None => @elk.LongestPath
+  }
+  assign_layers(lgraph, layer_strategy)
+
+  // Initialize layer structure
+  lgraph.initialize_layers()
+
+  // Insert dummy nodes for long edges
+  insert_dummy_nodes(lgraph)
+
+  // Phase 3: Crossing Minimization
+  let crossing_strategy = match options.crossing_min_strategy {
+    Some(s) => s
+    None => @elk.LayerSweep
+  }
+  minimize_crossings(lgraph, crossing_strategy, thoroughness)
+
+  // Phase 4: Node Placement
+  let placement_strategy = match options.node_placement_strategy {
+    Some(s) => s
+    None => @elk.Simple
+  }
+  place_nodes(lgraph, options, placement_strategy, direction)
+
+  // Phase 5: Edge Routing
+  let routing = match options.edge_routing {
+    Some(r) => r
+    None => @elk.Orthogonal
+  }
+  route_edges(lgraph, routing, direction)
+
+  // Restore reversed edges
+  restore_reversed_edges(lgraph)
+
+  // Remove dummy nodes and create final edge routes
+  remove_dummy_nodes(lgraph)
+
+  // Apply results back to ElkNode
+  lgraph.to_elk_node(graph)
+}
+
+// ============================================================================
+// Phase 1: Cycle Breaking
+// ============================================================================
+
+///|
+/// Break cycles in the graph by reversing certain edges
+fn break_cycles(graph : LGraph, strategy : @elk.CycleBreakingStrategy) -> Unit {
+  match strategy {
+    @elk.GreedyCycleBreaker | @elk.GreedyModelOrder =>
+      greedy_cycle_breaker(graph)
+    @elk.DepthFirst => dfs_cycle_breaker(graph)
+    @elk.InteractiveCycleBreaker | @elk.ModelOrder =>
+      greedy_cycle_breaker(graph)
+  }
+}
+
+///|
+/// Greedy cycle breaker - based on ELK's GreedyCycleBreaker
+/// Uses out-degree vs in-degree heuristic to select edges to reverse
+fn greedy_cycle_breaker(graph : LGraph) -> Unit {
+  // Create working copies of degree counts
+  let in_degree : Map[String, Int] = {}
+  let out_degree : Map[String, Int] = {}
+  let remaining_nodes : Array[LNode] = []
+  for node in graph.nodes {
+    in_degree[node.id] = node.in_degree()
+    out_degree[node.id] = node.out_degree()
+    remaining_nodes.push(node)
+  }
+
+  // Track node order (for determining edge direction)
+  let node_order : Map[String, Int] = {}
+  let mut order_index = 0
+
+  // Process nodes until all are ordered
+  while remaining_nodes.length() > 0 {
+    // Find sinks (nodes with out_degree == 0 in remaining graph)
+    let sinks = remaining_nodes.filter(fn(n) {
+      out_degree.get(n.id).unwrap_or(0) == 0
+    })
+
+    // Find sources (nodes with in_degree == 0 in remaining graph)
+    let sources = remaining_nodes.filter(fn(n) {
+      in_degree.get(n.id).unwrap_or(0) == 0
+    })
+
+    // Prefer sources, then sinks, then highest out-in difference
+    let node = if sources.length() > 0 {
+      sources[0]
+    } else if sinks.length() > 0 {
+      sinks[0]
+    } else {
+      // Find node with maximum out_degree - in_degree
+      let mut best_node : LNode? = None
+      let mut best_diff = @int.min_value
+      for n in remaining_nodes {
+        let diff = out_degree.get(n.id).unwrap_or(0) -
+          in_degree.get(n.id).unwrap_or(0)
+        if diff > best_diff {
+          best_diff = diff
+          best_node = Some(n)
+        }
+      }
+      match best_node {
+        Some(n) => n
+        None => remaining_nodes[0]
+      }
+    }
+
+    // Assign order to this node
+    node_order[node.id] = order_index
+    order_index += 1
+
+    // Remove node from remaining and update degrees
+    let idx = find_node_index(remaining_nodes, node.id)
+    if idx >= 0 {
+      remaining_nodes.remove(idx) |> ignore
+    }
+
+    // Update degrees of neighbors
+    for edge in node.outgoing_edges {
+      let target_id = edge.target.id
+      in_degree[target_id] = in_degree.get(target_id).unwrap_or(1) - 1
+    }
+    for edge in node.incoming_edges {
+      let source_id = edge.source.id
+      out_degree[source_id] = out_degree.get(source_id).unwrap_or(1) - 1
+    }
+  }
+
+  // Reverse edges that go against the order (back edges)
+  for edge in graph.edges {
+    let source_order = node_order.get(edge.source.id).unwrap_or(0)
+    let target_order = node_order.get(edge.target.id).unwrap_or(0)
+    if source_order > target_order {
+      edge.reverse()
+    }
+  }
+}
+
+///|
+/// DFS-based cycle breaker
+fn dfs_cycle_breaker(graph : LGraph) -> Unit {
+  let visited : Map[String, Bool] = {}
+  let in_stack : Map[String, Bool] = {}
+  fn dfs(node : LNode) -> Unit {
+    visited[node.id] = true
+    in_stack[node.id] = true
+    for edge in node.outgoing_edges {
+      let target = edge.target
+      if in_stack.get(target.id).unwrap_or(false) {
+        // Back edge found - reverse it
+        edge.reverse()
+      } else if !visited.get(target.id).unwrap_or(false) {
+        dfs(target)
+      }
+    }
+    in_stack[node.id] = false
+  }
+
+  // Start DFS from each unvisited node
+  for node in graph.nodes {
+    if !visited.get(node.id).unwrap_or(false) {
+      dfs(node)
+    }
+  }
+}
+
+// ============================================================================
+// Phase 2: Layer Assignment
+// ============================================================================
+
+///|
+/// Assign nodes to layers
+fn assign_layers(graph : LGraph, strategy : @elk.LayeringStrategy) -> Unit {
+  match strategy {
+    @elk.LongestPath => longest_path_layering(graph)
+    @elk.NetworkSimplex => network_simplex_layering(graph)
+    _ => longest_path_layering(graph) // Default
+  }
+}
+
+///|
+/// Longest path layering - simple and effective
+fn longest_path_layering(graph : LGraph) -> Unit {
+  // First pass: assign layers based on longest path from sources
+  let layer : Map[String, Int] = {}
+
+  // Find sources (nodes with no incoming edges)
+  let sources : Array[LNode] = []
+  for node in graph.nodes {
+    if node.in_degree() == 0 {
+      sources.push(node)
+      layer[node.id] = 0
+    }
+  }
+
+  // If no sources, start from all nodes (graph may be cyclic)
+  if sources.is_empty() {
+    for node in graph.nodes {
+      layer[node.id] = 0
+    }
+  }
+
+  // BFS to assign layers
+  let queue = sources.copy()
+  while queue.length() > 0 {
+    let node = queue.remove(0)
+    let node_layer = layer.get(node.id).unwrap_or(0)
+    for edge in node.outgoing_edges {
+      let target = edge.target
+      let target_layer = layer.get(target.id).unwrap_or(-1)
+      let new_layer = node_layer + 1
+      if new_layer > target_layer {
+        layer[target.id] = new_layer
+        // Add to queue if not already processed at this layer
+        if !queue.iter().any(fn(n) { n.id == target.id }) {
+          queue.push(target)
+        }
+      }
+    }
+  }
+
+  // Apply layer assignments
+  for node in graph.nodes {
+    node.layer = layer.get(node.id).unwrap_or(0)
+  }
+}
+
+///|
+/// Network simplex layering (placeholder - uses longest path for now)
+fn network_simplex_layering(graph : LGraph) -> Unit {
+  // TODO: Implement full network simplex
+  // For now, fall back to longest path
+  longest_path_layering(graph)
+}
+
+// ============================================================================
+// Dummy Node Handling
+// ============================================================================
+
+///|
+/// Insert dummy nodes for edges spanning multiple layers
+fn insert_dummy_nodes(graph : LGraph) -> Unit {
+  // Collect long edges
+  let long_edges = graph.get_long_edges()
+  let mut dummy_count = 0
+  for edge in long_edges {
+    let source_layer = edge.source.layer
+    let target_layer = edge.target.layer
+
+    // Skip if not spanning multiple layers
+    if (target_layer - source_layer).abs() <= 1 {
+      continue
+    }
+
+    // Create dummy nodes for each intermediate layer
+    let mut prev_node = edge.source
+    let direction = if target_layer > source_layer { 1 } else { -1 }
+    let mut layer_idx = source_layer + direction
+    while layer_idx != target_layer {
+      // Create dummy node
+      let dummy_id = "dummy_" + dummy_count.to_string()
+      dummy_count += 1
+      let dummy = LNode::new(dummy_id, LongEdgeDummy)
+      dummy.layer = layer_idx
+      dummy.origin_edge = Some(edge.id)
+      dummy.width = 1.0 // Minimal width for dummy
+      dummy.height = 1.0
+
+      // Add to graph
+      graph.nodes.push(dummy)
+
+      // Create edge from prev_node to dummy
+      let edge_to_dummy = LEdge::new(
+        "e_" + prev_node.id + "_" + dummy_id,
+        prev_node,
+        dummy,
+      )
+      edge_to_dummy.original_id = edge.original_id
+      prev_node.outgoing_edges.push(edge_to_dummy)
+      dummy.incoming_edges.push(edge_to_dummy)
+      graph.edges.push(edge_to_dummy)
+      prev_node = dummy
+      layer_idx = layer_idx + direction
+    }
+
+    // Create final edge from last dummy to target
+    let final_edge = LEdge::new(
+      "e_" + prev_node.id + "_" + edge.target.id,
+      prev_node,
+      edge.target,
+    )
+    final_edge.original_id = edge.original_id
+    prev_node.outgoing_edges.push(final_edge)
+    edge.target.incoming_edges.push(final_edge)
+    graph.edges.push(final_edge)
+
+    // Remove original edge from source's outgoing
+    let src_idx = find_edge_index(edge.source.outgoing_edges, edge.id)
+    if src_idx >= 0 {
+      edge.source.outgoing_edges.remove(src_idx) |> ignore
+    }
+
+    // Remove original edge from target's incoming
+    let tgt_idx = find_edge_index(edge.target.incoming_edges, edge.id)
+    if tgt_idx >= 0 {
+      edge.target.incoming_edges.remove(tgt_idx) |> ignore
+    }
+  }
+
+  // Reinitialize layers with dummy nodes
+  graph.initialize_layers()
+}
+
+///|
+/// Remove dummy nodes and reconstruct edge routes
+fn remove_dummy_nodes(graph : LGraph) -> Unit {
+  // Group dummy nodes by their origin edge
+  let dummy_chains : Map[String, Array[LNode]] = {}
+  for node in graph.nodes {
+    if node.node_type is LongEdgeDummy {
+      match node.origin_edge {
+        Some(edge_id) => {
+          if !dummy_chains.contains(edge_id) {
+            dummy_chains[edge_id] = []
+          }
+          match dummy_chains.get(edge_id) {
+            Some(arr) => arr.push(node)
+            None => ()
+          }
+        }
+        None => ()
+      }
+    }
+  }
+
+  // Sort dummy nodes in each chain by layer and create bend points
+  for edge in graph.edges {
+    match edge.original_id {
+      Some(orig_id) =>
+        match dummy_chains.get(orig_id) {
+          Some(dummies) => {
+            // Sort by layer
+            dummies.sort_by(fn(a, b) { a.layer - b.layer })
+            // Add bend points from dummy positions
+            for dummy in dummies {
+              let bend_x = dummy.x + dummy.width / 2.0
+              let bend_y = dummy.y + dummy.height / 2.0
+              edge.bend_points.push(@elk.ElkPoint::new(bend_x, bend_y))
+            }
+          }
+          None => ()
+        }
+      None => ()
+    }
+  }
+
+  // Remove dummy nodes from graph
+  let non_dummy_nodes : Array[LNode] = []
+  for node in graph.nodes {
+    if !node.is_dummy() {
+      non_dummy_nodes.push(node)
+    }
+  }
+  graph.nodes.clear()
+  for node in non_dummy_nodes {
+    graph.nodes.push(node)
+  }
+}
+
+// ============================================================================
+// Phase 3: Crossing Minimization
+// ============================================================================
+
+///|
+/// Minimize edge crossings between layers
+fn minimize_crossings(
+  graph : LGraph,
+  strategy : @elk.CrossingMinimizationStrategy,
+  thoroughness : Int,
+) -> Unit {
+  match strategy {
+    @elk.LayerSweep => layer_sweep_crossing_min(graph, thoroughness)
+    @elk.InteractiveCrossMin | @elk.None => () // No minimization
+  }
+}
+
+///|
+/// Layer sweep crossing minimization with barycenter heuristic
+fn layer_sweep_crossing_min(graph : LGraph, thoroughness : Int) -> Unit {
+  if graph.layers.length() <= 1 {
+    return
+  }
+
+  // Perform multiple sweeps
+  for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
+    // Forward sweep (top to bottom for Down direction)
+    for i = 1; i < graph.layers.length(); i = i + 1 {
+      order_layer_by_barycenter(graph.layers[i], graph.layers[i - 1], true)
+    }
+
+    // Backward sweep (bottom to top)
+    for i = graph.layers.length() - 2; i >= 0; i = i - 1 {
+      order_layer_by_barycenter(graph.layers[i], graph.layers[i + 1], false)
+    }
+  }
+
+  // Update node positions after ordering
+  for layer in graph.layers {
+    for i, node in layer.nodes {
+      node.position = i
+    }
+  }
+}
+
+///|
+/// Order nodes in a layer using barycenter heuristic
+fn order_layer_by_barycenter(
+  layer : LLayer,
+  fixed_layer : LLayer,
+  forward : Bool,
+) -> Unit {
+  // Calculate barycenter for each node
+  let barycenters : Map[String, Double] = {}
+  for node in layer.nodes {
+    let connected_positions : Array[Int] = []
+    if forward {
+      // Use incoming edges (connect to fixed layer above)
+      for edge in node.incoming_edges {
+        let source = edge.source
+        if source.layer == fixed_layer.index {
+          connected_positions.push(source.position)
+        }
+      }
+    } else {
+      // Use outgoing edges (connect to fixed layer below)
+      for edge in node.outgoing_edges {
+        let target = edge.target
+        if target.layer == fixed_layer.index {
+          connected_positions.push(target.position)
+        }
+      }
+    }
+
+    // Calculate barycenter
+    if connected_positions.length() > 0 {
+      let sum = connected_positions.fold(init=0, fn(acc, p) { acc + p })
+      barycenters[node.id] = sum.to_double() /
+        connected_positions.length().to_double()
+    } else {
+      // Keep original position for disconnected nodes
+      barycenters[node.id] = node.position.to_double()
+    }
+  }
+
+  // Sort layer nodes by barycenter
+  layer.nodes.sort_by(fn(a, b) {
+    let bc_a = barycenters.get(a.id).unwrap_or(0.0)
+    let bc_b = barycenters.get(b.id).unwrap_or(0.0)
+    if bc_a < bc_b {
+      -1
+    } else if bc_a > bc_b {
+      1
+    } else {
+      0
+    }
+  })
+}
+
+// ============================================================================
+// Phase 4: Node Placement
+// ============================================================================
+
+///|
+/// Place nodes with final x,y coordinates
+fn place_nodes(
+  graph : LGraph,
+  options : @elk.LayoutOptions,
+  strategy : @elk.NodePlacementStrategy,
+  direction : @elk.LayoutDirection,
+) -> Unit {
+  match strategy {
+    @elk.Simple => simple_node_placement(graph, options, direction)
+    @elk.BrandesKoepf => brandes_koepf_placement(graph, options, direction)
+    _ => simple_node_placement(graph, options, direction)
+  }
+}
+
+///|
+/// Simple node placement - evenly distributed within layers
+fn simple_node_placement(
+  graph : LGraph,
+  options : @elk.LayoutOptions,
+  direction : @elk.LayoutDirection,
+) -> Unit {
+  let node_spacing = options.node_node_spacing.unwrap_or(20.0)
+  let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
+  let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))
+
+  // Determine if horizontal or vertical layout
+  let is_horizontal = direction.is_horizontal()
+
+  // Calculate layer positions
+  let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
+  for layer in graph.layers {
+    // Calculate layer size
+    let mut layer_size = 0.0
+    for node in layer.nodes {
+      layer_size = if is_horizontal {
+        max_double(layer_size, node.height)
+      } else {
+        max_double(layer_size, node.width)
+      }
+    }
+
+    // Position nodes within layer
+    let mut node_offset = if is_horizontal { padding.top } else { padding.left }
+    for node in layer.nodes {
+      if is_horizontal {
+        node.x = layer_offset
+        node.y = node_offset
+        node_offset = node_offset + node.height + node_spacing
+      } else {
+        node.x = node_offset
+        node.y = layer_offset
+        node_offset = node_offset + node.width + node_spacing
+      }
+    }
+    layer_offset = layer_offset + layer_size + layer_spacing
+  }
+
+  // Update graph size
+  let mut max_x = 0.0
+  let mut max_y = 0.0
+  for node in graph.nodes {
+    max_x = max_double(max_x, node.x + node.width)
+    max_y = max_double(max_y, node.y + node.height)
+  }
+  graph.width = max_x + padding.right
+  graph.height = max_y + padding.bottom
+}
+
+///|
+/// Brandes-Koepf placement (simplified version)
+fn brandes_koepf_placement(
+  graph : LGraph,
+  options : @elk.LayoutOptions,
+  direction : @elk.LayoutDirection,
+) -> Unit {
+  // For now, use simple placement as base
+  // TODO: Implement full Brandes-Koepf algorithm
+  simple_node_placement(graph, options, direction)
+}
+
+// ============================================================================
+// Phase 5: Edge Routing
+// ============================================================================
+
+///|
+/// Route edges between nodes
+fn route_edges(
+  graph : LGraph,
+  routing : @elk.EdgeRouting,
+  direction : @elk.LayoutDirection,
+) -> Unit {
+  match routing {
+    @elk.Orthogonal => orthogonal_routing(graph, direction)
+    @elk.Polyline => polyline_routing(graph, direction)
+    @elk.Splines => spline_routing(graph, direction)
+    @elk.Undefined => orthogonal_routing(graph, direction)
+  }
+}
+
+///|
+/// Orthogonal edge routing - strict 90-degree turns
+fn orthogonal_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+  let is_vertical = direction.is_vertical()
+  for edge in graph.edges {
+    let source = edge.source
+    let target = edge.target
+
+    // Clear existing bend points
+    edge.bend_points.clear()
+
+    // Calculate connection points
+    let (src_x, src_y) = if is_vertical {
+      (source.x + source.width / 2.0, source.y + source.height)
+    } else {
+      (source.x + source.width, source.y + source.height / 2.0)
+    }
+    let (tgt_x, tgt_y) = if is_vertical {
+      (target.x + target.width / 2.0, target.y)
+    } else {
+      (target.x, target.y + target.height / 2.0)
+    }
+
+    // For orthogonal routing, we need bend points if nodes aren't aligned
+    if is_vertical {
+      if (src_x - tgt_x).abs() > 1.0 {
+        // Need horizontal segment between layers
+        let mid_y = (src_y + tgt_y) / 2.0
+        edge.bend_points.push(@elk.ElkPoint::new(src_x, mid_y))
+        edge.bend_points.push(@elk.ElkPoint::new(tgt_x, mid_y))
+      }
+    } else if (src_y - tgt_y).abs() > 1.0 {
+      // Need vertical segment between layers
+      let mid_x = (src_x + tgt_x) / 2.0
+      edge.bend_points.push(@elk.ElkPoint::new(mid_x, src_y))
+      edge.bend_points.push(@elk.ElkPoint::new(mid_x, tgt_y))
+    }
+  }
+}
+
+///|
+/// Polyline edge routing - direct connections with bend points
+fn polyline_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+  // For polyline, edges go directly through dummy node positions
+  // Bend points are already set from dummy nodes
+  let _ = graph
+  let _ = direction
+
+}
+
+///|
+/// Spline edge routing (placeholder)
+fn spline_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+  // For now, fall back to polyline
+  polyline_routing(graph, direction)
+}
+
+// ============================================================================
+// Edge Restoration
+// ============================================================================
+
+///|
+/// Restore reversed edges to their original direction
+fn restore_reversed_edges(graph : LGraph) -> Unit {
+  for edge in graph.edges {
+    if edge.reversed {
+      edge.reverse()
+    }
+  }
+}

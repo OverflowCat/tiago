@@ -1,6 +1,7 @@
 {
   "import": [
-    "Milky2018/diago/graph"
+    "Milky2018/diago/graph",
+    "Milky2018/diago/elk"
   ],
   "test-import": [
     "Milky2018/diago/parser",
