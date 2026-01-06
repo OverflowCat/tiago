@@ -636,65 +636,20 @@ pub fn[T : Show] check_forall_filter(
 }
 
 // ============================================================================
-// Lightweight RNG (QuickCheck-free)
-// ============================================================================
-
-///|
-/// Simple Linear Congruential Generator for lightweight randomness.
-/// Uses same parameters as glibc for good statistical properties.
-/// This is QuickCheck-free and has minimal memory overhead.
-pub(all) struct Rng {
-  mut state : UInt64
-}
-
-///|
-pub fn Rng::new(seed : UInt64) -> Rng {
-  { state: seed }
-}
-
-///|
-pub fn Rng::next(self : Rng) -> UInt64 {
-  // LCG parameters (same as glibc)
-  self.state = self.state * 1103515245UL + 12345UL
-  self.state
-}
-
-///|
-pub fn Rng::next_int(self : Rng, max : Int) -> Int {
-  if max <= 0 {
-    return 0
-  }
-  (self.next() % max.reinterpret_as_uint().to_uint64()).to_int()
-}
-
-///|
-pub fn Rng::next_int_range(self : Rng, min : Int, max : Int) -> Int {
-  if max <= min {
-    return min
-  }
-  min + self.next_int(max - min)
-}
-
-///|
-pub fn Rng::next_bool(self : Rng) -> Bool {
-  self.next() % 2UL == 0UL
-}
-
-// ============================================================================
 // QuickCheck-free Property Testing
 // ============================================================================
 
 ///|
 /// Ultra-lightweight property test runner that uses no QuickCheck at all.
-/// Takes a generator function that receives an Rng and iteration index.
+/// Takes a generator function that receives a Rand and iteration index.
 /// This avoids all QuickCheck memory overhead.
 pub fn[T : Show] run_property_test(
-  gen : (Rng, Int) -> T,
+  gen : (@random.Rand, Int) -> T,
   prop : (T) -> Bool,
   iterations? : Int = 100,
-  seed? : UInt64 = 42UL,
 ) -> Unit raise PropTestFailure {
-  let rng = Rng::new(seed)
+  // Use chacha8 with default seed for deterministic, WASM-compatible random
+  let rng = @random.Rand::chacha8()
   for i in 0..<iterations {
     let value = gen(rng, i)
     if not(prop(value)) {

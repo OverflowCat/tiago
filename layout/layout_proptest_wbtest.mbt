@@ -20,13 +20,13 @@
 // ============================================================================
 
 ///|
-/// Generate a random graph using the lightweight Rng (no QuickCheck).
+/// Generate a random graph using @random.Rand (no QuickCheck).
 /// This is memory-efficient for high-iteration property tests.
-fn gen_graph_rng(rng : @proptest.Rng, _idx : Int) -> @graph.Graph {
+fn gen_graph_rng(rng : @random.Rand, _idx : Int) -> @graph.Graph {
   // Random node count (3-10)
-  let node_count = rng.next_int_range(3, 11)
+  let node_count = 3 + rng.int(limit=8)
   // Random edge count - capped at 2x node_count to limit density
-  let edge_count_raw = rng.next_int_range(3, 15)
+  let edge_count_raw = 3 + rng.int(limit=12)
   let edge_count = if edge_count_raw > node_count * 2 {
     node_count * 2
   } else {
@@ -52,8 +52,8 @@ fn gen_graph_rng(rng : @proptest.Rng, _idx : Int) -> @graph.Graph {
   let max_attempts = edge_count * 3
   while edge_idx < edge_count && attempts < max_attempts {
     attempts = attempts + 1
-    let src_idx = rng.next_int(node_count)
-    let dst_idx = rng.next_int(node_count)
+    let src_idx = rng.int(limit=node_count)
+    let dst_idx = rng.int(limit=node_count)
     if src_idx != dst_idx &&
       out_degree[src_idx] < max_degree &&
       in_degree[dst_idx] < max_degree {
@@ -74,16 +74,16 @@ fn gen_graph_rng(rng : @proptest.Rng, _idx : Int) -> @graph.Graph {
 }
 
 ///|
-/// Generate a random graph with edge labels using the lightweight Rng.
+/// Generate a random graph with edge labels using @random.Rand.
 /// Uses smaller graphs (3-5 nodes, up to 6 edges) to reduce memory usage
 /// from edge label positioning, allowing 50 iterations without OOM.
 fn gen_graph_with_edge_labels_rng(
-  rng : @proptest.Rng,
+  rng : @random.Rand,
   _idx : Int,
 ) -> @graph.Graph {
   // Smaller graphs for edge label test due to higher memory usage
-  let node_count = rng.next_int_range(3, 5)
-  let edge_count = rng.next_int_range(2, 4)
+  let node_count = 3 + rng.int(limit=2)
+  let edge_count = 2 + rng.int(limit=2)
   let graph = @graph.Graph::new("test")
 
   // Create nodes
@@ -93,17 +93,17 @@ fn gen_graph_with_edge_labels_rng(
 
   // Create edges with labels
   for i in 0..<edge_count {
-    let src_idx = rng.next_int(node_count)
-    let mut dst_idx = rng.next_int(node_count)
+    let src_idx = rng.int(limit=node_count)
+    let mut dst_idx = rng.int(limit=node_count)
     if dst_idx == src_idx {
       dst_idx = (dst_idx + 1) % node_count
     }
     let edge = @graph.Edge::new(i, "n\{src_idx}", "n\{dst_idx}", false, true)
     // Add random label
-    let label_len = rng.next_int_range(1, 8)
+    let label_len = 1 + rng.int(limit=7)
     let label = StringBuilder::new()
     for _ in 0..<label_len {
-      let c = rng.next_int_range(97, 123)
+      let c = 97 + rng.int(limit=26)
       label.write_char(c.unsafe_to_char())
     }
     edge.label = label.to_string()

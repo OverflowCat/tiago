@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/proptest"
 
+import(
+  "moonbitlang/core/random"
+)
+
 // Values
 pub fn absurd() -> Bool
 
@@ -60,7 +64,7 @@ pub fn prop_and(Bool, Bool) -> Bool
 
 pub fn prop_or(Bool, Bool) -> Bool
 
-pub fn[T : Show] run_property_test((Rng, Int) -> T, (T) -> Bool, iterations? : Int, seed? : UInt64) -> Unit raise PropTestFailure
+pub fn[T : Show] run_property_test((@random.Rand, Int) -> T, (T) -> Bool, iterations? : Int) -> Unit raise PropTestFailure
 
 pub fn shrink_towards(Int, Int) -> Iter[Int]
 
@@ -85,14 +89,6 @@ type PropTestFailure
 pub impl Show for PropTestFailure
 
 // Types and methods
-pub(all) struct Rng {
-  mut state : UInt64
-}
-pub fn Rng::new(UInt64) -> Self
-pub fn Rng::next(Self) -> UInt64
-pub fn Rng::next_bool(Self) -> Bool
-pub fn Rng::next_int(Self, Int) -> Int
-pub fn Rng::next_int_range(Self, Int, Int) -> Int
 
 // Type aliases
 
