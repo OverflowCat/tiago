@@ -290,6 +290,19 @@ fn calculate_parallel_offset(index : Int, group_size : Int) -> Double {
   sign * slot * spacing
 }
 
+///|
+/// Extra length added to endpoint approach segments for parallel edges.
+///
+/// Earlier-routed edges get a larger extra so later edges can route closer to
+/// the endpoint without overlapping.
+fn calculate_parallel_endpoint_extra(index : Int, group_size : Int) -> Double {
+  if group_size <= 1 {
+    return 0.0
+  }
+  let spacing = 4.0
+  (group_size - 1 - index).to_double() * spacing
+}
+
 // ============================================================================
 // Obstacle Avoidance
 // ============================================================================
@@ -621,9 +634,6 @@ fn route_with_astar(
   if compressed.length() >= 2 {
     compressed[0] = src
     compressed[compressed.length() - 1] = dst
-    // Fix final approach direction if snapping changed it
-    fix_endpoint_approach(compressed, dst_side, is_start=false)
-    fix_endpoint_approach(compressed, src_side, is_start=true)
   }
   Some(compressed)
 }
@@ -635,14 +645,14 @@ fn route_with_astar(
 fn fix_endpoint_approach(
   route : Array[@graph.Point],
   side : @graph.PortSide,
+  min_segment_length : Double,
   is_start~ : Bool,
 ) -> Unit {
   if route.length() < 2 {
     return
   }
-  // Ensure final segment is at least this long for perpendicularity test
-  // The test uses tolerance=2.0 and requires dx/dy > tolerance, so we need > 2
-  let min_segment_length = 5.0 // Must be > 2.0 (test tolerance)
+  // Ensure final segment is long enough for perpendicularity tests.
+  // The tests use tolerance=2.0 and require segments > 2px.
   if is_start {
     // Fix the first segment: route[0] → route[1]
     let p0 = route[0]
@@ -1269,6 +1279,8 @@ pub fn route_all_edges(
       }
       // Calculate parallel offset
       let offset = calculate_parallel_offset(i, group_size)
+      let endpoint_extra = calculate_parallel_endpoint_extra(i, group_size)
+      let min_endpoint_segment_length = 5.0 + endpoint_extra
 
       // Combine base obstacles with previously routed edges
       let all_obstacles : Array[@graph.Box] = []
@@ -1303,36 +1315,43 @@ pub fn route_all_edges(
           )
         }
         match maze_route {
-          Some(route) => {
+          Some(route) =>
             for pt in route {
               edge.route.push(pt)
             }
-            // Add this route as a soft obstacle for subsequent parallel edges
-            add_route_as_obstacles(route, route_obstacles, 5.0)
-          }
-          None => {
+          None =>
             // Fallback to simple route even if it intersects
             // (better than no route at all)
             for pt in simple_route {
               edge.route.push(pt)
             }
-            add_route_as_obstacles(simple_route, route_obstacles, 5.0)
-          }
         }
       } else {
         // Simple route is clear, use it
         for pt in simple_route {
           edge.route.push(pt)
         }
-        // Add this route as a soft obstacle for subsequent parallel edges
-        add_route_as_obstacles(simple_route, route_obstacles, 5.0)
       }
 
       // Fix endpoint approach direction for this edge's route
       if edge.route.length() >= 2 {
-        fix_endpoint_approach(edge.route, dst_side, is_start=false)
-        fix_endpoint_approach(edge.route, src_side, is_start=true)
+        fix_endpoint_approach(
+          edge.route,
+          dst_side,
+          min_endpoint_segment_length,
+          is_start=false,
+        )
+        fix_endpoint_approach(
+          edge.route,
+          src_side,
+          min_endpoint_segment_length,
+          is_start=true,
+        )
       }
+
+      // Add this finalized route as a soft obstacle for subsequent parallel edges.
+      // Do this after endpoint fixes so obstacles match the actual segments.
+      add_route_as_obstacles(edge.route, route_obstacles, 5.0)
     }
   }
 

@@ -819,6 +819,11 @@ fn edges_overlap(edge1 : @graph.Edge, edge2 : @graph.Edge) -> Bool {
       let b2 = edge2.route[j + 1]
       // Check if these two segments are too close
       if segments_too_close(a1, a2, b1, b2, min_separation) {
+        println(
+          "parallel edge overlap: \{edge1.src_id}->\{edge1.dst_id}(\{edge1.index}) vs \{edge2.src_id}->\{edge2.dst_id}(\{edge2.index})",
+        )
+        println("edge1 route: \{edge1.route}")
+        println("edge2 route: \{edge2.route}")
         return true
       }
     }
@@ -1428,7 +1433,7 @@ test "property: nodes should not overlap after layout" {
       layout(graph, config, Direction::Down)
       nodes_should_not_overlap(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1440,7 +1445,7 @@ test "property: all nodes have positions after layout" {
       layout(graph, config, Direction::Down)
       all_nodes_have_positions(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1452,7 +1457,7 @@ test "property: all positions are non-negative after layout" {
       layout(graph, config, Direction::Down)
       all_positions_non_negative(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1464,7 +1469,7 @@ test "property: all dimensions are positive after layout" {
       layout(graph, config, Direction::Down)
       all_dimensions_positive(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1476,7 +1481,7 @@ test "property: nodes within canvas bounds after layout" {
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1488,7 +1493,7 @@ test "property: dense graphs - nodes within canvas bounds" {
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1500,7 +1505,7 @@ test "property: bounding box contains all elements" {
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1512,7 +1517,7 @@ test "property: dense graphs - bounding box contains all elements" {
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1524,7 +1529,7 @@ test "property: dense graphs - nodes should not overlap" {
       layout(graph, config, Direction::Down)
       nodes_should_not_overlap(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1564,7 +1569,7 @@ test "property: layout direction does not affect overlap constraint" {
       }
       true
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1577,7 +1582,7 @@ test "property: minimum spacing between nodes (default config)" {
       // With default spacing of 60, aligned nodes should have at least 10 gap
       minimum_spacing_between_nodes(graph, 10.0)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1590,7 +1595,7 @@ test "property: dense graphs - minimum spacing between nodes" {
       // Dense graphs should still maintain minimum spacing
       minimum_spacing_between_nodes(graph, 10.0)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1603,7 +1608,7 @@ test "property: custom spacing is respected" {
       // With 100 spacing, aligned nodes should have at least 20 gap
       minimum_spacing_between_nodes(graph, 20.0)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1615,7 +1620,7 @@ test "property: children inside parent containers" {
       layout(graph, config, Direction::Down)
       children_inside_parent(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1627,7 +1632,7 @@ test "property: siblings do not overlap" {
       layout(graph, config, Direction::Down)
       sibling_no_overlap(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1639,7 +1644,7 @@ test "property: edge endpoints touch nodes" {
       layout(graph, config, Direction::Down)
       edge_endpoints_touch_nodes(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1656,7 +1661,7 @@ test "property: all input nodes are present after layout" {
       layout(graph, config, Direction::Down)
       all_input_nodes_present(node_ids, graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1673,7 +1678,7 @@ test "property: all input edges are present after layout" {
       layout(graph, config, Direction::Down)
       all_input_edges_present(edges, graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1715,7 +1720,7 @@ test "property: layout is deterministic" {
       // Should produce identical results
       deterministic_output(graph1, graph2)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1727,7 +1732,7 @@ test "property: edge labels do not overlap" {
       layout(graph, config, Direction::Down)
       edge_labels_no_overlap(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1739,7 +1744,7 @@ test "property: sql_table edges are clipped to boxes" {
       layout(graph, config, Direction::Down)
       sql_table_edges_clipped_to_boxes(graph) && never_use_diagonal_edges(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1768,7 +1773,7 @@ test "property: edges avoid unrelated nodes" {
       layout(graph, config, Direction::Down)
       edge_avoids_unrelated_nodes(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1780,7 +1785,7 @@ test "property: text fits in container" {
       layout(graph, config, Direction::Down)
       text_fits_container(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1792,7 +1797,7 @@ test "property: no redundant waypoints in edge routes" {
       layout(graph, config, Direction::Down)
       no_redundant_waypoints(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1804,7 +1809,7 @@ test "property: no serpentine routing in edges" {
       layout(graph, config, Direction::Down)
       no_serpentine_routing(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1816,7 +1821,7 @@ test "property: never use diagonal edges" {
       layout(graph, config, Direction::Down)
       never_use_diagonal_edges(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1828,7 +1833,7 @@ test "property: parallel edges are distinguishable" {
       layout(graph, config, Direction::Down)
       parallel_edges_distinguishable(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1840,7 +1845,7 @@ test "property: arrowhead direction matches node position" {
       layout(graph, config, Direction::Down)
       arrowhead_direction_matches_node_position(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1852,7 +1857,7 @@ test "property: edge connects to correct side of node" {
       layout(graph, config, Direction::Down)
       edge_connects_to_correct_side(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1864,7 +1869,7 @@ test "property: cluster contains all members" {
       layout(graph, config, Direction::Down)
       cluster_contains_members(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }
 
@@ -1876,6 +1881,6 @@ test "property: edge perpendicular to node boundary" {
       layout(graph, config, Direction::Down)
       edge_perpendicular_to_node_boundary(graph)
     }),
-    max_success=20,
+    max_success=50,
   )
 }

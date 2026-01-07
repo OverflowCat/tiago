@@ -500,23 +500,13 @@ pub fn[A, B] with_valid_ref(
 ///|
 /// Run a property test and return whether it passed (for use in assertions)
 pub fn[P : @qc.Testable] check_property(prop : P) -> Bool {
-  try {
-    @qc.quick_check(prop, max_success=100)
-    true
-  } catch {
-    _ => false
-  }
+  (try? @qc.quick_check(prop, max_success=100)) is Ok(_)
 }
 
 ///|
 /// Run a property test with a specific number of test cases
 pub fn[P : @qc.Testable] check_property_n(prop : P, n : Int) -> Bool {
-  try {
-    @qc.quick_check(prop, max_success=n)
-    true
-  } catch {
-    _ => false
-  }
+  (try? @qc.quick_check(prop, max_success=n)) is Ok(_)
 }
 
 // ============================================================================
