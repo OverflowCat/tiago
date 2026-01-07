@@ -29,27 +29,72 @@ fn clamp(value : Double, min_val : Double, max_val : Double) -> Double {
 }
 
 ///|
+/// Get parent ID from a dotted object ID (e.g., "users.id" -> "users")
+fn get_parent_id_from_dotted_id(id : String) -> String? {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot <= 0 {
+    return None
+  }
+  let buf = StringBuilder::new()
+  for i = 0; i < last_dot; i = i + 1 {
+    buf.write_char(id[i].to_int().unsafe_to_char())
+  }
+  Some(buf.to_string())
+}
+
+///|
+/// Check if an object is a child of an sql_table (should not participate in ELK layout)
+fn is_sql_table_child(obj : @graph.Object, graph : @graph.Graph) -> Bool {
+  match get_parent_id_from_dotted_id(obj.id) {
+    Some(parent_id) =>
+      match graph.find_object(parent_id) {
+        Some(parent) => parent.shape_type == @graph.SqlTable
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
 /// Convert a D2 Graph to an ELK ElkNode for layout
 fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
   let root = @elk.ElkNode::new("root")
 
-  // Create a map for object ID to ELK node
-  let node_map : Map[String, @elk.ElkNode] = {}
-
   // Convert all objects to ELK nodes
   for obj in graph.objects {
+    // sql_table fields are rendered inline; exclude them from ELK layout
+    if is_sql_table_child(obj, graph) {
+      continue
+    }
     let elk_node = object_to_elk_node(obj, config)
     root.add_child(elk_node)
-    node_map[obj.id] = elk_node
   }
 
   // Convert all edges
   for i, edge in graph.edges {
-    let elk_edge = @elk.ElkEdge::new(
-      "e" + i.to_string(),
-      edge.src_id,
-      edge.dst_id,
-    )
+    // For sql_table field-level connections, ELK should connect the parent tables
+    let src_id = if edge.src_column_index is Some(_) {
+      match get_parent_id_from_dotted_id(edge.src_id) {
+        Some(p) => p
+        None => edge.src_id
+      }
+    } else {
+      edge.src_id
+    }
+    let dst_id = if edge.dst_column_index is Some(_) {
+      match get_parent_id_from_dotted_id(edge.dst_id) {
+        Some(p) => p
+        None => edge.dst_id
+      }
+    } else {
+      edge.dst_id
+    }
+    let elk_edge = @elk.ElkEdge::new("e" + i.to_string(), src_id, dst_id)
     // Add label if present
     if edge.label.length() > 0 {
       let label = @elk.ElkLabel::new("e" + i.to_string() + "_label", edge.label)
@@ -109,9 +154,12 @@ fn object_to_elk_node(
   }
 
   // Handle children for containers
-  for child in obj.children {
-    let elk_child = object_to_elk_node(child, config)
-    elk_node.add_child(elk_child)
+  // sql_table renders children as rows, not nested boxes - keep it as a leaf in ELK.
+  if obj.shape_type != @graph.SqlTable {
+    for child in obj.children {
+      let elk_child = object_to_elk_node(child, config)
+      elk_node.add_child(elk_child)
+    }
   }
   elk_node
 }

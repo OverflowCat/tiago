@@ -325,6 +325,30 @@ fn is_field_of_table(obj_id : String, table_id : String) -> Bool {
 }
 
 ///|
+/// Check if an object ID refers to a field rendered inline inside an sql_table.
+fn is_sql_table_child_id(graph : @graph.Graph, obj_id : String) -> Bool {
+  match get_parent_id_from_field(obj_id) {
+    Some(parent_id) =>
+      match graph.find_object(parent_id) {
+        Some(parent) => parent.shape_type == @graph.SqlTable
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+/// True if this object should be treated as a leaf obstacle during edge routing.
+/// Containers are allowed to be crossed; leaf nodes must be avoided.
+fn is_leaf_obstacle_node(obj : @graph.Object) -> Bool {
+  // sql_table renders children as rows, but the table itself behaves like a leaf node visually.
+  if obj.shape_type == @graph.SqlTable {
+    return true
+  }
+  not(obj.is_container())
+}
+
+///|
 /// Check if a route intersects any obstacle
 fn route_intersects_obstacles(
   route : Array[@graph.Point],
@@ -356,6 +380,16 @@ fn expand_box_by(box : @graph.Box, margin : Double) -> @graph.Box {
     box.width + margin * 2.0,
     box.height + margin * 2.0,
   )
+}
+
+///|
+fn shrink_box_by(box : @graph.Box, margin : Double) -> @graph.Box {
+  let width = box.width - margin * 2.0
+  let height = box.height - margin * 2.0
+  if width <= 0.0 || height <= 0.0 {
+    return box
+  }
+  @graph.Box::new(box.x + margin, box.y + margin, width, height)
 }
 
 ///|
@@ -654,6 +688,28 @@ fn fix_endpoint_approach(
         }
         let new_route : Array[@graph.Point] = [p0, new_p1]
         for i in 1..<route.length() {
+          new_route.push(route[i])
+        }
+        route.clear()
+        for p in new_route {
+          route.push(p)
+        }
+      }
+    }
+    // If we adjusted/inserted the departure segment, ensure we didn't create a
+    // diagonal with the next segment.
+    if route.length() >= 3 {
+      let p1 = route[1]
+      let p2 = route[2]
+      let dx12 = (p2.x - p1.x).abs()
+      let dy12 = (p2.y - p1.y).abs()
+      if dx12 > 1.0 && dy12 > 1.0 {
+        let corner = match side {
+          @graph.Left | @graph.Right => @graph.Point::new(p1.x, p2.y)
+          @graph.Top | @graph.Bottom => @graph.Point::new(p2.x, p1.y)
+        }
+        let new_route : Array[@graph.Point] = [route[0], p1, corner]
+        for i in 2..<route.length() {
           new_route.push(route[i])
         }
         route.clear()
@@ -962,20 +1018,61 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     if edge.src_id == edge.dst_id {
       continue // Skip self-loops
     }
-    let src_obj = graph.find_object(edge.src_id)
-    let dst_obj = graph.find_object(edge.dst_id)
-    guard src_obj is Some(src) else { continue }
-    guard dst_obj is Some(dst) else { continue }
-    guard src.box is Some(src_box) else { continue }
-    guard dst.box is Some(dst_box) else { continue }
+    // Resolve endpoint boxes.
+    // For sql_table field-level edges, connect at the parent table row position.
+    let src_sql = edge.src_column_index is Some(_)
+    let dst_sql = edge.dst_column_index is Some(_)
+    let is_sql_edge = src_sql || dst_sql
+    let (src_box_for_sides, src_sql_info) = if edge.src_column_index
+      is Some(col_idx) {
+      let parent_id = match get_parent_id_from_field(edge.src_id) {
+        Some(p) => p
+        None => continue
+      }
+      let parent = match graph.find_object(parent_id) {
+        Some(p) => p
+        None => continue
+      }
+      guard parent.box is Some(table_box) else { continue }
+      (table_box, Some((table_box, col_idx, parent.children.length())))
+    } else {
+      let src_obj = graph.find_object(edge.src_id)
+      guard src_obj is Some(src) else { continue }
+      guard src.box is Some(src_box) else { continue }
+      (src_box, None)
+    }
+    let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
+      is Some(col_idx) {
+      let parent_id = match get_parent_id_from_field(edge.dst_id) {
+        Some(p) => p
+        None => continue
+      }
+      let parent = match graph.find_object(parent_id) {
+        Some(p) => p
+        None => continue
+      }
+      guard parent.box is Some(table_box) else { continue }
+      (table_box, Some((table_box, col_idx, parent.children.length())))
+    } else {
+      let dst_obj = graph.find_object(edge.dst_id)
+      guard dst_obj is Some(dst) else { continue }
+      guard dst.box is Some(dst_box) else { continue }
+      (dst_box, None)
+    }
 
     // Determine port sides based on relative positions
-    let src_center = src_box.center()
-    let dst_center = dst_box.center()
+    let src_center = src_box_for_sides.center()
+    let dst_center = dst_box_for_sides.center()
     let dx = dst_center.get_x() - src_center.get_x()
     let dy = dst_center.get_y() - src_center.get_y()
-    let (src_side, dst_side) : (@graph.PortSide, @graph.PortSide) = if dy.abs() >
-      dx.abs() {
+    let (src_side, dst_side) : (@graph.PortSide, @graph.PortSide) = if is_sql_edge {
+      // Keep sql_table row connections on left/right sides so they align with rows.
+      if dx >= 0.0 {
+        (@graph.Right, @graph.Left)
+      } else {
+        (@graph.Left, @graph.Right)
+      }
+    } else if dy.abs() > dx.abs() {
       if dy > 0.0 {
         (@graph.Bottom, @graph.Top)
       } else {
@@ -991,20 +1088,48 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     edge.src_port = Some(@graph.Port::new(src_side, 0.5))
     edge.dst_port = Some(@graph.Port::new(dst_side, 0.5))
 
-    // Group by src node+side
-    let src_key = edge.src_id + "_" + port_side_string(src_side)
-    let src_usage = { edge, is_source: true }
-    match port_groups.get(src_key) {
-      Some(arr) => arr.push(src_usage)
-      None => port_groups[src_key] = [src_usage]
+    // For sql_table row connections, set fixed port points immediately.
+    match src_sql_info {
+      Some((table_box, col_idx, num_cols)) => {
+        let is_left_side = src_side == @graph.Left
+        let pt = get_sql_row_anchor_point(
+          table_box, col_idx, num_cols, is_left_side,
+        )
+        if edge.src_port is Some(port) {
+          port.point = Some(pt)
+        }
+      }
+      None => ()
+    }
+    match dst_sql_info {
+      Some((table_box, col_idx, num_cols)) => {
+        let is_left_side = dst_side == @graph.Left
+        let pt = get_sql_row_anchor_point(
+          table_box, col_idx, num_cols, is_left_side,
+        )
+        if edge.dst_port is Some(port) {
+          port.point = Some(pt)
+        }
+      }
+      None => ()
     }
 
-    // Group by dst node+side
-    let dst_key = edge.dst_id + "_" + port_side_string(dst_side)
-    let dst_usage = { edge, is_source: false }
-    match port_groups.get(dst_key) {
-      Some(arr) => arr.push(dst_usage)
-      None => port_groups[dst_key] = [dst_usage]
+    // Group non-sql endpoints by node+side for distribution.
+    if !src_sql {
+      let src_key = edge.src_id + "_" + port_side_string(src_side)
+      let src_usage = { edge, is_source: true }
+      match port_groups.get(src_key) {
+        Some(arr) => arr.push(src_usage)
+        None => port_groups[src_key] = [src_usage]
+      }
+    }
+    if !dst_sql {
+      let dst_key = edge.dst_id + "_" + port_side_string(dst_side)
+      let dst_usage = { edge, is_source: false }
+      match port_groups.get(dst_key) {
+        Some(arr) => arr.push(dst_usage)
+        None => port_groups[dst_key] = [dst_usage]
+      }
     }
   }
 
@@ -1052,20 +1177,24 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
   // Compute absolute port coordinates
   for edge in graph.edges {
     if edge.src_port is Some(src_port) {
-      if graph.find_object(edge.src_id) is Some(obj) {
-        if obj.box is Some(box) {
-          src_port.point = Some(
-            get_port_point_on_side(box, src_port.side, src_port.position),
-          )
+      if src_port.point is None {
+        if graph.find_object(edge.src_id) is Some(obj) {
+          if obj.box is Some(box) {
+            src_port.point = Some(
+              get_port_point_on_side(box, src_port.side, src_port.position),
+            )
+          }
         }
       }
     }
     if edge.dst_port is Some(dst_port) {
-      if graph.find_object(edge.dst_id) is Some(obj) {
-        if obj.box is Some(box) {
-          dst_port.point = Some(
-            get_port_point_on_side(box, dst_port.side, dst_port.position),
-          )
+      if dst_port.point is None {
+        if graph.find_object(edge.dst_id) is Some(obj) {
+          if obj.box is Some(box) {
+            dst_port.point = Some(
+              get_port_point_on_side(box, dst_port.side, dst_port.position),
+            )
+          }
         }
       }
     }
@@ -1118,7 +1247,7 @@ pub fn route_all_edges(
     let group_size = edges.length()
 
     // Collect base obstacles (nodes not involved in any edge of this group)
-    let base_obstacles = collect_obstacles_for_group(graph, edges)
+    let base_obstacles = collect_obstacles_for_group(graph, edges, clearance)
 
     // Track previously routed edges as additional soft obstacles
     let route_obstacles : Array[@graph.Box] = []
@@ -1160,16 +1289,26 @@ pub fn route_all_edges(
         // Note: A* doesn't use the parallel offset directly - it relies on
         // different port positions (from distribute_shared_ports) to find different paths.
         // Applying offset to A* routes would break orthogonality.
-        match
+        let maze_route = route_with_astar(
+          src_point, dst_point, src_side, dst_side, all_obstacles, clearance,
+        )
+        let retry_without_soft_obstacles = edge.src_column_index is Some(_) ||
+          edge.dst_column_index is Some(_)
+        let maze_route = if maze_route is Some(_) ||
+          !retry_without_soft_obstacles {
+          maze_route
+        } else {
           route_with_astar(
-            src_point, dst_point, src_side, dst_side, all_obstacles, clearance,
-          ) {
-          Some(maze_route) => {
-            for pt in maze_route {
+            src_point, dst_point, src_side, dst_side, base_obstacles, clearance,
+          )
+        }
+        match maze_route {
+          Some(route) => {
+            for pt in route {
               edge.route.push(pt)
             }
             // Add this route as a soft obstacle for subsequent parallel edges
-            add_route_as_obstacles(maze_route, route_obstacles, 5.0)
+            add_route_as_obstacles(route, route_obstacles, 5.0)
           }
           None => {
             // Fallback to simple route even if it intersects
@@ -1208,9 +1347,11 @@ pub fn route_all_edges(
 fn collect_obstacles_for_group(
   graph : @graph.Graph,
   edges : Array[@graph.Edge],
+  clearance : Double,
 ) -> Array[@graph.Box] {
   let obstacles : Array[@graph.Box] = []
   let excluded_ids : Array[String] = []
+  let sql_parent_ids : Array[String] = []
   for edge in edges {
     if !excluded_ids.contains(edge.src_id) {
       excluded_ids.push(edge.src_id)
@@ -1218,10 +1359,42 @@ fn collect_obstacles_for_group(
     if !excluded_ids.contains(edge.dst_id) {
       excluded_ids.push(edge.dst_id)
     }
+    // Track parent sql_table boxes for field-level connections.
+    if edge.src_column_index is Some(_) {
+      match get_parent_id_from_field(edge.src_id) {
+        Some(parent_id) =>
+          if !sql_parent_ids.contains(parent_id) {
+            sql_parent_ids.push(parent_id)
+          }
+        None => ()
+      }
+    }
+    if edge.dst_column_index is Some(_) {
+      match get_parent_id_from_field(edge.dst_id) {
+        Some(parent_id) =>
+          if !sql_parent_ids.contains(parent_id) {
+            sql_parent_ids.push(parent_id)
+          }
+        None => ()
+      }
+    }
   }
   for obj in graph.objects {
-    if !excluded_ids.contains(obj.id) {
-      if obj.box is Some(b) {
+    if excluded_ids.contains(obj.id) {
+      continue
+    }
+    // sql_table fields are not rendered as separate boxes; don't treat them as obstacles.
+    if is_sql_table_child_id(graph, obj.id) {
+      continue
+    }
+    // Edges avoid leaf nodes; containers are allowed to be crossed.
+    if !is_leaf_obstacle_node(obj) {
+      continue
+    }
+    if obj.box is Some(b) {
+      if sql_parent_ids.contains(obj.id) {
+        obstacles.push(shrink_box_by(b, clearance))
+      } else {
         obstacles.push(b)
       }
     }
@@ -1236,7 +1409,13 @@ fn add_route_as_obstacles(
   obstacles : Array[@graph.Box],
   thickness : Double,
 ) -> Unit {
-  for i in 0..<(route.length() - 1) {
+  // Avoid blocking future edges from leaving/entering the same endpoints by
+  // skipping the first and last segments.
+  let n = route.length()
+  if n < 4 {
+    return
+  }
+  for i in 1..<(n - 2) {
     let p1 = route[i]
     let p2 = route[i + 1]
     // Create a small box around this segment
@@ -1246,6 +1425,76 @@ fn add_route_as_obstacles(
     let max_y = double_max(p1.y, p2.y) + thickness / 2.0
     obstacles.push(@graph.Box::new(min_x, min_y, max_x - min_x, max_y - min_y))
   }
+}
+
+///|
+/// Compute port info for sql_table field-level connections.
+fn get_sql_edge_port_info(
+  edge : @graph.Edge,
+  graph : @graph.Graph,
+) -> (@graph.Point, @graph.PortSide, @graph.Point, @graph.PortSide)? {
+  // Resolve endpoint boxes used for side decisions.
+  let (src_box_for_sides, src_sql_info) = if edge.src_column_index
+    is Some(col_idx) {
+    let parent_id = match get_parent_id_from_field(edge.src_id) {
+      Some(p) => p
+      None => return None
+    }
+    let parent = match graph.find_object(parent_id) {
+      Some(p) => p
+      None => return None
+    }
+    guard parent.box is Some(table_box) else { return None }
+    (table_box, Some((table_box, col_idx, parent.children.length())))
+  } else {
+    let src_obj = graph.find_object(edge.src_id)
+    guard src_obj is Some(src) else { return None }
+    guard src.box is Some(src_box) else { return None }
+    (src_box, None)
+  }
+  let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
+    is Some(col_idx) {
+    let parent_id = match get_parent_id_from_field(edge.dst_id) {
+      Some(p) => p
+      None => return None
+    }
+    let parent = match graph.find_object(parent_id) {
+      Some(p) => p
+      None => return None
+    }
+    guard parent.box is Some(table_box) else { return None }
+    (table_box, Some((table_box, col_idx, parent.children.length())))
+  } else {
+    let dst_obj = graph.find_object(edge.dst_id)
+    guard dst_obj is Some(dst) else { return None }
+    guard dst.box is Some(dst_box) else { return None }
+    (dst_box, None)
+  }
+  let src_center = src_box_for_sides.center()
+  let dst_center = dst_box_for_sides.center()
+  let dx = dst_center.get_x() - src_center.get_x()
+
+  // Keep sql_table row connections on left/right sides so they align with rows.
+  let (src_side, dst_side) = if dx >= 0.0 {
+    (@graph.Right, @graph.Left)
+  } else {
+    (@graph.Left, @graph.Right)
+  }
+  let src_pt = match src_sql_info {
+    Some((table_box, col_idx, num_cols)) => {
+      let is_left_side = src_side == @graph.Left
+      get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
+    }
+    None => get_port_point_on_side(src_box_for_sides, src_side, 0.5)
+  }
+  let dst_pt = match dst_sql_info {
+    Some((table_box, col_idx, num_cols)) => {
+      let is_left_side = dst_side == @graph.Left
+      get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
+    }
+    None => get_port_point_on_side(dst_box_for_sides, dst_side, 0.5)
+  }
+  Some((src_pt, src_side, dst_pt, dst_side))
 }
 
 ///|
@@ -1263,6 +1512,13 @@ fn get_port_info(
         _ => ()
       }
     _ => ()
+  }
+  // SQL table field-level edges: compute row-anchored ports.
+  if edge.src_column_index is Some(_) || edge.dst_column_index is Some(_) {
+    match get_sql_edge_port_info(edge, graph) {
+      Some(info) => return Some(info)
+      None => ()
+    }
   }
   // Fall back to computing from node boxes
   let src_obj = graph.find_object(edge.src_id)
@@ -1453,14 +1709,46 @@ pub fn fix_all_endpoint_approaches(graph : @graph.Graph) -> Unit {
     if edge.route.length() < 2 {
       continue
     }
+    // sql_table field-level edges use explicit row anchors; don't snap endpoints.
+    if edge.src_column_index is Some(_) || edge.dst_column_index is Some(_) {
+      continue
+    }
     // Fix destination endpoint based on actual approach
-    let dst_obj = graph.find_object(edge.dst_id)
-    if dst_obj is Some(obj) && obj.box is Some(box) {
+    let dst_box = if edge.dst_column_index is Some(_) {
+      match get_parent_id_from_field(edge.dst_id) {
+        Some(parent_id) =>
+          match graph.find_object(parent_id) {
+            Some(obj) => obj.box
+            None => None
+          }
+        None => None
+      }
+    } else {
+      match graph.find_object(edge.dst_id) {
+        Some(obj) => obj.box
+        None => None
+      }
+    }
+    if dst_box is Some(box) {
       fix_endpoint_to_match_approach(edge.route, box, is_start=false)
     }
     // Fix source endpoint based on actual departure
-    let src_obj = graph.find_object(edge.src_id)
-    if src_obj is Some(obj) && obj.box is Some(box) {
+    let src_box = if edge.src_column_index is Some(_) {
+      match get_parent_id_from_field(edge.src_id) {
+        Some(parent_id) =>
+          match graph.find_object(parent_id) {
+            Some(obj) => obj.box
+            None => None
+          }
+        None => None
+      }
+    } else {
+      match graph.find_object(edge.src_id) {
+        Some(obj) => obj.box
+        None => None
+      }
+    }
+    if src_box is Some(box) {
       fix_endpoint_to_match_approach(edge.route, box, is_start=true)
     }
     // Update port sides to match the new endpoints
@@ -1791,8 +2079,22 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     return
   }
   // Update source port
-  let src_obj = graph.find_object(edge.src_id)
-  if src_obj is Some(obj) && obj.box is Some(box) {
+  let src_box = if edge.src_column_index is Some(_) {
+    match get_parent_id_from_field(edge.src_id) {
+      Some(parent_id) =>
+        match graph.find_object(parent_id) {
+          Some(obj) => obj.box
+          None => None
+        }
+      None => None
+    }
+  } else {
+    match graph.find_object(edge.src_id) {
+      Some(obj) => obj.box
+      None => None
+    }
+  }
+  if src_box is Some(box) {
     let p0 = edge.route[0]
     let p1 = edge.route[1]
     let side = infer_side_from_endpoint_position(p0, p1, box, is_start=true)
@@ -1803,8 +2105,22 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     }
   }
   // Update destination port
-  let dst_obj = graph.find_object(edge.dst_id)
-  if dst_obj is Some(obj) && obj.box is Some(box) {
+  let dst_box = if edge.dst_column_index is Some(_) {
+    match get_parent_id_from_field(edge.dst_id) {
+      Some(parent_id) =>
+        match graph.find_object(parent_id) {
+          Some(obj) => obj.box
+          None => None
+        }
+      None => None
+    }
+  } else {
+    match graph.find_object(edge.dst_id) {
+      Some(obj) => obj.box
+      None => None
+    }
+  }
+  if dst_box is Some(box) {
     let pn = edge.route[edge.route.length() - 1]
     let pn_1 = edge.route[edge.route.length() - 2]
     let side = infer_side_from_endpoint_position(pn, pn_1, box, is_start=false)

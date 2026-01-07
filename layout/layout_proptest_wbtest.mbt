@@ -16,100 +16,145 @@
 /// Property-based tests for layout algorithm constraints
 
 // ============================================================================
-// QuickCheck-free Graph Generation (for 50-iteration tests)
+// QuickCheck Graph Generation
 // ============================================================================
 
 ///|
-/// Generate a random graph using @random.Rand (no QuickCheck).
-/// This is memory-efficient for high-iteration property tests.
-fn gen_graph_rng(rng : @random.Rand, _idx : Int) -> @graph.Graph {
-  // Random node count (3-10)
-  let node_count = 3 + rng.int(limit=8)
-  // Random edge count - capped at 2x node_count to limit density
-  let edge_count_raw = 3 + rng.int(limit=12)
-  let edge_count = if edge_count_raw > node_count * 2 {
-    node_count * 2
-  } else {
-    edge_count_raw
-  }
-  let graph = @graph.Graph::new("test")
-
-  // Create nodes with simple IDs
-  for i in 0..<node_count {
-    let id = "n\{i}"
-    let label = "Node\{i}"
-    graph.add_object(@graph.Object::with_label(id, label))
-  }
-
-  // Track degrees to limit connectivity
-  let out_degree : Array[Int] = Array::make(node_count, 0)
-  let in_degree : Array[Int] = Array::make(node_count, 0)
-  let max_degree = 4
-
-  // Create edges with degree limits
-  let mut edge_idx = 0
-  let mut attempts = 0
-  let max_attempts = edge_count * 3
-  while edge_idx < edge_count && attempts < max_attempts {
-    attempts = attempts + 1
-    let src_idx = rng.int(limit=node_count)
-    let dst_idx = rng.int(limit=node_count)
-    if src_idx != dst_idx &&
-      out_degree[src_idx] < max_degree &&
-      in_degree[dst_idx] < max_degree {
-      let edge = @graph.Edge::new(
-        edge_idx,
-        "n\{src_idx}",
-        "n\{dst_idx}",
-        false,
-        true,
-      )
-      graph.add_edge(edge)
-      out_degree[src_idx] = out_degree[src_idx] + 1
-      in_degree[dst_idx] = in_degree[dst_idx] + 1
-      edge_idx = edge_idx + 1
+/// Generate a random graph for layout property tests.
+fn gen_graph() -> @qc.Gen[@graph.Graph] {
+  @qc.Gen::new(fn(_size, rs) {
+    // Random node count (3-10)
+    let node_count = 3 + rs.next_int().abs() % 8
+    // Random edge count - capped at 2x node_count to limit density
+    let edge_count_raw = 3 + rs.next_int().abs() % 12
+    let edge_count = if edge_count_raw > node_count * 2 {
+      node_count * 2
+    } else {
+      edge_count_raw
     }
-  }
-  graph
+    let graph = @graph.Graph::new("test")
+
+    // Create nodes with simple IDs
+    for i in 0..<node_count {
+      let id = "n\{i}"
+      let label = "Node\{i}"
+      graph.add_object(@graph.Object::with_label(id, label))
+    }
+
+    // Track degrees to limit connectivity
+    let out_degree : Array[Int] = Array::make(node_count, 0)
+    let in_degree : Array[Int] = Array::make(node_count, 0)
+    let max_degree = 4
+
+    // Create edges with degree limits
+    let mut edge_idx = 0
+    let mut attempts = 0
+    let max_attempts = edge_count * 3
+    while edge_idx < edge_count && attempts < max_attempts {
+      attempts = attempts + 1
+      let src_idx = rs.next_int().abs() % node_count
+      let dst_idx = rs.next_int().abs() % node_count
+      if src_idx != dst_idx &&
+        out_degree[src_idx] < max_degree &&
+        in_degree[dst_idx] < max_degree {
+        let edge = @graph.Edge::new(
+          edge_idx,
+          "n\{src_idx}",
+          "n\{dst_idx}",
+          false,
+          true,
+        )
+        graph.add_edge(edge)
+        out_degree[src_idx] = out_degree[src_idx] + 1
+        in_degree[dst_idx] = in_degree[dst_idx] + 1
+        edge_idx = edge_idx + 1
+      }
+    }
+    graph
+  })
 }
 
 ///|
-/// Generate a random graph with edge labels using @random.Rand.
-/// Uses smaller graphs (3-5 nodes, up to 6 edges) to reduce memory usage
-/// from edge label positioning, allowing 50 iterations without OOM.
-fn gen_graph_with_edge_labels_rng(
-  rng : @random.Rand,
-  _idx : Int,
-) -> @graph.Graph {
-  // Smaller graphs for edge label test due to higher memory usage
-  let node_count = 3 + rng.int(limit=2)
-  let edge_count = 2 + rng.int(limit=2)
-  let graph = @graph.Graph::new("test")
+/// Generate a random graph with edge labels.
+/// Uses smaller graphs to keep runtime/memory bounded.
+fn gen_graph_with_edge_labels() -> @qc.Gen[@graph.Graph] {
+  @qc.Gen::new(fn(_size, rs) {
+    // Smaller graphs for edge label test due to higher memory usage
+    let node_count = 3 + rs.next_int().abs() % 2
+    let edge_count = 2 + rs.next_int().abs() % 2
+    let graph = @graph.Graph::new("test")
 
-  // Create nodes
-  for i in 0..<node_count {
-    graph.add_object(@graph.Object::with_label("n\{i}", "Node\{i}"))
-  }
+    // Create nodes
+    for i in 0..<node_count {
+      graph.add_object(@graph.Object::with_label("n\{i}", "Node\{i}"))
+    }
 
-  // Create edges with labels
-  for i in 0..<edge_count {
-    let src_idx = rng.int(limit=node_count)
-    let mut dst_idx = rng.int(limit=node_count)
-    if dst_idx == src_idx {
-      dst_idx = (dst_idx + 1) % node_count
+    // Create edges with labels
+    for i in 0..<edge_count {
+      let src_idx = rs.next_int().abs() % node_count
+      let mut dst_idx = rs.next_int().abs() % node_count
+      if dst_idx == src_idx {
+        dst_idx = (dst_idx + 1) % node_count
+      }
+      let edge = @graph.Edge::new(i, "n\{src_idx}", "n\{dst_idx}", false, true)
+      // Add random label
+      let label_len = 1 + rs.next_int().abs() % 7
+      let label = StringBuilder::new()
+      for _ in 0..<label_len {
+        let c = 97 + rs.next_int().abs() % 26
+        label.write_char(c.unsafe_to_char())
+      }
+      edge.label = label.to_string()
+      graph.add_edge(edge)
     }
-    let edge = @graph.Edge::new(i, "n\{src_idx}", "n\{dst_idx}", false, true)
-    // Add random label
-    let label_len = 1 + rng.int(limit=7)
-    let label = StringBuilder::new()
-    for _ in 0..<label_len {
-      let c = 97 + rng.int(limit=26)
-      label.write_char(c.unsafe_to_char())
+    graph
+  })
+}
+
+///|
+/// Generate a random graph containing sql_table field-level edges.
+/// The edges connect dotted field IDs (e.g., "t0.c1") and set column indices so
+/// routing uses row anchors on the parent tables.
+fn gen_sql_table_graph() -> @qc.Gen[@graph.Graph] {
+  @qc.Gen::new(fn(_size, rs) {
+    let table_count = 2 + rs.next_int().abs() % 2
+    let graph = @graph.Graph::new("test")
+    let table_ids : Array[String] = []
+    let column_counts : Array[Int] = []
+    for i in 0..<table_count {
+      let table_id = "t\{i}"
+      let table = @graph.Object::with_label(table_id, "Table\{i}")
+      table.set_shape_type(@graph.SqlTable)
+      let col_count = 2 + rs.next_int().abs() % 5
+      for j in 0..<col_count {
+        let col_id = table_id + ".c\{j}"
+        let col = @graph.Object::with_label(col_id, "c\{j}")
+        table.add_child(col)
+        // Mirror compiler behavior: sql_table fields exist as normal objects too.
+        graph.add_object(col)
+      }
+      table_ids.push(table_id)
+      column_counts.push(col_count)
+      graph.add_object(table)
     }
-    edge.label = label.to_string()
-    graph.add_edge(edge)
-  }
-  graph
+    let edge_count = 1 + rs.next_int().abs() % 6
+    for i in 0..<edge_count {
+      let src_table = rs.next_int().abs() % table_count
+      let mut dst_table = rs.next_int().abs() % table_count
+      if dst_table == src_table {
+        dst_table = (dst_table + 1) % table_count
+      }
+      let src_col = rs.next_int().abs() % column_counts[src_table]
+      let dst_col = rs.next_int().abs() % column_counts[dst_table]
+      let src_id = table_ids[src_table] + ".c\{src_col}"
+      let dst_id = table_ids[dst_table] + ".c\{dst_col}"
+      let edge = @graph.Edge::new(i, src_id, dst_id, false, true)
+      edge.src_column_index = Some(src_col)
+      edge.dst_column_index = Some(dst_col)
+      graph.add_edge(edge)
+    }
+    graph
+  })
 }
 
 // ============================================================================
@@ -578,6 +623,52 @@ pub fn edge_avoids_unrelated_nodes(graph : @graph.Graph) -> Bool {
         }
         guard obj.box is Some(box) else { continue }
         // Check if line segment intersects the box
+        if line_segment_intersects_box(p1, p2, box) {
+          return false
+        }
+      }
+    }
+  }
+  true
+}
+
+///|
+/// Check that sql_table field-level edges do not pass through any sql_table box.
+/// Endpoints are allowed to touch table boundaries.
+pub fn sql_table_edges_clipped_to_boxes(graph : @graph.Graph) -> Bool {
+  let sql_table_boxes : Array[(String, @graph.Box)] = []
+  for obj in graph.get_objects() {
+    if obj.shape_type != @graph.SqlTable {
+      continue
+    }
+    if obj.box is Some(b) {
+      sql_table_boxes.push((obj.id, b))
+    }
+  }
+  if sql_table_boxes.is_empty() {
+    return true
+  }
+  for edge in graph.get_edges() {
+    if edge.src_column_index is None && edge.dst_column_index is None {
+      continue
+    }
+    if edge.route.length() < 2 {
+      continue
+    }
+    let src_table_id = edge.src_id.split(".").collect()[0].to_string()
+    let dst_table_id = edge.dst_id.split(".").collect()[0].to_string()
+    let last_segment = edge.route.length() - 2
+    for i in 0..<(edge.route.length() - 1) {
+      let p1 = edge.route[i]
+      let p2 = edge.route[i + 1]
+      for entry in sql_table_boxes {
+        let (table_id, box) = entry
+        if table_id == src_table_id && i == 0 {
+          continue
+        }
+        if table_id == dst_table_id && i == last_segment {
+          continue
+        }
         if line_segment_intersects_box(p1, p2, box) {
           return false
         }
@@ -1331,138 +1422,110 @@ pub fn edge_connects_to_correct_side(graph : @graph.Graph) -> Bool {
 
 ///|
 test "property: nodes should not overlap after layout" {
-  // Original property test restored
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       nodes_should_not_overlap(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: all nodes have positions after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       all_nodes_have_positions(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: all positions are non-negative after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       all_positions_non_negative(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: all dimensions are positive after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       all_dimensions_positive(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: nodes within canvas bounds after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: dense graphs - nodes within canvas bounds" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       nodes_within_canvas_bounds(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: bounding box contains all elements" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: dense graphs - bounding box contains all elements" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       bounding_box_contains_all_elements(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: dense graphs - nodes should not overlap" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       nodes_should_not_overlap(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
@@ -1473,9 +1536,8 @@ test "property: layout direction does not affect overlap constraint" {
     Direction::Left,
     Direction::Right,
   ]
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       // Test all directions
       for dir in directions {
@@ -1501,111 +1563,90 @@ test "property: layout direction does not affect overlap constraint" {
         }
       }
       true
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: minimum spacing between nodes (default config)" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       // With default spacing of 60, aligned nodes should have at least 10 gap
       minimum_spacing_between_nodes(graph, 10.0)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: dense graphs - minimum spacing between nodes" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       // Dense graphs should still maintain minimum spacing
       minimum_spacing_between_nodes(graph, 10.0)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: custom spacing is respected" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::with_spacing(100.0, 100.0)
       layout(graph, config, Direction::Down)
       // With 100 spacing, aligned nodes should have at least 20 gap
       minimum_spacing_between_nodes(graph, 20.0)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: children inside parent containers" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       children_inside_parent(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: siblings do not overlap" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       sibling_no_overlap(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: edge endpoints touch nodes" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       edge_endpoints_touch_nodes(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: all input nodes are present after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       // Record node IDs before layout
       let node_ids : Array[String] = []
       for obj in graph.get_objects() {
@@ -1614,18 +1655,15 @@ test "property: all input nodes are present after layout" {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       all_input_nodes_present(node_ids, graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: all input edges are present after layout" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       // Record edges before layout
       let edges : Array[(String, String)] = []
       for edge in graph.get_edges() {
@@ -1634,18 +1672,15 @@ test "property: all input edges are present after layout" {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       all_input_edges_present(edges, graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: layout is deterministic" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       // Create two identical copies
       let graph1 = @graph.Graph::new("test")
       let graph2 = @graph.Graph::new("test")
@@ -1679,28 +1714,33 @@ test "property: layout is deterministic" {
       layout(graph2, config, Direction::Down)
       // Should produce identical results
       deterministic_output(graph1, graph2)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
-// NOTE: Edge labels test uses only 5 iterations due to higher memory usage
-// from edge label positioning (crashes at higher iterations even alone)
 test "property: edge labels do not overlap" {
-  @proptest.run_property_test(
-    gen_graph_with_edge_labels_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph_with_edge_labels(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       edge_labels_no_overlap(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
+}
+
+///|
+test "property: sql_table edges are clipped to boxes" {
+  @qc.quick_check(
+    @qc.forall(gen_sql_table_graph(), fn(graph : @graph.Graph) {
+      let config = LayoutConfig::new()
+      layout(graph, config, Direction::Down)
+      sql_table_edges_clipped_to_boxes(graph) && never_use_diagonal_edges(graph)
+    }),
+    max_success=20,
+  )
 }
 
 // NOTE: The following tests are commented out because they reveal known algorithm limitations
@@ -1722,150 +1762,120 @@ test "property: edge labels do not overlap" {
 
 ///|
 test "property: edges avoid unrelated nodes" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       edge_avoids_unrelated_nodes(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: text fits in container" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       text_fits_container(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: no redundant waypoints in edge routes" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       no_redundant_waypoints(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: no serpentine routing in edges" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       no_serpentine_routing(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: never use diagonal edges" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       never_use_diagonal_edges(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: parallel edges are distinguishable" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       parallel_edges_distinguishable(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: arrowhead direction matches node position" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       arrowhead_direction_matches_node_position(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: edge connects to correct side of node" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       edge_connects_to_correct_side(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: cluster contains all members" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       cluster_contains_members(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }
 
 ///|
 test "property: edge perpendicular to node boundary" {
-  @proptest.run_property_test(
-    gen_graph_rng,
-    fn(graph) {
+  @qc.quick_check(
+    @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
       layout(graph, config, Direction::Down)
       edge_perpendicular_to_node_boundary(graph)
-    },
-    iterations=20,
-  ) catch {
-    err => fail(err.to_string())
-  }
+    }),
+    max_success=20,
+  )
 }

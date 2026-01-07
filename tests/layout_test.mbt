@@ -238,6 +238,291 @@ test "objects ordered by definition" {
   }
 }
 
+///|
+test "sql_table edges connect to correct rows" {
+  let source =
+    #|users: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  name: varchar(255)
+    #|  email: varchar(255)
+    #|  created_at: timestamp
+    #|}
+    #|posts: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  user_id: int
+    #|  title: varchar(255)
+    #|  content: text
+    #|  published: boolean
+    #|}
+    #|comments: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  post_id: int
+    #|  user_id: int
+    #|  body: text
+    #|}
+    #|users.id <-> posts.user_id
+    #|posts.id <-> comments.post_id
+    #|users.id <-> comments.user_id
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let users_box = graph.find_object("users").unwrap().get_box().unwrap()
+  let posts_box = graph.find_object("posts").unwrap().get_box().unwrap()
+  let comments_box = graph.find_object("comments").unwrap().get_box().unwrap()
+
+  // Height: header (26) + rows*18 + bottom padding (8)
+  let eps = 1.0e-6
+  assert_true(
+    (users_box.get_height() - 106.0).abs() <= eps,
+    msg="users table height",
+  )
+  assert_true(
+    (posts_box.get_height() - 124.0).abs() <= eps,
+    msg="posts table height",
+  )
+  assert_true(
+    (comments_box.get_height() - 106.0).abs() <= eps,
+    msg="comments table height",
+  )
+  assert_eq(graph.get_edges().length(), 3)
+  let mut found_users_posts = false
+  let mut found_posts_comments = false
+  let mut found_users_comments = false
+  for edge in graph.get_edges() {
+    let src = edge.get_src_id()
+    let dst = edge.get_dst_id()
+    let route = edge.get_route()
+    guard route.length() >= 2 else { continue }
+    let start = route[0]
+    let end = route[route.length() - 1]
+    if src == "users.id" && dst == "posts.user_id" {
+      found_users_posts = true
+      let exp_start = sql_edge_row_anchor_point(users_box, posts_box, 0, true)
+      let exp_end = sql_edge_row_anchor_point(users_box, posts_box, 1, false)
+      assert_true(
+        (start.get_x() - exp_start.get_x()).abs() <= eps,
+        msg="users.id start x",
+      )
+      assert_true(
+        (start.get_y() - exp_start.get_y()).abs() <= eps,
+        msg="users.id start y",
+      )
+      assert_true(
+        (end.get_x() - exp_end.get_x()).abs() <= eps,
+        msg="posts.user_id end x",
+      )
+      assert_true(
+        (end.get_y() - exp_end.get_y()).abs() <= eps,
+        msg="posts.user_id end y",
+      )
+    } else if src == "posts.id" && dst == "comments.post_id" {
+      found_posts_comments = true
+      let exp_start = sql_edge_row_anchor_point(
+        posts_box, comments_box, 0, true,
+      )
+      let exp_end = sql_edge_row_anchor_point(posts_box, comments_box, 1, false)
+      assert_true(
+        (start.get_x() - exp_start.get_x()).abs() <= eps,
+        msg="posts.id start x",
+      )
+      assert_true(
+        (start.get_y() - exp_start.get_y()).abs() <= eps,
+        msg="posts.id start y",
+      )
+      assert_true(
+        (end.get_x() - exp_end.get_x()).abs() <= eps,
+        msg="comments.post_id end x",
+      )
+      assert_true(
+        (end.get_y() - exp_end.get_y()).abs() <= eps,
+        msg="comments.post_id end y",
+      )
+    } else if src == "users.id" && dst == "comments.user_id" {
+      found_users_comments = true
+      let exp_start = sql_edge_row_anchor_point(
+        users_box, comments_box, 0, true,
+      )
+      let exp_end = sql_edge_row_anchor_point(users_box, comments_box, 2, false)
+      assert_true(
+        (start.get_x() - exp_start.get_x()).abs() <= eps,
+        msg="users.id start (to comments) x",
+      )
+      assert_true(
+        (start.get_y() - exp_start.get_y()).abs() <= eps,
+        msg="users.id start (to comments) y",
+      )
+      assert_true(
+        (end.get_x() - exp_end.get_x()).abs() <= eps,
+        msg="comments.user_id end x",
+      )
+      assert_true(
+        (end.get_y() - exp_end.get_y()).abs() <= eps,
+        msg="comments.user_id end y",
+      )
+    }
+  }
+  assert_true(found_users_posts, msg="missing edge users.id <-> posts.user_id")
+  assert_true(
+    found_posts_comments,
+    msg="missing edge posts.id <-> comments.post_id",
+  )
+  assert_true(
+    found_users_comments,
+    msg="missing edge users.id <-> comments.user_id",
+  )
+}
+
+///|
+test "sql_table edges are clipped to boxes" {
+  let source =
+    #|users: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  name: varchar(255)
+    #|  email: varchar(255)
+    #|  created_at: timestamp
+    #|}
+    #|posts: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  user_id: int
+    #|  title: varchar(255)
+    #|  content: text
+    #|  published: boolean
+    #|}
+    #|comments: {
+    #|  shape: sql_table
+    #|  id: int
+    #|  post_id: int
+    #|  user_id: int
+    #|  body: text
+    #|}
+    #|users.id <-> posts.user_id
+    #|posts.id <-> comments.post_id
+    #|users.id <-> comments.user_id
+  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let header_height = 26.0
+  let line_height = 18.0
+  let bottom_padding = 8.0
+  let sql_table_ids = ["users", "posts", "comments"]
+  let sql_row_boxes : Array[(String, Int, @graph.Box)] = []
+  for table_id in sql_table_ids {
+    let table_box = graph.find_object(table_id).unwrap().get_box().unwrap()
+    let rows_f = (table_box.get_height() - header_height - bottom_padding) /
+      line_height
+    let row_count = (rows_f + 0.5).to_int()
+    for row_idx in 0..<row_count {
+      let y = table_box.get_y() +
+        header_height +
+        line_height * row_idx.to_double()
+      let row_box = @graph.Box::new(
+        table_box.get_x(),
+        y,
+        table_box.get_width(),
+        line_height,
+      )
+      sql_row_boxes.push((table_id, row_idx, row_box))
+    }
+  }
+  for edge in graph.get_edges() {
+    let route = edge.get_route()
+    guard route.length() >= 2 else { continue }
+    for i in 0..<(route.length() - 1) {
+      let p0 = route[i]
+      let p1 = route[i + 1]
+      for row in sql_row_boxes {
+        let (table_id, row_idx, row_box) = row
+        assert_false(
+          line_segment_intersects_box(p0, p1, row_box),
+          msg="edge \{edge.get_src_id()} -> \{edge.get_dst_id()} seg \{i} intersects \{table_id} row \{row_idx}: (\{p0.get_x()},\{p0.get_y()}) -> (\{p1.get_x()},\{p1.get_y()}) vs box (\{row_box.get_x()},\{row_box.get_y()},\{row_box.get_width()},\{row_box.get_height()})",
+        )
+      }
+    }
+  }
+}
+
+///|
+fn sql_row_center_y(table_box : @graph.Box, col_idx : Int) -> Double {
+  let line_height = 18.0
+  let header_height = 26.0
+  table_box.get_y() + header_height + line_height * (col_idx.to_double() + 0.7)
+}
+
+///|
+fn sql_edge_row_anchor_point(
+  src_box : @graph.Box,
+  dst_box : @graph.Box,
+  col_idx : Int,
+  is_source : Bool,
+) -> @graph.Point {
+  let y = if is_source {
+    sql_row_center_y(src_box, col_idx)
+  } else {
+    sql_row_center_y(dst_box, col_idx)
+  }
+  let dx = dst_box.center().get_x() - src_box.center().get_x()
+  let x = if is_source {
+    if dx >= 0.0 {
+      src_box.get_x() + src_box.get_width()
+    } else {
+      src_box.get_x()
+    }
+  } else if dx >= 0.0 {
+    dst_box.get_x()
+  } else {
+    dst_box.get_x() + dst_box.get_width()
+  }
+  @graph.Point::new(x, y)
+}
+
+///|
+fn line_segment_intersects_box(
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  box : @graph.Box,
+) -> Bool {
+  let left = box.get_x()
+  let right = box.get_x() + box.get_width()
+  let top = box.get_y()
+  let bottom = box.get_y() + box.get_height()
+  let p1_x = p1.get_x()
+  let p1_y = p1.get_y()
+  let p2_x = p2.get_x()
+  let p2_y = p2.get_y()
+  let dx = p2_x - p1_x
+  let dy = p2_y - p1_y
+  let mut t_min = 0.0
+  let mut t_max = 1.0
+  if dx != 0.0 {
+    let t1 = (left - p1_x) / dx
+    let t2 = (right - p1_x) / dx
+    let (tx_min, tx_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if tx_min > t_min { tx_min } else { t_min }
+    t_max = if tx_max < t_max { tx_max } else { t_max }
+  } else if p1_x < left || p1_x > right {
+    return false
+  }
+  if dy != 0.0 {
+    let t1 = (top - p1_y) / dy
+    let t2 = (bottom - p1_y) / dy
+    let (ty_min, ty_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if ty_min > t_min { ty_min } else { t_min }
+    t_max = if ty_max < t_max { ty_max } else { t_max }
+  } else if p1_y < top || p1_y > bottom {
+    return false
+  }
+  if t_min > t_max {
+    return false
+  }
+
+  // Only count intersections that occur away from the segment endpoints.
+  let eps = 1.0e-6
+  let inner_min = if t_min > eps { t_min } else { eps }
+  let inner_max = if t_max < 1.0 - eps { t_max } else { 1.0 - eps }
+  inner_min <= inner_max
+}
+
 // =============================================================================
 // Near positioning tests
 // =============================================================================

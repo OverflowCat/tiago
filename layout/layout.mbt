@@ -133,6 +133,10 @@ pub fn layout(
   // Phase 3: Run ELK layout (handles node positioning and edge routing)
   run_elk_layout(graph, config, direction)
 
+  // sql_table fields are rendered inline; position them relative to their table
+  // so downstream phases (overlap fix, routing) don't see them all at (0,0).
+  position_sql_table_children(graph)
+
   // Phase 3.5: Fix any overlapping nodes that ELK may have left
   fix_node_overlaps(graph, config)
 
@@ -187,7 +191,13 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
     // Width: max of label and column labels
     let mut max_width = estimate_label_width(obj.label, config)
     for child in obj.children {
-      let col_width = estimate_label_width(child.label, config)
+      let col_name = get_field_name_from_dotted_id(child.id)
+      let col_text = if child.label.length() > 0 {
+        col_name + ": " + child.label
+      } else {
+        col_name
+      }
+      let col_width = estimate_label_width(col_text, config)
       if col_width > max_width {
         max_width = col_width
       }
@@ -240,6 +250,26 @@ fn estimate_label_width(label : String, config : LayoutConfig) -> Double {
   let padding = 20.0
   let width = label.length().to_double() * char_width + padding
   max(width, config.default_width)
+}
+
+///|
+/// Get the short name from a dotted ID (e.g., "users.id" -> "id")
+fn get_field_name_from_dotted_id(id : String) -> String {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot >= 0 && last_dot < id.length() - 1 {
+    let buf = StringBuilder::new()
+    for i = last_dot + 1; i < id.length(); i = i + 1 {
+      buf.write_char(id[i].to_int().unsafe_to_char())
+    }
+    buf.to_string()
+  } else {
+    id
+  }
 }
 
 ///|
@@ -324,6 +354,33 @@ fn get_sql_row_anchor_point(
   // Return exact edge position - extend_edge_endpoints will add outward extension
   let x = if is_left_side { table_box.x } else { table_box.x + table_box.width }
   @graph.Point::new(x, row_center_y)
+}
+
+///|
+/// Give sql_table column objects stable boxes inside their parent table.
+fn position_sql_table_children(graph : @graph.Graph) -> Unit {
+  let line_height = 18.0 // font_size (14) + 4
+  let header_height = 26.0 // line_height + padding (8)
+  for obj in graph.objects {
+    if obj.shape_type != @graph.SqlTable {
+      continue
+    }
+    guard obj.box is Some(table_box) else { continue }
+    for i, child in obj.children {
+      // Keep in sync with get_sql_row_anchor_point and svg_render.mbt
+      let row_center_y = table_box.y +
+        header_height +
+        line_height * (i.to_double() + 0.7)
+      child.set_box(
+        @graph.Box::new(
+          table_box.x,
+          row_center_y - line_height / 2.0,
+          table_box.width,
+          line_height,
+        ),
+      )
+    }
+  }
 }
 
 ///|
