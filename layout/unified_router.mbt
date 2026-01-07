@@ -125,14 +125,6 @@ fn OrthogonalRouteBuilder::finish(
   self.points
 }
 
-///|
-/// Get the current endpoint of the route being built
-fn OrthogonalRouteBuilder::current_point(
-  self : OrthogonalRouteBuilder,
-) -> @graph.Point {
-  self.points[self.points.length() - 1]
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -308,36 +300,6 @@ fn calculate_parallel_endpoint_extra(index : Int, group_size : Int) -> Double {
 // ============================================================================
 
 ///|
-/// Collect obstacles for routing an edge (all nodes except source and destination)
-fn collect_obstacles(
-  graph : @graph.Graph,
-  src_id : String,
-  dst_id : String,
-) -> Array[@graph.Box] {
-  let obstacles : Array[@graph.Box] = []
-  for obj in graph.objects {
-    // Skip source and destination nodes
-    if obj.id == src_id || obj.id == dst_id {
-      continue
-    }
-    // Skip children of source/destination (for SQL table fields)
-    if is_field_of_table(obj.id, src_id) || is_field_of_table(obj.id, dst_id) {
-      continue
-    }
-    if obj.box is Some(box) {
-      obstacles.push(box)
-    }
-  }
-  obstacles
-}
-
-///|
-/// Check if obj_id is a field of table_id (e.g., "users.id" is field of "users")
-fn is_field_of_table(obj_id : String, table_id : String) -> Bool {
-  obj_id.has_prefix(table_id + ".")
-}
-
-///|
 /// Check if an object ID refers to a field rendered inline inside an sql_table.
 fn is_sql_table_child_id(graph : @graph.Graph, obj_id : String) -> Bool {
   match get_parent_id_from_field(obj_id) {
@@ -461,7 +423,7 @@ priv struct AStarState {
   f : Double
   g : Double
   state : Int
-} derive(Eq, Show)
+} derive(Eq)
 
 ///|
 impl Compare for AStarState with compare(a, b) {
