@@ -72,6 +72,8 @@ pub fn layout_sequence_with_activations(@graph.Object, @graph.Graph, LayoutConfi
 
 pub fn layout_sequence_with_messages(@graph.Object, @graph.Graph, LayoutConfig) -> Unit
 
+pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.Graph, LayoutConfig, Direction) -> Unit
+
 pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> CrossingResult
 
 pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
@@ -134,6 +136,13 @@ pub(all) enum Direction {
 pub impl Eq for Direction
 pub impl Show for Direction
 
+pub struct ElkLayoutEngine {
+  _marker : Unit
+}
+pub fn ElkLayoutEngine::new() -> Self
+pub impl LayoutEngine for ElkLayoutEngine
+pub impl Show for ElkLayoutEngine
+
 pub(all) struct LayerAssignment {
   layers : Map[String, Int]
   layer_count : Int
@@ -174,4 +183,7 @@ pub(all) struct VirtualNodeResult {
 // Type aliases
 
 // Traits
+pub(open) trait LayoutEngine {
+  layout(Self, @graph.Graph, LayoutConfig, Direction) -> Unit
+}
 

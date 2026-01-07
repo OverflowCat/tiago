@@ -81,12 +81,50 @@ pub fn LayoutConfig::with_spacing(
 }
 
 ///|
-/// Perform layout on a graph using ELK algorithms
+/// Layout engine interface.
+pub(open) trait LayoutEngine {
+  layout(Self, @graph.Graph, LayoutConfig, Direction) -> Unit
+}
+
+///|
+/// Default layout engine (ELK + unified routing).
+pub struct ElkLayoutEngine {
+  _marker : Unit
+} derive(Show)
+
+///|
+pub fn ElkLayoutEngine::new() -> ElkLayoutEngine {
+  { _marker: () }
+}
+
+///|
+/// Perform layout on a graph with a specific engine.
+pub fn[Engine : LayoutEngine] layout_with_engine(
+  engine : Engine,
+  graph : @graph.Graph,
+  config : LayoutConfig,
+  direction : Direction,
+) -> Unit {
+  engine.layout(graph, config, direction)
+}
+
+///|
+/// Perform layout on a graph using the default engine.
 pub fn layout(
   graph : @graph.Graph,
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
+  ElkLayoutEngine::new().layout(graph, config, direction)
+}
+
+///|
+pub impl LayoutEngine for ElkLayoutEngine with layout(
+  self,
+  graph,
+  config,
+  direction,
+) {
   // Check if root-level is a sequence diagram
   if is_sequence_diagram(graph.root) && graph.root.is_container() {
     // Use sequence layout for the entire graph
@@ -101,13 +139,13 @@ pub fn layout(
     }
     // Layout layers, scenarios, and steps recursively
     for layer in graph.layers {
-      layout(layer.graph, config, direction)
+      self.layout(layer.graph, config, direction)
     }
     for scenario in graph.scenarios {
-      layout(scenario.graph, config, direction)
+      self.layout(scenario.graph, config, direction)
     }
     for step in graph.steps {
-      layout(step.graph, config, direction)
+      self.layout(step.graph, config, direction)
     }
     return
   }
@@ -159,13 +197,13 @@ pub fn layout(
 
   // Phase 7: Layout layers, scenarios, and steps recursively
   for layer in graph.layers {
-    layout(layer.graph, config, direction)
+    self.layout(layer.graph, config, direction)
   }
   for scenario in graph.scenarios {
-    layout(scenario.graph, config, direction)
+    self.layout(scenario.graph, config, direction)
   }
   for step in graph.steps {
-    layout(step.graph, config, direction)
+    self.layout(step.graph, config, direction)
   }
 }
 
