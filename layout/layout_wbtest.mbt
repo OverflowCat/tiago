@@ -35,7 +35,7 @@ test "layout single object" {
   let obj = @graph.Object::new("a")
   graph.add_object(obj)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Object should have a box
   guard obj.box is Some(box) else { fail("expected box") }
   // Position should be at container padding
@@ -54,7 +54,7 @@ test "layout multiple objects horizontally" {
   graph.add_object(obj_a)
   graph.add_object(obj_b)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Right)
+  ignore(layout(graph, config, Direction::Right))
   // Both should have boxes
   guard obj_a.box is Some(box_a) else { fail("expected box a") }
   guard obj_b.box is Some(box_b) else { fail("expected box b") }
@@ -72,7 +72,7 @@ test "layout edge routing" {
   let edge = @graph.Edge::new(0, "a", "b", false, true)
   graph.add_edge(edge)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Edge should have route points
   assert_eq(edge.route.length(), 2)
 }
@@ -89,7 +89,7 @@ test "layout container with children" {
   graph.add_object(child1)
   graph.add_object(child2)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Parent should have box large enough for children
   guard parent.box is Some(parent_box) else { fail("expected parent box") }
   guard child1.box is Some(child1_box) else { fail("expected child1 box") }
@@ -148,7 +148,7 @@ test "grid layout with rows" {
   }
   graph.add_object(container)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Container should be a grid
   assert_true(container.is_grid_diagram())
   // Children should have boxes
@@ -170,7 +170,7 @@ test "grid layout with columns" {
   }
   graph.add_object(container)
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Should have 2 rows (6 children / 3 columns)
   let (rows, cols, _) = compute_grid_dimensions(container, 6)
   assert_eq(rows, 2)
@@ -515,7 +515,7 @@ test "debug: simple linear graph" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
 
   // Get node boxes
   let objA = graph.find_object("A").unwrap()
@@ -577,7 +577,7 @@ test "debug: cyclic graph with bidirectional edges" {
   graph.add_edge(@graph.Edge::new(4, "I", "5", false, true))
   graph.add_edge(@graph.Edge::new(5, "5", "I", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
 
   // Get node boxes
   let obj5 = graph.find_object("5").unwrap()
@@ -639,7 +639,7 @@ test "root-level sequence diagram layout" {
   assert_true(graph.root.is_container())
   // Run full layout function
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Verify actors have boxes and are arranged horizontally
   guard alice.box is Some(alice_box) else { fail("expected alice box") }
   guard bob.box is Some(bob_box) else { fail("expected bob box") }

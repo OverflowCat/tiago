@@ -173,7 +173,9 @@ fn compile_to_graph(source : String) -> Result[@graph.Graph, String] {
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
-  @layout.layout(graph, config, @layout.Direction::Down)
+  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+    e => return Err("Layout error: \{e}")
+  }
   Ok(graph)
 }
 

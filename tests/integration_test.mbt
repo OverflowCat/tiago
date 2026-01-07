@@ -34,7 +34,9 @@ fn compile(source : String) -> Result[String, String] {
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
-  @layout.layout(graph, config, @layout.Direction::Down)
+  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+    e => return Err("Layout error: \{e}")
+  }
   let render_config = @graph.SvgConfig::new()
   Ok(@graph.render_svg(graph, render_config))
 }
@@ -54,7 +56,9 @@ fn compile_to_graph(
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
-  @layout.layout(graph, config, direction)
+  ignore(@layout.layout(graph, config, direction)) catch {
+    e => return Err("Layout error: \{e}")
+  }
   Ok(graph)
 }
 
@@ -70,7 +74,9 @@ fn compile_ascii(source : String) -> Result[String, String] {
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
-  @layout.layout(graph, config, @layout.Direction::Down)
+  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+    e => return Err("Layout error: \{e}")
+  }
   let render_config = @graph.AsciiConfig::new()
   Ok(@graph.render_ascii(graph, render_config))
 }
@@ -480,7 +486,9 @@ fn compile_with_theme(
     e => return Err("Graph error: \{e}")
   }
   let config = @layout.LayoutConfig::new()
-  @layout.layout(graph, config, @layout.Direction::Down)
+  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+    e => return Err("Layout error: \{e}")
+  }
   let render_config = @graph.SvgConfig::with_theme(theme_id)
   Ok(@graph.render_svg(graph, render_config))
 }

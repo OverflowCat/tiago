@@ -63,7 +63,7 @@ test "edge routing: two nodes vertical - A above B" {
   graph.add_object(b)
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
 
   // Get the edge route
   let edge = graph.edges[0]
@@ -101,7 +101,7 @@ test "edge routing: two nodes horizontal - A left of B" {
   graph.add_object(b)
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Right)
+  ignore(layout(graph, config, Direction::Right))
   let edge = graph.edges[0]
   inspect(edge.route.length() >= 2, content="true")
   let a_box = graph.find_object("A").unwrap().box.unwrap()
@@ -128,7 +128,7 @@ test "edge routing: chain A -> B -> C" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   // Verify all edges have routes
   inspect(graph.edges[0].route.length() >= 2, content="true")
   inspect(graph.edges[1].route.length() >= 2, content="true")
@@ -143,7 +143,7 @@ test "edge routing: cycle A <-> B" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "A", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   let mut errors = 0
   for edge in graph.edges {
     if edge.route.length() >= 2 {
@@ -182,7 +182,7 @@ test "edge routing: same layer - multiple sources to one target" {
   graph.add_edge(@graph.Edge::new(0, "A", "C", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   let mut errors = 0
   for edge in graph.edges {
     if edge.route.length() >= 2 {
@@ -219,7 +219,7 @@ test "edge routing: complex with cycle" {
   graph.add_edge(@graph.Edge::new(1, "N2", "N3", false, true))
   graph.add_edge(@graph.Edge::new(2, "N3", "N1", false, true)) // Back edge
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   let mut errors = 0
   for edge in graph.edges {
     if edge.route.length() >= 2 {
@@ -252,7 +252,7 @@ test "edge routing: parallel edges" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "A", "B", false, true)) // Duplicate
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
 
   // Check that boxes are assigned
   inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
@@ -273,7 +273,7 @@ test "edge routing: bidirectional edges" {
   graph.add_edge(@graph.Edge::new(2, "A", "B", false, true)) // Duplicate
   graph.add_edge(@graph.Edge::new(3, "B", "A", false, true)) // Duplicate
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
 
   // Check that boxes are assigned
   inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
@@ -293,7 +293,7 @@ test "edge routing: diamond pattern" {
   graph.add_edge(@graph.Edge::new(2, "B", "D", false, true))
   graph.add_edge(@graph.Edge::new(3, "C", "D", false, true))
   let config = LayoutConfig::new()
-  layout(graph, config, Direction::Down)
+  ignore(layout(graph, config, Direction::Down))
   let mut errors = 0
   for edge in graph.edges {
     if edge.route.length() >= 2 {

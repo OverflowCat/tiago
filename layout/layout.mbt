@@ -83,7 +83,143 @@ pub fn LayoutConfig::with_spacing(
 ///|
 /// Layout engine interface.
 pub(open) trait LayoutEngine {
-  layout(Self, @graph.Graph, LayoutConfig, Direction) -> Unit
+  layout(Self, @graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+}
+
+///|
+/// Layout result for a single graph.
+///
+/// This is the "contract" between layout engines and renderers: engines compute
+/// geometry without requiring callers to understand how graph internals store
+/// boxes/routes.
+pub struct NodeLayout {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Show)
+
+///|
+pub struct EdgeLayout {
+  points : Array[@graph.Point]
+} derive(Show)
+
+///|
+pub struct LayoutResult {
+  nodes : Map[String, NodeLayout]
+  edges : Map[Int, EdgeLayout]
+  edge_labels : Map[Int, NodeLayout]
+  activation_boxes : Array[(String, NodeLayout)]
+  sequence_notes : Array[(String, String, NodeLayout)]
+  sequence_fragments : Array[@graph.SequenceFragment]
+} derive(Show)
+
+///|
+pub fn NodeLayout::from_box(box : @graph.Box) -> NodeLayout {
+  { x: box.x, y: box.y, width: box.width, height: box.height }
+}
+
+///|
+pub fn NodeLayout::to_box(self : NodeLayout) -> @graph.Box {
+  @graph.Box::new(self.x, self.y, self.width, self.height)
+}
+
+///|
+pub fn LayoutResult::new() -> LayoutResult {
+  {
+    nodes: {},
+    edges: {},
+    edge_labels: {},
+    activation_boxes: [],
+    sequence_notes: [],
+    sequence_fragments: [],
+  }
+}
+
+///|
+pub fn LayoutResult::from_graph(graph : @graph.Graph) -> LayoutResult {
+  let result = LayoutResult::new()
+  for obj in graph.objects {
+    match obj.box {
+      Some(b) => result.nodes[obj.id] = NodeLayout::from_box(b)
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    let points : Array[@graph.Point] = []
+    for p in edge.route {
+      points.push(@graph.Point::new(p.x, p.y))
+    }
+    result.edges[edge.index] = { points, }
+    match edge.get_label_box() {
+      Some(b) => result.edge_labels[edge.index] = NodeLayout::from_box(b)
+      None => ()
+    }
+  }
+  for ab in graph.activation_boxes {
+    result.activation_boxes.push((ab.0, NodeLayout::from_box(ab.1)))
+  }
+  for note in graph.sequence_notes {
+    result.sequence_notes.push((note.0, note.1, NodeLayout::from_box(note.2)))
+  }
+  for fragment in graph.sequence_fragments {
+    result.sequence_fragments.push(fragment)
+  }
+  result
+}
+
+///|
+fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
+  for obj in graph.objects {
+    obj.box = None
+  }
+  for edge in graph.edges {
+    edge.route.clear()
+    edge.label_box = None
+    edge.src_port = None
+    edge.dst_port = None
+  }
+  graph.activation_boxes.clear()
+  graph.sequence_notes.clear()
+  graph.sequence_fragments.clear()
+}
+
+///|
+pub fn LayoutResult::apply_to_graph(
+  self : LayoutResult,
+  graph : @graph.Graph,
+) -> Unit {
+  reset_graph_layout_state(graph)
+  for obj in graph.objects {
+    match self.nodes.get(obj.id) {
+      Some(layout) => obj.set_box(layout.to_box())
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    match self.edges.get(edge.index) {
+      Some(layout) => {
+        edge.route.clear()
+        for p in layout.points {
+          edge.route.push(@graph.Point::new(p.x, p.y))
+        }
+      }
+      None => ()
+    }
+    match self.edge_labels.get(edge.index) {
+      Some(label_layout) => edge.set_label_box(label_layout.to_box())
+      None => ()
+    }
+  }
+  for ab in self.activation_boxes {
+    graph.activation_boxes.push((ab.0, ab.1.to_box()))
+  }
+  for note in self.sequence_notes {
+    graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
+  }
+  for fragment in self.sequence_fragments {
+    graph.sequence_fragments.push(fragment)
+  }
 }
 
 ///|
@@ -104,8 +240,19 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
   graph : @graph.Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> Unit {
-  engine.layout(graph, config, direction)
+) -> LayoutResult raise LayoutError {
+  let result = engine.layout(graph, config, direction)
+  result.apply_to_graph(graph)
+  for layer in graph.layers {
+    ignore(layout_with_engine(engine, layer.graph, config, direction))
+  }
+  for scenario in graph.scenarios {
+    ignore(layout_with_engine(engine, scenario.graph, config, direction))
+  }
+  for step in graph.steps {
+    ignore(layout_with_engine(engine, step.graph, config, direction))
+  }
+  result
 }
 
 ///|
@@ -114,46 +261,29 @@ pub fn layout(
   graph : @graph.Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> Unit {
-  ElkLayoutEngine::new().layout(graph, config, direction)
+) -> LayoutResult raise LayoutError {
+  layout_with_engine(ElkLayoutEngine::new(), graph, config, direction)
 }
 
 ///|
 pub impl LayoutEngine for ElkLayoutEngine with layout(
-  self,
+  _self,
   graph,
   config,
   direction,
-) {
-  // Check if root-level is a sequence diagram
+) -> LayoutResult raise LayoutError {
+  reset_graph_layout_state(graph)
   if is_sequence_diagram(graph.root) && graph.root.is_container() {
-    // Use sequence layout for the entire graph
     let result = layout_sequence_with_activations(graph.root, graph, config)
-    // Store activation boxes in the graph for rendering
     for box in result.activation_boxes {
       graph.activation_boxes.push((box.actor_id, box.get_box()))
     }
-    // Store notes in the graph for rendering
     for note in result.notes {
       graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
     }
-    // Layout layers, scenarios, and steps recursively
-    for layer in graph.layers {
-      self.layout(layer.graph, config, direction)
-    }
-    for scenario in graph.scenarios {
-      self.layout(scenario.graph, config, direction)
-    }
-    for step in graph.steps {
-      self.layout(step.graph, config, direction)
-    }
-    return
+    return LayoutResult::from_graph(graph)
   }
-
-  // Phase 1: Compute sizes for all objects first
   compute_sizes(graph, config)
-
-  // Phase 2: Handle special containers (sequence diagrams, grids)
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
       let result = layout_sequence_with_activations(obj, graph, config)
@@ -167,44 +297,16 @@ pub impl LayoutEngine for ElkLayoutEngine with layout(
       layout_grid(obj, config)
     }
   }
-
-  // Phase 3: Run ELK layout (handles node positioning and edge routing)
   run_elk_layout(graph, config, direction)
-
-  // sql_table fields are rendered inline; position them relative to their table
-  // so downstream phases (overlap fix, routing) don't see them all at (0,0).
   position_sql_table_children(graph)
-
-  // Phase 3.5: Fix any overlapping nodes that ELK may have left
   fix_node_overlaps(graph, config)
-
-  // Phase 4: Apply near positioning
   apply_near_positioning(graph, config)
-
-  // Phase 5: Unified Edge Routing
-  // Route all edges using the unified router (single pass, handles all constraints)
   route_all_edges(graph, config, direction)
-  // Normalize coordinates to non-negative
   normalize_coordinates(graph)
-  // Compress routes to remove collinear waypoints
   compress_all_routes(graph)
-  // Fix endpoint approach directions (must be after compression!)
   fix_all_endpoint_approaches(graph)
-  // Note: fix_wrong_approach_direction disabled - causes more issues than it solves
-
-  // Phase 6: Position edge labels to avoid overlaps
   position_edge_labels(graph, config)
-
-  // Phase 7: Layout layers, scenarios, and steps recursively
-  for layer in graph.layers {
-    self.layout(layer.graph, config, direction)
-  }
-  for scenario in graph.scenarios {
-    self.layout(scenario.graph, config, direction)
-  }
-  for step in graph.steps {
-    self.layout(step.graph, config, direction)
-  }
+  LayoutResult::from_graph(graph)
 }
 
 ///|

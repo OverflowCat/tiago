@@ -1430,7 +1430,9 @@ test "property: nodes should not overlap after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       nodes_should_not_overlap(graph)
     }),
     max_success=50,
@@ -1442,7 +1444,9 @@ test "property: all nodes have positions after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       all_nodes_have_positions(graph)
     }),
     max_success=50,
@@ -1454,7 +1458,9 @@ test "property: all positions are non-negative after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       all_positions_non_negative(graph)
     }),
     max_success=50,
@@ -1466,7 +1472,9 @@ test "property: all dimensions are positive after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       all_dimensions_positive(graph)
     }),
     max_success=50,
@@ -1478,7 +1486,9 @@ test "property: nodes within canvas bounds after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       nodes_within_canvas_bounds(graph)
     }),
     max_success=50,
@@ -1490,7 +1500,9 @@ test "property: dense graphs - nodes within canvas bounds" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       nodes_within_canvas_bounds(graph)
     }),
     max_success=50,
@@ -1502,7 +1514,9 @@ test "property: bounding box contains all elements" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       bounding_box_contains_all_elements(graph)
     }),
     max_success=50,
@@ -1514,7 +1528,9 @@ test "property: dense graphs - bounding box contains all elements" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       bounding_box_contains_all_elements(graph)
     }),
     max_success=50,
@@ -1526,7 +1542,9 @@ test "property: dense graphs - nodes should not overlap" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       nodes_should_not_overlap(graph)
     }),
     max_success=50,
@@ -1562,7 +1580,9 @@ test "property: layout direction does not affect overlap constraint" {
           )
           test_graph.add_edge(new_edge)
         }
-        layout(test_graph, config, dir)
+        ignore(layout(test_graph, config, dir)) catch {
+          _ => return false
+        }
         if !nodes_should_not_overlap(test_graph) {
           return false
         }
@@ -1578,7 +1598,9 @@ test "property: minimum spacing between nodes (default config)" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       // With default spacing of 60, aligned nodes should have at least 10 gap
       minimum_spacing_between_nodes(graph, 10.0)
     }),
@@ -1591,7 +1613,9 @@ test "property: dense graphs - minimum spacing between nodes" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       // Dense graphs should still maintain minimum spacing
       minimum_spacing_between_nodes(graph, 10.0)
     }),
@@ -1604,7 +1628,9 @@ test "property: custom spacing is respected" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::with_spacing(100.0, 100.0)
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       // With 100 spacing, aligned nodes should have at least 20 gap
       minimum_spacing_between_nodes(graph, 20.0)
     }),
@@ -1617,7 +1643,9 @@ test "property: children inside parent containers" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       children_inside_parent(graph)
     }),
     max_success=50,
@@ -1629,7 +1657,9 @@ test "property: siblings do not overlap" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       sibling_no_overlap(graph)
     }),
     max_success=50,
@@ -1641,7 +1671,9 @@ test "property: edge endpoints touch nodes" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       edge_endpoints_touch_nodes(graph)
     }),
     max_success=50,
@@ -1658,7 +1690,9 @@ test "property: all input nodes are present after layout" {
         node_ids.push(obj.id)
       }
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       all_input_nodes_present(node_ids, graph)
     }),
     max_success=50,
@@ -1675,7 +1709,9 @@ test "property: all input edges are present after layout" {
         edges.push((edge.src_id, edge.dst_id))
       }
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       all_input_edges_present(edges, graph)
     }),
     max_success=50,
@@ -1715,8 +1751,12 @@ test "property: layout is deterministic" {
       }
       // Apply same layout to both
       let config = LayoutConfig::new()
-      layout(graph1, config, Direction::Down)
-      layout(graph2, config, Direction::Down)
+      ignore(layout(graph1, config, Direction::Down)) catch {
+        _ => return false
+      }
+      ignore(layout(graph2, config, Direction::Down)) catch {
+        _ => return false
+      }
       // Should produce identical results
       deterministic_output(graph1, graph2)
     }),
@@ -1729,7 +1769,9 @@ test "property: edge labels do not overlap" {
   @qc.quick_check(
     @qc.forall(gen_graph_with_edge_labels(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       edge_labels_no_overlap(graph)
     }),
     max_success=50,
@@ -1741,7 +1783,9 @@ test "property: sql_table edges are clipped to boxes" {
   @qc.quick_check(
     @qc.forall(gen_sql_table_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       sql_table_edges_clipped_to_boxes(graph) && never_use_diagonal_edges(graph)
     }),
     max_success=50,
@@ -1758,7 +1802,7 @@ test "property: sql_table edges are clipped to boxes" {
 //   @qc.quick_check(
 //     @qc.forall(gen_graph_with_self_loops(), fn(graph : @graph.Graph) {
 //       let config = LayoutConfig::new()
-//       layout(graph, config, Direction::Down)
+//       ignore(layout(graph, config, Direction::Down)) catch { _ => return false }
 //       self_loop_visible(graph)
 //     }),
 //     max_success=50,
@@ -1770,7 +1814,9 @@ test "property: edges avoid unrelated nodes" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       edge_avoids_unrelated_nodes(graph)
     }),
     max_success=50,
@@ -1782,7 +1828,9 @@ test "property: text fits in container" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       text_fits_container(graph)
     }),
     max_success=50,
@@ -1794,7 +1842,9 @@ test "property: no redundant waypoints in edge routes" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       no_redundant_waypoints(graph)
     }),
     max_success=50,
@@ -1806,7 +1856,9 @@ test "property: no serpentine routing in edges" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       no_serpentine_routing(graph)
     }),
     max_success=50,
@@ -1818,7 +1870,9 @@ test "property: never use diagonal edges" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       never_use_diagonal_edges(graph)
     }),
     max_success=50,
@@ -1830,7 +1884,9 @@ test "property: parallel edges are distinguishable" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       parallel_edges_distinguishable(graph)
     }),
     max_success=50,
@@ -1842,7 +1898,9 @@ test "property: arrowhead direction matches node position" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       arrowhead_direction_matches_node_position(graph)
     }),
     max_success=50,
@@ -1854,7 +1912,9 @@ test "property: edge connects to correct side of node" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       edge_connects_to_correct_side(graph)
     }),
     max_success=50,
@@ -1866,7 +1926,9 @@ test "property: cluster contains all members" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       cluster_contains_members(graph)
     }),
     max_success=50,
@@ -1878,7 +1940,9 @@ test "property: edge perpendicular to node boundary" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      layout(graph, config, Direction::Down)
+      ignore(layout(graph, config, Direction::Down)) catch {
+        _ => return false
+      }
       edge_perpendicular_to_node_boundary(graph)
     }),
     max_success=50,
