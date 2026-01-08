@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2ir"
+
+import(
+  "Milky2018/diago/ast"
+  "Milky2018/diago/ir"
+)
+
+// Values
+pub fn compile(@ast.Map) -> @ir.Map raise @ir.CompileError
+
+pub fn compile_with_imports(@ast.Map, @ir.ImportResolver) -> @ir.Map raise @ir.CompileError
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @ir {type CompileError}
+
+pub using @ir {type Composite}
+
+pub using @ir {type Field}
+
+pub using @ir {type IRArray}
+
+pub using @ir {type ImportResolver}
+
+pub using @ir {type Map}
+
+pub using @ir {type Scalar}
+
+pub using @ir {type Value}
+
+// Traits
+

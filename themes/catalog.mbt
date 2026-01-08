@@ -37,6 +37,8 @@ pub fn get_theme(id : Int) -> Theme {
     105 => buttered_toast()
     200 => dark_mauve()
     201 => dark_flagship()
+    202 => dark_slate()
+    203 => dark_monokai()
     300 => terminal()
     301 => terminal_grayscale()
     302 => origami()
@@ -51,6 +53,12 @@ pub fn get_theme_by_name(name : String) -> Theme {
   if lower.contains("dark") {
     if lower.contains("mauve") {
       return dark_mauve()
+    }
+    if lower.contains("slate") {
+      return dark_slate()
+    }
+    if lower.contains("monokai") {
+      return dark_monokai()
     }
     return dark_flagship()
   }
@@ -112,7 +120,8 @@ pub fn list_themes() -> Array[String] {
     "Neutral Default", "Neutral Grey", "Flagship Terrastruct", "Cool Classics", "Mixed Berry Blue",
     "Grape Soda", "Aubergine", "Colorblind Clear", "Vanilla Nitro Cola", "Orange Creamsicle",
     "Shirley Temple", "Earth Tones", "Everglade Green", "Buttered Toast", "Dark Mauve",
-    "Dark Flagship", "Terminal", "Terminal Grayscale", "Origami",
+    "Dark Flagship", "Dark Slate", "Dark Monokai", "Terminal", "Terminal Grayscale",
+    "Origami",
   ]
 }
 
@@ -598,6 +607,66 @@ fn dark_flagship() -> Theme {
       aa5: "#2D1C14",
       ab4: "#1A372C",
       ab5: "#142D23",
+    },
+    rules: SpecialRules::default(),
+    is_dark: true,
+  }
+}
+
+///|
+fn dark_slate() -> Theme {
+  {
+    id: 202,
+    name: "Dark Slate",
+    colors: {
+      n1: "#FFFFFF",
+      n2: "#D6DCE7",
+      n3: "#AAB4C7",
+      n4: "#6A7690",
+      n5: "#3A465F",
+      n6: "#151F33",
+      n7: "#0B1220",
+      b1: "#6CB6FF",
+      b2: "#6CB6FF",
+      b3: "#1E2F4D",
+      b4: "#1E2F4D",
+      b5: "#15223A",
+      b6: "#0B1220",
+      aa2: "#FFB86B",
+      aa4: "#3A2A18",
+      aa5: "#2E2213",
+      ab4: "#163A34",
+      ab5: "#102E2A",
+    },
+    rules: SpecialRules::default(),
+    is_dark: true,
+  }
+}
+
+///|
+fn dark_monokai() -> Theme {
+  {
+    id: 203,
+    name: "Dark Monokai",
+    colors: {
+      n1: "#F8F8F2",
+      n2: "#E0E0D7",
+      n3: "#B6B6AE",
+      n4: "#7C7C76",
+      n5: "#55554F",
+      n6: "#2B2B28",
+      n7: "#1E1E1C",
+      b1: "#A6E22E",
+      b2: "#A6E22E",
+      b3: "#2E3A16",
+      b4: "#2E3A16",
+      b5: "#252D12",
+      b6: "#1E1E1C",
+      aa2: "#F92672",
+      aa4: "#3A1624",
+      aa5: "#2E121C",
+      ab4: "#1B2E2A",
+      ab5: "#142421",
     },
     rules: SpecialRules::default(),
     is_dark: true,

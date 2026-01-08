@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2exporter"
+
+import(
+  "Milky2018/diago/d2graph"
+  "Milky2018/diago/ir"
+)
+
+// Values
+pub fn compile(String, @ir.Map) -> @d2graph.Graph raise GraphCompileError
+
+pub fn to_graph(String, @ir.Map) -> @d2graph.Graph raise GraphCompileError
+
+// Errors
+pub(all) suberror GraphCompileError {
+  InvalidShape(String)
+  InvalidStyle(String)
+  MissingObject(String)
+}
+pub impl Eq for GraphCompileError
+pub impl Show for GraphCompileError
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

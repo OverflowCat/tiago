@@ -82,7 +82,7 @@ pub fn render_svg() -> Int {
 /// Render D2 source to ASCII
 pub fn render_ascii() -> Int {
   let source = bytes_to_string(input_buffer)
-  let result = compile_d2_text(source, @graph.AsciiConfig::new())
+  let result = compile_d2_text(source, @d2renderer_ascii.AsciiConfig::new())
   match result {
     Ok(ascii) => {
       string_to_bytes(ascii, output_buffer)
@@ -99,7 +99,10 @@ pub fn render_ascii() -> Int {
 /// Render D2 source to Unicode box-drawing characters
 pub fn render_unicode() -> Int {
   let source = bytes_to_string(input_buffer)
-  let result = compile_d2_text(source, @graph.AsciiConfig::unicode())
+  let result = match compile_to_diagram(source) {
+    Ok(diagram) => Ok(@d2renderer_unicode.render(diagram))
+    Err(e) => Err(e)
+  }
   match result {
     Ok(text) => {
       string_to_bytes(text, output_buffer)
@@ -137,13 +140,13 @@ fn compile_d2_svg(
   source : String,
   theme_name : String?,
 ) -> Result[String, String] {
-  match compile_to_graph(source) {
-    Ok(graph) => {
+  match compile_to_diagram(source) {
+    Ok(diagram) => {
       let render_config = match theme_name {
-        Some(name) => @graph.SvgConfig::with_theme_name(name)
-        None => @graph.SvgConfig::new()
+        Some(name) => @d2renderer_svg.SvgConfig::with_theme_name(name)
+        None => @d2renderer_svg.SvgConfig::new()
       }
-      Ok(@graph.render_svg(graph, render_config))
+      Ok(@d2renderer_svg.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
@@ -153,30 +156,35 @@ fn compile_d2_svg(
 /// Compile D2 source to text art (ASCII or Unicode)
 fn compile_d2_text(
   source : String,
-  config : @graph.AsciiConfig,
+  config : @d2renderer_ascii.AsciiConfig,
 ) -> Result[String, String] {
-  match compile_to_graph(source) {
-    Ok(graph) => Ok(@graph.render_ascii(graph, config))
+  match compile_to_diagram(source) {
+    Ok(diagram) => Ok(@d2renderer_ascii.render(diagram, config))
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to laid-out graph
-fn compile_to_graph(source : String) -> Result[@graph.Graph, String] {
-  let (ast, errors) = @parser.parse(source)
+/// Compile D2 source to a render-ready diagram
+fn compile_to_diagram(source : String) -> Result[@d2diagram.Diagram, String] {
+  let (ast, errors) = @d2compiler.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
-  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @graph.compile("diagram", ir) catch {
+  let ir = @d2ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  let graph = @d2exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  let layout = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph,
+    config,
+    @engine_api.Down,
+  ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(graph)
+  Ok(@d2diagram.build(graph, layout))
 }
 
 ///|

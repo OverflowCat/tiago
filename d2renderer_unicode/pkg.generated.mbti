@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2renderer_unicode"
+
+import(
+  "Milky2018/diago/d2diagram"
+  "Milky2018/diago/d2graph"
+)
+
+// Values
+pub fn render(@d2diagram.Diagram) -> String
+
+pub fn render_graph(@d2graph.Graph) -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

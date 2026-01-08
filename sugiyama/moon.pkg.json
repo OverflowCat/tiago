@@ -1,0 +1,11 @@
+{
+  "import": [
+    { "path": "Milky2018/diago/d2graph", "alias": "graph" }
+  ],
+  "test-import": [
+    "Milky2018/diago/parser",
+    "Milky2018/diago/ir",
+    "Milky2018/diago/d2exporter"
+  ]
+}
+

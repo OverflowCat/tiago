@@ -21,7 +21,7 @@ This document tracks features from the D2 reference implementation that are not 
 
 ### 🟡 Medium Priority
 - [x] **Curved Edges** - Spline-based edge routing with configurable curvature
-- [ ] **Edge Bend Points** - Manual control points for edge routing
+- [x] **Edge Bend Points** - Manual control points for edge routing
 - [x] **Label Positioning** - Automatic label placement avoiding overlaps
 - [x] **Connection Anchors** - Control edge connection points on shapes
 
@@ -154,7 +154,7 @@ All core themes implemented. Missing specialty themes:
 ### 🟢 Low Priority
 - [x] Terminal theme
 - [x] Terminal Grayscale theme
-- [ ] Additional dark theme variants
+- [x] Additional dark theme variants
 
 ---
 
@@ -170,15 +170,15 @@ All core themes implemented. Missing specialty themes:
 - [x] **Label Substitution** - Use variables in labels (verified via tests)
 
 ### 🟢 Low Priority
-- [ ] **Legend/Explanation** - Auto-generated diagram legend
+- [x] **Legend/Explanation** - Auto-generated diagram legend
 
 ---
 
 ## Tooling
 
 ### 🟡 Medium Priority
-- [ ] **Watch Mode** - Auto-rebuild on file changes
-- [ ] **Multiple Output Formats** - PNG, PDF export (currently SVG only)
+- [x] **Watch Mode** - Auto-rebuild on file changes
+- [x] **Multiple Output Formats** - PNG, PDF export (web UI)
 - [x] **CLI Improvements**
   - [x] Input from stdin
   - [x] Multiple file processing

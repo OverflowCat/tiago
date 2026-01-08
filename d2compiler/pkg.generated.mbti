@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2compiler"
+
+import(
+  "Milky2018/diago/ast"
+  "Milky2018/diago/parser"
+)
+
+// Values
+pub fn parse(String) -> (@ast.Map, @parser.ParseErrors)
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

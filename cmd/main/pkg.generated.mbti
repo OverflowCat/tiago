@@ -2,6 +2,9 @@
 package "Milky2018/diago/cmd/main"
 
 // Values
+pub fn sleep_is_supported() -> Bool
+
+pub fn sleep_ms(Int) -> Unit
 
 // Errors
 

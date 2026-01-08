@@ -1,0 +1,13 @@
+legend: true
+
+client: Client
+server: API Server
+db: Database {
+  shape: cylinder
+}
+
+client -> server: request
+server -> db: query
+db -> server: results
+server -> client: response
+

@@ -281,6 +281,8 @@ server -> database: queries"></textarea>
         <div class="spacer"></div>
         <button id="render-btn">Render</button>
         <button id="copy-btn" class="secondary">Copy Output</button>
+        <button id="download-png-btn" class="secondary" disabled>Download PNG</button>
+        <button id="download-pdf-btn" class="secondary" disabled>Export PDF</button>
       </div>
       <div id="error-banner" class="error-banner" style="display: none;"></div>
       <div id="preview" class="preview-content">
@@ -316,6 +318,8 @@ server -> database: queries"></textarea>
     let wasmModule = null;
     let currentView = 'svg';
     let renderTimeout = null;
+    let lastSvgOutput = null;
+    let lastRenderOk = false;
 
     // DOM elements
     const editor = document.getElementById('editor');
@@ -323,6 +327,8 @@ server -> database: queries"></textarea>
     const errorBanner = document.getElementById('error-banner');
     const renderBtn = document.getElementById('render-btn');
     const copyBtn = document.getElementById('copy-btn');
+    const downloadPngBtn = document.getElementById('download-png-btn');
+    const downloadPdfBtn = document.getElementById('download-pdf-btn');
     const exampleSelect = document.getElementById('example-select');
     const statusEl = document.getElementById('status');
     const tabs = document.querySelectorAll('.tab');
@@ -337,6 +343,7 @@ server -> database: queries"></textarea>
         currentView = tab.dataset.view;
         // Clear any pending debounced render to avoid double-render
         clearTimeout(renderTimeout);
+        updateExportButtons();
         render();
       });
     });
@@ -367,6 +374,128 @@ server -> database: queries"></textarea>
         copyBtn.textContent = 'Copied!';
         setTimeout(() => copyBtn.textContent = 'Copy Output', 1500);
       });
+    });
+
+    function updateExportButtons() {
+      const enabled = !!(wasmModule && lastRenderOk && currentView === 'svg' && lastSvgOutput);
+      downloadPngBtn.disabled = !enabled;
+      downloadPdfBtn.disabled = !enabled;
+    }
+
+    function parseSvgSize(svgText) {
+      try {
+        const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+        const svg = doc.documentElement;
+        const widthAttr = svg.getAttribute('width') || '';
+        const heightAttr = svg.getAttribute('height') || '';
+        const width = parseFloat(widthAttr.replace('px', ''));
+        const height = parseFloat(heightAttr.replace('px', ''));
+        if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+          return { width, height };
+        }
+        const viewBox = svg.getAttribute('viewBox') || '';
+        const parts = viewBox.split(/\s+/).filter(Boolean).map(Number);
+        if (parts.length === 4 && parts.every(n => Number.isFinite(n))) {
+          const vbWidth = parts[2];
+          const vbHeight = parts[3];
+          if (vbWidth > 0 && vbHeight > 0) {
+            return { width: vbWidth, height: vbHeight };
+          }
+        }
+      } catch (_) {}
+      return { width: 800, height: 600 };
+    }
+
+    async function downloadPngFromSvg(svgText, filename = 'diagram.png') {
+      const { width, height } = parseSvgSize(svgText);
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.floor(width * scale));
+      canvas.height = Math.max(1, Math.floor(height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not supported');
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+      try {
+        const img = new Image();
+        img.decoding = 'async';
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = () => reject(new Error('Failed to load SVG'));
+          img.src = svgUrl;
+        });
+        ctx.drawImage(img, 0, 0);
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+
+      const pngBlob = await new Promise((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (!b) reject(new Error('PNG export failed'));
+          else resolve(b);
+        }, 'image/png');
+      });
+      const pngUrl = URL.createObjectURL(pngBlob);
+      try {
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = filename;
+        a.click();
+      } finally {
+        URL.revokeObjectURL(pngUrl);
+      }
+    }
+
+    function exportPdfFromSvg(svgText) {
+      const w = window.open('', '_blank');
+      if (!w) {
+        throw new Error('Popup blocked');
+      }
+      w.document.open();
+      w.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Diago Export</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body { display: flex; align-items: center; justify-content: center; }
+      svg { max-width: 100vw; max-height: 100vh; }
+      @media print { body { background: #fff; } }
+    </style>
+  </head>
+  <body>
+    ${svgText}
+    <script>
+      window.addEventListener('load', () => {
+        setTimeout(() => window.print(), 50);
+      });
+    <\/script>
+  </body>
+</html>`);
+      w.document.close();
+      w.focus();
+    }
+
+    downloadPngBtn.addEventListener('click', async () => {
+      try {
+        await downloadPngFromSvg(lastSvgOutput);
+      } catch (e) {
+        errorBanner.textContent = 'PNG export error: ' + e.message;
+        errorBanner.style.display = 'block';
+      }
+    });
+
+    downloadPdfBtn.addEventListener('click', () => {
+      try {
+        exportPdfFromSvg(lastSvgOutput);
+      } catch (e) {
+        errorBanner.textContent = 'PDF export error: ' + e.message;
+        errorBanner.style.display = 'block';
+      }
     });
 
     // Auto-render on input (debounced)
@@ -469,6 +598,11 @@ server -> database: queries"></textarea>
     function render() {
       const source = editor.value;
       errorBanner.style.display = 'none';
+      lastRenderOk = false;
+      if (currentView === 'svg') {
+        lastSvgOutput = null;
+      }
+      updateExportButtons();
 
       if (!source.trim()) {
         preview.className = 'preview-content dark';
@@ -498,6 +632,7 @@ server -> database: queries"></textarea>
         if (status !== 0) {
           errorBanner.textContent = output;
           errorBanner.style.display = 'block';
+          updateExportButtons();
           return;
         }
 
@@ -513,10 +648,14 @@ server -> database: queries"></textarea>
         } else {
           preview.className = 'preview-content';
           preview.innerHTML = output;
+          lastSvgOutput = output;
         }
+        lastRenderOk = true;
+        updateExportButtons();
       } catch (e) {
         errorBanner.textContent = 'Render error: ' + e.message;
         errorBanner.style.display = 'block';
+        updateExportButtons();
       }
     }
 

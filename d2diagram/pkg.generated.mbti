@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2diagram"
+
+import(
+  "Milky2018/diago/d2graph"
+  "Milky2018/diago/engine_api"
+)
+
+// Values
+pub fn build(@d2graph.Graph, @engine_api.LayoutResult) -> Diagram
+
+pub fn from_graph(@d2graph.Graph) -> Diagram
+
+// Errors
+
+// Types and methods
+pub struct Diagram {
+  graph : @d2graph.Graph
+  layout : @engine_api.LayoutResult
+}
+pub impl Show for Diagram
+
+// Type aliases
+
+// Traits
+

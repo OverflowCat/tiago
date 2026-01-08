@@ -1,0 +1,19 @@
+legend: {
+  title: Key
+  position: top-right
+  entries: [
+    { shape: rectangle, label: Service, style: { fill: "#E3E9FD" } }
+    { shape: cylinder, label: Storage }
+    "---"
+    { connection: "->", label: Request }
+    { connection: "--", label: Association }
+  ]
+}
+
+svc: Service
+db: DB {
+  shape: cylinder
+}
+
+svc -> db: reads
+

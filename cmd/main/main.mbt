@@ -35,6 +35,10 @@ fn main {
     run_fmt(args)
     return
   }
+  if first_arg == "watch" {
+    run_watch(args)
+    return
+  }
   // Parse arguments for compile
   let mut ascii_mode = false
   let mut theme_name : String? = None
@@ -196,6 +200,7 @@ fn print_usage() -> Unit {
   println("Commands:")
   println("  validate          Check D2 source for errors")
   println("  fmt               Format D2 source file")
+  println("  watch             Auto-rebuild on file changes")
   println("")
   println("Compile Options:")
   println("  --ascii, -a       Output ASCII art instead of SVG")
@@ -203,6 +208,9 @@ fn print_usage() -> Unit {
   println("  --list-themes     List all available themes")
   println("  -, --stdin        Read D2 source from stdin")
   println("  --help, -h        Show this help message")
+  println("")
+  println("Watch Options (watch command):")
+  println("  -i, --interval MS Poll interval in milliseconds (default: 500)")
   println("")
   println("Format Options (fmt command):")
   println("  -w, --write       Write formatted output to file in-place")
@@ -249,7 +257,7 @@ fn run_fmt(args : Array[String]) -> Unit {
     }
   }
   // Parse
-  let (ast, parse_errors) = @parser.parse(source)
+  let (ast, parse_errors) = @d2compiler.parse(source)
   if !parse_errors.is_empty() {
     println("Parse errors in \{input}:")
     println("  \{parse_errors}")
@@ -374,7 +382,7 @@ fn run_validate(args : Array[String]) -> Unit {
     }
   }
   // Parse
-  let (ast, parse_errors) = @parser.parse(source)
+  let (ast, parse_errors) = @d2compiler.parse(source)
   if !parse_errors.is_empty() {
     println("Parse errors in \{input_path}:")
     println("  \{parse_errors}")
@@ -382,7 +390,7 @@ fn run_validate(args : Array[String]) -> Unit {
     return
   }
   // Compile to IR
-  let ir = @ir.compile(ast) catch {
+  let ir = @d2ir.compile(ast) catch {
     e => {
       println("Semantic error in \{input_path}: \{e}")
       @sys.exit(1)
@@ -390,7 +398,7 @@ fn run_validate(args : Array[String]) -> Unit {
     }
   }
   // Compile to graph
-  let _ = @graph.compile("diagram", ir) catch {
+  let _ = @d2exporter.to_graph("diagram", ir) catch {
     e => {
       println("Graph error in \{input_path}: \{e}")
       @sys.exit(1)
@@ -401,9 +409,143 @@ fn run_validate(args : Array[String]) -> Unit {
 }
 
 ///|
+/// Run the watch subcommand
+fn run_watch(args : Array[String]) -> Unit {
+  if !sleep_is_supported() {
+    println("Error: watch mode is not supported on this target.")
+    @sys.exit(1)
+    return
+  }
+  let mut ascii_mode = false
+  let mut theme_name : String? = None
+  let mut interval_ms = 500
+  let mut input_path : String? = None
+  let mut output_path : String? = None
+  let mut i = 2
+  while i < args.length() {
+    let arg = args[i]
+    if arg == "--ascii" || arg == "-a" {
+      ascii_mode = true
+    } else if arg == "--theme" || arg == "-t" {
+      i = i + 1
+      if i < args.length() {
+        theme_name = Some(args[i])
+      }
+    } else if arg.has_prefix("--theme=") {
+      theme_name = Some(extract_theme_name(arg))
+    } else if arg == "--interval" || arg == "-i" {
+      i = i + 1
+      if i < args.length() {
+        interval_ms = parse_interval_ms(args[i], interval_ms)
+      }
+    } else if arg.has_prefix("--interval=") {
+      let value = extract_value_after_eq(arg)
+      interval_ms = parse_interval_ms(value, interval_ms)
+    } else if input_path is None {
+      input_path = Some(arg)
+    } else if output_path is None {
+      output_path = Some(arg)
+    }
+    i = i + 1
+  }
+  guard input_path is Some(input) else {
+    println(
+      "Usage: diago watch [--ascii] [--theme NAME] [-i MS] <input.d2> [output]",
+    )
+    @sys.exit(1)
+    return
+  }
+  let base_path = get_dir_path(input)
+  let ext = if ascii_mode { ".txt" } else { ".svg" }
+  let out_path = match output_path {
+    Some(path) => path
+    None => replace_extension(input, ext)
+  }
+  let mut last_source = @fs.read_file_to_string(input) catch {
+    e => {
+      println("Error reading file '\{input}': \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  // Initial compile
+  let initial = if ascii_mode {
+    compile_d2_ascii(last_source, base_path)
+  } else {
+    compile_d2_svg(last_source, theme_name, base_path)
+  }
+  match initial {
+    Ok(output) => write_output(out_path, output)
+    Err(e) => println("Error: \{e}")
+  }
+  println("Watching \{input} (interval=\{interval_ms}ms)...")
+  // Poll loop
+  while true {
+    sleep_ms(interval_ms)
+    let maybe_source = Some(@fs.read_file_to_string(input)) catch {
+      e => {
+        println("Error reading file '\{input}': \{e}")
+        None
+      }
+    }
+    guard maybe_source is Some(source) else { continue }
+    if source == last_source {
+      continue
+    }
+    last_source = source
+    let result = if ascii_mode {
+      compile_d2_ascii(last_source, base_path)
+    } else {
+      compile_d2_svg(last_source, theme_name, base_path)
+    }
+    match result {
+      Ok(output) => write_output(out_path, output)
+      Err(e) => println("Error: \{e}")
+    }
+  }
+}
+
+///|
+fn parse_interval_ms(s : String, default_value : Int) -> Int {
+  match parse_uint(s) {
+    Some(v) => if v <= 0 { default_value } else { v }
+    None => default_value
+  }
+}
+
+///|
+fn parse_uint(s : String) -> Int? {
+  if s.length() == 0 {
+    return None
+  }
+  let mut acc = 0
+  for c in s {
+    if c < '0' || c > '9' {
+      return None
+    }
+    acc = acc * 10 + (c.to_int() - '0'.to_int())
+  }
+  Some(acc)
+}
+
+///|
+fn extract_value_after_eq(arg : String) -> String {
+  let sb = StringBuilder::new()
+  let mut past_eq = false
+  for c in arg {
+    if past_eq {
+      sb.write_char(c)
+    } else if c == '=' {
+      past_eq = true
+    }
+  }
+  sb.to_string()
+}
+
+///|
 fn list_themes() -> Unit {
   println("Available themes:")
-  for name in @graph.list_themes() {
+  for name in @d2renderer_svg.list_themes() {
     println("  \{name}")
   }
 }
@@ -430,13 +572,13 @@ fn compile_d2_svg(
   theme_name : String?,
   base_path : String?,
 ) -> Result[String, String] {
-  match compile_to_graph(source, base_path) {
-    Ok(graph) => {
+  match compile_to_diagram(source, base_path) {
+    Ok(diagram) => {
       let render_config = match theme_name {
-        Some(name) => @graph.SvgConfig::with_theme_name(name)
-        None => @graph.SvgConfig::new()
+        Some(name) => @d2renderer_svg.SvgConfig::with_theme_name(name)
+        None => @d2renderer_svg.SvgConfig::new()
       }
-      Ok(@graph.render_svg(graph, render_config))
+      Ok(@d2renderer_svg.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
@@ -448,44 +590,49 @@ fn compile_d2_ascii(
   source : String,
   base_path : String?,
 ) -> Result[String, String] {
-  match compile_to_graph(source, base_path) {
-    Ok(graph) => {
-      let render_config = @graph.AsciiConfig::new()
-      Ok(@graph.render_ascii(graph, render_config))
+  match compile_to_diagram(source, base_path) {
+    Ok(diagram) => {
+      let render_config = @d2renderer_ascii.AsciiConfig::new()
+      Ok(@d2renderer_ascii.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to laid-out graph
-fn compile_to_graph(
+/// Compile D2 source to a render-ready diagram
+fn compile_to_diagram(
   source : String,
   base_path : String?,
-) -> Result[@graph.Graph, String] {
-  let (ast, errors) = @parser.parse(source)
+) -> Result[@d2diagram.Diagram, String] {
+  let (ast, errors) = @d2compiler.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
   // Create import resolver based on base path
   let resolver = create_import_resolver(base_path)
-  let ir = @ir.compile_with_imports(ast, resolver) catch {
+  let ir = @d2ir.compile_with_imports(ast, resolver) catch {
     e => return Err("IR error: \{e}")
   }
-  let graph = @graph.compile("diagram", ir) catch {
+  let graph = @d2exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  let layout = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph,
+    config,
+    @engine_api.Down,
+  ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(graph)
+  Ok(@d2diagram.build(graph, layout))
 }
 
 ///|
 /// Create an import resolver that reads files relative to base path
-fn create_import_resolver(base_path : String?) -> @ir.ImportResolver {
-  @ir.ImportResolver::new(fn(import_path) {
+fn create_import_resolver(base_path : String?) -> @d2ir.ImportResolver {
+  @d2ir.ImportResolver::new(fn(import_path) {
     // Build full path
     let full_path = match base_path {
       Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()

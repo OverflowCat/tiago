@@ -30,33 +30,33 @@ fn compile(source : String) -> Result[String, String] {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @graph.compile("test", ir) catch {
+  let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
     e => return Err("Layout error: \{e}")
   }
-  let render_config = @graph.SvgConfig::new()
-  Ok(@graph.render_svg(graph, render_config))
+  let render_config = @d2renderer_svg.SvgConfig::new()
+  Ok(@d2renderer_svg.render_svg(graph, render_config))
 }
 
 ///|
 /// Compile D2 source to laid-out Graph (for position testing)
 fn compile_to_graph(
   source : String,
-  direction : @layout.Direction,
+  direction : @engine_api.Direction,
 ) -> Result[@graph.Graph, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @graph.compile("test", ir) catch {
+  let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, direction)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  ignore(@engine_elk.layout(graph, config, direction)) catch {
     e => return Err("Layout error: \{e}")
   }
   Ok(graph)
@@ -70,15 +70,15 @@ fn compile_ascii(source : String) -> Result[String, String] {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @graph.compile("test", ir) catch {
+  let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
     e => return Err("Layout error: \{e}")
   }
-  let render_config = @graph.AsciiConfig::new()
-  Ok(@graph.render_ascii(graph, render_config))
+  let render_config = @d2renderer_ascii.AsciiConfig::new()
+  Ok(@d2renderer_ascii.render_ascii(graph, render_config))
 }
 
 ///|
@@ -482,15 +482,15 @@ fn compile_with_theme(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @graph.compile("test", ir) catch {
+  let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let config = @layout.LayoutConfig::new()
-  ignore(@layout.layout(graph, config, @layout.Direction::Down)) catch {
+  let config = @engine_api.LayoutConfig::new()
+  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
     e => return Err("Layout error: \{e}")
   }
-  let render_config = @graph.SvgConfig::with_theme(theme_id)
-  Ok(@graph.render_svg(graph, render_config))
+  let render_config = @d2renderer_svg.SvgConfig::with_theme(theme_id)
+  Ok(@d2renderer_svg.render_svg(graph, render_config))
 }
 
 ///|

@@ -1,14 +1,7 @@
 {
   "import": [
-    "Milky2018/diago/graph",
-    "Milky2018/diago/elk",
-    { "path": "Milky2018/diago/elk/layered", "alias": "layered" }
-  ],
-  "test-import": [
-    "Milky2018/diago/parser",
-    "Milky2018/diago/ir"
-  ],
-  "wbtest-import": [
-    { "path": "moonbitlang/quickcheck", "alias": "qc" }
+    { "path": "Milky2018/diago/d2graph", "alias": "graph" },
+    "Milky2018/diago/engine_api",
+    "Milky2018/diago/engine_elk"
   ]
 }

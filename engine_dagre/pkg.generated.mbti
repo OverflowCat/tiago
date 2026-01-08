@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/engine_dagre"
+
+import(
+  "Milky2018/diago/d2graph"
+  "Milky2018/diago/engine_api"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct DagreEngine {
+  _marker : Unit
+}
+pub fn DagreEngine::new() -> Self
+pub impl @engine_api.LayoutEngine for DagreEngine
+pub impl Show for DagreEngine
+
+// Type aliases
+
+// Traits
+

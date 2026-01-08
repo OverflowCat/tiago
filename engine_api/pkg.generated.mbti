@@ -1,0 +1,82 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/engine_api"
+
+import(
+  "Milky2018/diago/d2graph"
+)
+
+// Values
+pub fn cycle_detected(String) -> LayoutError
+
+pub fn invalid_graph(String) -> LayoutError
+
+pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @d2graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+
+pub fn unsupported(String) -> LayoutError
+
+// Errors
+pub suberror LayoutError {
+  InvalidGraph(String)
+  CycleDetected(String)
+  Unsupported(String)
+}
+pub impl Eq for LayoutError
+pub impl Show for LayoutError
+
+// Types and methods
+pub(all) enum Direction {
+  Down
+  Right
+  Up
+  Left
+}
+pub impl Eq for Direction
+pub impl Show for Direction
+
+pub struct EdgeLayout {
+  points : Array[@d2graph.Point]
+}
+pub impl Show for EdgeLayout
+
+pub struct LayoutConfig {
+  horizontal_spacing : Double
+  vertical_spacing : Double
+  container_padding : Double
+  default_width : Double
+  default_height : Double
+  edge_padding : Double
+}
+pub fn LayoutConfig::new() -> Self
+pub fn LayoutConfig::with_spacing(Double, Double) -> Self
+pub impl Show for LayoutConfig
+
+pub struct LayoutResult {
+  nodes : Map[String, NodeLayout]
+  edges : Map[Int, EdgeLayout]
+  edge_labels : Map[Int, NodeLayout]
+  activation_boxes : Array[(String, NodeLayout)]
+  sequence_notes : Array[(String, String, NodeLayout)]
+  sequence_fragments : Array[@d2graph.SequenceFragment]
+}
+pub fn LayoutResult::apply_to_graph(Self, @d2graph.Graph) -> Unit
+pub fn LayoutResult::from_graph(@d2graph.Graph) -> Self
+pub fn LayoutResult::new() -> Self
+pub impl Show for LayoutResult
+
+pub struct NodeLayout {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+}
+pub fn NodeLayout::from_box(@d2graph.Box) -> Self
+pub fn NodeLayout::to_box(Self) -> @d2graph.Box
+pub impl Show for NodeLayout
+
+// Type aliases
+
+// Traits
+pub(open) trait LayoutEngine {
+  layout(Self, @d2graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+}
+

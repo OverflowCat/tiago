@@ -2,7 +2,11 @@
   "test-import": [
     "Milky2018/diago/parser",
     "Milky2018/diago/ir",
-    "Milky2018/diago/graph",
-    "Milky2018/diago/layout"
+    { "path": "Milky2018/diago/d2graph", "alias": "graph" },
+    "Milky2018/diago/d2exporter",
+    "Milky2018/diago/engine_api",
+    "Milky2018/diago/engine_elk",
+    "Milky2018/diago/d2renderer_svg",
+    "Milky2018/diago/d2renderer_ascii"
   ]
 }

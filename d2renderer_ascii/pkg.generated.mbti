@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/d2renderer_ascii"
+
+import(
+  "Milky2018/diago/ascii"
+  "Milky2018/diago/d2diagram"
+  "Milky2018/diago/d2graph"
+)
+
+// Values
+pub fn render(@d2diagram.Diagram, AsciiConfig) -> String
+
+pub fn render_ascii(@d2graph.Graph, AsciiConfig) -> String
+
+pub fn render_graph(@d2graph.Graph, AsciiConfig) -> String
+
+pub fn render_legend_ascii(@ascii.Grid, @d2graph.Legend, Int, Int, @ascii.CharSet) -> Unit
+
+// Errors
+
+// Types and methods
+type AsciiBox
+pub impl Show for AsciiBox
+
+pub struct AsciiConfig {
+  min_box_width : Int
+  box_height : Int
+  h_padding : Int
+  v_spacing : Int
+  h_spacing : Int
+  min_width : Int
+  min_height : Int
+  charset : @ascii.CharSet
+}
+pub fn AsciiConfig::new() -> Self
+pub fn AsciiConfig::unicode() -> Self
+pub impl Show for AsciiConfig
+
+// Type aliases
+
+// Traits
+

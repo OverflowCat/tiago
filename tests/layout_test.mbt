@@ -17,7 +17,7 @@
 
 ///|
 test "objects have positions after layout" {
-  let graph = compile_to_graph("a\nb\nc", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph("a\nb\nc", @engine_api.Direction::Down).unwrap()
   for obj in graph.get_objects() {
     let box = obj.get_box()
     assert_true(box is Some(_))
@@ -26,7 +26,10 @@ test "objects have positions after layout" {
 
 ///|
 test "objects have positive dimensions" {
-  let graph = compile_to_graph("server: Web Server", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(
+    "server: Web Server",
+    @engine_api.Direction::Down,
+  ).unwrap()
   for obj in graph.get_objects() {
     if obj.get_box() is Some(box) {
       assert_true(box.get_width() > 0.0)
@@ -39,7 +42,7 @@ test "objects have positive dimensions" {
 
 ///|
 test "multiple objects don't overlap" {
-  let graph = compile_to_graph("a\nb\nc", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph("a\nb\nc", @engine_api.Direction::Down).unwrap()
   let objects = graph.get_objects()
   for i in 0..<objects.length() {
     for j in (i + 1)..<objects.length() {
@@ -57,7 +60,7 @@ test "multiple objects don't overlap" {
 
 ///|
 test "down direction stacks objects vertically" {
-  let graph = compile_to_graph("a\nb", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph("a\nb", @engine_api.Direction::Down).unwrap()
   let a = graph.find_object("a").unwrap()
   let b = graph.find_object("b").unwrap()
   match (a.get_box(), b.get_box()) {
@@ -72,7 +75,7 @@ test "down direction stacks objects vertically" {
 
 ///|
 test "right direction stacks objects horizontally" {
-  let graph = compile_to_graph("a\nb", @layout.Direction::Right).unwrap()
+  let graph = compile_to_graph("a\nb", @engine_api.Direction::Right).unwrap()
   let a = graph.find_object("a").unwrap()
   let b = graph.find_object("b").unwrap()
   match (a.get_box(), b.get_box()) {
@@ -92,7 +95,7 @@ test "container contains children" {
     #|  child1
     #|  child2
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let parent = graph.find_object("parent").unwrap()
   let child1 = graph.find_object("parent.child1").unwrap()
   let child2 = graph.find_object("parent.child2").unwrap()
@@ -125,7 +128,7 @@ test "nested children are stacked inside parent" {
     #|  child1
     #|  child2
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let child1 = graph.find_object("parent.child1").unwrap()
   let child2 = graph.find_object("parent.child2").unwrap()
   match (child1.get_box(), child2.get_box()) {
@@ -140,7 +143,7 @@ test "nested children are stacked inside parent" {
 
 ///|
 test "edges have route points" {
-  let graph = compile_to_graph("a -> b", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph("a -> b", @engine_api.Direction::Down).unwrap()
   let edges = graph.get_edges()
   assert_true(edges.length() == 1)
   let route = edges[0].get_route()
@@ -151,8 +154,26 @@ test "edges have route points" {
 }
 
 ///|
+test "edge bend points override routing" {
+  let source =
+    #|a
+    #|b
+    #|a -> b {
+    #|  bend-points: [[10, 20], [30, 40]]
+    #|}
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
+  let edge = graph.get_edges()[0]
+  let route = edge.get_route()
+  assert_true(route.length() >= 4, msg="expected bend points in route")
+  assert_eq(route[1].get_x(), 10.0)
+  assert_eq(route[1].get_y(), 20.0)
+  assert_eq(route[2].get_x(), 30.0)
+  assert_eq(route[2].get_y(), 40.0)
+}
+
+///|
 test "edge route connects source to destination" {
-  let graph = compile_to_graph("a -> b", @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph("a -> b", @engine_api.Direction::Down).unwrap()
   let a = graph.find_object("a").unwrap()
   let b = graph.find_object("b").unwrap()
   let edges = graph.get_edges()
@@ -182,7 +203,7 @@ test "edge route connects source to destination" {
 test "label width affects object size" {
   let graph = compile_to_graph(
     "short\nthis_is_a_very_long_label_name",
-    @layout.Direction::Down,
+    @engine_api.Direction::Down,
   ).unwrap()
   let short = graph.find_object("short").unwrap()
   let long = graph.find_object("this_is_a_very_long_label_name").unwrap()
@@ -202,7 +223,7 @@ test "shape is preserved in graph" {
     #|db {
     #|  shape: cylinder
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let db = graph.find_object("db").unwrap()
   inspect(db.get_shape(), content="cylinder")
 }
@@ -213,7 +234,7 @@ test "shape with label is preserved" {
     #|database: Database {
     #|  shape: cylinder
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let db = graph.find_object("database").unwrap()
   inspect(db.get_label(), content="Database")
   inspect(db.get_shape(), content="cylinder")
@@ -225,7 +246,7 @@ test "objects ordered by definition" {
     #|server
     #|database
     #|cache
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let server = graph.find_object("server").unwrap()
   let database = graph.find_object("database").unwrap()
   let cache = graph.find_object("cache").unwrap()
@@ -266,7 +287,7 @@ test "sql_table edges connect to correct rows" {
     #|users.id <-> posts.user_id
     #|posts.id <-> comments.post_id
     #|users.id <-> comments.user_id
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let users_box = graph.find_object("users").unwrap().get_box().unwrap()
   let posts_box = graph.find_object("posts").unwrap().get_box().unwrap()
   let comments_box = graph.find_object("comments").unwrap().get_box().unwrap()
@@ -401,7 +422,7 @@ test "sql_table edges are clipped to boxes" {
     #|users.id <-> posts.user_id
     #|posts.id <-> comments.post_id
     #|users.id <-> comments.user_id
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let header_height = 26.0
   let line_height = 18.0
   let bottom_padding = 8.0
@@ -535,7 +556,7 @@ test "near constant position top-left" {
     #|title: Title {
     #|  near: top-left
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let title = graph.find_object("title").unwrap()
   if title.get_box() is Some(box) {
     // Should be positioned near top-left of the diagram
@@ -553,7 +574,7 @@ test "near object positioning" {
     #|info: Server Info {
     #|  near: server
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let server = graph.find_object("server").unwrap()
   let info = graph.find_object("info").unwrap()
   if server.get_box() is Some(server_box) && info.get_box() is Some(info_box) {
@@ -575,7 +596,7 @@ test "near bottom-right position" {
     #|footer: Copyright {
     #|  near: bottom-right
     #|}
-  let graph = compile_to_graph(source, @layout.Direction::Down).unwrap()
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let footer = graph.find_object("footer").unwrap()
   let a = graph.find_object("a").unwrap()
   if footer.get_box() is Some(footer_box) && a.get_box() is Some(a_box) {

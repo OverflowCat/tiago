@@ -2,7 +2,7 @@
 package "Milky2018/diago/elk"
 
 import(
-  "Milky2018/diago/graph"
+  "Milky2018/diago/d2graph"
 )
 
 // Values
@@ -16,19 +16,19 @@ pub fn create_labeled_node(String, String) -> ElkNode
 
 pub fn default_options(LayoutAlgorithm) -> LayoutOptions
 
-pub fn elk_port_side_to_graph(PortSide) -> @graph.PortSide
+pub fn elk_port_side_to_graph(PortSide) -> @d2graph.PortSide
 
-pub fn from_graph(@graph.Graph) -> ElkNode
+pub fn from_graph(@d2graph.Graph) -> ElkNode
 
-pub fn graph_port_side_to_elk(@graph.PortSide) -> PortSide
+pub fn graph_port_side_to_elk(@d2graph.PortSide) -> PortSide
 
 pub fn is_algorithm_implemented(LayoutAlgorithm) -> Bool
 
 pub fn layout(ElkNode, LayoutOptions) -> Unit raise LayoutError
 
-pub fn layout_d2_graph(@graph.Graph, LayoutOptions) -> Unit raise LayoutError
+pub fn layout_d2_graph(@d2graph.Graph, LayoutOptions) -> Unit raise LayoutError
 
-pub fn to_graph(ElkNode, @graph.Graph) -> Unit
+pub fn to_graph(ElkNode, @d2graph.Graph) -> Unit
 
 // Errors
 pub suberror LayoutError {
