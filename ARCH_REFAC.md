@@ -33,8 +33,7 @@ At runtime the order should be explicit at API boundaries:
 
 Based on today’s `moon.pkg.json` dependencies:
 
-- `graph/` is now a **compatibility shim** that re-exports `d2graph`/`d2exporter`/`d2diagram`/`d2renderer_*` for legacy APIs.
-- `layout/` is now a **legacy facade** delegating to `engine_elk` + `engine_api` (older Sugiyama helpers/tests were moved to `sugiyama/`).
+- `graph/` and `layout/` legacy packages were removed; internal code uses `d2graph`/`d2exporter`/`engine_api`/`engine_elk`/`d2renderer_*` directly.
 - `elk/` still imports `d2graph` → ELK algorithm library remains coupled to Diago graph types (split into `elk_core` is still optional).
 
 This makes “add another engine” hard because:
@@ -199,7 +198,7 @@ Notes:
 
 - Last updated: 2026-01-08
 - Current milestone: M6 in progress (retire legacy entrypoints)
-- Known temporary shims: `graph/*` re-exports `d2graph`/`d2exporter`/`d2renderer_*`, `layout/` is a legacy facade delegating to `engine_elk` + `engine_api` (old Sugiyama helpers live in `sugiyama/`).
+- Known temporary shims: none (legacy `graph/` and `layout/` were removed; Sugiyama code lives in `sugiyama/`).
 
 ### Milestones
 
@@ -209,7 +208,7 @@ Notes:
 
 - [x] **M1: Establish stable model (`d2graph`)**
   - [x] Move graph model/variants/legend/route/shape/arrowhead into `d2graph/`
-  - [x] Keep `graph/` working via compatibility aliases where needed
+  - [x] (Removed) Keep `graph/` working via compatibility aliases where needed
 
 - [x] **M2: Split exporter (`d2exporter`) from renderers**
   - [x] Move IR→Graph compilation into `d2exporter/` (export `to_graph`)
@@ -220,8 +219,8 @@ Notes:
   - [x] Provide `layout_with_engine` glue (including variants recursion)
 
 - [ ] **M4: Engines are true plugins**
-  - [x] `engine_elk` implements `engine_api.LayoutEngine` (self-contained; `layout/` is legacy facade)
-  - [x] Move ELK adapter code out of `layout/` into `engine_elk/` (remove dependency on `layout/`)
+  - [x] `engine_elk` implements `engine_api.LayoutEngine` (self-contained)
+  - [x] Move ELK adapter code out of legacy `layout/` into `engine_elk/`
   - [ ] `engine_dagre` implements the same interface with a real dagre core (keep stub until core exists)
   - [ ] Optional: split `elk/` into `elk_core/` + `engine_elk/` adapter
 
@@ -232,10 +231,10 @@ Notes:
   - [x] Move ASCII/Unicode renderers out of `graph/` into `d2renderer_ascii/` and `d2renderer_unicode/`
   - [x] Ensure renderers depend only on `d2diagram` (or `d2graph + LayoutResult`)
 
-- [ ] **M6: Rewrite entrypoints + retire legacy**
+- [x] **M6: Rewrite entrypoints + retire legacy**
   - [x] `cmd/*` uses the explicit pipeline (`d2compiler -> d2ir -> d2exporter -> engine_* -> render`)
   - [x] Delete/retire legacy packages (`graph/` and `layout/`) or reduce them to thin re-export shells
-  - [ ] Remove all temporary alias/shim files once the new packages fully own their responsibilities
+  - [x] Remove all temporary alias/shim files once the new packages fully own their responsibilities
 
 - [ ] **M7: Restore correctness + tests**
   - [ ] Restore `moon test` and snapshots (run `moon test --update` when expected behavior changes)
