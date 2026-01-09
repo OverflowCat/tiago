@@ -8,7 +8,7 @@ This document compares the layout implementations between the D2 reference (Go) 
 
 | Aspect | D2 Reference | diago | Impact |
 |--------|-------------|-------|--------|
-| **Core Algorithm** | Sugiyama via Dagre.js | Sugiyama native | Similar approach |
+| **Core Algorithm** | Sugiyama via Dagre.js | Layered layout via `engine_elk` (default) | Similar approach |
 | **Edge Routing** | Sophisticated polyline + Bezier smoothing | Polyline + Catmull-Rom Bezier | ✅ Similar |
 | **Label Positioning** | 25 discrete positions with collision avoidance | 5 perpendicular offsets with collision avoidance | Minor difference |
 | **Container Layout** | Extract → Layout → Reinject recursively | Basic nested positioning | Container edges basic |

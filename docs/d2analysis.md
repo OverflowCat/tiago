@@ -32,9 +32,11 @@ For layered/hierarchical graphs (the most common type in D2), the problem involv
 
 D2 employs the **Sugiyama Framework** (also known as the layered graph drawing algorithm) through two pluggable layout engines:
 
-#### Dagre Layout Engine (`d2layouts/d2dagrelayout/`)
+#### Dagre Layout Engine (`engine_dagre/`)
 
-Dagre is the default layout engine, implementing a JavaScript-based Sugiyama algorithm:
+In diago, `engine_dagre` is currently a stub (not implemented). The default
+layout engine is ELK (`engine_elk`), described below. Dagre is included here as
+background on the classic Sugiyama approach used by D2.
 
 ```go
 // Configuration parameters in layout.go
@@ -51,7 +53,7 @@ Key heuristics:
 - **Network simplex** for layer assignment
 - **Barycenter heuristic** for crossing minimization: position each node at the average (barycenter) of its neighbors' positions
 
-#### ELK Layout Engine (`d2layouts/d2elklayout/`)
+#### ELK Layout Engine (`engine_elk/`)
 
 ELK (Eclipse Layout Kernel) provides a more sophisticated implementation:
 
