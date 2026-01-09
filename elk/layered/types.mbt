@@ -623,6 +623,25 @@ pub fn LGraph::to_elk_node(
         }
         elk_edge.sections.clear()
         elk_edge.sections.push(section)
+
+        // Apply edge label positions (absolute coords).
+        if !elk_edge.labels.is_empty() && !ledge.labels.is_empty() {
+          let label_map : Map[String, LLabel] = {}
+          for llabel in ledge.labels {
+            label_map[llabel.id] = llabel
+          }
+          for label in elk_edge.labels {
+            match label_map.get(label.id) {
+              Some(llabel) => {
+                label.x = llabel.x
+                label.y = llabel.y
+                label.width = llabel.width
+                label.height = llabel.height
+              }
+              None => ()
+            }
+          }
+        }
       }
       None => ()
     }

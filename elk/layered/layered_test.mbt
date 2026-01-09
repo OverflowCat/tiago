@@ -147,3 +147,30 @@ test "node auto-sizing from labels" {
   assert_true(node_b.width >= 60.0)
   assert_true(node_b.height >= 40.0)
 }
+
+///|
+test "edge label placement on long edge (label dummy)" {
+  let root = @elk.ElkNode::new("root")
+  let node_a = @elk.ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = @elk.ElkNode::with_size("b", 60.0, 40.0)
+  let node_c = @elk.ElkNode::with_size("c", 60.0, 40.0)
+  let node_d = @elk.ElkNode::with_size("d", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_child(node_c)
+  root.add_child(node_d)
+  root.add_edge(@elk.ElkEdge::new("e_ab", "a", "b"))
+  root.add_edge(@elk.ElkEdge::new("e_bc", "b", "c"))
+  root.add_edge(@elk.ElkEdge::new("e_cd", "c", "d"))
+  let edge_ad = @elk.ElkEdge::new("e_ad", "a", "d")
+  edge_ad.labels.push(@elk.ElkLabel::new("e_ad_label", "LABEL"))
+  root.add_edge(edge_ad)
+  let options = @elk.LayoutOptions::layered()
+  layout(root, options)
+  assert_true(edge_ad.labels.length() == 1)
+  let label = edge_ad.labels[0]
+  assert_true(label.width > 0.0)
+  assert_true(label.height > 0.0)
+  assert_true(label.x >= 0.0)
+  assert_true(label.y >= 0.0)
+}

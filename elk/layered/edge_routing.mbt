@@ -150,6 +150,9 @@ fn route_vertical_layout(
   let edge_counts : Map[String, Int] = {}
   let edge_indices : Map[String, Int] = {}
   for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     // Normalize key so parallel edges in both directions are counted together
     let key = if edge.source_id < edge.target_id {
       edge.source_id + "->" + edge.target_id
@@ -160,6 +163,9 @@ fn route_vertical_layout(
     edge_counts[key] = count + 1
   }
   for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     let source = graph.get_node(edge.source_id)
     let target = graph.get_node(edge.target_id)
     guard source is Some(src) && target is Some(tgt) else { continue }
@@ -356,6 +362,9 @@ fn route_horizontal_layout(
   }
 
   for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     let source = graph.get_node(edge.source_id)
     let target = graph.get_node(edge.target_id)
     guard source is Some(src) && target is Some(tgt) else { continue }
@@ -405,6 +414,9 @@ fn assign_routing_slots(
   // Pre-compute source positions for sorting
   let edge_sort_keys : Map[String, Double] = {}
   for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     match graph.get_node(edge.source_id) {
       Some(src) =>
         if is_vertical {
@@ -419,6 +431,9 @@ fn assign_routing_slots(
   // Group edges by the layer pair they cross
   let layer_edges : Map[String, Array[LEdge]] = {}
   for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     let src_node = graph.get_node(edge.source_id)
     let tgt_node = graph.get_node(edge.target_id)
     guard src_node is Some(src) && tgt_node is Some(tgt) else { continue }

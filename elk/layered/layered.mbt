@@ -161,7 +161,7 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   lgraph.initialize_layers()
 
   // Insert dummy nodes for long edges
-  insert_dummy_nodes(lgraph)
+  insert_dummy_nodes(lgraph, resolved_options)
 
   // Phase 3: Crossing Minimization
   let crossing_strategy = match resolved_options.crossing_min_strategy {
@@ -454,7 +454,7 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 
 ///|
 /// Insert dummy nodes for edges spanning multiple layers
-fn insert_dummy_nodes(graph : LGraph) -> Unit {
+fn insert_dummy_nodes(graph : LGraph, options : @elk.LayoutOptions) -> Unit {
   // Collect long edges
   let long_edges = graph.get_long_edges()
   let mut dummy_count = 0
@@ -471,18 +471,50 @@ fn insert_dummy_nodes(graph : LGraph) -> Unit {
     }
 
     // Create dummy nodes for each intermediate layer
+    // Mark the original long edge so later phases can skip routing it directly.
+    edge.properties.set("diago.layered.longEdgeSplit", @elk.Bool(true))
     let mut prev_node_id = edge.source_id
     let direction = if target_layer > source_layer { 1 } else { -1 }
+    let layer_distance = (target_layer - source_layer).abs()
+    let label_layer = if edge.labels.is_empty() {
+      None
+    } else {
+      Some(source_layer + direction * (layer_distance / 2))
+    }
+    let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
     let mut layer_idx = source_layer + direction
     while layer_idx != target_layer {
       // Create dummy node
       let dummy_id = "dummy_" + dummy_count.to_string()
       dummy_count += 1
-      let dummy = LNode::new(dummy_id, LongEdgeDummy)
+      let is_label_dummy = label_layer == Some(layer_idx)
+      let dummy = if is_label_dummy {
+        LNode::new(dummy_id, LabelDummy)
+      } else {
+        LNode::new(dummy_id, LongEdgeDummy)
+      }
       dummy.layer = layer_idx
       dummy.origin_edge = Some(edge.id)
-      dummy.width = 1.0 // Minimal width for dummy
-      dummy.height = 1.0
+      if is_label_dummy {
+        let mut max_w = 1.0
+        let mut sum_h = 0.0
+        for label in edge.labels {
+          if label.width > max_w {
+            max_w = label.width
+          }
+          sum_h = sum_h + label.height
+        }
+        let gaps = (edge.labels.length() - 1).to_double()
+        dummy.width = max_w
+        dummy.height = sum_h + gaps * label_spacing
+        dummy.properties.set(
+          "diago.layered.edgeLabelSpacing",
+          @elk.Double(label_spacing),
+        )
+      } else {
+        dummy.width = 1.0 // Minimal width for dummy
+        dummy.height = 1.0
+      }
 
       // Add to graph
       graph.add_node(dummy)
@@ -543,7 +575,7 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
   let dummy_chains : Map[String, Array[LNode]] = {}
   let dummy_node_ids : Array[String] = []
   for node in graph.nodes {
-    if node.node_type is LongEdgeDummy {
+    if node.is_dummy() {
       dummy_node_ids.push(node.id)
       match node.origin_edge {
         Some(edge_id) => {
@@ -569,13 +601,41 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
         if !edge.source_id.has_prefix("dummy_") {
           match dummy_chains.get(orig_id) {
             Some(dummies) => {
-              // Sort by layer
-              dummies.sort_by(fn(a, b) { a.layer - b.layer })
+              // Sort by traversal direction
+              let source_layer = match graph.get_node(edge.source_id) {
+                Some(n) => n.layer
+                None => 0
+              }
+              let target_layer = match graph.get_node(edge.target_id) {
+                Some(n) => n.layer
+                None => 0
+              }
+              if source_layer <= target_layer {
+                dummies.sort_by(fn(a, b) { a.layer - b.layer })
+              } else {
+                dummies.sort_by(fn(a, b) { b.layer - a.layer })
+              }
               // Add bend points from dummy positions
+              edge.bend_points.clear()
               for dummy in dummies {
                 let bend_x = dummy.x + dummy.width / 2.0
                 let bend_y = dummy.y + dummy.height / 2.0
                 edge.bend_points.push(@elk.ElkPoint::new(bend_x, bend_y))
+                if dummy.node_type is LabelDummy && !edge.labels.is_empty() {
+                  // Place edge labels at the label dummy position (absolute coords).
+                  let spacing = dummy.properties.get_double_or(
+                    "diago.layered.edgeLabelSpacing", 2.0,
+                  )
+                  let mut y = dummy.y
+                  for i, label in edge.labels {
+                    label.x = dummy.x + (dummy.width - label.width) / 2.0
+                    label.y = y
+                    y = y + label.height
+                    if i + 1 < edge.labels.length() {
+                      y = y + spacing
+                    }
+                  }
+                }
               }
             }
             None => ()
