@@ -16,11 +16,35 @@
 /// Diagram-oriented SVG renderer entrypoint.
 
 ///|
+/// SVG renderer
+pub struct SvgRenderer {
+  _marker : Unit
+} derive(Show)
+
+///|
+pub fn SvgRenderer::new() -> SvgRenderer {
+  { _marker: () }
+}
+
+///|
+/// Implement the Renderer trait for SvgRenderer
+pub impl @render_api.Renderer for SvgRenderer with render(
+  _self,
+  diagram : @diagram.Diagram,
+) -> String raise @render_api.RenderError {
+  render_svg(diagram.materialize(), SvgConfig::new())
+}
+
+///|
+pub impl @render_api.Renderer for SvgRenderer with format_name(
+  _self,
+) -> String {
+  "svg"
+}
+
+///|
+/// Render with custom configuration
 pub fn render(diagram : @diagram.Diagram, config : SvgConfig) -> String {
   render_svg(diagram.materialize(), config)
 }
 
-///|
-pub fn render_graph(graph : @graph.Graph, config : SvgConfig) -> String {
-  render_svg(graph, config)
-}

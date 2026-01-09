@@ -33,5 +33,9 @@ pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   _config,
   _direction,
 ) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  @engine_api.LayoutResult::new()
+  let res = @engine_api.LayoutResult::new()
+  res.nodes["Hello"] = @engine_api.NodeLayout::from_box(
+    @graph.Box::new(50, 50, 50, 50),
+  )
+  res
 }

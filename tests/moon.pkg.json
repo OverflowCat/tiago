@@ -8,7 +8,6 @@
     "Milky2018/diago/engine_api",
     "Milky2018/diago/engine_elk",
     "Milky2018/diago/renderer_svg",
-    "Milky2018/diago/renderer_ascii",
-    "Milky2018/diago/renderer_unicode"
+    "Milky2018/diago/renderer_ascii"
   ]
 }

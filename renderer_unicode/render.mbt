@@ -16,14 +16,34 @@
 /// Unicode (box-drawing) renderer built on top of the ASCII renderer.
 
 ///|
-pub fn render(diagram : @diagram.Diagram) -> String {
+/// Unicode renderer
+pub struct UnicodeRenderer {
+  _marker : Unit
+} derive(Show)
+
+///|
+pub fn UnicodeRenderer::new() -> UnicodeRenderer {
+  { _marker: () }
+}
+
+///|
+/// Implement the Renderer trait for UnicodeRenderer
+pub impl @render_api.Renderer for UnicodeRenderer with render(
+  _self,
+  diagram : @diagram.Diagram,
+) -> String raise @render_api.RenderError {
   @renderer_ascii.render(diagram, @renderer_ascii.AsciiConfig::unicode())
 }
 
 ///|
-pub fn render_graph(graph : @graph.Graph) -> String {
-  @renderer_ascii.render_graph(
-    graph,
-    @renderer_ascii.AsciiConfig::unicode(),
-  )
+pub impl @render_api.Renderer for UnicodeRenderer with format_name(
+  _self,
+) -> String {
+  "unicode"
+}
+
+///|
+/// Legacy render function (for backward compatibility)
+pub fn render(diagram : @diagram.Diagram) -> String {
+  @renderer_ascii.render(diagram, @renderer_ascii.AsciiConfig::unicode())
 }

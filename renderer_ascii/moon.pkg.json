@@ -2,6 +2,7 @@
   "import": [
     "Milky2018/diago/diagram",
     "Milky2018/diago/graph",
-    "Milky2018/diago/ascii"
+    "Milky2018/diago/ascii",
+    "Milky2018/diago/render_api"
   ]
 }

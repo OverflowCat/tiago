@@ -162,7 +162,7 @@ pub fn needs_end_marker(arrowhead : ArrowheadType) -> Bool {
 ///|
 /// Build SVG line attributes for edge markers
 pub fn build_marker_attributes(
-  src : ArrowheadType,
+  src : @graph.ArrowheadType,
   dst : ArrowheadType,
 ) -> String {
   let mut attrs = ""

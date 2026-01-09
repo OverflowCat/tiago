@@ -16,11 +16,34 @@
 /// Diagram-oriented ASCII renderer entrypoint.
 
 ///|
-pub fn render(diagram : @diagram.Diagram, config : AsciiConfig) -> String {
-  render_ascii(diagram.materialize(), config)
+/// ASCII renderer
+pub struct AsciiRenderer {
+  _marker : Unit
+} derive(Show)
+
+///|
+pub fn AsciiRenderer::new() -> AsciiRenderer {
+  { _marker: () }
 }
 
 ///|
-pub fn render_graph(graph : @graph.Graph, config : AsciiConfig) -> String {
-  render_ascii(graph, config)
+/// Implement the Renderer trait for AsciiRenderer
+pub impl @render_api.Renderer for AsciiRenderer with render(
+  _self,
+  diagram : @diagram.Diagram,
+) -> String raise @render_api.RenderError {
+  render_ascii(diagram.materialize(), AsciiConfig::new())
+}
+
+///|
+pub impl @render_api.Renderer for AsciiRenderer with format_name(
+  _self,
+) -> String {
+  "ascii"
+}
+
+///|
+/// Render with custom configuration
+pub fn render(diagram : @diagram.Diagram, config : AsciiConfig) -> String {
+  render_ascii(diagram.materialize(), config)
 }
