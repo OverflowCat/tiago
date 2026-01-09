@@ -61,10 +61,7 @@ fn max_double(a : Double, b : Double) -> Double {
 ///|
 /// Execute the layered layout algorithm
 pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
-  let resolved_options = @elk.LayoutOptions::merge(
-    options,
-    @elk.LayoutOptions::from_properties(graph.properties),
-  )
+  let resolved_options = @elk.resolve_options_for_graph(options, graph)
   fn ensure_label_size(label : @elk.ElkLabel) -> Unit {
     if label.width <= 0.0 {
       label.width = label.text.length().to_double() * 8.0
@@ -75,6 +72,7 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   }
 
   fn ensure_sizes(node : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
+    let node_options = @elk.resolve_options_for_node(options, node)
     for label in node.labels {
       ensure_label_size(label)
     }
@@ -89,12 +87,12 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
       }
     }
     for child in node.children {
-      ensure_sizes(child, options)
+      ensure_sizes(child, node_options)
     }
 
     // Auto-size nodes when missing width/height.
     if node.width <= 0.0 || node.height <= 0.0 {
-      let (min_w, min_h) = match options.node_size_minimum {
+      let (min_w, min_h) = match node_options.node_size_minimum {
         Some((w, h)) => (w, h)
         None => (60.0, 40.0)
       }
@@ -123,7 +121,8 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
       layout(child, resolved_options)
       // Update child size to contain its children
       let (child_w, child_h) = child.calculate_bounds()
-      let padding = resolved_options.padding.unwrap_or(
+      let child_options = @elk.resolve_options_for_node(resolved_options, child)
+      let padding = child_options.padding.unwrap_or(
         @elk.ElkPadding::uniform(12.0),
       )
       child.width = child_w + padding.left + padding.right

@@ -418,6 +418,11 @@ pub fn LGraph::from_elk_node(elk_node : @elk.ElkNode) -> LGraph {
         ledge.source_port_id = elk_edge.source_port_id()
         ledge.target_port_id = elk_edge.target_port_id()
         ledge.properties.copy_from(elk_edge.properties)
+        ledge.priority = elk_edge.properties
+          .get_int("elk.priority")
+          .unwrap_or(
+            elk_edge.properties.get_int_or("org.eclipse.elk.priority", 0),
+          )
         // Convert labels
         for label in elk_edge.labels {
           ledge.labels.push(LLabel::from_elk_label(label))

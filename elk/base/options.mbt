@@ -1181,6 +1181,10 @@ pub fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
     Some(routing) => props.set("elk.edgeRouting", Enum(routing.to_string()))
     None => ()
   }
+  match self.priority {
+    Some(v) => props.set("elk.priority", Int(v))
+    None => ()
+  }
   match self.node_node_spacing {
     Some(v) => props.set("elk.spacing.nodeNode", Double(v))
     None => ()
@@ -1375,6 +1379,10 @@ pub fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
   }
   match get_padding_any(props, ["elk.padding", "org.eclipse.elk.padding"]) {
     Some(p) => options = options.with_padding(p)
+    None => ()
+  }
+  match get_int_any(props, ["elk.priority", "org.eclipse.elk.priority"]) {
+    Some(v) => options = { ..options, priority: Some(v) }
     None => ()
   }
   match

@@ -87,10 +87,7 @@ pub fn layout(
   graph : ElkNode,
   options : LayoutOptions,
 ) -> Unit raise LayoutError {
-  let resolved_options = LayoutOptions::merge(
-    options,
-    LayoutOptions::from_properties(graph.properties),
-  )
+  let resolved_options = @base.resolve_options_for_graph(options, graph)
   let algorithm = match resolved_options.algorithm {
     Some(alg) => alg
     None => Layered

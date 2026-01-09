@@ -8,6 +8,16 @@ pub fn create_graph(String) -> ElkNode
 
 pub fn create_labeled_node(String, String) -> ElkNode
 
+pub fn resolve_options_for_edge(LayoutOptions, ElkEdge) -> LayoutOptions
+
+pub fn resolve_options_for_graph(LayoutOptions, ElkNode) -> LayoutOptions
+
+pub fn resolve_options_for_label(LayoutOptions, ElkLabel) -> LayoutOptions
+
+pub fn resolve_options_for_node(LayoutOptions, ElkNode) -> LayoutOptions
+
+pub fn resolve_options_for_port(LayoutOptions, ElkPort) -> LayoutOptions
+
 // Errors
 
 // Types and methods

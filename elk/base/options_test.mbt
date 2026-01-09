@@ -38,3 +38,25 @@ test "options: to_properties/from_properties roundtrip (subset)" {
   assert_eq(parsed.crossing_min_strategy, Some(None))
   assert_eq(parsed.node_placement_strategy, Some(Simple))
 }
+
+///|
+test "options: resolve inheritance graph/node/edge" {
+  let base_options = LayoutOptions::layered()
+  let graph = ElkNode::new("g")
+  graph.properties.set("elk.priority", Int(2))
+  let node_override = ElkNode::new("n_override")
+  node_override.properties.set("elk.priority", Int(3))
+  let node_inherit = ElkNode::new("n_inherit")
+  let edge_override = ElkEdge::new("e", "n_override", "n_inherit")
+  edge_override.properties.set("elk.priority", Int(4))
+  let graph_options = resolve_options_for_graph(base_options, graph)
+  assert_eq(graph_options.priority, Some(2))
+  let node_options = resolve_options_for_node(graph_options, node_override)
+  assert_eq(node_options.priority, Some(3))
+  let node_inherit_options = resolve_options_for_node(
+    graph_options, node_inherit,
+  )
+  assert_eq(node_inherit_options.priority, Some(2))
+  let edge_options = resolve_options_for_edge(graph_options, edge_override)
+  assert_eq(edge_options.priority, Some(4))
+}
