@@ -13,71 +13,28 @@
 // limitations under the License.
 
 ///|
-/// Local aliases for the pure `d2graph` model.
-type ArrowheadType = @d2graph.ArrowheadType
-
-///|
-type Box = @d2graph.Box
-
-///|
-type Edge = @d2graph.Edge
-
-///|
-type Graph = @d2graph.Graph
-
-///|
-type GraphVariant = @d2graph.GraphVariant
-
-///|
-type Layer = @d2graph.Layer
-
-///|
-type Legend = @d2graph.Legend
-
-///|
-type LegendEntry = @d2graph.LegendEntry
-
-///|
-type LegendPosition = @d2graph.LegendPosition
-
-///|
-type Object = @d2graph.Object
-
-///|
-type Point = @d2graph.Point
-
-///|
-type Port = @d2graph.Port
-
-///|
-type PortSide = @d2graph.PortSide
-
-///|
-type Route = @d2graph.Route
-
-///|
-type RouteStyle = @d2graph.RouteStyle
-
-///|
-type Scenario = @d2graph.Scenario
-
-///|
-type SequenceFragment = @d2graph.SequenceFragment
-
-///|
-type ShapeType = @d2graph.ShapeType
-
-///|
-type Step = @d2graph.Step
-
-///|
-type Style = @d2graph.Style
-
-///|
-type VariantGraph = @d2graph.VariantGraph
-
-///|
-type VariantType = @d2graph.VariantType
-
-///|
-type Waypoint = @d2graph.Waypoint
+using @d2graph {
+  type ArrowheadType,
+  type Box,
+  type Edge,
+  type Graph,
+  type GraphVariant,
+  type Legend,
+  type Layer,
+  type LegendEntry,
+  type LegendPosition,
+  type Object,
+  type Point,
+  type Port,
+  type PortSide,
+  type Route,
+  type RouteStyle,
+  type Scenario,
+  type SequenceFragment,
+  type ShapeType,
+  type Step,
+  type Style,
+  type VariantGraph,
+  type VariantType,
+  type Waypoint,
+}

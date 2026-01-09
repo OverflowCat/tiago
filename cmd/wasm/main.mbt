@@ -209,6 +209,15 @@ fn compile_to_diagram(
     ) catch {
       e => return Err("Layout error: \{e}")
     }
+  } else if engine == 2 {
+    @d2diagram.layout_with_engine(
+      @engine_railway.RailwayEngine::new(),
+      graph,
+      config,
+      @engine_api.Down,
+    ) catch {
+      e => return Err("Layout error: \{e}")
+    }
   } else {
     @d2diagram.layout_with_engine(
       @engine_elk.ElkEngine::new(),
@@ -220,9 +229,4 @@ fn compile_to_diagram(
     }
   }
   Ok(diagram)
-}
-
-///|
-fn main {
-  // Empty main - all functionality via exported functions
 }

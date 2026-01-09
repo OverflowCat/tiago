@@ -13,28 +13,25 @@
 // limitations under the License.
 
 ///|
-using @d2graph {
-  type ArrowheadType,
-  type Box,
-  type Edge,
-  type Graph,
-  type GraphVariant,
-  type Legend,
-  type Layer,
-  type LegendEntry,
-  type LegendPosition,
-  type Object,
-  type Point,
-  type Port,
-  type PortSide,
-  type Route,
-  type RouteStyle,
-  type Scenario,
-  type SequenceFragment,
-  type ShapeType,
-  type Step,
-  type Style,
-  type VariantGraph,
-  type VariantType,
-  type Waypoint,
+/// Railway engine implementation for diagram layout.
+/// This engine uses a railway-inspired layout algorithm.
+
+///|
+pub struct RailwayEngine {
+  _marker : Unit
+} derive(Show)
+
+///|
+pub fn RailwayEngine::new() -> RailwayEngine {
+  { _marker: () }
+}
+
+///|
+pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
+  _self,
+  _graph,
+  _config,
+  _direction,
+) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
+  raise @engine_api.unsupported("engine_railway is not implemented yet")
 }

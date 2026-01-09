@@ -292,6 +292,7 @@ server -> database: queries"></textarea>
           <select id="engine-select">
             <option value="elk">ELK</option>
             <option value="dagre">Dagre (stub)</option>
+            <option value="railway">Railway (stub)</option>
           </select>
         </div>
         <div class="spacer"></div>
@@ -355,14 +356,17 @@ server -> database: queries"></textarea>
     // Engine selection
     const ENGINE_STORAGE_KEY = 'diago.layout_engine';
     function getSelectedEngine() {
-      return engineSelect.value === 'dagre' ? 'dagre' : 'elk';
+      return engineSelect.value;
     }
     function getEngineId() {
-      return getSelectedEngine() === 'dagre' ? 1 : 0;
+      const engine = getSelectedEngine();
+      if (engine === 'dagre') return 1;
+      if (engine === 'railway') return 2;
+      return 0; // elk
     }
     // Restore last engine preference
     const savedEngine = localStorage.getItem(ENGINE_STORAGE_KEY);
-    if (savedEngine === 'dagre' || savedEngine === 'elk') {
+    if (savedEngine === 'dagre' || savedEngine === 'elk' || savedEngine === 'railway') {
       engineSelect.value = savedEngine;
     }
     engineSelect.addEventListener('change', () => {
