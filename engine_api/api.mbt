@@ -111,6 +111,26 @@ pub struct EdgeLayout {
 } derive(Show)
 
 ///|
+/// Complete layout information for a rendered diagram graph.
+///
+/// This structure contains all the geometric information needed by renderers to
+/// draw a graph, including node positions, edge routing, labels, and special
+/// sequence diagram elements. It serves as the contract between layout engines
+/// and renderers.
+///
+/// Fields:
+///
+/// * `nodes` : Position and size information for each graph node, keyed by node
+///   ID.
+/// * `edges` : Routing points for each graph edge, keyed by edge index.
+/// * `edge_labels` : Position and size information for edge labels, keyed by
+///   edge index.
+/// * `activation_boxes` : Sequence diagram activation boxes with their
+///   associated node IDs and layout information.
+/// * `sequence_notes` : Sequence diagram notes with source ID, target ID, and
+///   layout information.
+/// * `sequence_fragments` : Sequence diagram fragment elements.
+///
 pub struct LayoutResult {
   nodes : Map[String, NodeLayout]
   edges : Map[Int, EdgeLayout]

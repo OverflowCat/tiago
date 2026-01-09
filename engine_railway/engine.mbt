@@ -29,13 +29,15 @@ pub fn RailwayEngine::new() -> RailwayEngine {
 ///|
 pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   _self,
-  _graph,
+  graph,
   _config,
   _direction,
 ) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
   let res = @engine_api.LayoutResult::new()
-  res.nodes["Hello"] = @engine_api.NodeLayout::from_box(
-    @graph.Box::new(50, 50, 50, 50),
-  )
+  for i, node in graph.objects {
+    res.nodes[node.label] = @engine_api.NodeLayout::from_box(
+      @graph.Box::new(i.to_double() * 50, 50, 50, 50),
+    )
+  }
   res
 }

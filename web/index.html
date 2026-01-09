@@ -181,6 +181,38 @@
       background: #0f3460;
       color: #fff;
     }
+    .engine-tabs {
+      display: flex;
+      gap: 0;
+      margin-left: 0.5rem;
+    }
+    .engine-tab {
+      background: transparent;
+      border-radius: 0;
+      color: #666;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+    }
+    .engine-tab:hover {
+      background: #0f3460;
+      color: #fff;
+    }
+    .engine-tab.active {
+      background: #e94560;
+      color: #fff;
+    }
+    .toolbar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .toolbar-label {
+      color: #888;
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
     .spacer {
       flex: 1;
     }
@@ -204,27 +236,6 @@
     }
     .status.error {
       color: #ff6b6b;
-    }
-    select {
-      background: #0f3460;
-      color: #fff;
-      border: none;
-      padding: 0.4rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-    select:focus {
-      outline: 1px solid #e94560;
-    }
-    .toolbar-group {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .toolbar-label {
-      color: #888;
-      font-size: 0.75rem;
     }
     .resize-handle {
       width: 4px;
@@ -282,24 +293,29 @@ server -> database: queries"></textarea>
 
     <div class="preview-pane">
       <div class="toolbar">
-        <div class="tabs">
-          <button class="tab active" data-view="svg">SVG</button>
-          <button class="tab" data-view="ascii">ASCII</button>
-          <button class="tab" data-view="unicode">Unicode</button>
+        <div style="display: flex; flex-direction: column; gap: 0.25rem; width: 100%;">
+          <div class="toolbar-row">
+            <span class="toolbar-label">Format</span>
+            <div class="tabs">
+              <button class="tab active" data-view="svg">SVG</button>
+              <button class="tab" data-view="ascii">ASCII</button>
+              <button class="tab" data-view="unicode">Unicode</button>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="toolbar-row">
+            <span class="toolbar-label">Engine</span>
+            <div class="engine-tabs">
+              <button class="engine-tab active" data-engine="elk">ELK</button>
+              <button class="engine-tab" data-engine="dagre">Dagre</button>
+              <button class="engine-tab" data-engine="railway">Railway</button>
+            </div>
+            <div class="spacer"></div>
+            <button id="copy-btn" class="secondary">Copy Output</button>
+            <button id="download-png-btn" class="secondary" disabled>Download PNG</button>
+            <button id="download-pdf-btn" class="secondary" disabled>Export PDF</button>
+          </div>
         </div>
-        <div class="toolbar-group" title="Select layout engine">
-          <span class="toolbar-label">Engine</span>
-          <select id="engine-select">
-            <option value="elk">ELK</option>
-            <option value="dagre">Dagre (stub)</option>
-            <option value="railway">Railway (wip)</option>
-          </select>
-        </div>
-        <div class="spacer"></div>
-        <button id="render-btn">Render</button>
-        <button id="copy-btn" class="secondary">Copy Output</button>
-        <button id="download-png-btn" class="secondary" disabled>Download PNG</button>
-        <button id="download-pdf-btn" class="secondary" disabled>Export PDF</button>
       </div>
       <div id="error-banner" class="error-banner" style="display: none;"></div>
       <div id="preview" class="preview-content">
@@ -342,36 +358,43 @@ server -> database: queries"></textarea>
     const editor = document.getElementById('editor');
     const preview = document.getElementById('preview');
     const errorBanner = document.getElementById('error-banner');
-    const renderBtn = document.getElementById('render-btn');
     const copyBtn = document.getElementById('copy-btn');
     const downloadPngBtn = document.getElementById('download-png-btn');
     const downloadPdfBtn = document.getElementById('download-pdf-btn');
     const exampleSelect = document.getElementById('example-select');
-    const engineSelect = document.getElementById('engine-select');
     const statusEl = document.getElementById('status');
     const tabs = document.querySelectorAll('.tab');
+    const engineTabs = document.querySelectorAll('.engine-tab');
     const editorPane = document.getElementById('editor-pane');
     const resizeHandle = document.getElementById('resize-handle');
 
     // Engine selection
     const ENGINE_STORAGE_KEY = 'diago.layout_engine';
+    let selectedEngine = 'elk';
     function getSelectedEngine() {
-      return engineSelect.value;
+      return selectedEngine;
     }
     function getEngineId() {
-      const engine = getSelectedEngine();
-      if (engine === 'dagre') return 1;
-      if (engine === 'railway') return 2;
+      if (selectedEngine === 'dagre') return 1;
+      if (selectedEngine === 'railway') return 2;
       return 0; // elk
     }
     // Restore last engine preference
     const savedEngine = localStorage.getItem(ENGINE_STORAGE_KEY);
     if (savedEngine === 'dagre' || savedEngine === 'elk' || savedEngine === 'railway') {
-      engineSelect.value = savedEngine;
+      selectedEngine = savedEngine;
+      engineTabs.forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.engine === savedEngine);
+      });
     }
-    engineSelect.addEventListener('change', () => {
-      localStorage.setItem(ENGINE_STORAGE_KEY, getSelectedEngine());
-      render();
+    engineTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        engineTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        selectedEngine = tab.dataset.engine;
+        localStorage.setItem(ENGINE_STORAGE_KEY, selectedEngine);
+        render();
+      });
     });
 
     // Tab switching
@@ -396,9 +419,6 @@ server -> database: queries"></textarea>
         render();
       }
     });
-
-    // Render button
-    renderBtn.addEventListener('click', render);
 
     // Copy button
     copyBtn.addEventListener('click', () => {

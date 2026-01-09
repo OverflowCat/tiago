@@ -65,6 +65,29 @@ pub struct FragmentOperandInput {
 } derive(Show)
 
 ///|
+/// Immutable representation of a graph object for layout engines.
+///
+/// Fields:
+///
+/// * `id` : Unique identifier for the object.
+/// * `label` : Display text for the object.
+/// * `shape_type` : Visual shape of the object.
+/// * `style` : Visual styling properties.
+/// * `child_ids` : Array of child object identifiers.
+/// * `z_index` : Layer ordering for visual stacking.
+/// * `icon` : Optional icon identifier.
+/// * `tooltip` : Optional tooltip text.
+/// * `link` : Optional hyperlink URL.
+/// * `classes` : Array of CSS class names for styling.
+/// * `grid_rows` : Optional number of grid rows for layout.
+/// * `grid_columns` : Optional number of grid columns for layout.
+/// * `grid_gap` : Optional spacing between grid items.
+/// * `horizontal_gap` : Optional horizontal spacing between children.
+/// * `vertical_gap` : Optional vertical spacing between children.
+/// * `grid_column_span` : Optional number of columns this object spans.
+/// * `grid_row_span` : Optional number of rows this object spans.
+/// * `near` : Optional identifier of object to position near.
+///
 pub struct ObjectInput {
   id : String
   label : String
