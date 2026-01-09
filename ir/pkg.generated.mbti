@@ -136,7 +136,6 @@ pub fn Map::get_field(Self, String) -> Field?
 pub fn Map::has_field(Self, String) -> Bool
 pub fn Map::multi_glob(Self, Array[String]) -> (Array[Field], Bool)
 pub fn Map::new() -> Self
-pub fn Map::resolve_substitutions(Self) -> Unit
 pub fn Map::single_glob(Self, Array[String]) -> Array[Field]
 pub fn Map::triple_glob(Self) -> Array[Field]
 pub impl Eq for Map

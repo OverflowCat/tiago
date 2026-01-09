@@ -119,14 +119,14 @@ test "layout container with children" {
   guard child1.get_box() is Some(child1_box) else {
     fail("expected child1 box")
   }
-  guard child2.get_box() is Some(child2_box) else {
+  guard child2.get_box() is Some(childiago_box) else {
     fail("expected child2 box")
   }
   // Children should be positioned inside parent
   assert_true(child1_box.x >= parent_box.x)
   assert_true(child1_box.y >= parent_box.y)
   // Child2 should be below child1
-  assert_true(child2_box.y > child1_box.y)
+  assert_true(childiago_box.y > child1_box.y)
 }
 
 ///|
@@ -652,7 +652,7 @@ test "root-level sequence diagram layout" {
   let graph = @graph.Graph::new("test")
   // Set root to be a sequence diagram
   graph.root.set_shape("sequence_diagram")
-  // Add actors (without "root." prefix - just like compiled from D2)
+  // Add actors (without "root." prefix - just like compiled from diago)
   let alice = @graph.Object::with_label("alice", "Alice")
   let bob = @graph.Object::with_label("bob", "Bob")
   // Make actors children of root

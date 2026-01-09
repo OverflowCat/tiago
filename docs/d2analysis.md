@@ -128,7 +128,7 @@ The "debt mechanism" tracks cumulative deviation from the target row/column size
 const ATTEMPT_LIMIT = 100000
 const SKIP_LIMIT = 10000
 
-func iterDivisions(objects []*d2graph.Object, nCuts int,
+func iterDivisions(objects []*graph.Object, nCuts int,
                    tryFn func([]int) bool, skipFn func([]int) bool) {
     attempts := 0
     skips := 0
@@ -266,7 +266,7 @@ func (e *Ellipse) Intersections(segment Segment) []*Point {
 ELK sometimes produces suboptimal edge routing with unnecessary bends. D2 implements post-processing optimization:
 
 ```go
-func deleteBends(g *d2graph.Graph, edges []*d2graph.Edge) {
+func deleteBends(g *graph.Graph, edges []*graph.Edge) {
     for _, edge := range edges {
         route := edge.Route
 
@@ -286,7 +286,7 @@ func deleteBends(g *d2graph.Graph, edges []*d2graph.Edge) {
     }
 }
 
-func countEdgeIntersects(g *d2graph.Graph, edge *d2graph.Edge,
+func countEdgeIntersects(g *graph.Graph, edge *graph.Edge,
                          segment geo.Segment) (crossings, overlaps, closeOverlaps, touching int) {
     for _, otherEdge := range g.Edges {
         if otherEdge == edge { continue }
@@ -334,9 +334,9 @@ D2 implements a **recursive extraction and reinjection** strategy:
 ```go
 // d2layouts/d2layouts.go - LayoutNested function
 
-func LayoutNested(ctx context.Context, g *d2graph.Graph,
-                  graphInfo GraphInfo, coreLayout d2graph.LayoutGraph,
-                  edgeRouter d2graph.RouteEdges) error {
+func LayoutNested(ctx context.Context, g *graph.Graph,
+                  graphInfo GraphInfo, coreLayout graph.LayoutGraph,
+                  edgeRouter graph.RouteEdges) error {
 
     // Phase 1: BFS to identify all nested containers
     containers := findContainers(g)
@@ -364,8 +364,8 @@ func LayoutNested(ctx context.Context, g *d2graph.Graph,
 #### Edge Classification
 
 ```go
-func classifyEdges(g *d2graph.Graph, container *d2graph.Object) (
-    internal, external, crossing []*d2graph.Edge) {
+func classifyEdges(g *graph.Graph, container *graph.Object) (
+    internal, external, crossing []*graph.Edge) {
 
     for _, edge := range g.Edges {
         srcInside := isDescendant(edge.Src, container)
@@ -390,8 +390,8 @@ func classifyEdges(g *d2graph.Graph, container *d2graph.Object) (
 After laying out a nested graph, coordinates must be transformed to the parent's coordinate system:
 
 ```go
-func ReinjestSubgraph(parent *d2graph.Graph, container *d2graph.Object,
-                      child *d2graph.Graph) {
+func ReinjestSubgraph(parent *graph.Graph, container *graph.Object,
+                      child *graph.Graph) {
     // Compute offset based on container position
     offsetX := container.TopLeft.X + container.Padding
     offsetY := container.TopLeft.Y + container.Padding
@@ -439,11 +439,11 @@ The challenge is computing optimal horizontal spacing when message labels vary i
 // sequence_diagram.go
 
 type sequenceDiagram struct {
-    actors      []*d2graph.Object
-    messages    []*d2graph.Edge
-    spans       []*d2graph.Object
-    groups      []*d2graph.Object
-    objectRank  map[*d2graph.Object]int  // Horizontal position index
+    actors      []*graph.Object
+    messages    []*graph.Edge
+    spans       []*graph.Object
+    groups      []*graph.Object
+    objectRank  map[*graph.Object]int  // Horizontal position index
 }
 
 func (sd *sequenceDiagram) layout() error {
@@ -631,7 +631,7 @@ D2 uses a **simplified fixed-position strategy** rather than solving the general
 
 ```go
 // Node labels: centered inside the node
-func placeNodeLabel(node *d2graph.Object) {
+func placeNodeLabel(node *graph.Object) {
     node.LabelPosition = Point{
         X: node.TopLeft.X + node.Width/2 - node.LabelWidth/2,
         Y: node.TopLeft.Y + node.Height/2 - node.LabelHeight/2,
@@ -639,7 +639,7 @@ func placeNodeLabel(node *d2graph.Object) {
 }
 
 // Edge labels: at the midpoint of the edge
-func placeEdgeLabel(edge *d2graph.Edge) {
+func placeEdgeLabel(edge *graph.Edge) {
     midpoint := edge.Route.Midpoint()
     edge.LabelPosition = Point{
         X: midpoint.X - edge.LabelWidth/2,

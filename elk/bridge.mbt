@@ -14,15 +14,15 @@
 
 ///|
 /// ELK.js Port for MoonBit - Bridge Functions
-/// Convert between existing @d2graph types and ELK types
+/// Convert between existing @graph types and ELK types
 
 // ============================================================================
 // Convert Graph -> ElkNode
 // ============================================================================
 
 ///|
-/// Convert a D2 Graph to an ELK graph structure
-pub fn from_graph(graph : @d2graph.Graph) -> ElkNode {
+/// Convert a diago Graph to an ELK graph structure
+pub fn from_graph(graph : @graph.Graph) -> ElkNode {
   // Create root ELK node
   let root = ElkNode::new(graph.root.id)
 
@@ -60,8 +60,8 @@ pub fn from_graph(graph : @d2graph.Graph) -> ElkNode {
 }
 
 ///|
-/// Convert a D2 Object to an ElkNode
-fn convert_object(obj : @d2graph.Object) -> ElkNode {
+/// Convert a diago Object to an ElkNode
+fn convert_object(obj : @graph.Object) -> ElkNode {
   let node = ElkNode::new(obj.id)
 
   // Set size/position from box
@@ -96,8 +96,8 @@ fn convert_object(obj : @d2graph.Object) -> ElkNode {
 }
 
 ///|
-/// Convert a D2 Edge to an ElkEdge
-fn convert_edge(edge : @d2graph.Edge) -> ElkEdge {
+/// Convert a diago Edge to an ElkEdge
+fn convert_edge(edge : @graph.Edge) -> ElkEdge {
   let elk_edge = ElkEdge::new(
     "e" + edge.index.to_string(),
     edge.src_id,
@@ -139,11 +139,11 @@ fn convert_edge(edge : @d2graph.Edge) -> ElkEdge {
 // ============================================================================
 
 ///|
-/// Apply ELK layout results back to a D2 Graph
-pub fn to_graph(elk_node : ElkNode, graph : @d2graph.Graph) -> Unit {
+/// Apply ELK layout results back to a diago Graph
+pub fn to_graph(elk_node : ElkNode, graph : @graph.Graph) -> Unit {
   // Apply root size
   graph.root.box = Some(
-    @d2graph.Box::new(elk_node.x, elk_node.y, elk_node.width, elk_node.height),
+    @graph.Box::new(elk_node.x, elk_node.y, elk_node.width, elk_node.height),
   )
 
   // Apply positions to all objects
@@ -163,12 +163,12 @@ pub fn to_graph(elk_node : ElkNode, graph : @d2graph.Graph) -> Unit {
 }
 
 ///|
-/// Find and apply position from ELK node to D2 object
-fn apply_node_position(elk_node : ElkNode, obj : @d2graph.Object) -> Unit {
+/// Find and apply position from ELK node to diago object
+fn apply_node_position(elk_node : ElkNode, obj : @graph.Object) -> Unit {
   // Try to find matching ELK node
   match elk_node.find_node(obj.id) {
     Some(elk) => {
-      obj.box = Some(@d2graph.Box::new(elk.x, elk.y, elk.width, elk.height))
+      obj.box = Some(@graph.Box::new(elk.x, elk.y, elk.width, elk.height))
 
       // Recursively apply to children
       for child in obj.children {
@@ -180,8 +180,8 @@ fn apply_node_position(elk_node : ElkNode, obj : @d2graph.Object) -> Unit {
 }
 
 ///|
-/// Find and apply route from ELK edge to D2 edge
-fn apply_edge_route(elk_node : ElkNode, edge : @d2graph.Edge) -> Unit {
+/// Find and apply route from ELK edge to diago edge
+fn apply_edge_route(elk_node : ElkNode, edge : @graph.Edge) -> Unit {
   let edge_id = "e" + edge.index.to_string()
 
   // Search all edges in the ELK graph
@@ -194,17 +194,17 @@ fn apply_edge_route(elk_node : ElkNode, edge : @d2graph.Edge) -> Unit {
       for section in elk_edge.sections {
         // Add start point
         edge.route.push(
-          @d2graph.Point::new(section.start_point.x, section.start_point.y),
+          @graph.Point::new(section.start_point.x, section.start_point.y),
         )
 
         // Add bend points
         for bend in section.bend_points {
-          edge.route.push(@d2graph.Point::new(bend.x, bend.y))
+          edge.route.push(@graph.Point::new(bend.x, bend.y))
         }
 
         // Add end point
         edge.route.push(
-          @d2graph.Point::new(section.end_point.x, section.end_point.y),
+          @graph.Point::new(section.end_point.x, section.end_point.y),
         )
       }
 
@@ -212,7 +212,7 @@ fn apply_edge_route(elk_node : ElkNode, edge : @d2graph.Edge) -> Unit {
       if elk_edge.labels.length() > 0 {
         let label = elk_edge.labels[0]
         edge.label_box = Some(
-          @d2graph.Box::new(label.x, label.y, label.width, label.height),
+          @graph.Box::new(label.x, label.y, label.width, label.height),
         )
       }
       return
@@ -225,25 +225,25 @@ fn apply_edge_route(elk_node : ElkNode, edge : @d2graph.Edge) -> Unit {
 // ============================================================================
 
 ///|
-/// Convert ELK PortSide to D2 PortSide
-pub fn elk_port_side_to_graph(side : PortSide) -> @d2graph.PortSide {
+/// Convert ELK PortSide to diago PortSide
+pub fn elk_port_side_to_graph(side : PortSide) -> @graph.PortSide {
   match side {
-    North => @d2graph.Top
-    South => @d2graph.Bottom
-    East => @d2graph.Right
-    West => @d2graph.Left
-    Undefined => @d2graph.Top
+    North => @graph.Top
+    South => @graph.Bottom
+    East => @graph.Right
+    West => @graph.Left
+    Undefined => @graph.Top
   } // Default
 }
 
 ///|
-/// Convert D2 PortSide to ELK PortSide
-pub fn graph_port_side_to_elk(side : @d2graph.PortSide) -> PortSide {
+/// Convert diago PortSide to ELK PortSide
+pub fn graph_port_side_to_elk(side : @graph.PortSide) -> PortSide {
   match side {
-    @d2graph.Top => North
-    @d2graph.Bottom => South
-    @d2graph.Left => West
-    @d2graph.Right => East
+    @graph.Top => North
+    @graph.Bottom => South
+    @graph.Left => West
+    @graph.Right => East
   }
 }
 
@@ -252,9 +252,9 @@ pub fn graph_port_side_to_elk(side : @d2graph.PortSide) -> PortSide {
 // ============================================================================
 
 ///|
-/// Layout a D2 graph using ELK algorithms
-pub fn layout_d2_graph(
-  graph : @d2graph.Graph,
+/// Layout a diago graph using ELK algorithms
+pub fn layout_diago_graph(
+  graph : @graph.Graph,
   options : LayoutOptions,
 ) -> Unit raise LayoutError {
   // Convert to ELK format

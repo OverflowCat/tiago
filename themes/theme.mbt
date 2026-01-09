@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Theme System for D2 Diagrams
+/// Theme System for diago Diagrams
 ///
 /// Provides color palettes and special rendering rules.
 

@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/engine_railway"
+
+import(
+  "Milky2018/diago/engine_api"
+  "Milky2018/diago/graph"
+)
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct RailwayEngine {
+  _marker : Unit
+}
+pub fn RailwayEngine::new() -> Self
+pub impl @engine_api.LayoutEngine for RailwayEngine
+pub impl Show for RailwayEngine
+
+// Type aliases
+
+// Traits
+

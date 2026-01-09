@@ -83,7 +83,7 @@ test "class applies multiple style properties" {
     #|  styled: {
     #|    style: {
     #|      fill: "#e3f2fd"
-    #|      stroke: "#1976D2"
+    #|      stroke: "#1976diago"
     #|      stroke-width: 3
     #|    }
     #|  }
@@ -91,7 +91,7 @@ test "class applies multiple style properties" {
     #|box: Box { class: styled }
   let svg = compile(source).unwrap()
   assert_true(svg.contains("fill=\"#e3f2fd\""))
-  assert_true(svg.contains("stroke=\"#1976D2\""))
+  assert_true(svg.contains("stroke=\"#1976diago\""))
   assert_true(svg.contains("stroke-width=\"3\""))
 }
 

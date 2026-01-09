@@ -33,7 +33,7 @@ test "layer assignment classes.d2 - alice and bob at top" {
     #|db1 -> db2
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
 
   // Should have no reversed edges (no cycles)
@@ -61,7 +61,7 @@ test "assign_layers simple chain" {
   let source = "a -> b\nb -> c"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have 3 layers
@@ -82,7 +82,7 @@ test "assign_layers diamond" {
   let source = "a -> b\na -> c\nb -> d\nc -> d"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have 3 layers
@@ -117,7 +117,7 @@ test "assign_layers independent nodes" {
   let source = "a\nb\nc"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // All nodes should be in layer 0
@@ -134,7 +134,7 @@ test "assign_layers with cycle" {
   let source = "a -> b\nb -> c\nc -> a"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have valid layers (at least 1)
@@ -150,7 +150,7 @@ test "nodes_by_layer grouping" {
   let source = "a -> b\na -> c\nb -> d\nc -> d"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Check nodes_by_layer

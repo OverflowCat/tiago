@@ -2,7 +2,7 @@
 package "Milky2018/diago/engine_api"
 
 import(
-  "Milky2018/diago/d2graph"
+  "Milky2018/diago/graph"
 )
 
 // Values
@@ -10,7 +10,7 @@ pub fn cycle_detected(String) -> LayoutError
 
 pub fn invalid_graph(String) -> LayoutError
 
-pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutOutputs raise LayoutError
+pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, LayoutConfig, Direction) -> LayoutOutputs raise LayoutError
 
 pub fn unsupported(String) -> LayoutError
 
@@ -34,7 +34,7 @@ pub impl Eq for Direction
 pub impl Show for Direction
 
 pub struct EdgeLayout {
-  points : Array[@d2graph.Point]
+  points : Array[@graph.Point]
 }
 pub impl Show for EdgeLayout
 
@@ -56,7 +56,7 @@ pub struct LayoutOutputs {
   scenarios : Array[(String, LayoutOutputs)]
   steps : Array[(String, LayoutOutputs)]
 }
-pub fn LayoutOutputs::from_graph(@d2graph.Graph) -> Self
+pub fn LayoutOutputs::from_graph(@graph.Graph) -> Self
 pub impl Show for LayoutOutputs
 
 pub struct LayoutResult {
@@ -65,10 +65,10 @@ pub struct LayoutResult {
   edge_labels : Map[Int, NodeLayout]
   activation_boxes : Array[(String, NodeLayout)]
   sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[@d2graph.SequenceFragment]
+  sequence_fragments : Array[@graph.SequenceFragment]
 }
-pub fn LayoutResult::apply_to_graph(Self, @d2graph.Graph) -> Unit
-pub fn LayoutResult::from_graph(@d2graph.Graph) -> Self
+pub fn LayoutResult::apply_to_graph(Self, @graph.Graph) -> Unit
+pub fn LayoutResult::from_graph(@graph.Graph) -> Self
 pub fn LayoutResult::new() -> Self
 pub impl Show for LayoutResult
 
@@ -78,14 +78,14 @@ pub struct NodeLayout {
   width : Double
   height : Double
 }
-pub fn NodeLayout::from_box(@d2graph.Box) -> Self
-pub fn NodeLayout::to_box(Self) -> @d2graph.Box
+pub fn NodeLayout::from_box(@graph.Box) -> Self
+pub fn NodeLayout::to_box(Self) -> @graph.Box
 pub impl Show for NodeLayout
 
 // Type aliases
 
 // Traits
 pub(open) trait LayoutEngine {
-  layout(Self, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
 }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diago Playground - D2 Diagram Editor</title>
+  <title>Diago Playground - diago Diagram Editor</title>
   <style>
     * {
       box-sizing: border-box;
@@ -249,7 +249,7 @@
   <div class="container">
     <div class="editor-pane" id="editor-pane">
       <div class="pane-header">
-        <span>D2 Source</span>
+        <span>diago Source</span>
         <select id="example-select">
           <option value="hello">Hello World</option>
           <option value="basic">Basic Features</option>
@@ -269,7 +269,7 @@
         </select>
       </div>
       <div class="editor-wrapper">
-        <textarea id="editor" spellcheck="false" placeholder="# Enter D2 diagram code here
+        <textarea id="editor" spellcheck="false" placeholder="# Enter diago diagram code here
 
 server: Web Server
 database: Database
@@ -645,7 +645,7 @@ server -> database: queries"></textarea>
 
       if (!source.trim()) {
         preview.className = 'preview-content dark';
-        preview.innerHTML = '<div style="color: #666;">Enter D2 code to see the diagram</div>';
+        preview.innerHTML = '<div style="color: #666;">Enter diago code to see the diagram</div>';
         return;
       }
 

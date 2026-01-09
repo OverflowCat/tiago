@@ -22,7 +22,7 @@ fn compile_graph_no_layout(source : String) -> Result[@graph.Graph, String] {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.compile("test", ir) catch {
+  let graph = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   Ok(graph)

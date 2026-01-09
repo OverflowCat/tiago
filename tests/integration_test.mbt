@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Integration tests: D2 source to SVG and ASCII
+/// Integration tests: diago source to SVG and ASCII
 /// This file contains helper functions and basic object tests.
 /// Other tests are in separate files:
 /// - shape_test.mbt: Shape rendering tests
@@ -23,33 +23,33 @@
 /// - ascii_test.mbt: ASCII output tests
 
 ///|
-/// Compile D2 source to SVG
+/// Compile diago source to SVG
 fn compile(source : String) -> Result[String, String] {
   match compile_to_diagram(source, @engine_api.Direction::Down) {
     Ok(diagram) => {
-      let render_config = @d2renderer_svg.SvgConfig::new()
-      Ok(@d2renderer_svg.render(diagram, render_config))
+      let render_config = @renderer_svg.SvgConfig::new()
+      Ok(@renderer_svg.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to a diagram (graph input + layout outputs)
+/// Compile diago source to a diagram (graph input + layout outputs)
 fn compile_to_diagram(
   source : String,
   direction : @engine_api.Direction,
-) -> Result[@d2diagram.Diagram, String] {
+) -> Result[@diagram.Diagram, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.compile("test", ir) catch {
+  let graph = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let diagram = @d2diagram.layout_with_engine(
+  let diagram = @diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
     graph,
     config,
@@ -61,7 +61,7 @@ fn compile_to_diagram(
 }
 
 ///|
-/// Compile D2 source to laid-out Graph (for position testing)
+/// Compile diago source to laid-out Graph (for position testing)
 fn compile_to_graph(
   source : String,
   direction : @engine_api.Direction,
@@ -73,12 +73,12 @@ fn compile_to_graph(
 }
 
 ///|
-/// Compile D2 source to ASCII art
+/// Compile diago source to ASCII art
 fn compile_ascii(source : String) -> Result[String, String] {
   match compile_to_diagram(source, @engine_api.Direction::Down) {
     Ok(diagram) => {
-      let render_config = @d2renderer_ascii.AsciiConfig::new()
-      Ok(@d2renderer_ascii.render(diagram, render_config))
+      let render_config = @renderer_ascii.AsciiConfig::new()
+      Ok(@renderer_ascii.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
@@ -475,7 +475,7 @@ test "grid combined spans" {
 // =============================================================================
 
 ///|
-/// Compile D2 source to SVG with a specific theme
+/// Compile diago source to SVG with a specific theme
 fn compile_with_theme(
   source : String,
   theme_id : Int,
@@ -485,7 +485,7 @@ fn compile_with_theme(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.compile("test", ir) catch {
+  let graph = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let input = @graph.GraphInput::from_graph(graph)
@@ -498,9 +498,9 @@ fn compile_with_theme(
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  let diagram = @d2diagram.build(input, layout)
-  let render_config = @d2renderer_svg.SvgConfig::with_theme(theme_id)
-  Ok(@d2renderer_svg.render(diagram, render_config))
+  let diagram = @diagram.build(input, layout)
+  let render_config = @renderer_svg.SvgConfig::with_theme(theme_id)
+  Ok(@renderer_svg.render(diagram, render_config))
 }
 
 ///|

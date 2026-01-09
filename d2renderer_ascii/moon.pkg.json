@@ -1,7 +1,0 @@
-{
-  "import": [
-    "Milky2018/diago/d2diagram",
-    "Milky2018/diago/d2graph",
-    "Milky2018/diago/ascii"
-  ]
-}

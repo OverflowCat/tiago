@@ -13,10 +13,10 @@
 // limitations under the License.
 
 ///|
-/// IR (Intermediate Representation) for D2
+/// IR (Intermediate Representation) for diago
 ///
 /// The IR is a tree data structure that keeps track of resolved values
-/// of D2 keys after processing variable substitutions, imports, and globs.
+/// of diago keys after processing variable substitutions, imports, and globs.
 
 ///|
 /// A scalar value in the IR
@@ -462,3 +462,4 @@ pub fn Field::has_primary(self : Field) -> Bool {
 pub fn Field::has_composite(self : Field) -> Bool {
   self.composite is Some(_)
 }
+

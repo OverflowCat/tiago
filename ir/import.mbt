@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Import Resolution for D2 IR
+/// Import Resolution for diago IR
 ///
 /// Handles `@path/to/file.d2` import statements.
 /// Imports are resolved by a user-provided resolver function.

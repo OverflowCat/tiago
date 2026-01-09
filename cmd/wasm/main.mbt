@@ -62,7 +62,7 @@ pub fn read_output_byte(index : Int) -> Int {
 }
 
 ///|
-/// Render D2 source to SVG
+/// Render diago source to SVG
 pub fn render_svg() -> Int {
   render_svg_with_engine(0)
 }
@@ -70,7 +70,7 @@ pub fn render_svg() -> Int {
 ///|
 pub fn render_svg_with_engine(engine : Int) -> Int {
   let source = bytes_to_string(input_buffer)
-  let result = compile_d2_svg(source, None, engine)
+  let result = compile_diago_svg(source, None, engine)
   match result {
     Ok(svg) => {
       string_to_bytes(svg, output_buffer)
@@ -84,7 +84,7 @@ pub fn render_svg_with_engine(engine : Int) -> Int {
 }
 
 ///|
-/// Render D2 source to ASCII
+/// Render diago source to ASCII
 pub fn render_ascii() -> Int {
   render_ascii_with_engine(0)
 }
@@ -92,9 +92,9 @@ pub fn render_ascii() -> Int {
 ///|
 pub fn render_ascii_with_engine(engine : Int) -> Int {
   let source = bytes_to_string(input_buffer)
-  let result = compile_d2_text(
+  let result = compile_diago_text(
     source,
-    @d2renderer_ascii.AsciiConfig::new(),
+    @renderer_ascii.AsciiConfig::new(),
     engine,
   )
   match result {
@@ -110,7 +110,7 @@ pub fn render_ascii_with_engine(engine : Int) -> Int {
 }
 
 ///|
-/// Render D2 source to Unicode box-drawing characters
+/// Render diago source to Unicode box-drawing characters
 pub fn render_unicode() -> Int {
   render_unicode_with_engine(0)
 }
@@ -119,7 +119,7 @@ pub fn render_unicode() -> Int {
 pub fn render_unicode_with_engine(engine : Int) -> Int {
   let source = bytes_to_string(input_buffer)
   let result = match compile_to_diagram(source, engine) {
-    Ok(diagram) => Ok(@d2renderer_unicode.render(diagram))
+    Ok(diagram) => Ok(@renderer_unicode.render(diagram))
     Err(e) => Err(e)
   }
   match result {
@@ -154,8 +154,8 @@ fn string_to_bytes(s : String, out : Array[Byte]) -> Unit {
 }
 
 ///|
-/// Compile D2 source to SVG
-fn compile_d2_svg(
+/// Compile diago source to SVG
+fn compile_diago_svg(
   source : String,
   theme_name : String?,
   engine : Int,
@@ -163,45 +163,45 @@ fn compile_d2_svg(
   match compile_to_diagram(source, engine) {
     Ok(diagram) => {
       let render_config = match theme_name {
-        Some(name) => @d2renderer_svg.SvgConfig::with_theme_name(name)
-        None => @d2renderer_svg.SvgConfig::new()
+        Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
+        None => @renderer_svg.SvgConfig::new()
       }
-      Ok(@d2renderer_svg.render(diagram, render_config))
+      Ok(@renderer_svg.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to text art (ASCII or Unicode)
-fn compile_d2_text(
+/// Compile diago source to text art (ASCII or Unicode)
+fn compile_diago_text(
   source : String,
-  config : @d2renderer_ascii.AsciiConfig,
+  config : @renderer_ascii.AsciiConfig,
   engine : Int,
 ) -> Result[String, String] {
   match compile_to_diagram(source, engine) {
-    Ok(diagram) => Ok(@d2renderer_ascii.render(diagram, config))
+    Ok(diagram) => Ok(@renderer_ascii.render(diagram, config))
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to a render-ready diagram
+/// Compile diago source to a render-ready diagram
 fn compile_to_diagram(
   source : String,
   engine : Int,
-) -> Result[@d2diagram.Diagram, String] {
-  let (ast, errors) = @d2compiler.parse(source)
+) -> Result[@diagram.Diagram, String] {
+  let (ast, errors) = @compiler.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
-  let ir = @d2ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.to_graph("diagram", ir) catch {
+  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  let graph = @exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
   let diagram = if engine == 1 {
-    @d2diagram.layout_with_engine(
+    @diagram.layout_with_engine(
       @engine_dagre.DagreEngine::new(),
       graph,
       config,
@@ -210,7 +210,7 @@ fn compile_to_diagram(
       e => return Err("Layout error: \{e}")
     }
   } else if engine == 2 {
-    @d2diagram.layout_with_engine(
+    @diagram.layout_with_engine(
       @engine_railway.RailwayEngine::new(),
       graph,
       config,
@@ -219,7 +219,7 @@ fn compile_to_diagram(
       e => return Err("Layout error: \{e}")
     }
   } else {
-    @d2diagram.layout_with_engine(
+    @diagram.layout_with_engine(
       @engine_elk.ElkEngine::new(),
       graph,
       config,

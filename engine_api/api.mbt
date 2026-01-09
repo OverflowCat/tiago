@@ -89,7 +89,7 @@ pub fn LayoutConfig::with_spacing(
 ///|
 /// Layout engine interface.
 pub(open) trait LayoutEngine {
-  layout(Self, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
 }
 
 ///|
@@ -107,7 +107,7 @@ pub struct NodeLayout {
 
 ///|
 pub struct EdgeLayout {
-  points : Array[@d2graph.Point]
+  points : Array[@graph.Point]
 } derive(Show)
 
 ///|
@@ -117,7 +117,7 @@ pub struct LayoutResult {
   edge_labels : Map[Int, NodeLayout]
   activation_boxes : Array[(String, NodeLayout)]
   sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[@d2graph.SequenceFragment]
+  sequence_fragments : Array[@graph.SequenceFragment]
 } derive(Show)
 
 ///|
@@ -133,9 +133,9 @@ pub struct LayoutOutputs {
 /// Capture the current layout state of a graph (and its variants) into
 /// `LayoutOutputs`.
 ///
-/// This is primarily a bridge for wrapping an already-laid-out `d2graph.Graph`
+/// This is primarily a bridge for wrapping an already-laid-out `graph.Graph`
 /// into the new diagram pipeline without relying on in-place mutation.
-pub fn LayoutOutputs::from_graph(graph : @d2graph.Graph) -> LayoutOutputs {
+pub fn LayoutOutputs::from_graph(graph : @graph.Graph) -> LayoutOutputs {
   let layout = LayoutResult::from_graph(graph)
   let layers : Array[(String, LayoutOutputs)] = []
   for layer in graph.layers {
@@ -153,13 +153,13 @@ pub fn LayoutOutputs::from_graph(graph : @d2graph.Graph) -> LayoutOutputs {
 }
 
 ///|
-pub fn NodeLayout::from_box(box : @d2graph.Box) -> NodeLayout {
+pub fn NodeLayout::from_box(box : @graph.Box) -> NodeLayout {
   { x: box.x, y: box.y, width: box.width, height: box.height }
 }
 
 ///|
-pub fn NodeLayout::to_box(self : NodeLayout) -> @d2graph.Box {
-  @d2graph.Box::new(self.x, self.y, self.width, self.height)
+pub fn NodeLayout::to_box(self : NodeLayout) -> @graph.Box {
+  @graph.Box::new(self.x, self.y, self.width, self.height)
 }
 
 ///|
@@ -175,7 +175,7 @@ pub fn LayoutResult::new() -> LayoutResult {
 }
 
 ///|
-pub fn LayoutResult::from_graph(graph : @d2graph.Graph) -> LayoutResult {
+pub fn LayoutResult::from_graph(graph : @graph.Graph) -> LayoutResult {
   let result = LayoutResult::new()
   for obj in graph.objects {
     match obj.box {
@@ -184,9 +184,9 @@ pub fn LayoutResult::from_graph(graph : @d2graph.Graph) -> LayoutResult {
     }
   }
   for edge in graph.edges {
-    let points : Array[@d2graph.Point] = []
+    let points : Array[@graph.Point] = []
     for p in edge.route {
-      points.push(@d2graph.Point::new(p.x, p.y))
+      points.push(@graph.Point::new(p.x, p.y))
     }
     result.edges[edge.index] = { points, }
     match edge.get_label_box() {
@@ -207,7 +207,7 @@ pub fn LayoutResult::from_graph(graph : @d2graph.Graph) -> LayoutResult {
 }
 
 ///|
-fn reset_graph_layout_state(graph : @d2graph.Graph) -> Unit {
+fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
   for obj in graph.objects {
     obj.box = None
   }
@@ -225,7 +225,7 @@ fn reset_graph_layout_state(graph : @d2graph.Graph) -> Unit {
 ///|
 pub fn LayoutResult::apply_to_graph(
   self : LayoutResult,
-  graph : @d2graph.Graph,
+  graph : @graph.Graph,
 ) -> Unit {
   reset_graph_layout_state(graph)
   for obj in graph.objects {
@@ -267,7 +267,7 @@ pub fn LayoutResult::apply_to_graph(
 /// Perform layout on a graph (including variants) with a specific engine.
 pub fn[Engine : LayoutEngine] layout_with_engine(
   engine : Engine,
-  graph : @d2graph.GraphInput,
+  graph : @graph.GraphInput,
   config : LayoutConfig,
   direction : Direction,
 ) -> LayoutOutputs raise LayoutError {

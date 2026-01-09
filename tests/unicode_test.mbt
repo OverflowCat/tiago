@@ -18,7 +18,7 @@
 ///|
 test "unicode renderer uses box drawing characters" {
   let graph = compile_to_graph("server\nclient", @engine_api.Direction::Down).unwrap()
-  let unicode = @d2renderer_unicode.render_graph(graph)
+  let unicode = @renderer_unicode.render_graph(graph)
   assert_true(unicode.contains("┌") || unicode.contains("┏"))
   assert_true(unicode.contains("─") || unicode.contains("━"))
   assert_true(unicode.contains("│") || unicode.contains("┃"))
@@ -29,7 +29,7 @@ test "unicode diagram entrypoint matches render_graph" {
   let diagram = compile_to_diagram("a -> b", @engine_api.Direction::Down).unwrap()
   let graph = diagram.materialize()
   assert_eq(
-    @d2renderer_unicode.render(diagram),
-    @d2renderer_unicode.render_graph(graph),
+    @renderer_unicode.render(diagram),
+    @renderer_unicode.render_graph(graph),
   )
 }

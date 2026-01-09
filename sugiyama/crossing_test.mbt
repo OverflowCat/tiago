@@ -68,7 +68,7 @@ test "minimize_crossings simple graph" {
   let source = "a -> c\na -> d\nb -> c"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -85,7 +85,7 @@ test "minimize_crossings preserves all nodes" {
   let source = "a -> b\na -> c\nb -> d\nc -> d"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -115,7 +115,7 @@ test "minimize_crossings reduces crossings" {
   let source = "a -> d\nb -> c\nc -> e\nd -> e"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   // Store initial crossing count
@@ -142,7 +142,7 @@ test "minimize_crossings preserves original order for unconnected nodes" {
   let source = "a\nb\nc\nd"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -162,7 +162,7 @@ test "minimize_crossings preserves order within layer for nodes without neighbor
   let source = "x -> a\ny -> b"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)

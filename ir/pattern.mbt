@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Glob patterns and filters for D2 IR
+/// Glob patterns and filters for diago IR
 ///
 /// Supports:
 /// - Single glob (*): matches any characters at one level

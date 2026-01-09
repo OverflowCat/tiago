@@ -1,7 +1,7 @@
 {
   "import": [
     "Milky2018/diago/engine_api",
-    { "path": "Milky2018/diago/d2graph", "alias": "graph" },
+    { "path": "Milky2018/diago/graph", "alias": "graph" },
     "Milky2018/diago/elk",
     { "path": "Milky2018/diago/elk/layered", "alias": "layered" }
   ],

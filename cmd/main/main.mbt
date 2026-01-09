@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// Diago - D2 diagram compiler
+/// Diago - diago diagram compiler
 ///
-/// A MoonBit implementation of the D2 diagram language.
+/// A MoonBit implementation of the diago diagram language.
 /// Usage: diago [options] <input.d2> [output]
 
 ///|
@@ -84,9 +84,9 @@ fn main {
       }
     }
     let result = if ascii_mode {
-      compile_d2_ascii(stdin_content, None)
+      compile_diago_ascii(stdin_content, None)
     } else {
-      compile_d2_svg(stdin_content, theme_name, None)
+      compile_diago_svg(stdin_content, theme_name, None)
     }
     match result {
       Ok(output) =>
@@ -119,9 +119,9 @@ fn main {
     }
     let base_path = get_dir_path(input)
     let result = if ascii_mode {
-      compile_d2_ascii(source, base_path)
+      compile_diago_ascii(source, base_path)
     } else {
-      compile_d2_svg(source, theme_name, base_path)
+      compile_diago_svg(source, theme_name, base_path)
     }
     match result {
       Ok(output) =>
@@ -147,9 +147,9 @@ fn main {
     }
     let base_path = get_dir_path(input)
     let result = if ascii_mode {
-      compile_d2_ascii(source, base_path)
+      compile_diago_ascii(source, base_path)
     } else {
-      compile_d2_svg(source, theme_name, base_path)
+      compile_diago_svg(source, theme_name, base_path)
     }
     match result {
       Ok(output) => {
@@ -198,15 +198,15 @@ fn print_usage() -> Unit {
   println("Usage: diago [command] [options] <input.d2> [output]")
   println("")
   println("Commands:")
-  println("  validate          Check D2 source for errors")
-  println("  fmt               Format D2 source file")
+  println("  validate          Check diago source for errors")
+  println("  fmt               Format diago source file")
   println("  watch             Auto-rebuild on file changes")
   println("")
   println("Compile Options:")
   println("  --ascii, -a       Output ASCII art instead of SVG")
   println("  --theme, -t NAME  Use specified theme (default: Neutral Default)")
   println("  --list-themes     List all available themes")
-  println("  -, --stdin        Read D2 source from stdin")
+  println("  -, --stdin        Read diago source from stdin")
   println("  --help, -h        Show this help message")
   println("")
   println("Watch Options (watch command):")
@@ -218,7 +218,7 @@ fn print_usage() -> Unit {
   println("  --diff            Show diff between original and formatted")
   println("")
   println("Arguments:")
-  println("  input.d2          D2 diagram source file (use - for stdin)")
+  println("  input.d2          diago diagram source file (use - for stdin)")
   println("  output            Output file (default: stdout)")
 }
 
@@ -257,7 +257,7 @@ fn run_fmt(args : Array[String]) -> Unit {
     }
   }
   // Parse
-  let (ast, parse_errors) = @d2compiler.parse(source)
+  let (ast, parse_errors) = @compiler.parse(source)
   if !parse_errors.is_empty() {
     println("Parse errors in \{input}:")
     println("  \{parse_errors}")
@@ -382,7 +382,7 @@ fn run_validate(args : Array[String]) -> Unit {
     }
   }
   // Parse
-  let (ast, parse_errors) = @d2compiler.parse(source)
+  let (ast, parse_errors) = @compiler.parse(source)
   if !parse_errors.is_empty() {
     println("Parse errors in \{input_path}:")
     println("  \{parse_errors}")
@@ -390,7 +390,7 @@ fn run_validate(args : Array[String]) -> Unit {
     return
   }
   // Compile to IR
-  let ir = @d2ir.compile(ast) catch {
+  let ir = @ir.compile(ast) catch {
     e => {
       println("Semantic error in \{input_path}: \{e}")
       @sys.exit(1)
@@ -398,7 +398,7 @@ fn run_validate(args : Array[String]) -> Unit {
     }
   }
   // Compile to graph
-  let _ = @d2exporter.to_graph("diagram", ir) catch {
+  let _ = @exporter.to_graph("diagram", ir) catch {
     e => {
       println("Graph error in \{input_path}: \{e}")
       @sys.exit(1)
@@ -470,9 +470,9 @@ fn run_watch(args : Array[String]) -> Unit {
   }
   // Initial compile
   let initial = if ascii_mode {
-    compile_d2_ascii(last_source, base_path)
+    compile_diago_ascii(last_source, base_path)
   } else {
-    compile_d2_svg(last_source, theme_name, base_path)
+    compile_diago_svg(last_source, theme_name, base_path)
   }
   match initial {
     Ok(output) => write_output(out_path, output)
@@ -494,9 +494,9 @@ fn run_watch(args : Array[String]) -> Unit {
     }
     last_source = source
     let result = if ascii_mode {
-      compile_d2_ascii(last_source, base_path)
+      compile_diago_ascii(last_source, base_path)
     } else {
-      compile_d2_svg(last_source, theme_name, base_path)
+      compile_diago_svg(last_source, theme_name, base_path)
     }
     match result {
       Ok(output) => write_output(out_path, output)
@@ -545,7 +545,7 @@ fn extract_value_after_eq(arg : String) -> String {
 ///|
 fn list_themes() -> Unit {
   println("Available themes:")
-  for name in @d2renderer_svg.list_themes() {
+  for name in @renderer_svg.list_themes() {
     println("  \{name}")
   }
 }
@@ -566,8 +566,8 @@ fn extract_theme_name(arg : String) -> String {
 }
 
 ///|
-/// Compile D2 source to SVG
-fn compile_d2_svg(
+/// Compile diago source to SVG
+fn compile_diago_svg(
   source : String,
   theme_name : String?,
   base_path : String?,
@@ -575,50 +575,50 @@ fn compile_d2_svg(
   match compile_to_diagram(source, base_path) {
     Ok(diagram) => {
       let render_config = match theme_name {
-        Some(name) => @d2renderer_svg.SvgConfig::with_theme_name(name)
-        None => @d2renderer_svg.SvgConfig::new()
+        Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
+        None => @renderer_svg.SvgConfig::new()
       }
-      Ok(@d2renderer_svg.render(diagram, render_config))
+      Ok(@renderer_svg.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to ASCII art
-fn compile_d2_ascii(
+/// Compile diago source to ASCII art
+fn compile_diago_ascii(
   source : String,
   base_path : String?,
 ) -> Result[String, String] {
   match compile_to_diagram(source, base_path) {
     Ok(diagram) => {
-      let render_config = @d2renderer_ascii.AsciiConfig::new()
-      Ok(@d2renderer_ascii.render(diagram, render_config))
+      let render_config = @renderer_ascii.AsciiConfig::new()
+      Ok(@renderer_ascii.render(diagram, render_config))
     }
     Err(e) => Err(e)
   }
 }
 
 ///|
-/// Compile D2 source to a render-ready diagram
+/// Compile diago source to a render-ready diagram
 fn compile_to_diagram(
   source : String,
   base_path : String?,
-) -> Result[@d2diagram.Diagram, String] {
-  let (ast, errors) = @d2compiler.parse(source)
+) -> Result[@diagram.Diagram, String] {
+  let (ast, errors) = @compiler.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
   }
   // Create import resolver based on base path
   let resolver = create_import_resolver(base_path)
-  let ir = @d2ir.compile_with_imports(ast, resolver) catch {
+  let ir = @ir.compile_with_imports(ast, resolver) catch {
     e => return Err("IR error: \{e}")
   }
-  let graph = @d2exporter.to_graph("diagram", ir) catch {
+  let graph = @exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let diagram = @d2diagram.layout_with_engine(
+  let diagram = @diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
     graph,
     config,
@@ -631,8 +631,8 @@ fn compile_to_diagram(
 
 ///|
 /// Create an import resolver that reads files relative to base path
-fn create_import_resolver(base_path : String?) -> @d2ir.ImportResolver {
-  @d2ir.ImportResolver::new(fn(import_path) {
+fn create_import_resolver(base_path : String?) -> @ir.ImportResolver {
+  @ir.ImportResolver::new(fn(import_path) {
     // Build full path
     let full_path = match base_path {
       Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()

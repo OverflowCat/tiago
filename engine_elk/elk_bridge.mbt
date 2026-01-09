@@ -14,7 +14,7 @@
 
 ///|
 /// Bridge between Graph and ELK types
-/// Converts D2 Graph to ELK format, runs layout, and converts back
+/// Converts diago Graph to ELK format, runs layout, and converts back
 
 ///|
 /// Clamp a value to a range [min_val, max_val]
@@ -64,7 +64,7 @@ fn is_sql_table_child(obj : @graph.Object, graph : @graph.Graph) -> Bool {
 }
 
 ///|
-/// Convert a D2 Graph to an ELK ElkNode for layout
+/// Convert a diago Graph to an ELK ElkNode for layout
 fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
   let root = @elk.ElkNode::new("root")
 
@@ -112,7 +112,7 @@ fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
 }
 
 ///|
-/// Convert a D2 Object to an ELK node
+/// Convert a diago Object to an ELK node
 fn object_to_elk_node(
   obj : @graph.Object,
   config : LayoutConfig,
@@ -168,7 +168,7 @@ fn object_to_elk_node(
 }
 
 ///|
-/// Apply ELK layout results back to a D2 Graph
+/// Apply ELK layout results back to a diago Graph
 fn elk_to_graph(
   elk_root : @elk.ElkNode,
   graph : @graph.Graph,

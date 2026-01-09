@@ -1,10 +1,10 @@
 # Diago
 
-A D2 diagram language compiler written in MoonBit.
+A diagoago diagram language compiler written in MoonBit.
 
 ## Overview
 
-Diago compiles [D2](https://d2lang.com) diagram source files to SVG. It implements the core D2 language features including objects, edges, labels, shapes, and styling.
+Diago compiles [diagoago](https://d2lang.com) diagram source files to SVG. It implements the codiago diago language features including objects, edges, labels, shapes, and styling.
 
 ## Installation
 
@@ -15,10 +15,10 @@ moon build
 ## Usage
 
 ```bash
-# Compile D2 to SVG (output to stdout)
+# Compile diagoago to SVG (output to stdout)
 moon run cmd/main -- diagram.d2
 
-# Compile D2 to SVG file
+# Compile diagoago to SVG file
 moon run cmd/main -- diagram.d2 output.svg
 ```
 
@@ -51,12 +51,12 @@ moon run cmd/main -- example.d2 example.svg
 The compiler pipeline:
 
 ```
-D2 Source → Lexer → Parser → AST → IR → Graph → Layout → SVG
+diagoago Source → Lexer → Parser → AST → IR → Graph → Layout → SVG
 ```
 
 | Module | Description |
 |--------|-------------|
-| `lexer` | Tokenizes D2 source into tokens |
+| `lexer` | Tokenizes diagoago source into tokens |
 | `parser` | Parses tokens into AST |
 | `ast` | Abstract syntax tree definitions |
 | `ir` | Intermediate representation |

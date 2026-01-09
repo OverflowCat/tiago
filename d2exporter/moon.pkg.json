@@ -1,6 +1,0 @@
-{
-  "import": [
-    { "path": "Milky2018/diago/d2ir", "alias": "ir" },
-    { "path": "Milky2018/diago/d2graph", "alias": "graph" }
-  ]
-}

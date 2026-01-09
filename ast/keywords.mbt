@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Reserved keywords in D2
+/// Reserved keywords in diago
 
 ///|
 /// Simple reserved keywords (non-style, non-composite)

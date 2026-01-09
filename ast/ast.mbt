@@ -13,15 +13,15 @@
 // limitations under the License.
 
 ///|
-/// AST nodes for the D2 diagram language
+/// AST nodes for the diago diagram language
 ///
-/// The AST closely follows the D2 language structure:
+/// The AST closely follows the diago language structure:
 /// - Map is the root node and represents nested containers
 /// - Key represents key-value pairs and edge declarations
 /// - Edge represents connections between nodes
 
 ///|
-/// A D2 file is represented as a Map at the root level
+/// A diago file is represented as a Map at the root level
 pub struct Map {
   range : @lexer.Range
   nodes : Array[MapNode]

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Token-based recursive descent parser for D2
+/// Token-based recursive descent parser for diago
 
 ///|
 pub struct Parser {
@@ -24,7 +24,7 @@ pub struct Parser {
 } derive(Show)
 
 ///|
-/// Parse a D2 source string into an AST
+/// Parse a diago source string into an AST
 pub fn parse(source : String) -> (@ast.Map, ParseErrors) {
   let (tokens, lex_errors) = @lexer.tokenize(source)
   let parser = Parser::new(source, tokens)
@@ -312,7 +312,7 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
         Some(val) => value = Some(val)
         None => ()
       }
-      // D2 allows "name: label { block }" - check for block after scalar
+      // diago allows "name: label { block }" - check for block after scalar
       self.skip_whitespace_not_newline()
       match (value, self.peek()) {
         (Some(@ast.Value::Scalar(_)), @lexer.LeftBrace) =>

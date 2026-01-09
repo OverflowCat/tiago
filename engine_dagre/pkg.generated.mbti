@@ -2,8 +2,8 @@
 package "Milky2018/diago/engine_dagre"
 
 import(
-  "Milky2018/diago/d2graph"
   "Milky2018/diago/engine_api"
+  "Milky2018/diago/graph"
 )
 
 // Values

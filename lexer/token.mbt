@@ -28,7 +28,7 @@ pub struct Range {
 } derive(Eq, Show)
 
 ///|
-/// Token types for the D2 language
+/// Token types for the diago language
 pub enum TokenKind {
   // Literals
   Ident(String) // identifiers and unquoted strings

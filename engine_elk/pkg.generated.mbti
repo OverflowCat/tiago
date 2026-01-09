@@ -2,42 +2,42 @@
 package "Milky2018/diago/engine_elk"
 
 import(
-  "Milky2018/diago/d2graph"
   "Milky2018/diago/engine_api"
+  "Milky2018/diago/graph"
 )
 
 // Values
-pub fn assign_ports(@d2graph.Graph, Array[Array[String]], @engine_api.LayoutConfig) -> Unit
+pub fn assign_ports(@graph.Graph, Array[Array[String]], @engine_api.LayoutConfig) -> Unit
 
-pub fn cleanup_tiny_endpoint_segments(@d2graph.Graph) -> Unit
+pub fn cleanup_tiny_endpoint_segments(@graph.Graph) -> Unit
 
-pub fn compress_all_routes(@d2graph.Graph) -> Unit
+pub fn compress_all_routes(@graph.Graph) -> Unit
 
-pub fn find_edge_intersection(@d2graph.Box, @d2graph.Point, @d2graph.Point) -> @d2graph.Point
+pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
 
-pub fn fix_all_endpoint_approaches(@d2graph.Graph) -> Unit
+pub fn fix_all_endpoint_approaches(@graph.Graph) -> Unit
 
-pub fn fix_perpendicularity(@d2graph.Graph) -> Unit
+pub fn fix_perpendicularity(@graph.Graph) -> Unit
 
-pub fn fix_wrong_approach_direction(@d2graph.Graph) -> Unit
+pub fn fix_wrong_approach_direction(@graph.Graph) -> Unit
 
-pub fn is_sequence_diagram(@d2graph.Object) -> Bool
+pub fn is_sequence_diagram(@graph.Object) -> Bool
 
-pub fn layout(@d2graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> @engine_api.LayoutOutputs raise @engine_api.LayoutError
+pub fn layout(@graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> @engine_api.LayoutOutputs raise @engine_api.LayoutError
 
-pub fn layout_sequence(@d2graph.Object, @engine_api.LayoutConfig) -> Unit
+pub fn layout_sequence(@graph.Object, @engine_api.LayoutConfig) -> Unit
 
-pub fn layout_sequence_with_activations(@d2graph.Object, @d2graph.Graph, @engine_api.LayoutConfig) -> SequenceLayoutResult
+pub fn layout_sequence_with_activations(@graph.Object, @graph.Graph, @engine_api.LayoutConfig) -> SequenceLayoutResult
 
-pub fn layout_sequence_with_messages(@d2graph.Object, @d2graph.Graph, @engine_api.LayoutConfig) -> Unit
+pub fn layout_sequence_with_messages(@graph.Object, @graph.Graph, @engine_api.LayoutConfig) -> Unit
 
-pub fn reroute_crossing_edges(@d2graph.Graph) -> Unit
+pub fn reroute_crossing_edges(@graph.Graph) -> Unit
 
-pub fn route_all_edges(@d2graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Unit
+pub fn route_all_edges(@graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Unit
 
-pub fn route_edges_with_ports(@d2graph.Graph, @engine_api.LayoutConfig, VirtualNodeResult) -> Unit
+pub fn route_edges_with_ports(@graph.Graph, @engine_api.LayoutConfig, VirtualNodeResult) -> Unit
 
-pub fn run_elk_layout(@d2graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Unit
+pub fn run_elk_layout(@graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Unit
 
 // Errors
 
@@ -52,7 +52,7 @@ pub(all) struct ActivationBox {
   start_y : Double
   mut end_y : Double
 }
-pub fn ActivationBox::get_box(Self) -> @d2graph.Box
+pub fn ActivationBox::get_box(Self) -> @graph.Box
 pub fn ActivationBox::new(String, Double, Double) -> Self
 
 pub struct ElkEngine {
@@ -71,9 +71,9 @@ pub(all) struct SequenceLayoutResult {
 pub(all) struct SequenceNote {
   actor_id : String
   text : String
-  bbox : @d2graph.Box
+  bbox : @graph.Box
 }
-pub fn SequenceNote::new(String, String, @d2graph.Box) -> Self
+pub fn SequenceNote::new(String, String, @graph.Box) -> Self
 
 pub(all) struct VirtualNodeResult {
   edge_virtual_nodes : Map[Int, Array[String]]

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Lexer for the D2 diagram language
+/// Lexer for the diago diagram language
 pub struct Lexer {
   source : String
   chars : Array[Char] // pre-converted characters for easy indexing

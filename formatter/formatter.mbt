@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// D2 Source Code Formatter
+/// diago Source Code Formatter
 ///
-/// Pretty-prints the AST back to formatted D2 source code.
+/// Pretty-prints the AST back to formatted diago source code.
 
 ///|
 /// Format configuration
@@ -32,7 +32,7 @@ pub fn FormatConfig::new() -> FormatConfig {
 }
 
 ///|
-/// Format an AST Map to formatted D2 source
+/// Format an AST Map to formatted diago source
 pub fn format(ast : @ast.Map, config : FormatConfig) -> String {
   let buf = StringBuilder::new()
   format_map_nodes(buf, ast.nodes, 0, config)

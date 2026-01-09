@@ -21,7 +21,7 @@ test "break_cycles detects simple cycle" {
   let source = "a -> b\nb -> c\nc -> a"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   // Should have found one back-edge to break
   inspect(result.had_cycles, content="true")
@@ -34,7 +34,7 @@ test "break_cycles handles DAG" {
   let source = "a -> b\nb -> c"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   // No cycles to break
   inspect(result.had_cycles, content="false")
@@ -47,7 +47,7 @@ test "break_cycles handles self-loop" {
   let source = "a -> a"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   // Self-loop is a cycle
   inspect(result.had_cycles, content="true")
@@ -59,7 +59,7 @@ test "break_cycles handles diamond" {
   let source = "a -> b\na -> c\nb -> d\nc -> d"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   inspect(result.had_cycles, content="false")
 }
@@ -70,7 +70,7 @@ test "break_cycles handles multiple cycles" {
   let source = "a -> b\nb -> a\nc -> d\nd -> c"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   inspect(result.had_cycles, content="true")
   // Should break at least 2 edges (one per cycle)
@@ -82,7 +82,7 @@ test "get_effective_src/dst respects reversal" {
   let source = "a -> b\nb -> a"
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
-  let graph = @d2exporter.compile("test", ir)
+  let graph = @exporter.compile("test", ir)
   let result = break_cycles(graph)
   // At least one edge should be reversed
   let mut found_reversed = false

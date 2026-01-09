@@ -1,0 +1,29 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/diagram"
+
+import(
+  "Milky2018/diago/engine_api"
+  "Milky2018/diago/graph"
+)
+
+// Values
+pub fn build(@graph.GraphInput, @engine_api.LayoutOutputs) -> Diagram
+
+pub fn from_laid_out_graph(@graph.Graph) -> Diagram
+
+pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(Engine, @graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Diagram raise @engine_api.LayoutError
+
+// Errors
+
+// Types and methods
+pub struct Diagram {
+  graph : @graph.GraphInput
+  layout : @engine_api.LayoutOutputs
+}
+pub fn Diagram::materialize(Self) -> @graph.Graph
+pub impl Show for Diagram
+
+// Type aliases
+
+// Traits
+

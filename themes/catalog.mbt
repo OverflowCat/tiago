@@ -15,7 +15,7 @@
 ///|
 /// Built-in Theme Catalog
 ///
-/// Contains all predefined D2 themes.
+/// Contains all predefined diago themes.
 
 ///|
 /// Get a theme by ID
@@ -138,7 +138,7 @@ fn neutral_default() -> Theme {
       n1: "#0A0F25",
       n2: "#676C7E",
       n3: "#9499AB",
-      n4: "#CFD2DD",
+      n4: "#CFdiagoDD",
       n5: "#DEE1EB",
       n6: "#EEF1F8",
       n7: "#FFFFFF",
@@ -198,7 +198,7 @@ fn flagship_terrastruct() -> Theme {
       n1: "#0A0F25",
       n2: "#676C7E",
       n3: "#9499AB",
-      n4: "#CFD2DD",
+      n4: "#CFdiagoDD",
       n5: "#DEE1EB",
       n6: "#EEF1F8",
       n7: "#FFFFFF",
@@ -271,7 +271,7 @@ fn mixed_berry_blue() -> Theme {
       aa2: "#A626A6",
       aa4: "#F9DEFA",
       aa5: "#FCEEFD",
-      ab4: "#D2F3F9",
+      ab4: "#diagoF3F9",
       ab5: "#EBF9FC",
     },
     rules: SpecialRules::default(),
@@ -379,7 +379,7 @@ fn vanilla_nitro_cola() -> Theme {
       n2: "#5A4A4D",
       n3: "#8F8183",
       n4: "#C4B8BA",
-      n5: "#DAD1D2",
+      n5: "#DAD1diago",
       n6: "#F0ECED",
       n7: "#FFFFFF",
       b1: "#A41114",
@@ -444,8 +444,8 @@ fn shirley_temple() -> Theme {
       n7: "#FFFFFF",
       b1: "#C91D4D",
       b2: "#C91D4D",
-      b3: "#FAD2DD",
-      b4: "#FAD2DD",
+      b3: "#FAdiagoDD",
+      b4: "#FAdiagoDD",
       b5: "#FDEBF0",
       b6: "#FEF6F8",
       aa2: "#127454",
@@ -481,7 +481,7 @@ fn earth_tones() -> Theme {
       aa2: "#3B7341",
       aa4: "#D6EED8",
       aa5: "#ECF7ED",
-      ab4: "#E9E2D2",
+      ab4: "#E9E2diago",
       ab5: "#F4F1EA",
     },
     rules: SpecialRules::default(),
@@ -606,7 +606,7 @@ fn dark_flagship() -> Theme {
       aa4: "#382318",
       aa5: "#2D1C14",
       ab4: "#1A372C",
-      ab5: "#142D23",
+      ab5: "#142diago3",
     },
     rules: SpecialRules::default(),
     is_dark: true,
