@@ -617,17 +617,16 @@ fn compile_to_diagram(
   let graph = @d2exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let input = @d2graph.GraphInput::from_graph(graph)
   let config = @engine_api.LayoutConfig::new()
-  let layout = @engine_api.layout_with_engine(
+  let diagram = @d2diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
-    input,
+    graph,
     config,
     @engine_api.Down,
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(@d2diagram.build(input, layout))
+  Ok(diagram)
 }
 
 ///|

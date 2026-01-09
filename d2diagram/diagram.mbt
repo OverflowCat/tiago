@@ -35,6 +35,29 @@ pub fn Diagram::materialize(self : Diagram) -> @d2graph.Graph {
 }
 
 ///|
+/// Convenience: run layout engine and build a diagram from a mutable graph.
+pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(
+  engine : Engine,
+  graph : @d2graph.Graph,
+  config : @engine_api.LayoutConfig,
+  direction : @engine_api.Direction,
+) -> Diagram raise @engine_api.LayoutError {
+  let input = @d2graph.GraphInput::from_graph(graph)
+  let outputs = @engine_api.layout_with_engine(engine, input, config, direction)
+  build(input, outputs)
+}
+
+///|
+/// Bridge: wrap an already-laid-out `d2graph.Graph` as a `Diagram`.
+///
+/// This captures the graph’s current layout state into `LayoutOutputs` (including
+/// variants) without running an engine.
+pub fn from_laid_out_graph(graph : @d2graph.Graph) -> Diagram {
+  let input = @d2graph.GraphInput::from_graph(graph)
+  build(input, @engine_api.LayoutOutputs::from_graph(graph))
+}
+
+///|
 fn materialize_graph(
   graph : @d2graph.GraphInput,
   outputs : @engine_api.LayoutOutputs,
@@ -61,3 +84,5 @@ fn materialize_graph(
   }
   materialized
 }
+
+///|

@@ -9,6 +9,10 @@ import(
 // Values
 pub fn build(@d2graph.GraphInput, @engine_api.LayoutOutputs) -> Diagram
 
+pub fn from_laid_out_graph(@d2graph.Graph) -> Diagram
+
+pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(Engine, @d2graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Diagram raise @engine_api.LayoutError
+
 // Errors
 
 // Types and methods

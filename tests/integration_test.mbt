@@ -48,17 +48,16 @@ fn compile_to_diagram(
   let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let input = @graph.GraphInput::from_graph(graph)
   let config = @engine_api.LayoutConfig::new()
-  let layout = @engine_api.layout_with_engine(
+  let diagram = @d2diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
-    input,
+    graph,
     config,
     direction,
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(@d2diagram.build(input, layout))
+  Ok(diagram)
 }
 
 ///|

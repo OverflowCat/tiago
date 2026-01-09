@@ -130,6 +130,29 @@ pub struct LayoutOutputs {
 } derive(Show)
 
 ///|
+/// Capture the current layout state of a graph (and its variants) into
+/// `LayoutOutputs`.
+///
+/// This is primarily a bridge for wrapping an already-laid-out `d2graph.Graph`
+/// into the new diagram pipeline without relying on in-place mutation.
+pub fn LayoutOutputs::from_graph(graph : @d2graph.Graph) -> LayoutOutputs {
+  let layout = LayoutResult::from_graph(graph)
+  let layers : Array[(String, LayoutOutputs)] = []
+  for layer in graph.layers {
+    layers.push((layer.name, LayoutOutputs::from_graph(layer.graph)))
+  }
+  let scenarios : Array[(String, LayoutOutputs)] = []
+  for scenario in graph.scenarios {
+    scenarios.push((scenario.name, LayoutOutputs::from_graph(scenario.graph)))
+  }
+  let steps : Array[(String, LayoutOutputs)] = []
+  for step in graph.steps {
+    steps.push((step.name, LayoutOutputs::from_graph(step.graph)))
+  }
+  { layout, layers, scenarios, steps }
+}
+
+///|
 pub fn NodeLayout::from_box(box : @d2graph.Box) -> NodeLayout {
   { x: box.x, y: box.y, width: box.width, height: box.height }
 }
