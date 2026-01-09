@@ -6,6 +6,7 @@
     "Milky2018/diago/d2exporter",
     "Milky2018/diago/engine_api",
     "Milky2018/diago/engine_elk",
+    "Milky2018/diago/engine_dagre",
     "Milky2018/diago/d2graph",
     "Milky2018/diago/d2diagram",
     "Milky2018/diago/d2renderer_svg",
@@ -20,8 +21,11 @@
         "get_output_len:get_output_len",
         "read_output_byte:read_output_byte",
         "render_svg:render_svg",
+        "render_svg_with_engine:render_svg_with_engine",
         "render_ascii:render_ascii",
-        "render_unicode:render_unicode"
+        "render_ascii_with_engine:render_ascii_with_engine",
+        "render_unicode:render_unicode",
+        "render_unicode_with_engine:render_unicode_with_engine"
       ]
     }
   }

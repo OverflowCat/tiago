@@ -217,6 +217,15 @@
     select:focus {
       outline: 1px solid #e94560;
     }
+    .toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .toolbar-label {
+      color: #888;
+      font-size: 0.75rem;
+    }
     .resize-handle {
       width: 4px;
       background: #0f3460;
@@ -278,6 +287,13 @@ server -> database: queries"></textarea>
           <button class="tab" data-view="ascii">ASCII</button>
           <button class="tab" data-view="unicode">Unicode</button>
         </div>
+        <div class="toolbar-group" title="Select layout engine">
+          <span class="toolbar-label">Engine</span>
+          <select id="engine-select">
+            <option value="elk">ELK</option>
+            <option value="dagre">Dagre (stub)</option>
+          </select>
+        </div>
         <div class="spacer"></div>
         <button id="render-btn">Render</button>
         <button id="copy-btn" class="secondary">Copy Output</button>
@@ -330,10 +346,29 @@ server -> database: queries"></textarea>
     const downloadPngBtn = document.getElementById('download-png-btn');
     const downloadPdfBtn = document.getElementById('download-pdf-btn');
     const exampleSelect = document.getElementById('example-select');
+    const engineSelect = document.getElementById('engine-select');
     const statusEl = document.getElementById('status');
     const tabs = document.querySelectorAll('.tab');
     const editorPane = document.getElementById('editor-pane');
     const resizeHandle = document.getElementById('resize-handle');
+
+    // Engine selection
+    const ENGINE_STORAGE_KEY = 'diago.layout_engine';
+    function getSelectedEngine() {
+      return engineSelect.value === 'dagre' ? 'dagre' : 'elk';
+    }
+    function getEngineId() {
+      return getSelectedEngine() === 'dagre' ? 1 : 0;
+    }
+    // Restore last engine preference
+    const savedEngine = localStorage.getItem(ENGINE_STORAGE_KEY);
+    if (savedEngine === 'dagre' || savedEngine === 'elk') {
+      engineSelect.value = savedEngine;
+    }
+    engineSelect.addEventListener('change', () => {
+      localStorage.setItem(ENGINE_STORAGE_KEY, getSelectedEngine());
+      render();
+    });
 
     // Tab switching
     tabs.forEach(tab => {
@@ -617,14 +652,21 @@ server -> database: queries"></textarea>
 
       try {
         setInput(source);
+        const engineId = getEngineId();
 
         let status;
         if (currentView === 'ascii') {
-          status = wasmModule.render_ascii();
+          status = typeof wasmModule.render_ascii_with_engine === 'function'
+            ? wasmModule.render_ascii_with_engine(engineId)
+            : wasmModule.render_ascii();
         } else if (currentView === 'unicode') {
-          status = wasmModule.render_unicode();
+          status = typeof wasmModule.render_unicode_with_engine === 'function'
+            ? wasmModule.render_unicode_with_engine(engineId)
+            : wasmModule.render_unicode();
         } else {
-          status = wasmModule.render_svg();
+          status = typeof wasmModule.render_svg_with_engine === 'function'
+            ? wasmModule.render_svg_with_engine(engineId)
+            : wasmModule.render_svg();
         }
 
         const output = getOutput();
