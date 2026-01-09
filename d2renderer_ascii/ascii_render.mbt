@@ -77,10 +77,12 @@ fn get_short_id(id : String) -> String {
     }
   }
   if last_dot >= 0 && last_dot < id.length() - 1 {
-    // Build substring manually to avoid deprecated method
     let buf = StringBuilder::new()
     for i = last_dot + 1; i < id.length(); i = i + 1 {
-      buf.write_char(id[i].to_int().unsafe_to_char())
+      match id[i].to_char() {
+        Some(c) => buf.write_char(c)
+        None => ()
+      }
     }
     buf.to_string()
   } else {
@@ -379,7 +381,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
       let route_x = edge.route[0].x
       // Find which actor this lifeline belongs to
       for actor in sorted_actors {
-        match (actor.box, actor_positions.get(actor.id)) {
+        match (actor.get_box(), actor_positions.get(actor.id)) {
           (Some(actor_box), Some((_, center_x, _))) => {
             let actor_center = actor_box.x + actor_box.width / 2.0
             // Check if this lifeline belongs to this actor (within tolerance)
@@ -841,13 +843,13 @@ fn sort_objects_by_y(objects : Array[Object]) -> Unit {
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
     let key = objects[i]
-    let key_y = match key.box {
+    let key_y = match key.get_box() {
       Some(b) => b.y
       None => 0.0
     }
     let mut j = i - 1
     while j >= 0 {
-      let j_y = match objects[j].box {
+      let j_y = match objects[j].get_box() {
         Some(b) => b.y
         None => 0.0
       }
@@ -868,13 +870,13 @@ fn sort_objects_by_x(objects : Array[Object]) -> Unit {
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
     let key = objects[i]
-    let key_x = match key.box {
+    let key_x = match key.get_box() {
       Some(b) => b.x
       None => 0.0
     }
     let mut j = i - 1
     while j >= 0 {
-      let j_x = match objects[j].box {
+      let j_x = match objects[j].get_box() {
         Some(b) => b.x
         None => 0.0
       }
@@ -898,12 +900,12 @@ fn group_by_layer(objects : Array[Object]) -> Array[Array[Object]] {
     return layers
   }
   let mut current_layer : Array[Object] = []
-  let mut current_y = match objects[0].box {
+  let mut current_y = match objects[0].get_box() {
     Some(b) => b.y
     None => 0.0
   }
   for obj in objects {
-    let obj_y = match obj.box {
+    let obj_y = match obj.get_box() {
       Some(b) => b.y
       None => 0.0
     }

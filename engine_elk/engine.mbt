@@ -32,6 +32,8 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   config,
   direction,
 ) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  layout_graph(graph, config, direction)
-  @engine_api.LayoutResult::from_graph(graph)
+  // Layout engines must treat the input graph as read-only.
+  let materialized = @graph.Graph::from_input(graph)
+  layout_graph(materialized, config, direction)
+  @engine_api.LayoutResult::from_graph(materialized)
 }

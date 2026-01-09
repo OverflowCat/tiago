@@ -102,7 +102,10 @@ fn gen_graph_with_edge_labels() -> @qc.Gen[@graph.Graph] {
       let label = StringBuilder::new()
       for _ in 0..<label_len {
         let c = 97 + rs.next_int().abs() % 26
-        label.write_char(c.unsafe_to_char())
+        match c.to_char() {
+          Some(ch) => label.write_char(ch)
+          None => label.write_char('a')
+        }
       }
       edge.label = label.to_string()
       graph.add_edge(edge)
@@ -226,8 +229,8 @@ pub fn minimum_spacing_between_nodes(
       let obj1 = objects[i]
       let obj2 = objects[j]
       // Skip if either object has no box (not laid out)
-      guard obj1.box is Some(box1) else { continue }
-      guard obj2.box is Some(box2) else { continue }
+      guard obj1.get_box() is Some(box1) else { continue }
+      guard obj2.get_box() is Some(box2) else { continue }
       // Skip children of containers (they may be inside parent)
       if is_child_of(obj1, obj2, graph) || is_child_of(obj2, obj1, graph) {
         continue
@@ -266,8 +269,8 @@ pub fn nodes_should_not_overlap(graph : @graph.Graph) -> Bool {
       let obj1 = objects[i]
       let obj2 = objects[j]
       // Skip if either object has no box (not laid out)
-      guard obj1.box is Some(box1) else { continue }
-      guard obj2.box is Some(box2) else { continue }
+      guard obj1.get_box() is Some(box1) else { continue }
+      guard obj2.get_box() is Some(box2) else { continue }
       // Skip children of containers (they may overlap with parent)
       if is_child_of(obj1, obj2, graph) || is_child_of(obj2, obj1, graph) {
         continue
@@ -303,7 +306,7 @@ fn is_child_of(
 /// Check that all nodes have been assigned positions (boxes)
 pub fn all_nodes_have_positions(graph : @graph.Graph) -> Bool {
   for obj in graph.get_objects() {
-    if obj.box is None {
+    if obj.get_box() is None {
       return false
     }
   }
@@ -314,7 +317,7 @@ pub fn all_nodes_have_positions(graph : @graph.Graph) -> Bool {
 /// Check that all node positions are non-negative
 pub fn all_positions_non_negative(graph : @graph.Graph) -> Bool {
   for obj in graph.get_objects() {
-    if obj.box is Some(box) {
+    if obj.get_box() is Some(box) {
       if box.x < 0.0 || box.y < 0.0 {
         return false
       }
@@ -327,7 +330,7 @@ pub fn all_positions_non_negative(graph : @graph.Graph) -> Bool {
 /// Check that all node dimensions are positive
 pub fn all_dimensions_positive(graph : @graph.Graph) -> Bool {
   for obj in graph.get_objects() {
-    if obj.box is Some(box) {
+    if obj.get_box() is Some(box) {
       if box.width <= 0.0 || box.height <= 0.0 {
         return false
       }
@@ -341,9 +344,9 @@ pub fn all_dimensions_positive(graph : @graph.Graph) -> Bool {
 /// Returns true if every child's box is fully contained within parent's box
 pub fn children_inside_parent(graph : @graph.Graph) -> Bool {
   fn check_object(obj : @graph.Object) -> Bool {
-    guard obj.box is Some(parent_box) else { return true }
+    guard obj.get_box() is Some(parent_box) else { return true }
     for child in obj.children {
-      guard child.box is Some(child_box) else { continue }
+      guard child.get_box() is Some(child_box) else { continue }
       // Child must be fully inside parent (with small tolerance)
       let tolerance = 0.001
       if child_box.x < parent_box.x - tolerance {
@@ -383,8 +386,8 @@ pub fn sibling_no_overlap(graph : @graph.Graph) -> Bool {
     let children = obj.children
     for i in 0..<children.length() {
       for j in (i + 1)..<children.length() {
-        guard children[i].box is Some(box1) else { continue }
-        guard children[j].box is Some(box2) else { continue }
+        guard children[i].get_box() is Some(box1) else { continue }
+        guard children[j].get_box() is Some(box2) else { continue }
         if box1.intersects(box2) {
           return false
         }
@@ -401,8 +404,8 @@ pub fn sibling_no_overlap(graph : @graph.Graph) -> Bool {
   let objects = graph.get_objects()
   for i in 0..<objects.length() {
     for j in (i + 1)..<objects.length() {
-      guard objects[i].box is Some(box1) else { continue }
-      guard objects[j].box is Some(box2) else { continue }
+      guard objects[i].get_box() is Some(box1) else { continue }
+      guard objects[j].get_box() is Some(box2) else { continue }
       // Skip parent-child relationships
       if is_child_of(objects[i], objects[j], graph) ||
         is_child_of(objects[j], objects[i], graph) {
@@ -434,8 +437,8 @@ pub fn edge_endpoints_touch_nodes(graph : @graph.Graph) -> Bool {
     let dst_obj = graph.find_object(edge.dst_id)
     guard src_obj is Some(src) else { continue }
     guard dst_obj is Some(dst) else { continue }
-    guard src.box is Some(src_box) else { continue }
-    guard dst.box is Some(dst_box) else { continue }
+    guard src.get_box() is Some(src_box) else { continue }
+    guard dst.get_box() is Some(dst_box) else { continue }
     // Check start point is near source box
     let start = edge.route[0]
     if !point_near_box(start, src_box, tolerance) {
@@ -519,12 +522,12 @@ pub fn deterministic_output(
   let pos_map1 : Map[String, (Double, Double, Double, Double)] = {}
   let pos_map2 : Map[String, (Double, Double, Double, Double)] = {}
   for obj in objs1 {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       pos_map1[obj.id] = (b.x, b.y, b.width, b.height)
     }
   }
   for obj in objs2 {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       pos_map2[obj.id] = (b.x, b.y, b.width, b.height)
     }
   }
@@ -621,7 +624,7 @@ pub fn edge_avoids_unrelated_nodes(graph : @graph.Graph) -> Bool {
         if obj.id == edge.src_id || obj.id == edge.dst_id {
           continue
         }
-        guard obj.box is Some(box) else { continue }
+        guard obj.get_box() is Some(box) else { continue }
         // Check if line segment intersects the box
         if line_segment_intersects_box(p1, p2, box) {
           return false
@@ -641,7 +644,7 @@ pub fn sql_table_edges_clipped_to_boxes(graph : @graph.Graph) -> Bool {
     if obj.shape_type != @graph.SqlTable {
       continue
     }
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       sql_table_boxes.push((obj.id, b))
     }
   }
@@ -759,7 +762,7 @@ pub fn text_fits_container(graph : @graph.Graph) -> Bool {
   let char_width = 7.0 // Approximate character width
   let padding = 10.0 // Padding on each side
   for obj in graph.get_objects() {
-    guard obj.box is Some(box) else { continue }
+    guard obj.get_box() is Some(box) else { continue }
     // Estimate text width
     let text_width = obj.label.length().to_double() * char_width
     let required_width = text_width + padding * 2.0
@@ -880,7 +883,7 @@ fn compute_canvas_bounds(
   let mut max_y = 0.0
   let mut first = true
   for obj in graph.get_objects() {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       let left = b.x
       let top = b.y
       let right = b.x + b.width
@@ -923,7 +926,7 @@ fn compute_full_bounds(
 
   // Include all object boxes
   for obj in graph.get_objects() {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       if first {
         min_x = b.x
         min_y = b.y
@@ -1002,7 +1005,7 @@ pub fn bounding_box_contains_all_elements(graph : @graph.Graph) -> Bool {
 
   // Check all objects are within bounds
   for obj in graph.get_objects() {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       if b.x < min_x - 0.001 || b.y < min_y - 0.001 {
         return false
       }
@@ -1048,7 +1051,7 @@ pub fn nodes_within_canvas_bounds(graph : @graph.Graph) -> Bool {
   // Additionally check each node is within computed bounds
   let (_, _, max_x, max_y) = compute_canvas_bounds(graph)
   for obj in graph.get_objects() {
-    if obj.box is Some(box) {
+    if obj.get_box() is Some(box) {
       // Node should not extend beyond canvas
       if box.x < 0.0 || box.y < 0.0 {
         return false
@@ -1142,7 +1145,7 @@ fn is_removable_s_shape(
     if obj.id == edge.src_id || obj.id == edge.dst_id {
       continue
     }
-    if obj.box is Some(box) {
+    if obj.get_box() is Some(box) {
       if line_segment_intersects_box(p0, p2, box) {
         // There's an obstacle, so the S-shape might be necessary
         return false
@@ -1230,7 +1233,7 @@ pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
     // Check first segment against source node
     let src_obj = graph.find_object(edge.src_id)
     if src_obj is Some(obj) {
-      if obj.box is Some(box) {
+      if obj.get_box() is Some(box) {
         let p0 = edge.route[0]
         let p1 = edge.route[1]
         let dx = (p1.x - p0.x).abs()
@@ -1269,7 +1272,7 @@ pub fn edge_perpendicular_to_node_boundary(graph : @graph.Graph) -> Bool {
     // Check last segment against destination node
     let dst_obj = graph.find_object(edge.dst_id)
     if dst_obj is Some(obj) {
-      if obj.box is Some(box) {
+      if obj.get_box() is Some(box) {
         let last_idx = edge.route.length() - 1
         let p0 = edge.route[last_idx - 1]
         let p1 = edge.route[last_idx]
@@ -1330,7 +1333,7 @@ pub fn arrowhead_direction_matches_node_position(graph : @graph.Graph) -> Bool {
     // Get the destination node's center
     let dst_obj = graph.find_object(edge.dst_id)
     guard dst_obj is Some(obj) else { continue }
-    guard obj.box is Some(dst_box) else { continue }
+    guard obj.get_box() is Some(dst_box) else { continue }
     let dst_center_x = dst_box.x + dst_box.width / 2.0
     let dst_center_y = dst_box.y + dst_box.height / 2.0
     // Calculate the edge direction (from second_last to last)
@@ -1388,7 +1391,7 @@ pub fn edge_connects_to_correct_side(graph : @graph.Graph) -> Bool {
     // Get the destination node box
     let dst_obj = graph.find_object(edge.dst_id)
     guard dst_obj is Some(obj) else { continue }
-    guard obj.box is Some(box) else { continue }
+    guard obj.get_box() is Some(box) else { continue }
     // Calculate the approach direction
     let dx = endpoint.x - second_last.x
     let dy = endpoint.y - second_last.y
@@ -1430,10 +1433,13 @@ test "property: nodes should not overlap after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      ignore(layout(graph, config, Direction::Down)) catch {
+      let outputs = layout(graph, config, Direction::Down) catch {
         _ => return false
       }
-      nodes_should_not_overlap(graph)
+      let input = @graph.GraphInput::from_graph(graph)
+      let laid_out = @graph.Graph::from_input(input)
+      outputs.layout.apply_to_graph(laid_out)
+      nodes_should_not_overlap(laid_out)
     }),
     max_success=50,
   )
@@ -1444,10 +1450,13 @@ test "property: all nodes have positions after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      ignore(layout(graph, config, Direction::Down)) catch {
+      let outputs = layout(graph, config, Direction::Down) catch {
         _ => return false
       }
-      all_nodes_have_positions(graph)
+      let input = @graph.GraphInput::from_graph(graph)
+      let laid_out = @graph.Graph::from_input(input)
+      outputs.layout.apply_to_graph(laid_out)
+      all_nodes_have_positions(laid_out)
     }),
     max_success=50,
   )
@@ -1458,10 +1467,13 @@ test "property: all positions are non-negative after layout" {
   @qc.quick_check(
     @qc.forall(gen_graph(), fn(graph : @graph.Graph) {
       let config = LayoutConfig::new()
-      ignore(layout(graph, config, Direction::Down)) catch {
+      let outputs = layout(graph, config, Direction::Down) catch {
         _ => return false
       }
-      all_positions_non_negative(graph)
+      let input = @graph.GraphInput::from_graph(graph)
+      let laid_out = @graph.Graph::from_input(input)
+      outputs.layout.apply_to_graph(laid_out)
+      all_positions_non_negative(laid_out)
     }),
     max_success=50,
   )

@@ -59,7 +59,7 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
     let mut total_height = 0.0
     for child in obj.children {
       compute_object_size(child, config)
-      match child.box {
+      match child.get_box() {
         Some(b) => {
           if b.width > max_width {
             max_width = b.width
@@ -112,7 +112,10 @@ fn get_field_name_from_dotted_id(id : String) -> String {
   if last_dot >= 0 && last_dot < id.length() - 1 {
     let buf = StringBuilder::new()
     for i = last_dot + 1; i < id.length(); i = i + 1 {
-      buf.write_char(id[i].to_int().unsafe_to_char())
+      match id[i].to_char() {
+        Some(c) => buf.write_char(c)
+        None => ()
+      }
     }
     buf.to_string()
   } else {
@@ -172,7 +175,10 @@ fn get_parent_id_from_field(id : String) -> String? {
   }
   let buf = StringBuilder::new()
   for i = 0; i < last_dot; i = i + 1 {
-    buf.write_char(id[i].to_int().unsafe_to_char())
+    match id[i].to_char() {
+      Some(c) => buf.write_char(c)
+      None => ()
+    }
   }
   Some(buf.to_string())
 }
@@ -201,7 +207,7 @@ fn position_sql_table_children(graph : @graph.Graph) -> Unit {
     if obj.shape_type != @graph.SqlTable {
       continue
     }
-    guard obj.box is Some(table_box) else { continue }
+    guard obj.get_box() is Some(table_box) else { continue }
     for i, child in obj.children {
       let row_center_y = table_box.y +
         header_height +
@@ -300,8 +306,8 @@ fn fix_node_overlaps(graph : @graph.Graph, config : LayoutConfig) -> Unit {
       for j in (i + 1)..<objects.length() {
         let obj1 = objects[i]
         let obj2 = objects[j]
-        guard obj1.box is Some(box1) else { continue }
-        guard obj2.box is Some(box2) else { continue }
+        guard obj1.get_box() is Some(box1) else { continue }
+        guard obj2.get_box() is Some(box2) else { continue }
         if is_child_of_obj(obj1, obj2) || is_child_of_obj(obj2, obj1) {
           continue
         }

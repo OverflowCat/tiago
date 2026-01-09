@@ -820,7 +820,7 @@ fn compute_graph_bounds(graph : Graph) -> (Double, Double, Double, Double) {
   let mut max_y = 0.0
   let mut first = true
   for obj in graph.objects {
-    match obj.box {
+    match obj.get_box() {
       Some(b) => {
         let left = b.x
         let top = b.y
@@ -956,7 +956,10 @@ fn is_sql_table_child(obj : Object, all_objects : Array[Object]) -> Bool {
   // Get parent ID
   let parent_id_buf = StringBuilder::new()
   for i = 0; i < last_dot; i = i + 1 {
-    parent_id_buf.write_char(id[i].to_int().unsafe_to_char())
+    match id[i].to_char() {
+      Some(c) => parent_id_buf.write_char(c)
+      None => ()
+    }
   }
   let parent_id = parent_id_buf.to_string()
   // Find parent object and check if it's an sql_table
@@ -977,7 +980,7 @@ fn render_svg_object(
   theme : @themes.Theme,
   pass? : RenderPass = Foreground,
 ) -> Unit {
-  guard obj.box is Some(box) else { return }
+  guard obj.get_box() is Some(box) else { return }
   // Skip children of sql_table - they are rendered inline within the table
   if is_sql_table_child(obj, all_objects) {
     return
@@ -1497,7 +1500,10 @@ fn get_short_name(id : String) -> String {
   if last_dot >= 0 && last_dot < id.length() - 1 {
     let buf = StringBuilder::new()
     for i = last_dot + 1; i < id.length(); i = i + 1 {
-      buf.write_char(id[i].to_int().unsafe_to_char())
+      match id[i].to_char() {
+        Some(c) => buf.write_char(c)
+        None => ()
+      }
     }
     buf.to_string()
   } else {

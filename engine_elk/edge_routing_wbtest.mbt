@@ -16,6 +16,19 @@
 /// Regression tests for edge routing perpendicularity
 
 ///|
+fn layout_to_graph_for_routing(
+  graph : @graph.Graph,
+  config : LayoutConfig,
+  direction : Direction,
+) -> @graph.Graph raise LayoutError {
+  let outputs = layout(graph, config, direction)
+  let input = @graph.GraphInput::from_graph(graph)
+  let laid_out = @graph.Graph::from_input(input)
+  outputs.layout.apply_to_graph(laid_out)
+  laid_out
+}
+
+///|
 /// Helper to check if a segment is horizontal (dy < tolerance)
 fn is_horizontal(
   p0 : @graph.Point,
@@ -63,14 +76,16 @@ test "edge routing: two nodes vertical - A above B" {
   graph.add_object(b)
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
 
   // Get the edge route
-  let edge = graph.edges[0]
+  let edge = laid_out.edges[0]
   inspect(edge.route.length() >= 2, content="true")
 
   // Get node boxes
-  let a_box = graph.find_object("A").unwrap().box.unwrap()
+  let a_box = laid_out.find_object("A").unwrap().get_box().unwrap()
 
   // Check first segment
   let p0 = edge.route[0]
@@ -101,10 +116,12 @@ test "edge routing: two nodes horizontal - A left of B" {
   graph.add_object(b)
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Right))
-  let edge = graph.edges[0]
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Right) catch {
+    e => fail("layout failed: \{e}")
+  }
+  let edge = laid_out.edges[0]
   inspect(edge.route.length() >= 2, content="true")
-  let a_box = graph.find_object("A").unwrap().box.unwrap()
+  let a_box = laid_out.find_object("A").unwrap().get_box().unwrap()
   let p0 = edge.route[0]
   let p1 = edge.route[1]
   let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -128,10 +145,12 @@ test "edge routing: chain A -> B -> C" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Verify all edges have routes
-  inspect(graph.edges[0].route.length() >= 2, content="true")
-  inspect(graph.edges[1].route.length() >= 2, content="true")
+  inspect(laid_out.edges[0].route.length() >= 2, content="true")
+  inspect(laid_out.edges[1].route.length() >= 2, content="true")
 }
 
 ///|
@@ -143,12 +162,14 @@ test "edge routing: cycle A <-> B" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "A", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   let mut errors = 0
-  for edge in graph.edges {
+  for edge in laid_out.edges {
     if edge.route.length() >= 2 {
-      let src_obj = graph.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.box.unwrap()
+      let src_obj = laid_out.find_object(edge.src_id).unwrap()
+      let src_box = src_obj.get_box().unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -182,12 +203,14 @@ test "edge routing: same layer - multiple sources to one target" {
   graph.add_edge(@graph.Edge::new(0, "A", "C", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   let mut errors = 0
-  for edge in graph.edges {
+  for edge in laid_out.edges {
     if edge.route.length() >= 2 {
-      let src_obj = graph.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.box.unwrap()
+      let src_obj = laid_out.find_object(edge.src_id).unwrap()
+      let src_box = src_obj.get_box().unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -219,12 +242,14 @@ test "edge routing: complex with cycle" {
   graph.add_edge(@graph.Edge::new(1, "N2", "N3", false, true))
   graph.add_edge(@graph.Edge::new(2, "N3", "N1", false, true)) // Back edge
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   let mut errors = 0
-  for edge in graph.edges {
+  for edge in laid_out.edges {
     if edge.route.length() >= 2 {
-      let src_obj = graph.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.box.unwrap()
+      let src_obj = laid_out.find_object(edge.src_id).unwrap()
+      let src_box = src_obj.get_box().unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -252,14 +277,22 @@ test "edge routing: parallel edges" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "A", "B", false, true)) // Duplicate
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
 
   // Check that boxes are assigned
-  inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
-  inspect(graph.find_object("B").unwrap().box is Some(_), content="true")
+  inspect(
+    laid_out.find_object("A").unwrap().get_box() is Some(_),
+    content="true",
+  )
+  inspect(
+    laid_out.find_object("B").unwrap().get_box() is Some(_),
+    content="true",
+  )
   // Check that routes are assigned
-  inspect(graph.edges[0].route.length() >= 2, content="true")
-  inspect(graph.edges[1].route.length() >= 2, content="true")
+  inspect(laid_out.edges[0].route.length() >= 2, content="true")
+  inspect(laid_out.edges[1].route.length() >= 2, content="true")
 }
 
 ///|
@@ -273,11 +306,19 @@ test "edge routing: bidirectional edges" {
   graph.add_edge(@graph.Edge::new(2, "A", "B", false, true)) // Duplicate
   graph.add_edge(@graph.Edge::new(3, "B", "A", false, true)) // Duplicate
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
 
   // Check that boxes are assigned
-  inspect(graph.find_object("A").unwrap().box is Some(_), content="true")
-  inspect(graph.find_object("B").unwrap().box is Some(_), content="true")
+  inspect(
+    laid_out.find_object("A").unwrap().get_box() is Some(_),
+    content="true",
+  )
+  inspect(
+    laid_out.find_object("B").unwrap().get_box() is Some(_),
+    content="true",
+  )
 }
 
 ///|
@@ -293,12 +334,14 @@ test "edge routing: diamond pattern" {
   graph.add_edge(@graph.Edge::new(2, "B", "D", false, true))
   graph.add_edge(@graph.Edge::new(3, "C", "D", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   let mut errors = 0
-  for edge in graph.edges {
+  for edge in laid_out.edges {
     if edge.route.length() >= 2 {
-      let src_obj = graph.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.box.unwrap()
+      let src_obj = laid_out.find_object(edge.src_id).unwrap()
+      let src_box = src_obj.get_box().unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)

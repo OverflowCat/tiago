@@ -25,6 +25,21 @@
 ///|
 /// Compile D2 source to SVG
 fn compile(source : String) -> Result[String, String] {
+  match compile_to_diagram(source, @engine_api.Direction::Down) {
+    Ok(diagram) => {
+      let render_config = @d2renderer_svg.SvgConfig::new()
+      Ok(@d2renderer_svg.render(diagram, render_config))
+    }
+    Err(e) => Err(e)
+  }
+}
+
+///|
+/// Compile D2 source to a diagram (graph input + layout outputs)
+fn compile_to_diagram(
+  source : String,
+  direction : @engine_api.Direction,
+) -> Result[@d2diagram.Diagram, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
@@ -33,12 +48,17 @@ fn compile(source : String) -> Result[String, String] {
   let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
+  let input = @graph.GraphInput::from_graph(graph)
   let config = @engine_api.LayoutConfig::new()
-  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
+  let layout = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    input,
+    config,
+    direction,
+  ) catch {
     e => return Err("Layout error: \{e}")
   }
-  let render_config = @d2renderer_svg.SvgConfig::new()
-  Ok(@d2renderer_svg.render_svg(graph, render_config))
+  Ok(@d2diagram.build(input, layout))
 }
 
 ///|
@@ -47,38 +67,22 @@ fn compile_to_graph(
   source : String,
   direction : @engine_api.Direction,
 ) -> Result[@graph.Graph, String] {
-  let (ast, errors) = @parser.parse(source)
-  if not(errors.is_empty()) {
-    return Err("Parse errors: \{errors}")
+  match compile_to_diagram(source, direction) {
+    Ok(diagram) => Ok(diagram.materialize())
+    Err(e) => Err(e)
   }
-  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.compile("test", ir) catch {
-    e => return Err("Graph error: \{e}")
-  }
-  let config = @engine_api.LayoutConfig::new()
-  ignore(@engine_elk.layout(graph, config, direction)) catch {
-    e => return Err("Layout error: \{e}")
-  }
-  Ok(graph)
 }
 
 ///|
 /// Compile D2 source to ASCII art
 fn compile_ascii(source : String) -> Result[String, String] {
-  let (ast, errors) = @parser.parse(source)
-  if not(errors.is_empty()) {
-    return Err("Parse errors: \{errors}")
+  match compile_to_diagram(source, @engine_api.Direction::Down) {
+    Ok(diagram) => {
+      let render_config = @d2renderer_ascii.AsciiConfig::new()
+      Ok(@d2renderer_ascii.render(diagram, render_config))
+    }
+    Err(e) => Err(e)
   }
-  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @d2exporter.compile("test", ir) catch {
-    e => return Err("Graph error: \{e}")
-  }
-  let config = @engine_api.LayoutConfig::new()
-  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
-    e => return Err("Layout error: \{e}")
-  }
-  let render_config = @d2renderer_ascii.AsciiConfig::new()
-  Ok(@d2renderer_ascii.render_ascii(graph, render_config))
 }
 
 ///|
@@ -485,12 +489,19 @@ fn compile_with_theme(
   let graph = @d2exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
+  let input = @graph.GraphInput::from_graph(graph)
   let config = @engine_api.LayoutConfig::new()
-  ignore(@engine_elk.layout(graph, config, @engine_api.Direction::Down)) catch {
+  let layout = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
     e => return Err("Layout error: \{e}")
   }
+  let diagram = @d2diagram.build(input, layout)
   let render_config = @d2renderer_svg.SvgConfig::with_theme(theme_id)
-  Ok(@d2renderer_svg.render_svg(graph, render_config))
+  Ok(@d2renderer_svg.render(diagram, render_config))
 }
 
 ///|

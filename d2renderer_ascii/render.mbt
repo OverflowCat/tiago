@@ -17,7 +17,7 @@
 
 ///|
 pub fn render(diagram : @d2diagram.Diagram, config : AsciiConfig) -> String {
-  render_ascii(diagram.graph, config)
+  render_ascii(diagram.materialize(), config)
 }
 
 ///|

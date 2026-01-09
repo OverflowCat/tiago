@@ -30,14 +30,29 @@ test "layout config with_spacing" {
 }
 
 ///|
+fn layout_to_graph(
+  graph : @graph.Graph,
+  config : LayoutConfig,
+  direction : Direction,
+) -> @graph.Graph raise LayoutError {
+  let outputs = layout(graph, config, direction)
+  let input = @graph.GraphInput::from_graph(graph)
+  let laid_out = @graph.Graph::from_input(input)
+  outputs.layout.apply_to_graph(laid_out)
+  laid_out
+}
+
+///|
 test "layout single object" {
   let graph = @graph.Graph::new("test")
-  let obj = @graph.Object::new("a")
-  graph.add_object(obj)
+  graph.add_object(@graph.Object::new("a"))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Object should have a box
-  guard obj.box is Some(box) else { fail("expected box") }
+  let obj = laid_out.find_object("a").unwrap()
+  guard obj.get_box() is Some(box) else { fail("expected box") }
   // Position should be at container padding
   assert_eq(box.x, 20.0)
   assert_eq(box.y, 20.0)
@@ -49,15 +64,17 @@ test "layout single object" {
 ///|
 test "layout multiple objects horizontally" {
   let graph = @graph.Graph::new("test")
-  let obj_a = @graph.Object::new("a")
-  let obj_b = @graph.Object::new("b")
-  graph.add_object(obj_a)
-  graph.add_object(obj_b)
+  graph.add_object(@graph.Object::new("a"))
+  graph.add_object(@graph.Object::new("b"))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Right))
+  let laid_out = layout_to_graph(graph, config, Direction::Right) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Both should have boxes
-  guard obj_a.box is Some(box_a) else { fail("expected box a") }
-  guard obj_b.box is Some(box_b) else { fail("expected box b") }
+  let obj_a = laid_out.find_object("a").unwrap()
+  let obj_b = laid_out.find_object("b").unwrap()
+  guard obj_a.get_box() is Some(box_a) else { fail("expected box a") }
+  guard obj_b.get_box() is Some(box_b) else { fail("expected box b") }
   // B should be to the right of A (horizontal layout with Direction::Right)
   assert_true(box_b.x > box_a.x)
 }
@@ -65,15 +82,15 @@ test "layout multiple objects horizontally" {
 ///|
 test "layout edge routing" {
   let graph = @graph.Graph::new("test")
-  let obj_a = @graph.Object::new("a")
-  let obj_b = @graph.Object::new("b")
-  graph.add_object(obj_a)
-  graph.add_object(obj_b)
-  let edge = @graph.Edge::new(0, "a", "b", false, true)
-  graph.add_edge(edge)
+  graph.add_object(@graph.Object::new("a"))
+  graph.add_object(@graph.Object::new("b"))
+  graph.add_edge(@graph.Edge::new(0, "a", "b", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Edge should have route points
+  let edge = laid_out.get_edges()[0]
   assert_eq(edge.route.length(), 2)
 }
 
@@ -89,11 +106,22 @@ test "layout container with children" {
   graph.add_object(child1)
   graph.add_object(child2)
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Parent should have box large enough for children
-  guard parent.box is Some(parent_box) else { fail("expected parent box") }
-  guard child1.box is Some(child1_box) else { fail("expected child1 box") }
-  guard child2.box is Some(child2_box) else { fail("expected child2 box") }
+  let parent = laid_out.find_object("parent").unwrap()
+  let child1 = laid_out.find_object("child1").unwrap()
+  let child2 = laid_out.find_object("child2").unwrap()
+  guard parent.get_box() is Some(parent_box) else {
+    fail("expected parent box")
+  }
+  guard child1.get_box() is Some(child1_box) else {
+    fail("expected child1 box")
+  }
+  guard child2.get_box() is Some(child2_box) else {
+    fail("expected child2 box")
+  }
   // Children should be positioned inside parent
   assert_true(child1_box.x >= parent_box.x)
   assert_true(child1_box.y >= parent_box.y)
@@ -139,7 +167,7 @@ test "max helper" {
 test "grid layout with rows" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("grid")
-  container.grid_rows = Some(2)
+  container.set_grid_rows(2)
   // Add 4 children
   for i in 0..<4 {
     let child = @graph.Object::new("c\{i}")
@@ -148,12 +176,16 @@ test "grid layout with rows" {
   }
   graph.add_object(container)
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Container should be a grid
   assert_true(container.is_grid_diagram())
   // Children should have boxes
+  let container = laid_out.find_object("grid").unwrap()
   for child in container.children {
-    assert_true(child.box is Some(_))
+    let laid_child = laid_out.find_object(child.id).unwrap()
+    assert_true(laid_child.get_box() is Some(_))
   }
 }
 
@@ -161,7 +193,7 @@ test "grid layout with rows" {
 test "grid layout with columns" {
   let graph = @graph.Graph::new("test")
   let container = @graph.Object::new("grid")
-  container.grid_columns = Some(3)
+  container.set_grid_columns(3)
   // Add 6 children
   for i in 0..<6 {
     let child = @graph.Object::new("c\{i}")
@@ -170,7 +202,9 @@ test "grid layout with columns" {
   }
   graph.add_object(container)
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  ignore(layout_to_graph(graph, config, Direction::Down)) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Should have 2 rows (6 children / 3 columns)
   let (rows, cols, _) = compute_grid_dimensions(container, 6)
   assert_eq(rows, 2)
@@ -181,22 +215,22 @@ test "grid layout with columns" {
 test "grid dimensions calculation" {
   // Test grid-rows only
   let obj1 = @graph.Object::new("test1")
-  obj1.grid_rows = Some(2)
+  obj1.set_grid_rows(2)
   let (rows1, cols1, dir1) = compute_grid_dimensions(obj1, 5)
   assert_eq(rows1, 2)
   assert_eq(cols1, 3) // ceil(5/2) = 3
   assert_true(dir1) // row directed
   // Test grid-columns only
   let obj2 = @graph.Object::new("test2")
-  obj2.grid_columns = Some(3)
+  obj2.set_grid_columns(3)
   let (rows2, cols2, dir2) = compute_grid_dimensions(obj2, 5)
   assert_eq(rows2, 2) // ceil(5/3) = 2
   assert_eq(cols2, 3)
   assert_true(!dir2) // column directed
   // Test both rows and columns
   let obj3 = @graph.Object::new("test3")
-  obj3.grid_rows = Some(2)
-  obj3.grid_columns = Some(3)
+  obj3.set_grid_rows(2)
+  obj3.set_grid_columns(3)
   let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
   assert_eq(rows3, 2)
   assert_eq(cols3, 3)
@@ -206,14 +240,14 @@ test "grid dimensions calculation" {
 ///|
 test "grid cell allocation with spanning" {
   // Create children with various spans
-  let child1 = @graph.Object::new("header")
-  child1.set_grid_column_span(3) // Header spans all 3 columns
-  let child2 = @graph.Object::new("sidebar")
-  child2.set_grid_row_span(2) // Sidebar spans 2 rows
+  let child1 = @graph.Object::new("header") // Header spans all 3 columns
+  child1.set_grid_column_span(3)
+  let child2 = @graph.Object::new("sidebar") // Sidebar spans 2 rows
+  child2.set_grid_row_span(2)
   let child3 = @graph.Object::new("content")
   // Default 1x1 span
-  let child4 = @graph.Object::new("footer")
-  child4.set_grid_column_span(2) // Footer spans 2 columns
+  let child4 = @graph.Object::new("footer") // Footer spans 2 columns
+  child4.set_grid_column_span(2)
   let children = [child1, child2, child3, child4]
   // Allocate cells in a 3x3 grid
   let positions = allocate_grid_cells(children, 3, 3, true)
@@ -273,13 +307,13 @@ test "sequence layout basic" {
   // Run sequence layout
   layout_sequence(container, config)
   // Container should have a box
-  assert_true(container.box is Some(_))
+  assert_true(container.get_box() is Some(_))
   // Actors should have boxes
-  assert_true(alice.box is Some(_))
-  assert_true(bob.box is Some(_))
+  assert_true(alice.get_box() is Some(_))
+  assert_true(bob.get_box() is Some(_))
   // Alice should be to the left of Bob
-  guard alice.box is Some(alice_box) else { fail("expected alice box") }
-  guard bob.box is Some(bob_box) else { fail("expected bob box") }
+  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
+  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
   assert_true(bob_box.x > alice_box.x)
 }
 
@@ -303,7 +337,7 @@ test "sequence layout with messages" {
   // Run sequence layout with messages
   layout_sequence_with_messages(container, graph, config)
   // Container should have a box
-  assert_true(container.box is Some(_))
+  assert_true(container.get_box() is Some(_))
   // Message should have route points
   let route = msg.get_route()
   assert_true(route.length() >= 2)
@@ -398,8 +432,7 @@ test "sequence layout with notes" {
   let alice = @graph.Object::new("seq.alice")
   let bob = @graph.Object::new("seq.bob")
   // Add a note as a child of alice
-  let note = @graph.Object::new("seq.alice.note1")
-  note.label = "This is a note"
+  let note = @graph.Object::with_label("seq.alice.note1", "This is a note")
   alice.add_child(note)
   container.add_child(alice)
   container.add_child(bob)
@@ -430,10 +463,8 @@ test "sequence layout multiple notes per actor" {
   // Add actors
   let alice = @graph.Object::new("seq.alice")
   // Add two notes as children of alice
-  let note1 = @graph.Object::new("seq.alice.note1")
-  note1.label = "First note"
-  let note2 = @graph.Object::new("seq.alice.note2")
-  note2.label = "Second note"
+  let note1 = @graph.Object::with_label("seq.alice.note1", "First note")
+  let note2 = @graph.Object::with_label("seq.alice.note2", "Second note")
   alice.add_child(note1)
   alice.add_child(note2)
   container.add_child(alice)
@@ -466,13 +497,10 @@ test "sequence layout with opt group creates fragment" {
   let container = @graph.Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::new("seq.alice")
-  alice.label = "Alice"
-  let bob = @graph.Object::new("seq.bob")
-  bob.label = "Bob"
+  let alice = @graph.Object::with_label("seq.alice", "Alice")
+  let bob = @graph.Object::with_label("seq.bob", "Bob")
   // Add opt group (container with label starting with "opt")
-  let opt_group = @graph.Object::new("seq.opt")
-  opt_group.label = "opt"
+  let opt_group = @graph.Object::with_label("seq.opt", "opt")
   // Add a dummy child to make it a container
   let dummy = @graph.Object::new("seq.opt.dummy")
   opt_group.add_child(dummy)
@@ -515,15 +543,17 @@ test "debug: simple linear graph" {
   graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
   graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
 
   // Get node boxes
-  let objA = graph.find_object("A").unwrap()
-  let objB = graph.find_object("B").unwrap()
-  let objC = graph.find_object("C").unwrap()
-  guard objA.box is Some(boxA) else { fail("expected box for A") }
-  guard objB.box is Some(boxB) else { fail("expected box for B") }
-  guard objC.box is Some(boxC) else { fail("expected box for C") }
+  let objA = laid_out.find_object("A").unwrap()
+  let objB = laid_out.find_object("B").unwrap()
+  let objC = laid_out.find_object("C").unwrap()
+  guard objA.get_box() is Some(boxA) else { fail("expected box for A") }
+  guard objB.get_box() is Some(boxB) else { fail("expected box for B") }
+  guard objC.get_box() is Some(boxC) else { fail("expected box for C") }
 
   // Debug: print positions
   inspect(
@@ -577,15 +607,17 @@ test "debug: cyclic graph with bidirectional edges" {
   graph.add_edge(@graph.Edge::new(4, "I", "5", false, true))
   graph.add_edge(@graph.Edge::new(5, "5", "I", false, true))
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
 
   // Get node boxes
-  let obj5 = graph.find_object("5").unwrap()
-  let objI = graph.find_object("I").unwrap()
-  let objA = graph.find_object("A").unwrap()
-  guard obj5.box is Some(box5) else { fail("expected box for 5") }
-  guard objI.box is Some(boxI) else { fail("expected box for I") }
-  guard objA.box is Some(boxA) else { fail("expected box for A") }
+  let obj5 = laid_out.find_object("5").unwrap()
+  let objI = laid_out.find_object("I").unwrap()
+  let objA = laid_out.find_object("A").unwrap()
+  guard obj5.get_box() is Some(box5) else { fail("expected box for 5") }
+  guard objI.get_box() is Some(boxI) else { fail("expected box for I") }
+  guard objA.get_box() is Some(boxA) else { fail("expected box for A") }
 
   // Debug: print positions
   inspect(
@@ -621,10 +653,8 @@ test "root-level sequence diagram layout" {
   // Set root to be a sequence diagram
   graph.root.set_shape("sequence_diagram")
   // Add actors (without "root." prefix - just like compiled from D2)
-  let alice = @graph.Object::new("alice")
-  alice.label = "Alice"
-  let bob = @graph.Object::new("bob")
-  bob.label = "Bob"
+  let alice = @graph.Object::with_label("alice", "Alice")
+  let bob = @graph.Object::with_label("bob", "Bob")
   // Make actors children of root
   graph.root.add_child(alice)
   graph.root.add_child(bob)
@@ -639,10 +669,14 @@ test "root-level sequence diagram layout" {
   assert_true(graph.root.is_container())
   // Run full layout function
   let config = LayoutConfig::new()
-  ignore(layout(graph, config, Direction::Down))
+  let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
   // Verify actors have boxes and are arranged horizontally
-  guard alice.box is Some(alice_box) else { fail("expected alice box") }
-  guard bob.box is Some(bob_box) else { fail("expected bob box") }
+  let alice = laid_out.find_object("alice").unwrap()
+  let bob = laid_out.find_object("bob").unwrap()
+  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
+  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
   // Bob should be to the right of Alice (horizontal arrangement)
   assert_true(bob_box.x > alice_box.x)
 }

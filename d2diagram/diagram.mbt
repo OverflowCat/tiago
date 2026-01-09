@@ -17,19 +17,47 @@
 
 ///|
 pub struct Diagram {
-  graph : @d2graph.Graph
-  layout : @engine_api.LayoutResult
+  graph : @d2graph.GraphInput
+  layout : @engine_api.LayoutOutputs
 } derive(Show)
 
 ///|
 pub fn build(
-  graph : @d2graph.Graph,
-  layout : @engine_api.LayoutResult,
+  graph : @d2graph.GraphInput,
+  layout : @engine_api.LayoutOutputs,
 ) -> Diagram {
   { graph, layout }
 }
 
 ///|
-pub fn from_graph(graph : @d2graph.Graph) -> Diagram {
-  { graph, layout: @engine_api.LayoutResult::from_graph(graph) }
+pub fn Diagram::materialize(self : Diagram) -> @d2graph.Graph {
+  materialize_graph(self.graph, self.layout)
+}
+
+///|
+fn materialize_graph(
+  graph : @d2graph.GraphInput,
+  outputs : @engine_api.LayoutOutputs,
+) -> @d2graph.Graph {
+  let materialized = @d2graph.Graph::from_input(graph)
+  outputs.layout.apply_to_graph(materialized)
+  materialized.layers.clear()
+  for i, layer in graph.layers {
+    let (_, layer_outputs) = outputs.layers[i]
+    let sub = materialize_graph(layer.graph, layer_outputs)
+    materialized.layers.push(@d2graph.Layer::new(layer.name, sub))
+  }
+  materialized.scenarios.clear()
+  for i, scenario in graph.scenarios {
+    let (_, scenario_outputs) = outputs.scenarios[i]
+    let sub = materialize_graph(scenario.graph, scenario_outputs)
+    materialized.scenarios.push(@d2graph.Scenario::new(scenario.name, sub))
+  }
+  materialized.steps.clear()
+  for i, step in graph.steps {
+    let (_, step_outputs) = outputs.steps[i]
+    let sub = materialize_graph(step.graph, step_outputs)
+    materialized.steps.push(@d2graph.Step::new(step.name, sub))
+  }
+  materialized
 }

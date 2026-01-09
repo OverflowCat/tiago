@@ -61,7 +61,7 @@ fn compute_root_bounding_box(graph : @graph.Graph) -> @graph.Box {
   let mut first = true
   let roots = find_root_objects(graph)
   for obj in roots {
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       if first {
         min_x = b.x
         min_y = b.y
@@ -95,7 +95,7 @@ fn apply_constant_near(
   parent_box : @graph.Box,
   config : LayoutConfig,
 ) -> Unit {
-  if obj.box is Some(b) {
+  if obj.get_box() is Some(b) {
     let margin = config.container_padding
     let (x, y) = match near.to_lower() {
       "top-left" => (parent_box.x + margin, parent_box.y + margin)
@@ -149,9 +149,9 @@ fn apply_object_near(
   config : LayoutConfig,
 ) -> Unit {
   // Find the target object
-  if obj.box is Some(obj_box) &&
+  if obj.get_box() is Some(obj_box) &&
     graph.find_object(target_id) is Some(target_obj) &&
-    target_obj.box is Some(target_box) {
+    target_obj.get_box() is Some(target_box) {
     // Position the object near the target (to the right and slightly below)
     let margin = config.horizontal_spacing / 2.0
     let x = target_box.x + target_box.width + margin

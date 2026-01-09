@@ -513,11 +513,11 @@ fn parse_fragment_condition(label : String) -> String? {
   let mut start = -1
   let mut end = -1
   for i in 0..<label.length() {
-    let c = label.code_unit_at(i).to_int().unsafe_to_char()
-    if c == '[' && start < 0 {
+    let cu = label.code_unit_at(i)
+    if cu == '['.to_int().to_uint16() && start < 0 {
       start = i
     }
-    if c == ']' {
+    if cu == ']'.to_int().to_uint16() {
       end = i
     }
   }
@@ -582,7 +582,10 @@ fn extract_actor_id(full_id : String) -> String {
 fn substring(s : String, start : Int, end : Int) -> String {
   let buf = StringBuilder::new()
   for i in start..<end {
-    buf.write_char(s.code_unit_at(i).to_int().unsafe_to_char())
+    match s.code_unit_at(i).to_char() {
+      Some(c) => buf.write_char(c)
+      None => ()
+    }
   }
   buf.to_string()
 }
@@ -761,8 +764,7 @@ fn add_activation_box_objects(
     let box = ab.get_box()
     let obj_id = ab.actor_id + "__activation_" + i.to_string()
     let obj = @graph.Object::new(obj_id)
-    obj.label = "" // No label for activation boxes
-    obj.shape_type = @graph.ShapeType::Rectangle
+    obj.set_label("") // No label for activation boxes
     obj.set_box(box)
     // Store in graph's activation_boxes for backward compatibility
     graph.activation_boxes.push((ab.actor_id, box))

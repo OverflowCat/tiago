@@ -7,17 +7,16 @@ import(
 )
 
 // Values
-pub fn build(@d2graph.Graph, @engine_api.LayoutResult) -> Diagram
-
-pub fn from_graph(@d2graph.Graph) -> Diagram
+pub fn build(@d2graph.GraphInput, @engine_api.LayoutOutputs) -> Diagram
 
 // Errors
 
 // Types and methods
 pub struct Diagram {
-  graph : @d2graph.Graph
-  layout : @engine_api.LayoutResult
+  graph : @d2graph.GraphInput
+  layout : @engine_api.LayoutOutputs
 }
+pub fn Diagram::materialize(Self) -> @d2graph.Graph
 pub impl Show for Diagram
 
 // Type aliases

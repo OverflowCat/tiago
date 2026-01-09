@@ -46,7 +46,7 @@ fn edge_crosses_unrelated_nodes(
       if obj.id == edge.src_id || obj.id == edge.dst_id {
         continue
       }
-      guard obj.box is Some(box) else { continue }
+      guard obj.get_box() is Some(box) else { continue }
       if line_segment_crosses_box_interior(p1, p2, box) {
         return true
       }
@@ -179,8 +179,8 @@ fn route_fixed_ports_maze_with_extra_obstacles(
   let dst_obj = graph.find_object(edge.dst_id)
   guard src_obj is Some(so) else { return false }
   guard dst_obj is Some(dst_obj1) else { return false }
-  guard so.box is Some(src_box) else { return false }
-  guard dst_obj1.box is Some(dst_box) else { return false }
+  guard so.get_box() is Some(src_box) else { return false }
+  guard dst_obj1.get_box() is Some(dst_box) else { return false }
   let start = edge.route[0]
   let goal = edge.route[edge.route.length() - 1]
 
@@ -208,7 +208,7 @@ fn route_fixed_ports_maze_with_extra_obstacles(
     if dst_parent is Some(p) && obj.id == p {
       continue
     }
-    guard obj.box is Some(box) else { continue }
+    guard obj.get_box() is Some(box) else { continue }
     node_obstacles.push(box)
   }
 

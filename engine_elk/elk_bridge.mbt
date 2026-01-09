@@ -42,7 +42,10 @@ fn get_parent_id_from_dotted_id(id : String) -> String? {
   }
   let buf = StringBuilder::new()
   for i = 0; i < last_dot; i = i + 1 {
-    buf.write_char(id[i].to_int().unsafe_to_char())
+    match id[i].to_char() {
+      Some(c) => buf.write_char(c)
+      None => ()
+    }
   }
   Some(buf.to_string())
 }
@@ -117,7 +120,7 @@ fn object_to_elk_node(
   let elk_node = @elk.ElkNode::new(obj.id)
 
   // Set size from existing box or compute from label
-  match obj.box {
+  match obj.get_box() {
     Some(b) => {
       // Use computed size, ensuring minimum dimensions
       elk_node.width = if b.width > 0.0 {
@@ -221,7 +224,7 @@ fn apply_children_positions(
     for elk_child in elk_node.children {
       if elk_child.id == child.id {
         // Child positions are relative to parent in ELK
-        let parent_box = obj.box.unwrap_or(@graph.Box::zero())
+        let parent_box = obj.get_box().unwrap_or(@graph.Box::zero())
         child.set_box(
           @graph.Box::new(
             parent_box.x + elk_child.x,

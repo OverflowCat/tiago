@@ -1005,12 +1005,12 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
         Some(p) => p
         None => continue
       }
-      guard parent.box is Some(table_box) else { continue }
+      guard parent.get_box() is Some(table_box) else { continue }
       (table_box, Some((table_box, col_idx, parent.children.length())))
     } else {
       let src_obj = graph.find_object(edge.src_id)
       guard src_obj is Some(src) else { continue }
-      guard src.box is Some(src_box) else { continue }
+      guard src.get_box() is Some(src_box) else { continue }
       (src_box, None)
     }
     let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
@@ -1023,12 +1023,12 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
         Some(p) => p
         None => continue
       }
-      guard parent.box is Some(table_box) else { continue }
+      guard parent.get_box() is Some(table_box) else { continue }
       (table_box, Some((table_box, col_idx, parent.children.length())))
     } else {
       let dst_obj = graph.find_object(edge.dst_id)
       guard dst_obj is Some(dst) else { continue }
-      guard dst.box is Some(dst_box) else { continue }
+      guard dst.get_box() is Some(dst_box) else { continue }
       (dst_box, None)
     }
 
@@ -1151,7 +1151,7 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     if edge.src_port is Some(src_port) {
       if src_port.point is None {
         if graph.find_object(edge.src_id) is Some(obj) {
-          if obj.box is Some(box) {
+          if obj.get_box() is Some(box) {
             src_port.point = Some(
               get_port_point_on_side(box, src_port.side, src_port.position),
             )
@@ -1162,7 +1162,7 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     if edge.dst_port is Some(dst_port) {
       if dst_port.point is None {
         if graph.find_object(edge.dst_id) is Some(obj) {
-          if obj.box is Some(box) {
+          if obj.get_box() is Some(box) {
             dst_port.point = Some(
               get_port_point_on_side(box, dst_port.side, dst_port.position),
             )
@@ -1187,7 +1187,7 @@ fn port_side_string(side : @graph.PortSide) -> String {
 fn get_object_center_x(graph : @graph.Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
-      match obj.box {
+      match obj.get_box() {
         Some(b) => b.x + b.width / 2.0
         None => 0.0
       }
@@ -1390,7 +1390,7 @@ fn collect_obstacles_for_group(
     if !is_leaf_obstacle_node(obj) {
       continue
     }
-    if obj.box is Some(b) {
+    if obj.get_box() is Some(b) {
       if sql_parent_ids.contains(obj.id) {
         obstacles.push(shrink_box_by(b, clearance))
       } else {
@@ -1443,12 +1443,12 @@ fn get_sql_edge_port_info(
       Some(p) => p
       None => return None
     }
-    guard parent.box is Some(table_box) else { return None }
+    guard parent.get_box() is Some(table_box) else { return None }
     (table_box, Some((table_box, col_idx, parent.children.length())))
   } else {
     let src_obj = graph.find_object(edge.src_id)
     guard src_obj is Some(src) else { return None }
-    guard src.box is Some(src_box) else { return None }
+    guard src.get_box() is Some(src_box) else { return None }
     (src_box, None)
   }
   let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
@@ -1461,12 +1461,12 @@ fn get_sql_edge_port_info(
       Some(p) => p
       None => return None
     }
-    guard parent.box is Some(table_box) else { return None }
+    guard parent.get_box() is Some(table_box) else { return None }
     (table_box, Some((table_box, col_idx, parent.children.length())))
   } else {
     let dst_obj = graph.find_object(edge.dst_id)
     guard dst_obj is Some(dst) else { return None }
-    guard dst.box is Some(dst_box) else { return None }
+    guard dst.get_box() is Some(dst_box) else { return None }
     (dst_box, None)
   }
   let src_center = src_box_for_sides.center()
@@ -1524,8 +1524,8 @@ fn get_port_info(
   let dst_obj = graph.find_object(edge.dst_id)
   guard src_obj is Some(src) else { return None }
   guard dst_obj is Some(dst) else { return None }
-  guard src.box is Some(src_box) else { return None }
-  guard dst.box is Some(dst_box) else { return None }
+  guard src.get_box() is Some(src_box) else { return None }
+  guard dst.get_box() is Some(dst_box) else { return None }
   // Determine best sides based on relative positions
   let src_center = src_box.center()
   let dst_center = dst_box.center()
@@ -1581,7 +1581,7 @@ fn get_port_point_on_side(
 fn route_self_loop_unified(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
   let obj = graph.find_object(edge.src_id)
   guard obj is Some(o) else { return }
-  guard o.box is Some(box) else { return }
+  guard o.get_box() is Some(box) else { return }
   // Create a self-loop on the right side
   let loop_offset = 30.0
   let start_y = box.y + box.height * 0.3
@@ -1721,14 +1721,14 @@ pub fn fix_all_endpoint_approaches(graph : @graph.Graph) -> Unit {
       match get_parent_id_from_field(edge.dst_id) {
         Some(parent_id) =>
           match graph.find_object(parent_id) {
-            Some(obj) => obj.box
+            Some(obj) => obj.get_box()
             None => None
           }
         None => None
       }
     } else {
       match graph.find_object(edge.dst_id) {
-        Some(obj) => obj.box
+        Some(obj) => obj.get_box()
         None => None
       }
     }
@@ -1740,14 +1740,14 @@ pub fn fix_all_endpoint_approaches(graph : @graph.Graph) -> Unit {
       match get_parent_id_from_field(edge.src_id) {
         Some(parent_id) =>
           match graph.find_object(parent_id) {
-            Some(obj) => obj.box
+            Some(obj) => obj.get_box()
             None => None
           }
         None => None
       }
     } else {
       match graph.find_object(edge.src_id) {
-        Some(obj) => obj.box
+        Some(obj) => obj.get_box()
         None => None
       }
     }
@@ -1873,12 +1873,12 @@ pub fn fix_wrong_approach_direction(graph : @graph.Graph) -> Unit {
     }
     // Fix destination
     let dst_obj = graph.find_object(edge.dst_id)
-    if dst_obj is Some(obj) && obj.box is Some(box) {
+    if dst_obj is Some(obj) && obj.get_box() is Some(box) {
       fix_wrong_approach_for_endpoint(edge.route, box, is_start=false)
     }
     // Fix source
     let src_obj = graph.find_object(edge.src_id)
-    if src_obj is Some(obj) && obj.box is Some(box) {
+    if src_obj is Some(obj) && obj.get_box() is Some(box) {
       fix_wrong_approach_for_endpoint(edge.route, box, is_start=true)
     }
   }
@@ -2086,14 +2086,14 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     match get_parent_id_from_field(edge.src_id) {
       Some(parent_id) =>
         match graph.find_object(parent_id) {
-          Some(obj) => obj.box
+          Some(obj) => obj.get_box()
           None => None
         }
       None => None
     }
   } else {
     match graph.find_object(edge.src_id) {
-      Some(obj) => obj.box
+      Some(obj) => obj.get_box()
       None => None
     }
   }
@@ -2112,14 +2112,14 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     match get_parent_id_from_field(edge.dst_id) {
       Some(parent_id) =>
         match graph.find_object(parent_id) {
-          Some(obj) => obj.box
+          Some(obj) => obj.get_box()
           None => None
         }
       None => None
     }
   } else {
     match graph.find_object(edge.dst_id) {
-      Some(obj) => obj.box
+      Some(obj) => obj.get_box()
       None => None
     }
   }

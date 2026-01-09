@@ -17,7 +17,7 @@
 
 ///|
 pub fn render(diagram : @d2diagram.Diagram, config : SvgConfig) -> String {
-  render_svg(diagram.graph, config)
+  render_svg(diagram.materialize(), config)
 }
 
 ///|

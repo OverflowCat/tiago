@@ -73,7 +73,7 @@ fn determine_port_sides(
   src_layer : Int,
   dst_layer : Int,
 ) -> (@graph.PortSide, @graph.PortSide) {
-  match (src.box, dst.box) {
+  match (src.get_box(), dst.get_box()) {
     (Some(src_box), Some(dst_box)) =>
       if src_layer < dst_layer {
         // Source is above destination (normal downward flow)
@@ -224,7 +224,7 @@ fn sort_edges_by_src_x(
 fn get_obj_center_x(graph : @graph.Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
-      match obj.box {
+      match obj.get_box() {
         Some(b) => b.x + b.width / 2.0
         None => 0.0
       }
@@ -332,7 +332,7 @@ fn compute_port_coordinates(graph : @graph.Graph) -> Unit {
     // Compute source port coordinates
     match (edge.src_port, graph.find_object(edge.src_id)) {
       (Some(port), Some(obj)) =>
-        match obj.box {
+        match obj.get_box() {
           Some(box) => {
             let point = compute_port_point(box, port.side, port.position)
             port.point = Some(point)
@@ -344,7 +344,7 @@ fn compute_port_coordinates(graph : @graph.Graph) -> Unit {
     // Compute destination port coordinates
     match (edge.dst_port, graph.find_object(edge.dst_id)) {
       (Some(port), Some(obj)) =>
-        match obj.box {
+        match obj.get_box() {
           Some(box) => {
             let point = compute_port_point(box, port.side, port.position)
             port.point = Some(point)
@@ -413,7 +413,7 @@ fn fix_source_perpendicularity(
 ) -> Unit {
   let src_obj = graph.find_object(edge.src_id)
   guard src_obj is Some(obj) else { return }
-  guard obj.box is Some(box) else { return }
+  guard obj.get_box() is Some(box) else { return }
   guard edge.route.length() >= 2 else { return }
   let p0 = edge.route[0]
   let p1 = edge.route[1]
@@ -478,7 +478,7 @@ fn fix_source_perpendicularity(
 fn fix_dest_perpendicularity(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
   let dst_obj = graph.find_object(edge.dst_id)
   guard dst_obj is Some(obj) else { return }
-  guard obj.box is Some(box) else { return }
+  guard obj.get_box() is Some(box) else { return }
   guard edge.route.length() >= 2 else { return }
   let last_idx = edge.route.length() - 1
   let p0 = edge.route[last_idx - 1]

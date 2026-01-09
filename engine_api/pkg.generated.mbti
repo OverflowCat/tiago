@@ -10,7 +10,7 @@ pub fn cycle_detected(String) -> LayoutError
 
 pub fn invalid_graph(String) -> LayoutError
 
-pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @d2graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutOutputs raise LayoutError
 
 pub fn unsupported(String) -> LayoutError
 
@@ -50,6 +50,14 @@ pub fn LayoutConfig::new() -> Self
 pub fn LayoutConfig::with_spacing(Double, Double) -> Self
 pub impl Show for LayoutConfig
 
+pub struct LayoutOutputs {
+  layout : LayoutResult
+  layers : Array[(String, LayoutOutputs)]
+  scenarios : Array[(String, LayoutOutputs)]
+  steps : Array[(String, LayoutOutputs)]
+}
+pub impl Show for LayoutOutputs
+
 pub struct LayoutResult {
   nodes : Map[String, NodeLayout]
   edges : Map[Int, EdgeLayout]
@@ -77,6 +85,6 @@ pub impl Show for NodeLayout
 
 // Traits
 pub(open) trait LayoutEngine {
-  layout(Self, @d2graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+  layout(Self, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
 }
 

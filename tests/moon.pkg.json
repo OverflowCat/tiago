@@ -3,10 +3,12 @@
     "Milky2018/diago/parser",
     "Milky2018/diago/ir",
     { "path": "Milky2018/diago/d2graph", "alias": "graph" },
+    "Milky2018/diago/d2diagram",
     "Milky2018/diago/d2exporter",
     "Milky2018/diago/engine_api",
     "Milky2018/diago/engine_elk",
     "Milky2018/diago/d2renderer_svg",
-    "Milky2018/diago/d2renderer_ascii"
+    "Milky2018/diago/d2renderer_ascii",
+    "Milky2018/diago/d2renderer_unicode"
   ]
 }

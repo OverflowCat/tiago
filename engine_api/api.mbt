@@ -89,7 +89,7 @@ pub fn LayoutConfig::with_spacing(
 ///|
 /// Layout engine interface.
 pub(open) trait LayoutEngine {
-  layout(Self, @d2graph.Graph, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+  layout(Self, @d2graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
 }
 
 ///|
@@ -118,6 +118,15 @@ pub struct LayoutResult {
   activation_boxes : Array[(String, NodeLayout)]
   sequence_notes : Array[(String, String, NodeLayout)]
   sequence_fragments : Array[@d2graph.SequenceFragment]
+} derive(Show)
+
+///|
+/// Layout outputs for a graph and all of its variants.
+pub struct LayoutOutputs {
+  layout : LayoutResult
+  layers : Array[(String, LayoutOutputs)]
+  scenarios : Array[(String, LayoutOutputs)]
+  steps : Array[(String, LayoutOutputs)]
 } derive(Show)
 
 ///|
@@ -232,23 +241,34 @@ pub fn LayoutResult::apply_to_graph(
 }
 
 ///|
-/// Perform layout on a graph with a specific engine.
+/// Perform layout on a graph (including variants) with a specific engine.
 pub fn[Engine : LayoutEngine] layout_with_engine(
   engine : Engine,
-  graph : @d2graph.Graph,
+  graph : @d2graph.GraphInput,
   config : LayoutConfig,
   direction : Direction,
-) -> LayoutResult raise LayoutError {
-  let result = engine.layout(graph, config, direction)
-  result.apply_to_graph(graph)
+) -> LayoutOutputs raise LayoutError {
+  let layout = engine.layout(graph, config, direction)
+  let layers : Array[(String, LayoutOutputs)] = []
   for layer in graph.layers {
-    ignore(layout_with_engine(engine, layer.graph, config, direction))
+    layers.push(
+      (layer.name, layout_with_engine(engine, layer.graph, config, direction)),
+    )
   }
+  let scenarios : Array[(String, LayoutOutputs)] = []
   for scenario in graph.scenarios {
-    ignore(layout_with_engine(engine, scenario.graph, config, direction))
+    scenarios.push(
+      (
+        scenario.name,
+        layout_with_engine(engine, scenario.graph, config, direction),
+      ),
+    )
   }
+  let steps : Array[(String, LayoutOutputs)] = []
   for step in graph.steps {
-    ignore(layout_with_engine(engine, step.graph, config, direction))
+    steps.push(
+      (step.name, layout_with_engine(engine, step.graph, config, direction)),
+    )
   }
-  result
+  { layout, layers, scenarios, steps }
 }

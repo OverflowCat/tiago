@@ -76,6 +76,7 @@ pub fn layout(
   graph : @graph.Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> LayoutResult raise LayoutError {
-  @engine_api.layout_with_engine(ElkEngine::new(), graph, config, direction)
+) -> @engine_api.LayoutOutputs raise LayoutError {
+  let input = @graph.GraphInput::from_graph(graph)
+  @engine_api.layout_with_engine(ElkEngine::new(), input, config, direction)
 }

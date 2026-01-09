@@ -88,12 +88,39 @@ pub fn Edge::set_label(Self, String) -> Unit
 pub fn Edge::set_label_box(Self, Box) -> Unit
 pub impl Show for Edge
 
+pub struct EdgeInput {
+  index : Int
+  src_id : String
+  dst_id : String
+  src_arrow : Bool
+  dst_arrow : Bool
+  src_arrowhead : ArrowheadType
+  dst_arrowhead : ArrowheadType
+  src_anchor : String?
+  dst_anchor : String?
+  label : String
+  style : StyleInput
+  bend_points : Array[Point]?
+  is_curve : Bool
+  z_index : Int
+  reference_count : Int
+  src_column_index : Int?
+  dst_column_index : Int?
+}
+pub fn EdgeInput::from_edge(Edge) -> Self
+pub impl Show for EdgeInput
+
 pub(all) struct FragmentOperand {
   condition : String?
   mut separator_y : Double
 }
 pub fn FragmentOperand::new(String?) -> Self
 pub impl Show for FragmentOperand
+
+pub struct FragmentOperandInput {
+  condition : String?
+}
+pub impl Show for FragmentOperandInput
 
 pub(all) struct Graph {
   name : String
@@ -115,9 +142,11 @@ pub fn Graph::add_object(Self, Object) -> Unit
 pub fn Graph::add_scenario(Self, Scenario) -> Unit
 pub fn Graph::add_step(Self, Step) -> Unit
 pub fn Graph::all_variants(Self) -> Array[VariantGraph]
+pub fn Graph::clone_deep(Self) -> Self
 pub fn Graph::edges_from(Self, String) -> Array[Edge]
 pub fn Graph::edges_to(Self, String) -> Array[Edge]
 pub fn Graph::find_object(Self, String) -> Object?
+pub fn Graph::from_input(GraphInput) -> Self
 pub fn Graph::get_edges(Self) -> Array[Edge]
 pub fn Graph::get_layer(Self, String) -> Self?
 pub fn Graph::get_layers(Self) -> Array[Layer]
@@ -141,6 +170,20 @@ pub fn Graph::set_legend(Self, Legend) -> Unit
 pub fn Graph::step_names(Self) -> Array[String]
 pub impl Show for Graph
 
+pub struct GraphInput {
+  name : String
+  root : ObjectInput
+  objects : Array[ObjectInput]
+  edges : Array[EdgeInput]
+  sequence_fragments : Array[SequenceFragmentInput]
+  layers : Array[LayerInput]
+  scenarios : Array[ScenarioInput]
+  steps : Array[StepInput]
+  legend : LegendInput?
+}
+pub fn GraphInput::from_graph(Graph) -> Self
+pub impl Show for GraphInput
+
 pub(all) enum GraphVariant {
   LayerVariant(name~ : String)
   ScenarioVariant(name~ : String)
@@ -160,6 +203,12 @@ pub(all) struct Layer {
 }
 pub fn Layer::new(String, Graph) -> Self
 pub impl Show for Layer
+
+pub struct LayerInput {
+  name : String
+  graph : GraphInput
+}
+pub impl Show for LayerInput
 
 pub struct Legend {
   mut title : String?
@@ -200,6 +249,28 @@ pub fn LegendEntry::custom(String, String) -> Self
 pub fn LegendEntry::separator() -> Self
 pub fn LegendEntry::shape(ShapeType, String, Style?) -> Self
 pub impl Show for LegendEntry
+
+pub enum LegendEntryInput {
+  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : StyleInput?)
+  ConnectionEntry(src_arrow~ : ArrowheadType, dst_arrow~ : ArrowheadType, label~ : String, style~ : StyleInput?)
+  CustomEntry(icon~ : String, label~ : String)
+  Separator
+}
+pub fn LegendEntryInput::from_entry(LegendEntry) -> Self
+pub impl Show for LegendEntryInput
+
+pub struct LegendInput {
+  title : String?
+  position : LegendPosition
+  entries : Array[LegendEntryInput]
+  fill : String?
+  stroke : String?
+  padding : Double
+  entry_gap : Double
+  icon_size : Double
+}
+pub fn LegendInput::from_legend(Legend) -> Self
+pub impl Show for LegendInput
 
 pub(all) enum LegendPosition {
   TopLeft
@@ -266,6 +337,29 @@ pub fn Object::set_shape(Self, String) -> Unit
 pub fn Object::set_shape_type(Self, ShapeType) -> Unit
 pub fn Object::with_label(String, String) -> Self
 pub impl Show for Object
+
+pub struct ObjectInput {
+  id : String
+  label : String
+  shape_type : ShapeType
+  style : StyleInput
+  child_ids : Array[String]
+  z_index : Int
+  icon : String?
+  tooltip : String?
+  link : String?
+  classes : Array[String]
+  grid_rows : Int?
+  grid_columns : Int?
+  grid_gap : Double?
+  horizontal_gap : Double?
+  vertical_gap : Double?
+  grid_column_span : Int?
+  grid_row_span : Int?
+  near : String?
+}
+pub fn ObjectInput::from_object(Object) -> Self
+pub impl Show for ObjectInput
 
 pub(all) struct Point {
   x : Double
@@ -344,6 +438,12 @@ pub(all) struct Scenario {
 pub fn Scenario::new(String, Graph) -> Self
 pub impl Show for Scenario
 
+pub struct ScenarioInput {
+  name : String
+  graph : GraphInput
+}
+pub impl Show for ScenarioInput
+
 pub(all) struct SequenceFragment {
   fragment_type : String
   mut condition : String?
@@ -354,6 +454,16 @@ pub(all) struct SequenceFragment {
 }
 pub fn SequenceFragment::new(String, Int, Int) -> Self
 pub impl Show for SequenceFragment
+
+pub struct SequenceFragmentInput {
+  fragment_type : String
+  condition : String?
+  start_index : Int
+  end_index : Int
+  operands : Array[FragmentOperandInput]
+}
+pub fn SequenceFragmentInput::from_fragment(SequenceFragment) -> Self
+pub impl Show for SequenceFragmentInput
 
 pub(all) enum ShapeType {
   Rectangle
@@ -400,6 +510,12 @@ pub(all) struct Step {
 pub fn Step::new(String, Graph) -> Self
 pub impl Show for Step
 
+pub struct StepInput {
+  name : String
+  graph : GraphInput
+}
+pub impl Show for StepInput
+
 pub(all) struct Style {
   mut opacity : Double?
   mut stroke : String?
@@ -428,6 +544,35 @@ pub(all) struct Style {
 pub fn Style::new() -> Self
 pub impl Eq for Style
 pub impl Show for Style
+
+pub struct StyleInput {
+  opacity : Double?
+  stroke : String?
+  fill : String?
+  stroke_width : Double?
+  stroke_dash : Double?
+  border_radius : Double?
+  shadow : Bool?
+  three_d : Bool?
+  multiple : Bool?
+  font : String?
+  font_size : Int?
+  font_color : String?
+  bold : Bool?
+  italic : Bool?
+  underline : Bool?
+  animated : Bool?
+  filled : Bool?
+  double_border : Bool?
+  text_transform : String?
+  font_family : String?
+  fill_pattern : String?
+  sketch : Bool?
+  curved : Bool?
+}
+pub fn StyleInput::from_style(Style) -> Self
+pub impl Eq for StyleInput
+pub impl Show for StyleInput
 
 pub struct VariantGraph {
   variant : GraphVariant
