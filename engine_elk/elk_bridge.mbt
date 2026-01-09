@@ -535,10 +535,10 @@ pub fn run_elk_layout(
 
   // Create layout options using builder pattern
   let elk_direction = match direction {
-    Down => @elk.Down
-    Up => @elk.Up
-    Right => @elk.Right
-    Left => @elk.Left
+    Down => @elk.LayoutDirection::Down
+    Up => @elk.LayoutDirection::Up
+    Right => @elk.LayoutDirection::Right
+    Left => @elk.LayoutDirection::Left
   }
   let options = @elk.LayoutOptions::layered()
     .with_direction(elk_direction)
@@ -552,7 +552,9 @@ pub fn run_elk_layout(
         config.container_padding,
       ),
     )
-    .with_edge_routing(@elk.Orthogonal)
+    .with_edge_routing(@elk.EdgeRouting::Orthogonal)
+  // Keep options also attached as ELK properties for future property-driven resolution.
+  elk_root.properties.copy_from(options.to_properties())
 
   // Run ELK layered layout (using the proper implementation)
   @layered.layout(elk_root, options)

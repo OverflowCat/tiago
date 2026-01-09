@@ -37,15 +37,114 @@ pub fn route_edges_orthogonal(
 
   // Process edges layer by layer
   if is_vertical {
-    route_vertical_layout(graph, edge_spacing)
+    route_vertical_layout(graph, direction, edge_spacing)
   } else {
-    route_horizontal_layout(graph, edge_spacing)
+    route_horizontal_layout(graph, direction, edge_spacing)
   }
 }
 
 ///|
 /// Route edges for vertical (top-to-bottom) layouts
-fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
+fn route_vertical_layout(
+  graph : LGraph,
+  direction : @elk.LayoutDirection,
+  edge_spacing : Double,
+) -> Unit {
+  fn default_anchor(
+    node : LNode,
+    direction : @elk.LayoutDirection,
+    is_source : Bool,
+  ) -> (Double, Double) {
+    let cx = node.x + node.width / 2.0
+    let cy = node.y + node.height / 2.0
+    match direction {
+      @elk.Down =>
+        if is_source {
+          (cx, node.y + node.height)
+        } else {
+          (cx, node.y)
+        }
+      @elk.Up =>
+        if is_source {
+          (cx, node.y)
+        } else {
+          (cx, node.y + node.height)
+        }
+      @elk.Right =>
+        if is_source {
+          (node.x + node.width, cy)
+        } else {
+          (node.x, cy)
+        }
+      @elk.Left =>
+        if is_source {
+          (node.x, cy)
+        } else {
+          (node.x + node.width, cy)
+        }
+      @elk.Undefined =>
+        if is_source {
+          (cx, node.y + node.height)
+        } else {
+          (cx, node.y)
+        }
+    }
+  }
+
+  fn anchor_with_port(
+    node : LNode,
+    port_id : String?,
+    direction : @elk.LayoutDirection,
+    is_source : Bool,
+  ) -> (Double, Double) {
+    match port_id {
+      Some(pid) => {
+        for port in node.ports {
+          if port.id == pid {
+            let has_size = port.width > 0.0 || port.height > 0.0
+            if has_size {
+              return (
+                node.x + port.x + port.width / 2.0,
+                node.y + port.y + port.height / 2.0,
+              )
+            }
+            let has_pos = port.x != 0.0 || port.y != 0.0
+            let anchor = match port.side {
+              @elk.North =>
+                if has_pos {
+                  (node.x + port.x, node.y)
+                } else {
+                  (node.x + node.width / 2.0, node.y)
+                }
+              @elk.South =>
+                if has_pos {
+                  (node.x + port.x, node.y + node.height)
+                } else {
+                  (node.x + node.width / 2.0, node.y + node.height)
+                }
+              @elk.West =>
+                if has_pos {
+                  (node.x, node.y + port.y)
+                } else {
+                  (node.x, node.y + node.height / 2.0)
+                }
+              @elk.East =>
+                if has_pos {
+                  (node.x + node.width, node.y + port.y)
+                } else {
+                  (node.x + node.width, node.y + node.height / 2.0)
+                }
+              _ => (node.x + port.x, node.y + port.y)
+            }
+            return anchor
+          }
+        }
+        default_anchor(node, direction, is_source)
+      }
+      None => default_anchor(node, direction, is_source)
+    }
+  }
+
   // First, count parallel edges between same source-target pairs
   // Use normalized keys so (A->B) and (B->A) are counted together
   let edge_counts : Map[String, Int] = {}
@@ -73,11 +172,19 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
     // Clear existing bend points
     edge.bend_points.clear()
 
-    // Calculate source and target connection points
-    let src_x = src.x + src.width / 2.0
-    let src_y = src.y + src.height // Bottom of source
-    let tgt_x = tgt.x + tgt.width / 2.0
-    let tgt_y = tgt.y // Top of target
+    // Calculate source and target connection points (from ports if present)
+    let (src_x, src_y) = anchor_with_port(
+      src,
+      edge.source_port_id,
+      direction,
+      true,
+    )
+    let (tgt_x, tgt_y) = anchor_with_port(
+      tgt,
+      edge.target_port_id,
+      direction,
+      false,
+    )
 
     // Track parallel edge index using normalized key
     let key = if edge.source_id < edge.target_id {
@@ -148,7 +255,106 @@ fn route_vertical_layout(graph : LGraph, edge_spacing : Double) -> Unit {
 
 ///|
 /// Route edges for horizontal (left-to-right) layouts
-fn route_horizontal_layout(graph : LGraph, edge_spacing : Double) -> Unit {
+fn route_horizontal_layout(
+  graph : LGraph,
+  direction : @elk.LayoutDirection,
+  edge_spacing : Double,
+) -> Unit {
+  fn default_anchor(
+    node : LNode,
+    direction : @elk.LayoutDirection,
+    is_source : Bool,
+  ) -> (Double, Double) {
+    let cx = node.x + node.width / 2.0
+    let cy = node.y + node.height / 2.0
+    match direction {
+      @elk.Down =>
+        if is_source {
+          (cx, node.y + node.height)
+        } else {
+          (cx, node.y)
+        }
+      @elk.Up =>
+        if is_source {
+          (cx, node.y)
+        } else {
+          (cx, node.y + node.height)
+        }
+      @elk.Right =>
+        if is_source {
+          (node.x + node.width, cy)
+        } else {
+          (node.x, cy)
+        }
+      @elk.Left =>
+        if is_source {
+          (node.x, cy)
+        } else {
+          (node.x + node.width, cy)
+        }
+      @elk.Undefined =>
+        if is_source {
+          (node.x + node.width, cy)
+        } else {
+          (node.x, cy)
+        }
+    }
+  }
+
+  fn anchor_with_port(
+    node : LNode,
+    port_id : String?,
+    direction : @elk.LayoutDirection,
+    is_source : Bool,
+  ) -> (Double, Double) {
+    match port_id {
+      Some(pid) => {
+        for port in node.ports {
+          if port.id == pid {
+            let has_size = port.width > 0.0 || port.height > 0.0
+            if has_size {
+              return (
+                node.x + port.x + port.width / 2.0,
+                node.y + port.y + port.height / 2.0,
+              )
+            }
+            let has_pos = port.x != 0.0 || port.y != 0.0
+            let anchor = match port.side {
+              @elk.North =>
+                if has_pos {
+                  (node.x + port.x, node.y)
+                } else {
+                  (node.x + node.width / 2.0, node.y)
+                }
+              @elk.South =>
+                if has_pos {
+                  (node.x + port.x, node.y + node.height)
+                } else {
+                  (node.x + node.width / 2.0, node.y + node.height)
+                }
+              @elk.West =>
+                if has_pos {
+                  (node.x, node.y + port.y)
+                } else {
+                  (node.x, node.y + node.height / 2.0)
+                }
+              @elk.East =>
+                if has_pos {
+                  (node.x + node.width, node.y + port.y)
+                } else {
+                  (node.x + node.width, node.y + node.height / 2.0)
+                }
+              _ => (node.x + port.x, node.y + port.y)
+            }
+            return anchor
+          }
+        }
+        default_anchor(node, direction, is_source)
+      }
+      None => default_anchor(node, direction, is_source)
+    }
+  }
+
   for edge in graph.edges {
     let source = graph.get_node(edge.source_id)
     let target = graph.get_node(edge.target_id)
@@ -162,11 +368,19 @@ fn route_horizontal_layout(graph : LGraph, edge_spacing : Double) -> Unit {
     // Clear existing bend points
     edge.bend_points.clear()
 
-    // Calculate source and target connection points
-    let src_x = src.x + src.width // Right of source
-    let src_y = src.y + src.height / 2.0
-    let tgt_x = tgt.x // Left of target
-    let tgt_y = tgt.y + tgt.height / 2.0
+    // Calculate source and target connection points (from ports if present)
+    let (src_x, src_y) = anchor_with_port(
+      src,
+      edge.source_port_id,
+      direction,
+      true,
+    )
+    let (tgt_x, tgt_y) = anchor_with_port(
+      tgt,
+      edge.target_port_id,
+      direction,
+      false,
+    )
 
     // Calculate routing
     if (src_y - tgt_y).abs() < 1.0 {

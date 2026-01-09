@@ -122,6 +122,7 @@ pub(all) enum PropertyValue {
   Point(ElkPoint)
   Padding(ElkPadding)
   Array(Array[PropertyValue])
+  Map(Map[String, PropertyValue])
 } derive(Show, Eq)
 
 ///|
@@ -180,6 +181,94 @@ pub fn ElkProperties::get_string(self : ElkProperties, key : String) -> String? 
     Some(Enum(v)) => Some(v)
     _ => None
   }
+}
+
+///|
+pub fn ElkProperties::get_enum(self : ElkProperties, key : String) -> String? {
+  match self.values.get(key) {
+    Some(Enum(v)) => Some(v)
+    _ => None
+  }
+}
+
+///|
+pub fn ElkProperties::get_point(
+  self : ElkProperties,
+  key : String,
+) -> ElkPoint? {
+  match self.values.get(key) {
+    Some(Point(v)) => Some(v)
+    _ => None
+  }
+}
+
+///|
+pub fn ElkProperties::get_padding(
+  self : ElkProperties,
+  key : String,
+) -> ElkPadding? {
+  match self.values.get(key) {
+    Some(Padding(v)) => Some(v)
+    _ => None
+  }
+}
+
+///|
+pub fn ElkProperties::get_array(
+  self : ElkProperties,
+  key : String,
+) -> Array[PropertyValue]? {
+  match self.values.get(key) {
+    Some(Array(v)) => Some(v)
+    _ => None
+  }
+}
+
+///|
+pub fn ElkProperties::get_map(
+  self : ElkProperties,
+  key : String,
+) -> Map[String, PropertyValue]? {
+  match self.values.get(key) {
+    Some(Map(v)) => Some(v)
+    _ => None
+  }
+}
+
+///|
+pub fn ElkProperties::get_bool_or(
+  self : ElkProperties,
+  key : String,
+  default : Bool,
+) -> Bool {
+  self.get_bool(key).unwrap_or(default)
+}
+
+///|
+pub fn ElkProperties::get_int_or(
+  self : ElkProperties,
+  key : String,
+  default : Int,
+) -> Int {
+  self.get_int(key).unwrap_or(default)
+}
+
+///|
+pub fn ElkProperties::get_double_or(
+  self : ElkProperties,
+  key : String,
+  default : Double,
+) -> Double {
+  self.get_double(key).unwrap_or(default)
+}
+
+///|
+pub fn ElkProperties::get_string_or(
+  self : ElkProperties,
+  key : String,
+  default : String,
+) -> String {
+  self.get_string(key).unwrap_or(default)
 }
 
 ///|
@@ -309,6 +398,9 @@ pub(all) struct ElkEdge {
   id : String
   sources : Array[String]
   targets : Array[String]
+  // Optional port IDs for simple edges (one source, one target)
+  mut source_port : String?
+  mut target_port : String?
   labels : Array[ElkLabel]
   sections : Array[ElkEdgeSection]
   container_id : String?
@@ -321,6 +413,8 @@ pub fn ElkEdge::new(id : String, source : String, target : String) -> ElkEdge {
     id,
     sources: [source],
     targets: [target],
+    source_port: None,
+    target_port: None,
     labels: [],
     sections: [],
     container_id: None,
@@ -338,6 +432,8 @@ pub fn ElkEdge::hyperedge(
     id,
     sources,
     targets,
+    source_port: None,
+    target_port: None,
     labels: [],
     sections: [],
     container_id: None,
@@ -368,6 +464,24 @@ pub fn ElkEdge::target(self : ElkEdge) -> String? {
     Some(self.targets[0])
   } else {
     None
+  }
+}
+
+///|
+/// Get single source port ID (for simple edges)
+pub fn ElkEdge::source_port_id(self : ElkEdge) -> String? {
+  match self.source_port {
+    Some(id) => Some(id)
+    None => self.properties.get_string("elk.sourcePort")
+  }
+}
+
+///|
+/// Get single target port ID (for simple edges)
+pub fn ElkEdge::target_port_id(self : ElkEdge) -> String? {
+  match self.target_port {
+    Some(id) => Some(id)
+    None => self.properties.get_string("elk.targetPort")
   }
 }
 

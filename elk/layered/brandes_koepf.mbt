@@ -85,7 +85,9 @@ pub fn run_brandes_koepf(
   let best_layout = select_best_layout(layouts, graph)
 
   // Apply the selected layout
-  apply_layout(graph, best_layout, layer_spacing, padding, is_horizontal)
+  apply_layout(
+    graph, best_layout, layer_spacing, padding, is_horizontal, direction,
+  )
 }
 
 ///|
@@ -390,11 +392,26 @@ fn apply_layout(
   layer_spacing : Double,
   padding : @elk.ElkPadding,
   is_horizontal : Bool,
+  direction : @elk.LayoutDirection,
 ) -> Unit {
   // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let default_node_spacing = 20.0
-  for layer in graph.layers {
+  let reverse_layers = match direction {
+    @elk.Up => !is_horizontal
+    @elk.Left => is_horizontal
+    _ => false
+  }
+  let layers : Array[LLayer] = []
+  if reverse_layers {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      let idx = graph.layers.length() - 1 - i
+      layers.push(graph.layers[idx])
+    }
+  } else {
+    layers.append(graph.layers)
+  }
+  for layer in layers {
     // Calculate layer size
     let mut layer_size = 0.0
     for node in layer.nodes {

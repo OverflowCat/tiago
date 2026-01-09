@@ -33,6 +33,21 @@ test "layered algorithm basic" {
 }
 
 ///|
+test "layered reads options from graph properties" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.properties.set("elk.direction", Enum("Right"))
+  root.properties.set("elk.spacing.nodeNode", Double(30.0))
+  let options = LayoutOptions::layered()
+  layout(root, options) |> ignore
+  assert_true(node_a.x < node_b.x)
+}
+
+///|
 test "force-directed algorithm" {
   let root = ElkNode::new("root")
   for i = 0; i < 5; i = i + 1 {

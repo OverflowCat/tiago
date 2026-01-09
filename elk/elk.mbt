@@ -87,24 +87,28 @@ pub fn layout(
   graph : ElkNode,
   options : LayoutOptions,
 ) -> Unit raise LayoutError {
-  let algorithm = match options.algorithm {
+  let resolved_options = LayoutOptions::merge(
+    options,
+    LayoutOptions::from_properties(graph.properties),
+  )
+  let algorithm = match resolved_options.algorithm {
     Some(alg) => alg
     None => Layered
   }
   match algorithm {
-    Layered => layout_layered(graph, options)
-    Force => layout_force(graph, options)
-    Stress => layout_stress(graph, options)
-    Radial => layout_radial(graph, options)
-    MrTree => layout_tree(graph, options)
-    Box => layout_box(graph, options)
-    RectPacking => layout_rectpacking(graph, options)
-    TopDownPacking => layout_topdown(graph, options)
-    DisCo => layout_disco(graph, options)
-    Fixed => layout_fixed(graph, options)
-    Random => layout_random(graph, options)
-    SporeCompaction => layout_spore_compaction(graph, options)
-    SporeOverlap => layout_spore_overlap(graph, options)
+    Layered => layout_layered(graph, resolved_options)
+    Force => layout_force(graph, resolved_options)
+    Stress => layout_stress(graph, resolved_options)
+    Radial => layout_radial(graph, resolved_options)
+    MrTree => layout_tree(graph, resolved_options)
+    Box => layout_box(graph, resolved_options)
+    RectPacking => layout_rectpacking(graph, resolved_options)
+    TopDownPacking => layout_topdown(graph, resolved_options)
+    DisCo => layout_disco(graph, resolved_options)
+    Fixed => layout_fixed(graph, resolved_options)
+    Random => layout_random(graph, resolved_options)
+    SporeCompaction => layout_spore_compaction(graph, resolved_options)
+    SporeOverlap => layout_spore_overlap(graph, resolved_options)
   }
 }
 
@@ -113,163 +117,12 @@ pub fn layout(
 // ============================================================================
 
 ///|
-/// Layered (Sugiyama) layout algorithm - simplified inline version
+/// Layered (Sugiyama) layout algorithm
+///
+/// Delegate to the proper layered implementation in `elk/layered` to keep
+/// `@elk.layout()` consistent with `engine_elk`'s default behavior.
 fn layout_layered(graph : ElkNode, options : LayoutOptions) -> Unit {
-  if graph.children.is_empty() {
-    return
-  }
-  let direction = options.direction.unwrap_or(Down)
-  let node_spacing = options.node_node_spacing.unwrap_or(20.0)
-  let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
-  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
-
-  // Build adjacency for layer assignment
-  let node_map : Map[String, ElkNode] = {}
-  let in_degree : Map[String, Int] = {}
-  let out_edges : Map[String, Array[String]] = {}
-  for node in graph.children {
-    node_map[node.id] = node
-    in_degree[node.id] = 0
-    out_edges[node.id] = []
-  }
-
-  // Build edge relationships
-  for edge in graph.edges {
-    if edge.sources.length() > 0 && edge.targets.length() > 0 {
-      let src = edge.sources[0]
-      let tgt = edge.targets[0]
-      if node_map.contains(src) && node_map.contains(tgt) {
-        match out_edges.get(src) {
-          Some(arr) => arr.push(tgt)
-          None => ()
-        }
-        in_degree[tgt] = in_degree.get(tgt).unwrap_or(0) + 1
-      }
-    }
-  }
-
-  // Check if we have any edges at all
-  let has_edges = graph.edges.length() > 0
-
-  // Topological sort for layer assignment (Kahn's algorithm)
-  let layers : Array[Array[ElkNode]] = []
-  let layer_map : Map[String, Int] = {}
-  if has_edges {
-    let queue : Array[String] = []
-
-    // Find sources
-    for node in graph.children {
-      if in_degree.get(node.id).unwrap_or(0) == 0 {
-        queue.push(node.id)
-        layer_map[node.id] = 0
-      }
-    }
-
-    // Process nodes
-    while queue.length() > 0 {
-      let node_id = queue.remove(0)
-      let node_layer = layer_map.get(node_id).unwrap_or(0)
-
-      // Ensure layer exists
-      while layers.length() <= node_layer {
-        layers.push([])
-      }
-      match node_map.get(node_id) {
-        Some(node) => layers[node_layer].push(node)
-        None => ()
-      }
-
-      // Process outgoing edges
-      for target_id in out_edges.get(node_id).unwrap_or([]) {
-        let new_degree = in_degree.get(target_id).unwrap_or(1) - 1
-        in_degree[target_id] = new_degree
-        let target_layer = max_double(
-          layer_map.get(target_id).unwrap_or(0).to_double(),
-          (node_layer + 1).to_double(),
-        ).to_int()
-        layer_map[target_id] = target_layer
-        if new_degree == 0 {
-          queue.push(target_id)
-        }
-      }
-    }
-
-    // Handle nodes not reached (disconnected or cycles)
-    for node in graph.children {
-      if !layer_map.contains(node.id) {
-        // Put disconnected nodes in their own layers based on definition order
-        let new_layer = layers.length()
-        layers.push([node])
-        layer_map[node.id] = new_layer
-      }
-    }
-  } else {
-    // No edges: put each node in its own layer to respect definition order
-    for node in graph.children {
-      layers.push([node])
-      layer_map[node.id] = layers.length() - 1
-    }
-  }
-
-  // Handle any remaining nodes not assigned (shouldn't happen but just in case)
-  for node in graph.children {
-    if !layer_map.contains(node.id) {
-      if layers.is_empty() {
-        layers.push([])
-      }
-      layers[0].push(node)
-      layer_map[node.id] = 0
-    }
-  }
-
-  // First, recursively layout compound nodes to determine their final sizes
-  for node in graph.children {
-    if node.children.length() > 0 {
-      layout_layered(node, options)
-      // Update node size to contain its children
-      let (child_w, child_h) = node.calculate_bounds()
-      node.width = child_w + padding.left + padding.right
-      node.height = child_h + padding.top + padding.bottom
-    }
-    // Ensure minimum size for all nodes
-    if node.width < 1.0 {
-      node.width = 60.0
-    }
-    if node.height < 1.0 {
-      node.height = 40.0
-    }
-  }
-
-  // Position nodes using their final sizes
-  let is_horizontal = direction.is_horizontal()
-  let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
-  for layer in layers {
-    let mut max_size = 0.0
-    let mut node_offset = if is_horizontal { padding.top } else { padding.left }
-    for node in layer {
-      if is_horizontal {
-        node.x = layer_offset
-        node.y = node_offset
-        node_offset = node_offset + node.height + node_spacing
-        max_size = max_double(max_size, node.width)
-      } else {
-        node.x = node_offset
-        node.y = layer_offset
-        node_offset = node_offset + node.width + node_spacing
-        max_size = max_double(max_size, node.height)
-      }
-    }
-    layer_offset = layer_offset + max_size + layer_spacing
-  }
-
-  // Resolve any remaining overlaps
-  resolve_overlaps(graph.children, node_spacing, is_horizontal)
-
-  // Route edges with orthogonal bends
-  route_edges_orthogonal(graph, direction)
-
-  // Update graph bounds
-  update_graph_bounds(graph, padding)
+  @layered.layout(graph, options)
 }
 
 ///|

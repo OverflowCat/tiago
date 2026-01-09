@@ -61,13 +61,71 @@ fn max_double(a : Double, b : Double) -> Double {
 ///|
 /// Execute the layered layout algorithm
 pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
+  let resolved_options = @elk.LayoutOptions::merge(
+    options,
+    @elk.LayoutOptions::from_properties(graph.properties),
+  )
+  fn ensure_label_size(label : @elk.ElkLabel) -> Unit {
+    if label.width <= 0.0 {
+      label.width = label.text.length().to_double() * 8.0
+    }
+    if label.height <= 0.0 {
+      label.height = 14.0
+    }
+  }
+
+  fn ensure_sizes(node : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
+    for label in node.labels {
+      ensure_label_size(label)
+    }
+    for port in node.ports {
+      for label in port.labels {
+        ensure_label_size(label)
+      }
+    }
+    for edge in node.edges {
+      for label in edge.labels {
+        ensure_label_size(label)
+      }
+    }
+    for child in node.children {
+      ensure_sizes(child, options)
+    }
+
+    // Auto-size nodes when missing width/height.
+    if node.width <= 0.0 || node.height <= 0.0 {
+      let (min_w, min_h) = match options.node_size_minimum {
+        Some((w, h)) => (w, h)
+        None => (60.0, 40.0)
+      }
+      let mut label_w = 0.0
+      let mut label_h = 0.0
+      for label in node.labels {
+        if label.width > label_w {
+          label_w = label.width
+        }
+        label_h = label_h + label.height
+      }
+      let padding = 20.0
+      if node.width <= 0.0 {
+        node.width = max_double(min_w, label_w + padding)
+      }
+      if node.height <= 0.0 {
+        node.height = max_double(min_h, label_h + padding)
+      }
+    }
+  }
+
+  ensure_sizes(graph, resolved_options)
   // First, recursively layout compound nodes (children with their own children)
   for child in graph.children {
     if child.children.length() > 0 {
-      layout(child, options)
+      layout(child, resolved_options)
       // Update child size to contain its children
       let (child_w, child_h) = child.calculate_bounds()
-      let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))
+      let padding = resolved_options.padding.unwrap_or(
+        @elk.ElkPadding::uniform(12.0),
+      )
       child.width = child_w + padding.left + padding.right
       child.height = child_h + padding.top + padding.bottom
     }
@@ -77,24 +135,24 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   let lgraph = LGraph::from_elk_node(graph)
 
   // Get options with defaults
-  let direction = match options.direction {
+  let direction = match resolved_options.direction {
     Some(d) => d
     None => @elk.Down
   }
-  let thoroughness = match options.thoroughness {
+  let thoroughness = match resolved_options.thoroughness {
     Some(t) => t
     None => 7
   }
 
   // Phase 1: Cycle Breaking
-  let cycle_strategy = match options.cycle_breaking_strategy {
+  let cycle_strategy = match resolved_options.cycle_breaking_strategy {
     Some(s) => s
     None => @elk.GreedyModelOrder
   }
   break_cycles(lgraph, cycle_strategy)
 
   // Phase 2: Layer Assignment
-  let layer_strategy = match options.layering_strategy {
+  let layer_strategy = match resolved_options.layering_strategy {
     Some(s) => s
     None => @elk.LongestPath
   }
@@ -107,21 +165,21 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   insert_dummy_nodes(lgraph)
 
   // Phase 3: Crossing Minimization
-  let crossing_strategy = match options.crossing_min_strategy {
+  let crossing_strategy = match resolved_options.crossing_min_strategy {
     Some(s) => s
     None => @elk.LayerSweep
   }
   minimize_crossings(lgraph, crossing_strategy, thoroughness)
 
   // Phase 4: Node Placement
-  let placement_strategy = match options.node_placement_strategy {
+  let placement_strategy = match resolved_options.node_placement_strategy {
     Some(s) => s
     None => @elk.BrandesKoepf
   } // Default to Brandes-Koepf like ELK
-  place_nodes(lgraph, options, placement_strategy, direction)
+  place_nodes(lgraph, resolved_options, placement_strategy, direction)
 
   // Phase 5: Edge Routing
-  let routing = match options.edge_routing {
+  let routing = match resolved_options.edge_routing {
     Some(r) => r
     None => @elk.Orthogonal
   }
@@ -134,7 +192,7 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   remove_dummy_nodes(lgraph)
 
   // Apply results back to ElkNode
-  lgraph.to_elk_node(graph)
+  lgraph.to_elk_node(graph, direction)
 }
 
 // ============================================================================
@@ -743,7 +801,21 @@ fn simple_node_placement(
 
   // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
-  for layer in graph.layers {
+  let reverse_layers = match direction {
+    @elk.Up => !is_horizontal
+    @elk.Left => is_horizontal
+    _ => false
+  }
+  let layers : Array[LLayer] = []
+  if reverse_layers {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      let idx = graph.layers.length() - 1 - i
+      layers.push(graph.layers[idx])
+    }
+  } else {
+    layers.append(graph.layers)
+  }
+  for layer in layers {
     // Calculate layer size
     let mut layer_size = 0.0
     for node in layer.nodes {

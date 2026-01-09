@@ -39,6 +39,26 @@ pub(all) enum LayoutAlgorithm {
 } derive(Show, Eq)
 
 ///|
+pub fn LayoutAlgorithm::from_string(s : String) -> LayoutAlgorithm? {
+  match s.to_upper() {
+    "LAYERED" => Some(Layered)
+    "FORCE" => Some(Force)
+    "STRESS" => Some(Stress)
+    "RADIAL" => Some(Radial)
+    "MRTREE" => Some(MrTree)
+    "BOX" => Some(Box)
+    "RECTPACKING" => Some(RectPacking)
+    "TOPDOWNPACKING" => Some(TopDownPacking)
+    "DISCO" => Some(DisCo)
+    "FIXED" => Some(Fixed)
+    "RANDOM" => Some(Random)
+    "SPORECOMPACTION" => Some(SporeCompaction)
+    "SPOREOVERLAP" => Some(SporeOverlap)
+    _ => None
+  }
+}
+
+///|
 /// Layout direction (primary axis for layered layout)
 pub(all) enum LayoutDirection {
   Undefined
@@ -47,6 +67,18 @@ pub(all) enum LayoutDirection {
   Down
   Up
 } derive(Show, Eq)
+
+///|
+pub fn LayoutDirection::from_string(s : String) -> LayoutDirection? {
+  match s.to_upper() {
+    "UNDEFINED" => Some(Undefined)
+    "RIGHT" => Some(Right)
+    "LEFT" => Some(Left)
+    "DOWN" => Some(Down)
+    "UP" => Some(Up)
+    _ => None
+  }
+}
 
 ///|
 pub fn LayoutDirection::is_horizontal(self : LayoutDirection) -> Bool {
@@ -78,6 +110,17 @@ pub(all) enum EdgeRouting {
 } derive(Show, Eq)
 
 ///|
+pub fn EdgeRouting::from_string(s : String) -> EdgeRouting? {
+  match s.to_upper() {
+    "UNDEFINED" => Some(Undefined)
+    "POLYLINE" => Some(Polyline)
+    "ORTHOGONAL" => Some(Orthogonal)
+    "SPLINES" => Some(Splines)
+    _ => None
+  }
+}
+
+///|
 /// Edge type for differentiating edge kinds
 pub(all) enum EdgeType {
   Undefined
@@ -103,6 +146,20 @@ pub(all) enum CycleBreakingStrategy {
 } derive(Show, Eq)
 
 ///|
+pub fn CycleBreakingStrategy::from_string(s : String) -> CycleBreakingStrategy? {
+  match s.to_upper() {
+    "GREEDY" | "GREEDY_CYCLE_BREAKER" | "GREEDYCYCLEBREAKER" =>
+      Some(GreedyCycleBreaker)
+    "DEPTH_FIRST" | "DEPTHFIRST" => Some(DepthFirst)
+    "INTERACTIVE" | "INTERACTIVE_CYCLE_BREAKER" | "INTERACTIVECYCLEBREAKER" =>
+      Some(InteractiveCycleBreaker)
+    "MODEL_ORDER" | "MODELORDER" => Some(ModelOrder)
+    "GREEDY_MODEL_ORDER" | "GREEDYMODELORDER" => Some(GreedyModelOrder)
+    _ => None
+  }
+}
+
+///|
 /// Layer assignment strategy
 pub(all) enum LayeringStrategy {
   NetworkSimplex
@@ -116,12 +173,43 @@ pub(all) enum LayeringStrategy {
 } derive(Show, Eq)
 
 ///|
+pub fn LayeringStrategy::from_string(s : String) -> LayeringStrategy? {
+  match s.to_upper() {
+    "NETWORK_SIMPLEX" | "NETWORKSIMPLEX" => Some(NetworkSimplex)
+    "LONGEST_PATH" | "LONGESTPATH" => Some(LongestPath)
+    "INTERACTIVE" | "INTERACTIVE_LAYERING" | "INTERACTIVELAYERING" =>
+      Some(InteractiveLayering)
+    "COFFMAN_GRAHAM" | "COFFMANGRAHAM" => Some(CoffmanGraham)
+    "STRETCH_WIDTH" | "STRETCHWIDTH" => Some(StretchWidth)
+    "MIN_WIDTH" | "MINWIDTH" => Some(MinWidth)
+    "BREADTH_FIRST" | "BREADTH_FIRST_MODEL_ORDER" | "BREADTHFIRSTMODELORDER" =>
+      Some(BreadthFirstModelOrder)
+    "DEPTH_FIRST" | "DEPTH_FIRST_MODEL_ORDER" | "DEPTHFIRSTMODELORDER" =>
+      Some(DepthFirstModelOrder)
+    _ => None
+  }
+}
+
+///|
 /// Crossing minimization strategy
 pub(all) enum CrossingMinimizationStrategy {
   LayerSweep
   InteractiveCrossMin
   None
 } derive(Show, Eq)
+
+///|
+pub fn CrossingMinimizationStrategy::from_string(
+  s : String,
+) -> CrossingMinimizationStrategy? {
+  match s.to_upper() {
+    "LAYER_SWEEP" | "LAYERSWEEP" => Some(LayerSweep)
+    "INTERACTIVE" | "INTERACTIVE_CROSS_MIN" | "INTERACTIVECROSSMIN" =>
+      Some(InteractiveCrossMin)
+    "NONE" => Some(None)
+    _ => None
+  }
+}
 
 ///|
 /// Greedy switch type for crossing minimization
@@ -139,6 +227,17 @@ pub(all) enum NodePlacementStrategy {
   Simple
   NetworkSimplex
 } derive(Show, Eq)
+
+///|
+pub fn NodePlacementStrategy::from_string(s : String) -> NodePlacementStrategy? {
+  match s.to_upper() {
+    "BRANDES_KOEPF" | "BRANDESKOEPF" => Some(BrandesKoepf)
+    "LINEAR_SEGMENTS" | "LINEARSEGMENTS" => Some(LinearSegments)
+    "SIMPLE" => Some(Simple)
+    "NETWORK_SIMPLEX" | "NETWORKSIMPLEX" => Some(NetworkSimplex)
+    _ => None
+  }
+}
 
 ///|
 /// Brandes-Koepf node placement mode
@@ -1086,8 +1185,28 @@ pub fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
     Some(v) => props.set("elk.spacing.nodeNode", Double(v))
     None => ()
   }
+  match self.node_node_between_layers_spacing {
+    Some(v) => props.set("elk.spacing.nodeNodeBetweenLayers", Double(v))
+    None => ()
+  }
+  match self.edge_node_spacing {
+    Some(v) => props.set("elk.spacing.edgeNode", Double(v))
+    None => ()
+  }
+  match self.edge_node_between_layers_spacing {
+    Some(v) => props.set("elk.spacing.edgeNodeBetweenLayers", Double(v))
+    None => ()
+  }
   match self.edge_edge_spacing {
     Some(v) => props.set("elk.spacing.edgeEdge", Double(v))
+    None => ()
+  }
+  match self.edge_edge_between_layers_spacing {
+    Some(v) => props.set("elk.spacing.edgeEdgeBetweenLayers", Double(v))
+    None => ()
+  }
+  match self.component_component_spacing {
+    Some(v) => props.set("elk.spacing.componentComponent", Double(v))
     None => ()
   }
   match self.padding {
@@ -1102,5 +1221,212 @@ pub fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
     Some(v) => props.set("elk.layered.thoroughness", Int(v))
     None => ()
   }
+  match self.cycle_breaking_strategy {
+    Some(v) =>
+      props.set("elk.layered.cycleBreaking.strategy", Enum(v.to_string()))
+    None => ()
+  }
+  match self.layering_strategy {
+    Some(v) => props.set("elk.layered.layering.strategy", Enum(v.to_string()))
+    None => ()
+  }
+  match self.crossing_min_strategy {
+    Some(v) =>
+      props.set(
+        "elk.layered.crossingMinimization.strategy",
+        Enum(v.to_string()),
+      )
+    None => ()
+  }
+  match self.node_placement_strategy {
+    Some(v) =>
+      props.set("elk.layered.nodePlacement.strategy", Enum(v.to_string()))
+    None => ()
+  }
   props
+}
+
+// ============================================================================
+// Conversion from Properties
+// ============================================================================
+
+///|
+/// Parse a subset of ELK properties into LayoutOptions (unknown keys ignored).
+pub fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
+  let mut options = LayoutOptions::new()
+  fn get_string_any(props : ElkProperties, keys : Array[String]) -> String? {
+    for key in keys {
+      match props.get_string(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  fn get_double_any(props : ElkProperties, keys : Array[String]) -> Double? {
+    for key in keys {
+      match props.get_double(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  fn get_int_any(props : ElkProperties, keys : Array[String]) -> Int? {
+    for key in keys {
+      match props.get_int(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  fn get_padding_any(
+    props : ElkProperties,
+    keys : Array[String],
+  ) -> ElkPadding? {
+    for key in keys {
+      match props.get_padding(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  match get_string_any(props, ["elk.algorithm", "org.eclipse.elk.algorithm"]) {
+    Some(s) =>
+      match LayoutAlgorithm::from_string(s) {
+        Some(v) => options = options.with_algorithm(v)
+        None => ()
+      }
+    None => ()
+  }
+  match get_string_any(props, ["elk.direction", "org.eclipse.elk.direction"]) {
+    Some(s) =>
+      match LayoutDirection::from_string(s) {
+        Some(v) => options = options.with_direction(v)
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, ["elk.edgeRouting", "org.eclipse.elk.edgeRouting"]) {
+    Some(s) =>
+      match EdgeRouting::from_string(s) {
+        Some(v) => options = options.with_edge_routing(v)
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.nodeNode", "org.eclipse.elk.spacing.nodeNode",
+    ]) {
+    Some(v) => options = options.with_node_spacing(v)
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.nodeNodeBetweenLayers", "org.eclipse.elk.spacing.nodeNodeBetweenLayers",
+    ]) {
+    Some(v) => options = options.with_layer_spacing(v)
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.edgeEdge", "org.eclipse.elk.spacing.edgeEdge",
+    ]) {
+    Some(v) => options = options.with_edge_spacing(v)
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.edgeEdgeBetweenLayers", "org.eclipse.elk.spacing.edgeEdgeBetweenLayers",
+    ]) {
+    Some(v) =>
+      options = { ..options, edge_edge_between_layers_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.edgeNode", "org.eclipse.elk.spacing.edgeNode",
+    ]) {
+    Some(v) => options = { ..options, edge_node_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.edgeNodeBetweenLayers", "org.eclipse.elk.spacing.edgeNodeBetweenLayers",
+    ]) {
+    Some(v) =>
+      options = { ..options, edge_node_between_layers_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.componentComponent", "org.eclipse.elk.spacing.componentComponent",
+    ]) {
+    Some(v) => options = { ..options, component_component_spacing: Some(v) }
+    None => ()
+  }
+  match get_padding_any(props, ["elk.padding", "org.eclipse.elk.padding"]) {
+    Some(p) => options = options.with_padding(p)
+    None => ()
+  }
+  match
+    get_int_any(props, [
+      "elk.layered.thoroughness", "org.eclipse.elk.alg.layered.thoroughness",
+    ]) {
+    Some(v) => options = { ..options, thoroughness: Some(v) }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.cycleBreaking.strategy", "org.eclipse.elk.alg.layered.cycleBreaking.strategy",
+    ]) {
+    Some(s) =>
+      match CycleBreakingStrategy::from_string(s) {
+        Some(v) => options = { ..options, cycle_breaking_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.layering.strategy", "org.eclipse.elk.alg.layered.layering.strategy",
+    ]) {
+    Some(s) =>
+      match LayeringStrategy::from_string(s) {
+        Some(v) => options = { ..options, layering_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.crossingMinimization.strategy", "org.eclipse.elk.alg.layered.crossingMinimization.strategy",
+    ]) {
+    Some(s) =>
+      match CrossingMinimizationStrategy::from_string(s) {
+        Some(v) => options = { ..options, crossing_min_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.nodePlacement.strategy", "org.eclipse.elk.alg.layered.nodePlacement.strategy",
+    ]) {
+    Some(s) =>
+      match NodePlacementStrategy::from_string(s) {
+        Some(v) => options = { ..options, node_placement_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  options
 }

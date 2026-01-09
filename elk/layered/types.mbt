@@ -265,6 +265,9 @@ pub fn LEdge::reverse(self : LEdge) -> Unit {
   let temp = self.source_id
   self.source_id = self.target_id
   self.target_id = temp
+  let temp_port = self.source_port_id
+  self.source_port_id = self.target_port_id
+  self.target_port_id = temp_port
   self.reversed = !self.reversed
 }
 
@@ -373,18 +376,47 @@ pub fn LGraph::from_elk_node(elk_node : @elk.ElkNode) -> LGraph {
       lnode.nested_graph = Some(LGraph::from_elk_node(child))
     }
   }
+  fn find_top_level_container_id(root : @elk.ElkNode, id : String) -> String? {
+    for child in root.children {
+      if child.id == id {
+        return Some(child.id)
+      }
+      match child.find_node(id) {
+        Some(_) => return Some(child.id)
+        None => ()
+      }
+    }
+    None
+  }
 
   // Convert all edges - now using IDs instead of node references
   for elk_edge in elk_node.edges {
     // Handle hyperedges - for now, assume simple edges
     if elk_edge.sources.length() > 0 && elk_edge.targets.length() > 0 {
-      let source_id = elk_edge.sources[0]
-      let target_id = elk_edge.targets[0]
+      let original_source_id = elk_edge.sources[0]
+      let original_target_id = elk_edge.targets[0]
+      // Cross-hierarchy edges: map endpoints to their top-level container
+      let source_id = if graph.node_map.contains(original_source_id) {
+        original_source_id
+      } else {
+        find_top_level_container_id(elk_node, original_source_id).unwrap_or(
+          original_source_id,
+        )
+      }
+      let target_id = if graph.node_map.contains(original_target_id) {
+        original_target_id
+      } else {
+        find_top_level_container_id(elk_node, original_target_id).unwrap_or(
+          original_target_id,
+        )
+      }
       // Only create edge if both nodes exist
       if graph.node_map.contains(source_id) &&
         graph.node_map.contains(target_id) {
         let ledge = LEdge::new(elk_edge.id, source_id, target_id)
         ledge.original_id = Some(elk_edge.id)
+        ledge.source_port_id = elk_edge.source_port_id()
+        ledge.target_port_id = elk_edge.target_port_id()
         ledge.properties.copy_from(elk_edge.properties)
         // Convert labels
         for label in elk_edge.labels {
@@ -408,7 +440,11 @@ pub fn LGraph::from_elk_node(elk_node : @elk.ElkNode) -> LGraph {
 
 ///|
 /// Apply layout results back to an ElkNode
-pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
+pub fn LGraph::to_elk_node(
+  self : LGraph,
+  elk_node : @elk.ElkNode,
+  direction : @elk.LayoutDirection,
+) -> Unit {
   elk_node.width = self.width
   elk_node.height = self.height
 
@@ -432,7 +468,7 @@ pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
 
         // Apply nested graph if present
         match lnode.nested_graph {
-          Some(nested) => nested.to_elk_node(child)
+          Some(nested) => nested.to_elk_node(child, direction)
           None => ()
         }
       }
@@ -457,26 +493,121 @@ pub fn LGraph::to_elk_node(self : LGraph, elk_node : @elk.ElkNode) -> Unit {
         // Look up source and target nodes by ID
         let source_node = self.node_map.get(ledge.source_id)
         let target_node = self.node_map.get(ledge.target_id)
+        fn default_anchor(
+          node : LNode,
+          direction : @elk.LayoutDirection,
+          is_source : Bool,
+        ) -> (Double, Double) {
+          let cx = node.x + node.width / 2.0
+          let cy = node.y + node.height / 2.0
+          match direction {
+            @elk.Down =>
+              if is_source {
+                (cx, node.y + node.height)
+              } else {
+                (cx, node.y)
+              }
+            @elk.Up =>
+              if is_source {
+                (cx, node.y)
+              } else {
+                (cx, node.y + node.height)
+              }
+            @elk.Right =>
+              if is_source {
+                (node.x + node.width, cy)
+              } else {
+                (node.x, cy)
+              }
+            @elk.Left =>
+              if is_source {
+                (node.x, cy)
+              } else {
+                (node.x + node.width, cy)
+              }
+            @elk.Undefined =>
+              if is_source {
+                (cx, node.y + node.height)
+              } else {
+                (cx, node.y)
+              }
+          }
+        }
 
-        // In ELK, start/end points come from port anchors.
-        // Since we use port IDs, look up ports and compute anchor points.
-        // Fall back to node boundary based on layout direction.
-        // The layout package can adjust these for perpendicularity if needed.
-        // Apply parallel_offset to ensure parallel edges have distinct start/end points
+        fn anchor_with_port(
+          node : LNode,
+          port_id : String?,
+          direction : @elk.LayoutDirection,
+          is_source : Bool,
+        ) -> (Double, Double) {
+          match port_id {
+            Some(pid) => {
+              for port in node.ports {
+                if port.id == pid {
+                  let has_size = port.width > 0.0 || port.height > 0.0
+                  if has_size {
+                    return (
+                      node.x + port.x + port.width / 2.0,
+                      node.y + port.y + port.height / 2.0,
+                    )
+                  }
+                  // Side-only ports: if no explicit position, fall back to side center
+                  let has_pos = port.x != 0.0 || port.y != 0.0
+                  let anchor = match port.side {
+                    @elk.North =>
+                      if has_pos {
+                        (node.x + port.x, node.y)
+                      } else {
+                        (node.x + node.width / 2.0, node.y)
+                      }
+                    @elk.South =>
+                      if has_pos {
+                        (node.x + port.x, node.y + node.height)
+                      } else {
+                        (node.x + node.width / 2.0, node.y + node.height)
+                      }
+                    @elk.West =>
+                      if has_pos {
+                        (node.x, node.y + port.y)
+                      } else {
+                        (node.x, node.y + node.height / 2.0)
+                      }
+                    @elk.East =>
+                      if has_pos {
+                        (node.x + node.width, node.y + port.y)
+                      } else {
+                        (node.x + node.width, node.y + node.height / 2.0)
+                      }
+                    _ => (node.x + port.x, node.y + port.y)
+                  }
+                  return anchor
+                }
+              }
+              default_anchor(node, direction, is_source)
+            }
+            None => default_anchor(node, direction, is_source)
+          }
+        }
+
+        // In ELK, start/end points come from port anchors; fall back to node boundary.
+        // Apply parallel_offset to keep parallel edges distinct.
         let offset = ledge.parallel_offset
-        let (start_x, start_y) = match source_node {
+        let (raw_start_x, raw_start_y) = match source_node {
           Some(src) =>
-            // Default: bottom center of source (for Down direction)
-            // Add parallel_offset to X to distinguish parallel edges
-            (src.x + src.width / 2.0 + offset, src.y + src.height)
+            anchor_with_port(src, ledge.source_port_id, direction, true)
           _ => (0.0, 0.0)
         }
-        let (end_x, end_y) = match target_node {
+        let (raw_end_x, raw_end_y) = match target_node {
           Some(tgt) =>
-            // Default: top center of target (for Down direction)
-            // Add parallel_offset to X to distinguish parallel edges
-            (tgt.x + tgt.width / 2.0 + offset, tgt.y)
+            anchor_with_port(tgt, ledge.target_port_id, direction, false)
           _ => (0.0, 0.0)
+        }
+        let (start_x, start_y, end_x, end_y) = if direction.is_vertical() {
+          (raw_start_x + offset, raw_start_y, raw_end_x + offset, raw_end_y)
+        } else if direction.is_horizontal() {
+          (raw_start_x, raw_start_y + offset, raw_end_x, raw_end_y + offset)
+        } else {
+          (raw_start_x + offset, raw_start_y, raw_end_x + offset, raw_end_y)
         }
         section.start_point = @elk.ElkPoint::new(start_x, start_y)
         section.end_point = @elk.ElkPoint::new(end_x, end_y)

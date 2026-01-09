@@ -99,3 +99,51 @@ test "horizontal layout direction" {
   // In Right direction, x should increase
   assert_true(node_a.x < node_b.x)
 }
+
+///|
+test "horizontal layout direction: Left" {
+  let root = @elk.ElkNode::new("root")
+  let node_a = @elk.ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = @elk.ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
+  let options = @elk.LayoutOptions::layered().with_direction(@elk.Left)
+  layout(root, options)
+
+  // In Left direction, x should decrease across layers
+  assert_true(node_a.x > node_b.x)
+}
+
+///|
+test "vertical layout direction: Up" {
+  let root = @elk.ElkNode::new("root")
+  let node_a = @elk.ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = @elk.ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
+  let options = @elk.LayoutOptions::layered().with_direction(@elk.Up)
+  layout(root, options)
+
+  // In Up direction, y should decrease across layers
+  assert_true(node_a.y > node_b.y)
+}
+
+///|
+test "node auto-sizing from labels" {
+  let root = @elk.ElkNode::new("root")
+  let node_a = @elk.ElkNode::new("a")
+  node_a.add_label(@elk.ElkLabel::new("a_label", "HelloWorld"))
+  let node_b = @elk.ElkNode::new("b")
+  node_b.add_label(@elk.ElkLabel::new("b_label", "X"))
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
+  let options = @elk.LayoutOptions::layered()
+  layout(root, options)
+  assert_true(node_a.width >= 90.0)
+  assert_true(node_a.height >= 40.0)
+  assert_true(node_b.width >= 60.0)
+  assert_true(node_b.height >= 40.0)
+}

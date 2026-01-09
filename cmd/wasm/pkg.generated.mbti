@@ -10,9 +10,15 @@ pub fn read_output_byte(Int) -> Int
 
 pub fn render_ascii() -> Int
 
+pub fn render_ascii_with_engine(Int) -> Int
+
 pub fn render_svg() -> Int
 
+pub fn render_svg_with_engine(Int) -> Int
+
 pub fn render_unicode() -> Int
+
+pub fn render_unicode_with_engine(Int) -> Int
 
 pub fn set_input(Int) -> Int
 

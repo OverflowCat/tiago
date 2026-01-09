@@ -2,7 +2,7 @@
 package "Milky2018/diago/elk/layered"
 
 import(
-  "Milky2018/diago/elk"
+  "Milky2018/diago/elk/base"
 )
 
 // Values
@@ -10,15 +10,15 @@ pub fn greedy_switch(LGraph, Int) -> Unit
 
 pub fn greedy_switch_two_sided(LGraph, Int) -> Unit
 
-pub fn layout(@elk.ElkNode, @elk.LayoutOptions) -> Unit
+pub fn layout(@base.ElkNode, @base.LayoutOptions) -> Unit
 
 pub fn network_simplex_layer_assignment(LGraph) -> Unit
 
-pub fn route_edges_orthogonal(LGraph, @elk.LayoutDirection, Double) -> Unit
+pub fn route_edges_orthogonal(LGraph, @base.LayoutDirection, Double) -> Unit
 
-pub fn route_self_loops(LGraph, @elk.LayoutDirection) -> Unit
+pub fn route_self_loops(LGraph, @base.LayoutDirection) -> Unit
 
-pub fn run_brandes_koepf(LGraph, @elk.LayoutOptions, @elk.LayoutDirection) -> Unit
+pub fn run_brandes_koepf(LGraph, @base.LayoutOptions, @base.LayoutDirection) -> Unit
 
 pub fn straighten_edges(LGraph) -> Unit
 
@@ -43,11 +43,11 @@ pub(all) struct LEdge {
   mut source_port_id : String?
   mut target_port_id : String?
   labels : Array[LLabel]
-  bend_points : Array[@elk.ElkPoint]
+  bend_points : Array[@base.ElkPoint]
   mut reversed : Bool
   mut priority : Int
   mut parallel_offset : Double
-  properties : @elk.ElkProperties
+  properties : @base.ElkProperties
 }
 pub fn LEdge::get_source(Self, LGraph) -> LNode?
 pub fn LEdge::get_target(Self, LGraph) -> LNode?
@@ -64,16 +64,16 @@ pub(all) struct LGraph {
   node_map : Map[String, LNode]
   mut width : Double
   mut height : Double
-  properties : @elk.ElkProperties
+  properties : @base.ElkProperties
 }
 pub fn LGraph::add_node(Self, LNode) -> Unit
-pub fn LGraph::from_elk_node(@elk.ElkNode) -> Self
+pub fn LGraph::from_elk_node(@base.ElkNode) -> Self
 pub fn LGraph::get_layer_nodes(Self, Int) -> Array[LNode]
 pub fn LGraph::get_long_edges(Self) -> Array[LEdge]
 pub fn LGraph::get_node(Self, String) -> LNode?
 pub fn LGraph::initialize_layers(Self) -> Unit
 pub fn LGraph::new(String) -> Self
-pub fn LGraph::to_elk_node(Self, @elk.ElkNode) -> Unit
+pub fn LGraph::to_elk_node(Self, @base.ElkNode, @base.LayoutDirection) -> Unit
 pub impl Show for LGraph
 
 pub(all) struct LLabel {
@@ -83,9 +83,9 @@ pub(all) struct LLabel {
   mut y : Double
   mut width : Double
   mut height : Double
-  properties : @elk.ElkProperties
+  properties : @base.ElkProperties
 }
-pub fn LLabel::from_elk_label(@elk.ElkLabel) -> Self
+pub fn LLabel::from_elk_label(@base.ElkLabel) -> Self
 pub fn LLabel::new(String, String) -> Self
 pub impl Show for LLabel
 
@@ -113,10 +113,10 @@ pub(all) struct LNode {
   labels : Array[LLabel]
   mut origin_edge : String?
   mut nested_graph : LGraph?
-  properties : @elk.ElkProperties
+  properties : @base.ElkProperties
 }
 pub fn LNode::degree(Self) -> Int
-pub fn LNode::from_elk_node(@elk.ElkNode) -> Self
+pub fn LNode::from_elk_node(@base.ElkNode) -> Self
 pub fn LNode::in_degree(Self) -> Int
 pub fn LNode::is_dummy(Self) -> Bool
 pub fn LNode::new(String, LNodeType) -> Self
@@ -137,15 +137,15 @@ pub impl Show for LNodeType
 pub(all) struct LPort {
   id : String
   mut original_id : String?
-  mut side : @elk.PortSide
+  mut side : @base.PortSide
   mut x : Double
   mut y : Double
   mut width : Double
   mut height : Double
   labels : Array[LLabel]
-  properties : @elk.ElkProperties
+  properties : @base.ElkProperties
 }
-pub fn LPort::from_elk_port(@elk.ElkPort) -> Self
+pub fn LPort::from_elk_port(@base.ElkPort) -> Self
 pub fn LPort::new(String) -> Self
 pub impl Show for LPort
 
