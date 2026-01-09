@@ -27,7 +27,7 @@ Interpretation:
 
 At runtime the order should be explicit at API boundaries:
 
-`d2compiler (parse/import) -> d2ir (semantic compile) -> d2exporter (IR→Graph) -> engine_* (Graph→LayoutResult) -> d2diagram (Graph+LayoutResult→Diagram) -> d2renderer_* (Diagram→String/bytes) -> output`
+`d2compiler (parse/import) -> d2ir (semantic compile) -> d2exporter (IR→Graph) -> engine_* (GraphInput→LayoutOutputs) -> d2diagram (GraphInput+LayoutOutputs→Diagram) -> d2renderer_* (Diagram→String/bytes) -> output`
 
 ## Current State Snapshot (why it feels “mixed”)
 
@@ -126,8 +126,9 @@ Defines the engine contract and layout result types, e.g.:
 
 - `LayoutConfig`, `Direction`, `LayoutError`
 - `NodeLayout`, `EdgeLayout`, `LayoutResult`
-- `trait LayoutEngine { layout(graph, config, direction) -> LayoutResult raise LayoutError }`
-- Glue: `layout_with_engine(engine, graph, config, direction)` that applies layout to a graph and handles variants (if variants live in `d2graph`)
+- `trait LayoutEngine { layout(graph_input, config, direction) -> LayoutResult raise LayoutError }`
+- Immutable engine input types: `d2graph.GraphInput` (no `mut` fields)
+- Glue: `layout_with_engine(engine, graph_input, config, direction) -> LayoutOutputs` (recurses variants and does **not** mutate inputs)
 
 Critical rule:
 
@@ -138,7 +139,7 @@ Critical rule:
 Each engine package:
 
 - depends on `engine_api` + its algorithm library
-- converts `d2graph` to engine internal graph
+- converts `d2graph.GraphInput` to engine internal graph
 - returns `LayoutResult`
 - does not render; does not parse; does not compile IR
 
@@ -155,7 +156,7 @@ No rendering; no layout algorithms.
 
 Render-ready diagram construction:
 
-- consumes `d2graph` + `LayoutResult`
+- consumes `d2graph.GraphInput` + `LayoutOutputs`
 - computes any render-only artifacts not owned by core graph (e.g. label boxes, guides, interaction metadata)
 - normalizes coordinates (e.g. make all coords non-negative), determines drawing order
 
@@ -196,9 +197,10 @@ Notes:
 
 ### Current status
 
-- Last updated: 2026-01-08
-- Current milestone: M6 in progress (retire legacy entrypoints)
-- Known temporary shims: none (legacy `graph/` and `layout/` were removed; Sugiyama code lives in `sugiyama/`).
+- Last updated: 2026-01-09
+- Current milestone: M5 in progress (diagram model hardening)
+- Known temporary shims:
+  - `d2diagram.Diagram::materialize()` applies `LayoutResult` onto a fresh mutable `d2graph.Graph` for legacy renderers; this is a bridge until renderers consume `LayoutOutputs` directly.
 
 ### Milestones
 
@@ -216,7 +218,8 @@ Notes:
 
 - [x] **M3: Make engine contract explicit (`engine_api`)**
   - [x] Define `LayoutEngine`, `LayoutConfig`, `Direction`, `LayoutResult`
-  - [x] Provide `layout_with_engine` glue (including variants recursion)
+  - [x] Provide `layout_with_engine` glue (variants recursion; returns `LayoutOutputs` without mutating inputs)
+  - [x] Introduce immutable engine input type (`d2graph.GraphInput`)
 
 - [ ] **M4: Engines are true plugins**
   - [x] `engine_elk` implements `engine_api.LayoutEngine` (self-contained)
@@ -225,7 +228,7 @@ Notes:
   - [ ] Optional: split `elk/` into `elk_core/` + `engine_elk/` adapter
 
 - [ ] **M5: Diagram + renderers extraction**
-  - [x] Implement `d2diagram` as the render-ready model (`Graph + LayoutResult -> Diagram`)
+  - [x] Implement `d2diagram` as the render-ready model (`GraphInput + LayoutOutputs -> Diagram`)
   - [ ] Extend `d2diagram` with render-only artifacts (draw order, normalization, etc.)
   - [x] Move SVG renderer out of `graph/` into `d2renderer_svg/`
   - [x] Move ASCII/Unicode renderers out of `graph/` into `d2renderer_ascii/` and `d2renderer_unicode/`
@@ -278,8 +281,9 @@ Acceptance criteria:
 2. Put the engine contract in `engine_api`:
    - `LayoutConfig`, `Direction`, `LayoutError`
    - `NodeLayout`, `EdgeLayout`, `LayoutResult`
-   - `trait LayoutEngine { layout(graph, config, direction) -> LayoutResult raise LayoutError }`
-   - `layout_with_engine(...)` glue (including variant recursion policy if variants live in `d2graph`)
+   - `trait LayoutEngine { layout(graph_input, config, direction) -> LayoutResult raise LayoutError }`
+   - `layout_with_engine(...) -> LayoutOutputs` glue (variant recursion; does not mutate inputs)
+   - immutable engine input type: `d2graph.GraphInput` (no `mut` fields)
 
 Acceptance criteria:
 
@@ -352,9 +356,10 @@ Suggested mapping to keep the rebuild concrete:
 
 ### Layout
 
-- `engine_api.LayoutEngine::layout(graph, config, dir) -> LayoutResult raise LayoutError`
-- `d2diagram.build(graph, layout_result) -> Diagram`
-  - or `d2diagram.layout(graph, engine, config, dir) -> Diagram raise LayoutError`
+- `engine_api.LayoutEngine::layout(graph_input, config, dir) -> LayoutResult raise LayoutError`
+- `engine_api.layout_with_engine(engine, graph_input, config, dir) -> LayoutOutputs raise LayoutError`
+- `d2diagram.build(graph_input, layout_outputs) -> Diagram`
+  - or `d2diagram.layout(graph_input, engine, config, dir) -> Diagram raise LayoutError`
 
 ### Rendering
 
