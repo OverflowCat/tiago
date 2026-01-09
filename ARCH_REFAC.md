@@ -201,6 +201,7 @@ Notes:
 - Current milestone: M5 in progress (diagram model hardening)
 - Known temporary shims:
   - `d2diagram.Diagram::materialize()` applies `LayoutResult` onto a fresh mutable `d2graph.Graph` for legacy renderers; this is a bridge until renderers consume `LayoutOutputs` directly.
+  - `engine_api.LayoutOutputs::from_graph(graph)` captures layout state from an already-laid-out `d2graph.Graph` (bridge for legacy/interop cases).
 
 ### Milestones
 
@@ -359,6 +360,7 @@ Suggested mapping to keep the rebuild concrete:
 - `engine_api.LayoutEngine::layout(graph_input, config, dir) -> LayoutResult raise LayoutError`
 - `engine_api.layout_with_engine(engine, graph_input, config, dir) -> LayoutOutputs raise LayoutError`
 - `d2diagram.build(graph_input, layout_outputs) -> Diagram`
+  - convenience: `d2diagram.layout_with_engine(engine, graph, config, dir) -> Diagram raise LayoutError`
   - or `d2diagram.layout(graph_input, engine, config, dir) -> Diagram raise LayoutError`
 
 ### Rendering
