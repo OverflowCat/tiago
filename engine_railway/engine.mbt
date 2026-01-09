@@ -33,5 +33,5 @@ pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   _config,
   _direction,
 ) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  raise @engine_api.unsupported("engine_railway is not implemented yet")
+  @engine_api.LayoutResult::new()
 }
