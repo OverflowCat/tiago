@@ -45,13 +45,13 @@ fn compile_to_diagram(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @exporter.compile("test", ir) catch {
+  let graph_input = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
   let diagram = @diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
-    graph,
+    graph_input,
     config,
     direction,
   ) catch {
@@ -67,7 +67,7 @@ fn compile_to_graph(
   direction : @engine_api.Direction,
 ) -> Result[@graph.Graph, String] {
   match compile_to_diagram(source, direction) {
-    Ok(diagram) => Ok(diagram.materialize())
+    Ok(diagram) => Ok(@diagram.materialize(diagram))
     Err(e) => Err(e)
   }
 }
@@ -485,20 +485,19 @@ fn compile_with_theme(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @exporter.compile("test", ir) catch {
+  let graph_input = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  let input = @graph.GraphInput::from_graph(graph)
   let config = @engine_api.LayoutConfig::new()
   let layout = @engine_api.layout_with_engine(
     @engine_elk.ElkEngine::new(),
-    input,
+    graph_input,
     config,
     @engine_api.Direction::Down,
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  let diagram = @diagram.build(input, layout)
+  let diagram = @diagram.build(graph_input, layout)
   let render_config = @renderer_svg.SvgConfig::with_theme(theme_id)
   Ok(@renderer_svg.render(diagram, render_config))
 }

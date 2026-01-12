@@ -35,11 +35,9 @@ fn layout_to_graph(
   config : LayoutConfig,
   direction : Direction,
 ) -> @graph.Graph raise LayoutError {
-  let outputs = layout(graph, config, direction)
   let input = @graph.GraphInput::from_graph(graph)
-  let laid_out = @graph.Graph::from_input(input)
-  outputs.layout.apply_to_graph(laid_out)
-  laid_out
+  let outputs = layout(input, config, direction)
+  outputs.layout.materialize(input)
 }
 
 ///|

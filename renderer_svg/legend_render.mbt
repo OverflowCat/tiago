@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Legend rendering for SVG and ASCII output
+/// LegendInput rendering for SVG and ASCII output
 ///
 /// This module provides rendering functions for legends in both
 /// SVG and ASCII formats.
@@ -22,7 +22,7 @@
 /// Render a legend to SVG
 pub fn render_legend_svg(
   svg : @svg.Svg,
-  legend : Legend,
+  legend : LegendInput,
   graph_bounds : (Double, Double, Double, Double),
   config : SvgConfig,
 ) -> Unit {
@@ -130,8 +130,8 @@ fn render_legend_shape_entry(
   y : Double,
   shape : ShapeType,
   label : String,
-  style : Style?,
-  legend : Legend,
+  style : StyleInput?,
+  legend : LegendInput,
   config : SvgConfig,
 ) -> Unit {
   let icon_size = legend.icon_size
@@ -171,8 +171,8 @@ fn render_legend_connection_entry(
   src_arrow : ArrowheadType,
   dst_arrow : ArrowheadType,
   label : String,
-  _style : Style?,
-  legend : Legend,
+  _style : StyleInput?,
+  legend : LegendInput,
   config : SvgConfig,
 ) -> Unit {
   let icon_size = legend.icon_size
@@ -209,7 +209,7 @@ fn render_legend_custom_entry(
   y : Double,
   icon : String,
   label : String,
-  legend : Legend,
+  legend : LegendInput,
   config : SvgConfig,
 ) -> Unit {
   let icon_size = legend.icon_size

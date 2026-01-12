@@ -182,28 +182,6 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
 }
 
 ///|
-fn get_field_name_from_dotted_id(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot >= 0 && last_dot < id.length() - 1 {
-    let buf = StringBuilder::new()
-    for i = last_dot + 1; i < id.length(); i = i + 1 {
-      match id[i].to_char() {
-        Some(c) => buf.write_char(c)
-        None => ()
-      }
-    }
-    buf.to_string()
-  } else {
-    id
-  }
-}
-
-///|
 fn find_root_objects(graph : @graph.Graph) -> Array[@graph.Object] {
   let child_ids : Array[String] = []
   for obj in graph.objects {

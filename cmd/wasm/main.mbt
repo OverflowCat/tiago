@@ -196,14 +196,14 @@ fn compile_to_diagram(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @exporter.to_graph("diagram", ir) catch {
+  let graph_input = @exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
   let diagram = if engine == 1 {
     @diagram.layout_with_engine(
       @engine_dagre.DagreEngine::new(),
-      graph,
+      graph_input,
       config,
       @engine_api.Down,
     ) catch {
@@ -212,7 +212,7 @@ fn compile_to_diagram(
   } else if engine == 2 {
     @diagram.layout_with_engine(
       @engine_railway.RailwayEngine::new(),
-      graph,
+      graph_input,
       config,
       @engine_api.Down,
     ) catch {
@@ -221,7 +221,7 @@ fn compile_to_diagram(
   } else {
     @diagram.layout_with_engine(
       @engine_elk.ElkEngine::new(),
-      graph,
+      graph_input,
       config,
       @engine_api.Down,
     ) catch {

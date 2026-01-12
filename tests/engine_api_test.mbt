@@ -90,33 +90,25 @@ test "layout result roundtrips via graph" {
   graph.activation_boxes.push(("a", @graph.Box::new(9.0, 9.0, 1.0, 2.0)))
   graph.sequence_notes.push(("a", "note", @graph.Box::new(3.0, 4.0, 5.0, 6.0)))
   let layout = @engine_api.LayoutResult::from_graph(graph)
-  for obj in graph.get_objects() {
-    obj.box = None
-  }
-  for edge in graph.get_edges() {
-    edge.route.clear()
-    edge.label_box = None
-  }
-  graph.activation_boxes.clear()
-  graph.sequence_notes.clear()
-  layout.apply_to_graph(graph)
-  match graph.find_object("a").unwrap().get_box() {
+  let input = @graph.GraphInput::from_graph(graph)
+  let materialized = layout.materialize(input)
+  match materialized.find_object("a").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(1.0, 2.0, 3.0, 4.0))
     None => fail("a should have a box")
   }
-  match graph.find_object("b").unwrap().get_box() {
+  match materialized.find_object("b").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(10.0, 20.0, 30.0, 40.0))
     None => fail("b should have a box")
   }
-  let e = graph.get_edges()[0]
+  let e = materialized.get_edges()[0]
   assert_eq(e.index, 7)
   assert_eq(e.get_route().length(), 2)
   match e.get_label_box() {
     Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
     None => fail("edge should have label box")
   }
-  assert_eq(graph.activation_boxes.length(), 1)
-  assert_eq(graph.sequence_notes.length(), 1)
+  assert_eq(materialized.activation_boxes.length(), 1)
+  assert_eq(materialized.sequence_notes.length(), 1)
 }
 
 ///|

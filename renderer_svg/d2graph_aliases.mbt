@@ -13,15 +13,19 @@
 // limitations under the License.
 
 ///|
+using @diagram {type RenderEdge, type RenderGraph, type RenderObject}
+
+///|
 using @graph {
   type ArrowheadType,
   type Box,
-  type Edge,
-  type Graph,
-  type Legend,
-  type Object,
+  type LegendEntryInput,
+  type LegendInput,
+  type LegendPosition,
   type Point,
-  type SequenceFragment,
   type ShapeType,
-  type Style,
+  type StyleInput,
 }
+
+///|
+using @engine_api {type SequenceFragmentLayout}

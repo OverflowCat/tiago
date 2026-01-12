@@ -11,9 +11,9 @@ import(
 // Values
 pub fn render(@diagram.Diagram, AsciiConfig) -> String
 
-pub fn render_ascii(@graph.Graph, AsciiConfig) -> String
+pub fn render_ascii(@diagram.RenderGraph, AsciiConfig) -> String
 
-pub fn render_legend_ascii(@ascii.Grid, @graph.Legend, Int, Int, @ascii.CharSet) -> Unit
+pub fn render_legend_ascii(@ascii.Grid, @graph.LegendInput, Int, Int, @ascii.CharSet) -> Unit
 
 // Errors
 

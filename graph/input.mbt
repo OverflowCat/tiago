@@ -183,6 +183,65 @@ pub struct LegendInput {
 } derive(Show)
 
 ///|
+pub fn LegendInput::is_empty(self : LegendInput) -> Bool {
+  self.entries.is_empty()
+}
+
+///|
+pub fn LegendInput::entry_count(self : LegendInput) -> Int {
+  let mut count = 0
+  for entry in self.entries {
+    match entry {
+      Separator => ()
+      _ => count += 1
+    }
+  }
+  count
+}
+
+///|
+pub fn LegendInput::calculate_size(
+  self : LegendInput,
+  font_size : Int,
+) -> (Double, Double) {
+  if self.is_empty() {
+    return (0.0, 0.0)
+  }
+  let mut max_label_width = 0.0
+  let mut total_height = self.padding * 2.0
+  match self.title {
+    Some(t) => {
+      max_label_width = t.length().to_double() * font_size.to_double() * 0.6
+      total_height = total_height + font_size.to_double() + self.entry_gap
+    }
+    None => ()
+  }
+  for entry in self.entries {
+    match entry {
+      ShapeEntry(label~, ..)
+      | ConnectionEntry(label~, ..)
+      | CustomEntry(label~, ..) => {
+        let label_width = label.length().to_double() *
+          font_size.to_double() *
+          0.6
+        max_label_width = if label_width > max_label_width {
+          label_width
+        } else {
+          max_label_width
+        }
+        total_height = total_height + self.icon_size + self.entry_gap
+      }
+      Separator => total_height = total_height + 4.0 + self.entry_gap
+    }
+  }
+  let width = self.padding * 2.0 +
+    self.icon_size +
+    self.entry_gap +
+    max_label_width
+  (width, total_height)
+}
+
+///|
 pub fn GraphInput::from_graph(graph : Graph) -> GraphInput {
   let objects : Array[ObjectInput] = []
   for obj in graph.objects {
@@ -228,6 +287,51 @@ pub fn GraphInput::from_graph(graph : Graph) -> GraphInput {
 }
 
 ///|
+pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
+  let objects : Array[ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(ObjectInput::from_model(obj))
+  }
+  let edges : Array[EdgeInput] = []
+  for e in graph.edges {
+    edges.push(EdgeInput::from_model(e))
+  }
+  let fragments : Array[SequenceFragmentInput] = []
+  for f in graph.sequence_fragments {
+    fragments.push(SequenceFragmentInput::from_model(f))
+  }
+  let layers : Array[LayerInput] = []
+  for layer in graph.layers {
+    layers.push({ name: layer.name, graph: GraphInput::from_model(layer.graph) })
+  }
+  let scenarios : Array[ScenarioInput] = []
+  for scenario in graph.scenarios {
+    scenarios.push({
+      name: scenario.name,
+      graph: GraphInput::from_model(scenario.graph),
+    })
+  }
+  let steps : Array[StepInput] = []
+  for step in graph.steps {
+    steps.push({ name: step.name, graph: GraphInput::from_model(step.graph) })
+  }
+  {
+    name: graph.name,
+    root: ObjectInput::from_model(graph.root),
+    objects,
+    edges,
+    sequence_fragments: fragments,
+    layers,
+    scenarios,
+    steps,
+    legend: match graph.legend {
+      Some(l) => Some(LegendInput::from_model(l))
+      None => None
+    },
+  }
+}
+
+///|
 pub fn ObjectInput::from_object(obj : Object) -> ObjectInput {
   let child_ids : Array[String] = []
   for child in obj.children {
@@ -242,6 +346,38 @@ pub fn ObjectInput::from_object(obj : Object) -> ObjectInput {
     label: obj.label,
     shape_type: obj.shape_type,
     style: StyleInput::from_style(obj.style),
+    child_ids,
+    z_index: obj.z_index,
+    icon: obj.icon,
+    tooltip: obj.tooltip,
+    link: obj.link,
+    classes,
+    grid_rows: obj.grid_rows,
+    grid_columns: obj.grid_columns,
+    grid_gap: obj.grid_gap,
+    horizontal_gap: obj.horizontal_gap,
+    vertical_gap: obj.vertical_gap,
+    grid_column_span: obj.grid_column_span,
+    grid_row_span: obj.grid_row_span,
+    near: obj.near,
+  }
+}
+
+///|
+pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
+  let child_ids : Array[String] = []
+  for child in obj.children {
+    child_ids.push(child.id)
+  }
+  let classes : Array[String] = []
+  for c in obj.classes {
+    classes.push(c)
+  }
+  {
+    id: obj.id,
+    label: obj.label,
+    shape_type: obj.shape_type,
+    style: StyleInput::from_model(obj.style),
     child_ids,
     z_index: obj.z_index,
     icon: obj.icon,
@@ -293,7 +429,69 @@ pub fn EdgeInput::from_edge(edge : Edge) -> EdgeInput {
 }
 
 ///|
+pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
+  let bend_points = match edge.bend_points {
+    Some(ps) => {
+      let copied : Array[Point] = []
+      for p in ps {
+        copied.push(p)
+      }
+      Some(copied)
+    }
+    None => None
+  }
+  {
+    index: edge.index,
+    src_id: edge.src_id,
+    dst_id: edge.dst_id,
+    src_arrow: edge.src_arrow,
+    dst_arrow: edge.dst_arrow,
+    src_arrowhead: edge.src_arrowhead,
+    dst_arrowhead: edge.dst_arrowhead,
+    src_anchor: edge.src_anchor,
+    dst_anchor: edge.dst_anchor,
+    label: edge.label,
+    style: StyleInput::from_model(edge.style),
+    bend_points,
+    is_curve: edge.is_curve,
+    z_index: edge.z_index,
+    reference_count: edge.reference_count,
+    src_column_index: edge.src_column_index,
+    dst_column_index: edge.dst_column_index,
+  }
+}
+
+///|
 pub fn StyleInput::from_style(style : Style) -> StyleInput {
+  {
+    opacity: style.opacity,
+    stroke: style.stroke,
+    fill: style.fill,
+    stroke_width: style.stroke_width,
+    stroke_dash: style.stroke_dash,
+    border_radius: style.border_radius,
+    shadow: style.shadow,
+    three_d: style.three_d,
+    multiple: style.multiple,
+    font: style.font,
+    font_size: style.font_size,
+    font_color: style.font_color,
+    bold: style.bold,
+    italic: style.italic,
+    underline: style.underline,
+    animated: style.animated,
+    filled: style.filled,
+    double_border: style.double_border,
+    text_transform: style.text_transform,
+    font_family: style.font_family,
+    fill_pattern: style.fill_pattern,
+    sketch: style.sketch,
+    curved: style.curved,
+  }
+}
+
+///|
+pub fn StyleInput::from_model(style : StyleModel) -> StyleInput {
   {
     opacity: style.opacity,
     stroke: style.stroke,
@@ -339,7 +537,42 @@ pub fn SequenceFragmentInput::from_fragment(
 }
 
 ///|
+pub fn SequenceFragmentInput::from_model(
+  fragment : SequenceFragmentModel,
+) -> SequenceFragmentInput {
+  let operands : Array[FragmentOperandInput] = []
+  for op in fragment.operands {
+    operands.push({ condition: op.condition })
+  }
+  {
+    fragment_type: fragment.fragment_type,
+    condition: fragment.condition,
+    start_index: fragment.start_index,
+    end_index: fragment.end_index,
+    operands,
+  }
+}
+
+///|
 pub fn LegendInput::from_legend(legend : Legend) -> LegendInput {
+  let entries : Array[LegendEntryInput] = []
+  for entry in legend.entries {
+    entries.push(LegendEntryInput::from_entry(entry))
+  }
+  {
+    title: legend.title,
+    position: legend.position,
+    entries,
+    fill: legend.fill,
+    stroke: legend.stroke,
+    padding: legend.padding,
+    entry_gap: legend.entry_gap,
+    icon_size: legend.icon_size,
+  }
+}
+
+///|
+pub fn LegendInput::from_model(legend : LegendModel) -> LegendInput {
   let entries : Array[LegendEntryInput] = []
   for entry in legend.entries {
     entries.push(LegendEntryInput::from_entry(entry))

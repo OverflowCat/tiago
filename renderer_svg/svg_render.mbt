@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// SVG Renderer for Graph
+/// SVG Renderer for RenderGraph
 ///
-/// Renders a laid-out Graph to SVG using the pure svg library.
+/// Renders a laid-out RenderGraph to SVG using the pure svg library.
 
 ///|
 /// Render pass for two-layer rendering
@@ -98,7 +98,7 @@ pub fn list_themes() -> Array[String] {
 
 ///|
 /// Render a graph to SVG string
-pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
+pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
   // Check if we have layers, scenarios, or steps
   let has_layers = graph.has_layers()
   let has_scenarios = graph.has_scenarios()
@@ -162,6 +162,7 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
       max_y = smax_y
     }
   }
+  let bounds = (min_x, min_y, max_x, max_y)
   // Calculate dimensions accounting for negative coordinates
   let content_width = max_x - min_x
   let content_height = max_y - min_y
@@ -274,15 +275,8 @@ pub fn render_svg(graph : Graph, config : SvgConfig) -> String {
   }
 
   // Render legend (always visible across layer/scenario/step switching)
-  match graph.get_legend() {
-    Some(legend) => {
-      svg.open_group_with_id(
-        "legend-layer",
-        "translate(\{offset_x},\{offset_y})",
-      )
-      render_legend_svg(svg, legend, (min_x, min_y, max_x, max_y), config)
-      svg.close_group()
-    }
+  match graph.legend {
+    Some(legend) => render_legend_svg(svg, legend, bounds, config)
     None => ()
   }
 
@@ -306,7 +300,11 @@ fn estimate_text_width(text : String, font_size : Int) -> Double {
 
 ///|
 /// Render layer tabs at the top of the SVG
-fn render_layer_tabs(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit {
+fn render_layer_tabs(
+  svg : @svg.Svg,
+  graph : RenderGraph,
+  config : SvgConfig,
+) -> Unit {
   let tab_height = 30.0
   let tab_y = 5.0
   let mut tab_x = config.padding
@@ -404,7 +402,7 @@ fn add_layer_switch_script(svg : @svg.Svg, layer_count : Int) -> Unit {
 /// Render scenario dropdown selector at the top of the SVG
 fn render_scenario_selector(
   svg : @svg.Svg,
-  graph : Graph,
+  graph : RenderGraph,
   config : SvgConfig,
 ) -> Unit {
   let selector_height = 30.0
@@ -514,7 +512,7 @@ fn add_scenario_switch_script(svg : @svg.Svg, scenario_count : Int) -> Unit {
 /// Render step timeline controls at the top of the SVG
 fn render_step_controls(
   svg : @svg.Svg,
-  graph : Graph,
+  graph : RenderGraph,
   config : SvgConfig,
 ) -> Unit {
   let control_height = 30.0
@@ -753,7 +751,11 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
 
 ///|
 /// Add fill pattern definitions based on patterns used in the graph
-fn add_fill_patterns(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit {
+fn add_fill_patterns(
+  svg : @svg.Svg,
+  graph : RenderGraph,
+  config : SvgConfig,
+) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
   for obj in graph.objects {
@@ -783,7 +785,7 @@ fn add_fill_patterns(svg : @svg.Svg, graph : Graph, config : SvgConfig) -> Unit 
 
 ///|
 /// Add sketch filter if any object uses sketch mode
-fn add_sketch_filter(svg : @svg.Svg, graph : Graph) -> Unit {
+fn add_sketch_filter(svg : @svg.Svg, graph : RenderGraph) -> Unit {
   // Check if any object uses sketch mode
   let mut needs_sketch = false
   for obj in graph.objects {
@@ -813,14 +815,16 @@ fn get_marker_url(arrowhead : ArrowheadType, reverse : Bool) -> String {
 }
 
 ///|
-fn compute_graph_bounds(graph : Graph) -> (Double, Double, Double, Double) {
+fn compute_graph_bounds(
+  graph : RenderGraph,
+) -> (Double, Double, Double, Double) {
   let mut min_x = 0.0
   let mut min_y = 0.0
   let mut max_x = 0.0
   let mut max_y = 0.0
   let mut first = true
   for obj in graph.objects {
-    match obj.get_box() {
+    match obj.box {
       Some(b) => {
         let left = b.x
         let top = b.y
@@ -920,8 +924,40 @@ fn get_object_depth(id : String) -> Int {
 }
 
 ///|
+fn shape_type_name(shape : ShapeType) -> String {
+  match shape {
+    Rectangle => "rectangle"
+    Square => "square"
+    Circle => "circle"
+    Oval => "oval"
+    Diamond => "diamond"
+    Hexagon => "hexagon"
+    Parallelogram => "parallelogram"
+    Cylinder => "cylinder"
+    Queue => "queue"
+    Package => "package"
+    Step => "step"
+    Callout => "callout"
+    StoredData => "stored_data"
+    Person => "person"
+    Cloud => "cloud"
+    Page => "page"
+    Document => "document"
+    Class => "class"
+    SqlTable => "sql_table"
+    Text => "text"
+    Code => "code"
+    Image => "image"
+    SequenceDiagram => "sequence_diagram"
+    Octagon => "octagon"
+    C4Person => "c4_person"
+    C4Container => "c4_container"
+  }
+}
+
+///|
 /// Sort objects by depth (parents before children) for proper SVG layering
-fn sort_objects_by_depth(objects : Array[Object]) -> Array[Object] {
+fn sort_objects_by_depth(objects : Array[RenderObject]) -> Array[RenderObject] {
   let sorted = objects.copy()
   // Simple bubble sort by depth (shallow objects first)
   for i = 0; i < sorted.length(); i = i + 1 {
@@ -940,7 +976,10 @@ fn sort_objects_by_depth(objects : Array[Object]) -> Array[Object] {
 
 ///|
 /// Check if an object is a child of an sql_table (should not be rendered separately)
-fn is_sql_table_child(obj : Object, all_objects : Array[Object]) -> Bool {
+fn is_sql_table_child(
+  obj : RenderObject,
+  all_objects : Array[RenderObject],
+) -> Bool {
   // Check if object has a parent that is an sql_table
   // Parent ID is everything before the last dot
   let id = obj.id
@@ -974,13 +1013,13 @@ fn is_sql_table_child(obj : Object, all_objects : Array[Object]) -> Bool {
 ///|
 fn render_svg_object(
   svg : @svg.Svg,
-  obj : Object,
-  all_objects : Array[Object],
+  obj : RenderObject,
+  all_objects : Array[RenderObject],
   config : SvgConfig,
   theme : @themes.Theme,
   pass? : RenderPass = Foreground,
 ) -> Unit {
-  guard obj.get_box() is Some(box) else { return }
+  guard obj.box is Some(box) else { return }
   // Skip children of sql_table - they are rendered inline within the table
   if is_sql_table_child(obj, all_objects) {
     return
@@ -1035,7 +1074,7 @@ fn render_svg_object(
     }
   }
   // Render shape based on type
-  match obj.get_shape() {
+  match shape_type_name(obj.shape_type) {
     "text" =>
       // Text shape - no border, just the label (foreground only)
       ()
@@ -1396,7 +1435,7 @@ fn render_svg_sql_table(
   svg : @svg.Svg,
   box : Box,
   label : String,
-  children : Array[Object],
+  children : Array[RenderObject],
   fill : String,
   stroke : String,
   stroke_width : Double,
@@ -2294,7 +2333,7 @@ fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
 ///|
 fn render_svg_edge(
   svg : @svg.Svg,
-  edge : Edge,
+  edge : RenderEdge,
   config : SvgConfig,
   theme : @themes.Theme,
 ) -> Unit {
@@ -2364,7 +2403,7 @@ fn render_svg_edge(
   if edge.label != "" {
     // Use computed label_box if available (from automatic positioning)
     // Otherwise fall back to midpoint
-    match edge.get_label_box() {
+    match edge.label_box {
       Some(label_box) => {
         // Use pre-computed label position
         let cx = label_box.x + label_box.width / 2.0
@@ -2393,7 +2432,7 @@ fn render_svg_edge(
       }
       None =>
         abort(
-          "Edge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
+          "RenderEdge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
         )
     }
   }
@@ -2539,7 +2578,7 @@ fn render_svg_sequence_note(
 /// Render sequence diagram fragments (combined fragments like alt, opt, loop)
 fn render_svg_sequence_fragments(
   svg : @svg.Svg,
-  graph : Graph,
+  graph : RenderGraph,
   config : SvgConfig,
 ) -> Unit {
   for fragment in graph.sequence_fragments {
@@ -2553,7 +2592,7 @@ fn render_svg_sequence_fragments(
 /// Render a single sequence diagram fragment
 fn render_svg_fragment(
   svg : @svg.Svg,
-  fragment : SequenceFragment,
+  fragment : SequenceFragmentLayout,
   bbox : Box,
   config : SvgConfig,
 ) -> Unit {

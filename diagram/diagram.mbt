@@ -30,59 +30,21 @@ pub fn build(
 }
 
 ///|
-pub fn Diagram::materialize(self : Diagram) -> @graph.Graph {
-  materialize_graph(self.graph, self.layout)
+/// Materialize a diagram into a render-focused graph snapshot.
+pub fn materialize(diagram : Diagram) -> RenderGraph {
+  build_render_graph(diagram.graph, diagram.layout)
 }
 
 ///|
-/// Convenience: run layout engine and build a diagram from a mutable graph.
+/// Convenience: run layout engine and build a diagram from immutable input.
 pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(
   engine : Engine,
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> Diagram raise @engine_api.LayoutError {
-  let input = @graph.GraphInput::from_graph(graph)
-  let outputs = @engine_api.layout_with_engine(engine, input, config, direction)
-  build(input, outputs)
-}
-
-///|
-/// Bridge: wrap an already-laid-out `graph.Graph` as a `Diagram`.
-///
-/// This captures the graph’s current layout state into `LayoutOutputs` (including
-/// variants) without running an engine.
-pub fn from_laid_out_graph(graph : @graph.Graph) -> Diagram {
-  let input = @graph.GraphInput::from_graph(graph)
-  build(input, @engine_api.LayoutOutputs::from_graph(graph))
-}
-
-///|
-fn materialize_graph(
-  graph : @graph.GraphInput,
-  outputs : @engine_api.LayoutOutputs,
-) -> @graph.Graph {
-  let materialized = @graph.Graph::from_input(graph)
-  outputs.layout.apply_to_graph(materialized)
-  materialized.layers.clear()
-  for i, layer in graph.layers {
-    let (_, layer_outputs) = outputs.layers[i]
-    let sub = materialize_graph(layer.graph, layer_outputs)
-    materialized.layers.push(@graph.Layer::new(layer.name, sub))
-  }
-  materialized.scenarios.clear()
-  for i, scenario in graph.scenarios {
-    let (_, scenario_outputs) = outputs.scenarios[i]
-    let sub = materialize_graph(scenario.graph, scenario_outputs)
-    materialized.scenarios.push(@graph.Scenario::new(scenario.name, sub))
-  }
-  materialized.steps.clear()
-  for i, step in graph.steps {
-    let (_, step_outputs) = outputs.steps[i]
-    let sub = materialize_graph(step.graph, step_outputs)
-    materialized.steps.push(@graph.Step::new(step.name, sub))
-  }
-  materialized
+  let outputs = @engine_api.layout_with_engine(engine, graph, config, direction)
+  build(graph, outputs)
 }
 
 ///|

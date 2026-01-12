@@ -32,7 +32,7 @@ pub impl @render_api.Renderer for SvgRenderer with render(
   _self,
   diagram : @diagram.Diagram,
 ) -> String raise @render_api.RenderError {
-  render_svg(diagram.materialize(), SvgConfig::new())
+  render_svg(@diagram.materialize(diagram), SvgConfig::new())
 }
 
 ///|
@@ -43,5 +43,5 @@ pub impl @render_api.Renderer for SvgRenderer with format_name(_self) -> String 
 ///|
 /// Render with custom configuration
 pub fn render(diagram : @diagram.Diagram, config : SvgConfig) -> String {
-  render_svg(diagram.materialize(), config)
+  render_svg(@diagram.materialize(diagram), config)
 }

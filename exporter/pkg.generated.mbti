@@ -7,9 +7,9 @@ import(
 )
 
 // Values
-pub fn compile(String, @ir.Map) -> @graph.Graph raise GraphCompileError
+pub fn compile(String, @ir.Map) -> @graph.GraphInput raise GraphCompileError
 
-pub fn to_graph(String, @ir.Map) -> @graph.Graph raise GraphCompileError
+pub fn to_graph(String, @ir.Map) -> @graph.GraphInput raise GraphCompileError
 
 // Errors
 pub(all) suberror GraphCompileError {

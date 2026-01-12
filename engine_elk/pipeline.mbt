@@ -86,10 +86,9 @@ fn layout_graph(
 ///|
 /// Convenience wrapper matching the legacy `layout.layout` API.
 pub fn layout(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   config : LayoutConfig,
   direction : Direction,
 ) -> @engine_api.LayoutOutputs raise LayoutError {
-  let input = @graph.GraphInput::from_graph(graph)
-  @engine_api.layout_with_engine(ElkEngine::new(), input, config, direction)
+  @engine_api.layout_with_engine(ElkEngine::new(), graph, config, direction)
 }

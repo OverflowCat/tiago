@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// ASCII Renderer for Graph
+/// ASCII Renderer for RenderGraph
 ///
-/// Renders a laid-out Graph to ASCII art using the pure ascii library.
+/// Renders a laid-out RenderGraph to ASCII art using the pure ascii library.
 
 ///|
 /// ASCII rendering configuration
@@ -108,9 +108,9 @@ struct AsciiBox {
 
 ///|
 /// Render a graph to ASCII string
-pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
+pub fn render_ascii(graph : RenderGraph, config : AsciiConfig) -> String {
   // Check if this is a sequence diagram - use special renderer
-  if graph.root.get_shape() == "sequence_diagram" {
+  if graph.root.shape_type == @graph.SequenceDiagram {
     return render_ascii_sequence(graph, config)
   }
   // Compute ASCII layout for all objects
@@ -118,7 +118,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
 
   // Reserve space for legend by shifting the diagram away from the legend corner
   // (ASCII legend is rendered in a dedicated margin area to avoid overlaps).
-  let (boxes, legend_pos) = match graph.get_legend() {
+  let (boxes, legend_info) = match graph.legend {
     Some(legend) if !(legend.is_empty() || legend.position == @graph.Hidden) => {
       let (lw, lh) = legend_ascii_size(legend)
       let (dx, dy) = legend_ascii_offsets(legend.position, lw, lh)
@@ -130,7 +130,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   // Calculate diagram canvas dimensions (after any shifting)
   let (diagram_width, diagram_height) = compute_canvas_size(boxes, config)
   // Expand canvas for right/bottom legend margins
-  let (canvas_width, canvas_height) = match legend_pos {
+  let (canvas_width, canvas_height) = match legend_info {
     Some((legend, lw, lh, _dx, _dy)) => {
       let extra_w = if legend.position == @graph.TopRight ||
         legend.position == @graph.BottomRight {
@@ -177,7 +177,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
   }
 
   // Render legend on top
-  match legend_pos {
+  match legend_info {
     Some((legend, lw, lh, _dx, _dy)) => {
       let x = match legend.position {
         @graph.TopLeft | @graph.BottomLeft => 1
@@ -199,7 +199,7 @@ pub fn render_ascii(graph : Graph, config : AsciiConfig) -> String {
 }
 
 ///|
-fn legend_ascii_size(legend : Legend) -> (Int, Int) {
+fn legend_ascii_size(legend : LegendInput) -> (Int, Int) {
   // Keep in sync with renderer_ascii/legend_render.mbt
   let width = 30
   let height = 3 + legend.entries.length() * 2
@@ -257,11 +257,11 @@ fn shift_ascii_box(box : AsciiBox, dx : Int, dy : Int) -> AsciiBox {
 /// - Lifelines are edges with vertical routes (dashed style)
 /// - Messages are edges with horizontal routes
 /// - Activation boxes are objects (rectangles with no labels)
-fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
+fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
   let cs = config.charset
   // Separate actors from activation boxes
   // Actors have labels, activation boxes don't
-  let actors : Array[Object] = []
+  let actors : Array[RenderObject] = []
   for obj in graph.objects {
     // Skip activation box objects (no label, internal ID pattern)
     if obj.label.length() > 0 && not(obj.id.contains("__activation_")) {
@@ -272,14 +272,14 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
     return ""
   }
   // Sort actors by x-coordinate
-  let sorted_actors : Array[Object] = []
+  let sorted_actors : Array[RenderObject] = []
   for actor in actors {
     sorted_actors.push(actor)
   }
   sort_objects_by_x(sorted_actors)
   // Separate edges into lifelines and messages
   // Lifelines have dashed stroke, messages don't
-  let messages : Array[Edge] = []
+  let messages : Array[RenderEdge] = []
   for edge in graph.edges {
     // Skip lifeline edges (dashed stroke)
     if edge.style.stroke_dash is None || edge.style.stroke_dash == Some(0.0) {
@@ -317,7 +317,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   // Each message gets a unique y-level
   let message_start_y = config.box_height + 1
   let mut max_message_y = message_start_y
-  let message_y_positions : Array[(Int, Edge)] = [] // (y, edge)
+  let message_y_positions : Array[(Int, RenderEdge)] = [] // (y, edge)
   for edge in messages {
     // Get y from route points if available, otherwise use sequential
     let y = if edge.route.length() >= 2 {
@@ -344,7 +344,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   let mut canvas_height = lifeline_end_y + 2
 
   // Optional legend: reserve margin on the right/bottom.
-  let legend_info : (Legend, Int, Int)? = match graph.get_legend() {
+  let legend_info : (LegendInput, Int, Int)? = match graph.legend {
     Some(legend) if !(legend.is_empty() || legend.position == @graph.Hidden) => {
       let (lw, lh) = legend_ascii_size(legend)
       canvas_width = canvas_width + lw + 4
@@ -381,7 +381,7 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
       let route_x = edge.route[0].x
       // Find which actor this lifeline belongs to
       for actor in sorted_actors {
-        match (actor.get_box(), actor_positions.get(actor.id)) {
+        match (actor.box, actor_positions.get(actor.id)) {
           (Some(actor_box), Some((_, center_x, _))) => {
             let actor_center = actor_box.x + actor_box.width / 2.0
             // Check if this lifeline belongs to this actor (within tolerance)
@@ -405,8 +405,8 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   // Pass 1: Draw horizontal lines
   for pair in message_y_positions {
     let (msg_y, edge) = pair
-    let src_id = edge.get_src_id()
-    let dst_id = edge.get_dst_id()
+    let src_id = edge.src_id
+    let dst_id = edge.dst_id
     let src_pos = find_actor_position(actor_positions, src_id)
     let dst_pos = find_actor_position(actor_positions, dst_id)
     match (src_pos, dst_pos) {
@@ -435,8 +435,8 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
     if edge.label.length() == 0 {
       continue
     }
-    let src_id = edge.get_src_id()
-    let dst_id = edge.get_dst_id()
+    let src_id = edge.src_id
+    let dst_id = edge.dst_id
     let src_pos = find_actor_position(actor_positions, src_id)
     let dst_pos = find_actor_position(actor_positions, dst_id)
     match (src_pos, dst_pos) {
@@ -467,8 +467,8 @@ fn render_ascii_sequence(graph : Graph, config : AsciiConfig) -> String {
   // Pass 3: Draw arrows (on top of labels)
   for pair in message_y_positions {
     let (msg_y, edge) = pair
-    let src_id = edge.get_src_id()
-    let dst_id = edge.get_dst_id()
+    let src_id = edge.src_id
+    let dst_id = edge.dst_id
     let src_pos = find_actor_position(actor_positions, src_id)
     let dst_pos = find_actor_position(actor_positions, dst_id)
     match (src_pos, dst_pos) {
@@ -528,7 +528,10 @@ fn find_actor_position(
 ///|
 /// Compute ASCII layout positions for all objects
 /// Uses the y-coordinates from the layout phase for ordering
-fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] {
+fn compute_ascii_layout(
+  graph : RenderGraph,
+  config : AsciiConfig,
+) -> Array[AsciiBox] {
   // Track which object IDs are children (nested inside containers)
   let child_ids : Map[String, Bool] = {}
   for obj in graph.objects {
@@ -537,7 +540,7 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
     }
   }
   // Find root objects (not children of any container)
-  let roots : Array[Object] = []
+  let roots : Array[RenderObject] = []
   for obj in graph.objects {
     if not(child_ids.contains(obj.id)) {
       roots.push(obj)
@@ -616,7 +619,7 @@ fn compute_ascii_layout(graph : Graph, config : AsciiConfig) -> Array[AsciiBox] 
 ///|
 /// Compute the size of an object (recursively for containers)
 fn compute_object_size(
-  obj : Object,
+  obj : RenderObject,
   config : AsciiConfig,
   sizes : Map[String, (Int, Int)],
 ) -> (Int, Int) {
@@ -684,7 +687,7 @@ fn compute_object_size(
 ///|
 /// Create a positioned box with pre-computed size
 fn create_positioned_box(
-  obj : Object,
+  obj : RenderObject,
   x : Int,
   y : Int,
   width : Int,
@@ -766,10 +769,42 @@ fn create_positioned_box(
       width,
       height,
       label: obj.label,
-      shape: obj.get_shape(),
+      shape: shape_name(obj.shape_type),
       is_container: false,
       children: [],
     }
+  }
+}
+
+///|
+fn shape_name(shape : ShapeType) -> String {
+  match shape {
+    Rectangle => "rectangle"
+    Square => "square"
+    Circle => "circle"
+    Oval => "oval"
+    Diamond => "diamond"
+    Hexagon => "hexagon"
+    Parallelogram => "parallelogram"
+    Cylinder => "cylinder"
+    Queue => "queue"
+    Package => "package"
+    Step => "step"
+    Callout => "callout"
+    StoredData => "stored_data"
+    Person => "person"
+    Cloud => "cloud"
+    Page => "page"
+    Document => "document"
+    Class => "class"
+    SqlTable => "sql_table"
+    Text => "text"
+    Code => "code"
+    Image => "image"
+    SequenceDiagram => "sequence_diagram"
+    Octagon => "octagon"
+    C4Person => "c4_person"
+    C4Container => "c4_container"
   }
 }
 
@@ -838,18 +873,18 @@ fn max_i(a : Int, b : Int) -> Int {
 
 ///|
 /// Sort objects by their y-coordinate (layout position)
-fn sort_objects_by_y(objects : Array[Object]) -> Unit {
+fn sort_objects_by_y(objects : Array[RenderObject]) -> Unit {
   // Insertion sort by y-coordinate
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
     let key = objects[i]
-    let key_y = match key.get_box() {
+    let key_y = match key.box {
       Some(b) => b.y
       None => 0.0
     }
     let mut j = i - 1
     while j >= 0 {
-      let j_y = match objects[j].get_box() {
+      let j_y = match objects[j].box {
         Some(b) => b.y
         None => 0.0
       }
@@ -866,17 +901,17 @@ fn sort_objects_by_y(objects : Array[Object]) -> Unit {
 
 ///|
 /// Sort objects by their x-coordinate (layout position)
-fn sort_objects_by_x(objects : Array[Object]) -> Unit {
+fn sort_objects_by_x(objects : Array[RenderObject]) -> Unit {
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
     let key = objects[i]
-    let key_x = match key.get_box() {
+    let key_x = match key.box {
       Some(b) => b.x
       None => 0.0
     }
     let mut j = i - 1
     while j >= 0 {
-      let j_x = match objects[j].get_box() {
+      let j_x = match objects[j].box {
         Some(b) => b.x
         None => 0.0
       }
@@ -893,19 +928,19 @@ fn sort_objects_by_x(objects : Array[Object]) -> Unit {
 
 ///|
 /// Group objects by their y-coordinate (layer)
-/// Objects are already sorted by y, so consecutive objects with same y are in same layer
-fn group_by_layer(objects : Array[Object]) -> Array[Array[Object]] {
-  let layers : Array[Array[Object]] = []
+/// RenderObjects are already sorted by y, so consecutive objects with same y are in same layer
+fn group_by_layer(objects : Array[RenderObject]) -> Array[Array[RenderObject]] {
+  let layers : Array[Array[RenderObject]] = []
   if objects.length() == 0 {
     return layers
   }
-  let mut current_layer : Array[Object] = []
-  let mut current_y = match objects[0].get_box() {
+  let mut current_layer : Array[RenderObject] = []
+  let mut current_y = match objects[0].box {
     Some(b) => b.y
     None => 0.0
   }
   for obj in objects {
-    let obj_y = match obj.get_box() {
+    let obj_y = match obj.box {
       Some(b) => b.y
       None => 0.0
     }
@@ -1239,20 +1274,20 @@ fn render_ascii_box(
 /// Compute horizontal offset for parallel edges between same node pair
 /// ref_idx: which reference of this edge (0..reference_count-1)
 fn compute_edge_offset(
-  graph : Graph,
-  edge : Edge,
+  graph : RenderGraph,
+  edge : RenderEdge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
 ) -> Int {
-  let src_id = edge.get_src_id()
-  let dst_id = edge.get_dst_id()
+  let src_id = edge.src_id
+  let dst_id = edge.dst_id
   // Count total parallel lines and find max label length
   let mut total_lines = 0
   let mut line_index = 0
   let mut max_label_len = 0
   for e in graph.edges {
-    let e_src = e.get_src_id()
-    let e_dst = e.get_dst_id()
+    let e_src = e.src_id
+    let e_dst = e.dst_id
     // Check if same node pair (considering both directions)
     if (e_src == src_id && e_dst == dst_id) ||
       (e_src == dst_id && e_dst == src_id) {
@@ -1261,8 +1296,8 @@ fn compute_edge_offset(
         max_label_len = e.label.length()
       }
       // Is this the current edge?
-      if e_src == edge.get_src_id() &&
-        e_dst == edge.get_dst_id() &&
+      if e_src == edge.src_id &&
+        e_dst == edge.dst_id &&
         e.label == edge.label &&
         e.src_arrow == edge.src_arrow &&
         e.dst_arrow == edge.dst_arrow {
@@ -1303,18 +1338,18 @@ fn compute_edge_offset(
 /// Compute horizontal offset for edges from different sources to same destination
 /// This ensures multiple incoming edges don't overlap at the destination
 fn compute_destination_offset(
-  graph : Graph,
-  edge : Edge,
+  graph : RenderGraph,
+  edge : RenderEdge,
   boxes : Array[AsciiBox],
 ) -> Int {
-  let dst_id = edge.get_dst_id()
+  let dst_id = edge.dst_id
   // Count edges going to the same destination from different sources
   let mut total_incoming = 0
   let mut edge_index = 0
   for e in graph.edges {
-    if e.get_dst_id() == dst_id {
-      if e.get_src_id() == edge.get_src_id() &&
-        e.get_dst_id() == edge.get_dst_id() {
+    if e.dst_id == dst_id {
+      if e.src_id == edge.src_id &&
+        e.dst_id == edge.dst_id {
         edge_index = total_incoming
       }
       total_incoming = total_incoming + 1
@@ -1366,14 +1401,14 @@ fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
 /// Render edge lines with L-shaped routing when needed
 fn render_ascii_edge_new(
   grid : @ascii.Grid,
-  graph : Graph,
-  edge : Edge,
+  graph : RenderGraph,
+  edge : RenderEdge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   config : AsciiConfig,
 ) -> Unit {
-  let src_id = edge.get_src_id()
-  let dst_id = edge.get_dst_id()
+  let src_id = edge.src_id
+  let dst_id = edge.dst_id
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
@@ -1468,14 +1503,14 @@ fn render_ascii_edge_new(
 /// Render edge arrows
 fn render_ascii_arrows_new(
   grid : @ascii.Grid,
-  graph : Graph,
-  edge : Edge,
+  graph : RenderGraph,
+  edge : RenderEdge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   config : AsciiConfig,
 ) -> Unit {
-  let src_id = edge.get_src_id()
-  let dst_id = edge.get_dst_id()
+  let src_id = edge.src_id
+  let dst_id = edge.dst_id
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)
@@ -1569,8 +1604,8 @@ fn render_ascii_arrows_new(
 /// Render edge labels
 fn render_ascii_label_new(
   grid : @ascii.Grid,
-  graph : Graph,
-  edge : Edge,
+  graph : RenderGraph,
+  edge : RenderEdge,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,
@@ -1578,8 +1613,8 @@ fn render_ascii_label_new(
   if edge.label.length() == 0 {
     return
   }
-  let src_id = edge.get_src_id()
-  let dst_id = edge.get_dst_id()
+  let src_id = edge.src_id
+  let dst_id = edge.dst_id
   let src_box = find_ascii_box(boxes, src_id)
   let dst_box = find_ascii_box(boxes, dst_id)
   let offset = compute_edge_offset(graph, edge, ref_idx, boxes)

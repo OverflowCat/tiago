@@ -38,6 +38,12 @@ pub struct EdgeLayout {
 }
 pub impl Show for EdgeLayout
 
+pub struct FragmentOperandLayout {
+  condition : String?
+  separator_y : Double
+}
+pub impl Show for FragmentOperandLayout
+
 pub struct LayoutConfig {
   horizontal_spacing : Double
   vertical_spacing : Double
@@ -56,7 +62,6 @@ pub struct LayoutOutputs {
   scenarios : Array[(String, LayoutOutputs)]
   steps : Array[(String, LayoutOutputs)]
 }
-pub fn LayoutOutputs::from_graph(@graph.Graph) -> Self
 pub impl Show for LayoutOutputs
 
 pub struct LayoutResult {
@@ -65,10 +70,10 @@ pub struct LayoutResult {
   edge_labels : Map[Int, NodeLayout]
   activation_boxes : Array[(String, NodeLayout)]
   sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[@graph.SequenceFragment]
+  sequence_fragments : Array[SequenceFragmentLayout]
 }
-pub fn LayoutResult::apply_to_graph(Self, @graph.Graph) -> Unit
 pub fn LayoutResult::from_graph(@graph.Graph) -> Self
+pub fn LayoutResult::materialize(Self, @graph.GraphInput) -> @graph.Graph
 pub fn LayoutResult::new() -> Self
 pub impl Show for LayoutResult
 
@@ -81,6 +86,16 @@ pub struct NodeLayout {
 pub fn NodeLayout::from_box(@graph.Box) -> Self
 pub fn NodeLayout::to_box(Self) -> @graph.Box
 pub impl Show for NodeLayout
+
+pub struct SequenceFragmentLayout {
+  fragment_type : String
+  condition : String?
+  bbox : @graph.Box?
+  start_index : Int
+  end_index : Int
+  operands : Array[FragmentOperandLayout]
+}
+pub impl Show for SequenceFragmentLayout
 
 // Type aliases
 

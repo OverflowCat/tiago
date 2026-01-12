@@ -13,12 +13,16 @@
 // limitations under the License.
 
 ///|
+using @diagram {type RenderEdge, type RenderGraph, type RenderObject}
+
+///|
 using @graph {
   type ArrowheadType,
-  type Edge,
-  type Graph,
-  type Legend,
+  type LegendEntryInput,
+  type LegendInput,
   type LegendPosition,
-  type Object,
   type ShapeType,
+  type StyleInput,
+  type Point,
+  type Box,
 }

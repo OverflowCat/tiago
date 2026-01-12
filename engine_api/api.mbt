@@ -111,6 +111,24 @@ pub struct EdgeLayout {
 } derive(Show)
 
 ///|
+/// Sequence diagram fragment layout operand.
+pub struct FragmentOperandLayout {
+  condition : String?
+  separator_y : Double
+} derive(Show)
+
+///|
+/// Sequence diagram fragment layout information.
+pub struct SequenceFragmentLayout {
+  fragment_type : String
+  condition : String?
+  bbox : @graph.Box?
+  start_index : Int
+  end_index : Int
+  operands : Array[FragmentOperandLayout]
+} derive(Show)
+
+///|
 /// Complete layout information for a rendered diagram graph.
 ///
 /// This structure contains all the geometric information needed by renderers to
@@ -137,7 +155,7 @@ pub struct LayoutResult {
   edge_labels : Map[Int, NodeLayout]
   activation_boxes : Array[(String, NodeLayout)]
   sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[@graph.SequenceFragment]
+  sequence_fragments : Array[SequenceFragmentLayout]
 } derive(Show)
 
 ///|
@@ -148,29 +166,6 @@ pub struct LayoutOutputs {
   scenarios : Array[(String, LayoutOutputs)]
   steps : Array[(String, LayoutOutputs)]
 } derive(Show)
-
-///|
-/// Capture the current layout state of a graph (and its variants) into
-/// `LayoutOutputs`.
-///
-/// This is primarily a bridge for wrapping an already-laid-out `graph.Graph`
-/// into the new diagram pipeline without relying on in-place mutation.
-pub fn LayoutOutputs::from_graph(graph : @graph.Graph) -> LayoutOutputs {
-  let layout = LayoutResult::from_graph(graph)
-  let layers : Array[(String, LayoutOutputs)] = []
-  for layer in graph.layers {
-    layers.push((layer.name, LayoutOutputs::from_graph(layer.graph)))
-  }
-  let scenarios : Array[(String, LayoutOutputs)] = []
-  for scenario in graph.scenarios {
-    scenarios.push((scenario.name, LayoutOutputs::from_graph(scenario.graph)))
-  }
-  let steps : Array[(String, LayoutOutputs)] = []
-  for step in graph.steps {
-    steps.push((step.name, LayoutOutputs::from_graph(step.graph)))
-  }
-  { layout, layers, scenarios, steps }
-}
 
 ///|
 pub fn NodeLayout::from_box(box : @graph.Box) -> NodeLayout {
@@ -221,33 +216,34 @@ pub fn LayoutResult::from_graph(graph : @graph.Graph) -> LayoutResult {
     result.sequence_notes.push((note.0, note.1, NodeLayout::from_box(note.2)))
   }
   for fragment in graph.sequence_fragments {
-    result.sequence_fragments.push(fragment)
+    result.sequence_fragments.push(fragment_layout_from_fragment(fragment))
   }
   result
 }
 
 ///|
-fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
-  for obj in graph.objects {
-    obj.box = None
+fn fragment_layout_from_fragment(
+  fragment : @graph.SequenceFragment,
+) -> SequenceFragmentLayout {
+  let operands : Array[FragmentOperandLayout] = []
+  for op in fragment.operands {
+    operands.push({ condition: op.condition, separator_y: op.separator_y })
   }
-  for edge in graph.edges {
-    edge.route.clear()
-    edge.label_box = None
-    edge.src_port = None
-    edge.dst_port = None
+  {
+    fragment_type: fragment.fragment_type,
+    condition: fragment.condition,
+    bbox: fragment.bbox,
+    start_index: fragment.start_index,
+    end_index: fragment.end_index,
+    operands,
   }
-  graph.activation_boxes.clear()
-  graph.sequence_notes.clear()
-  graph.sequence_fragments.clear()
 }
 
 ///|
-pub fn LayoutResult::apply_to_graph(
+fn LayoutResult::apply_to_graph(
   self : LayoutResult,
   graph : @graph.Graph,
 ) -> Unit {
-  reset_graph_layout_state(graph)
   for obj in graph.objects {
     match self.nodes.get(obj.id) {
       Some(layout) => obj.set_box(layout.to_box())
@@ -277,10 +273,17 @@ pub fn LayoutResult::apply_to_graph(
   for note in self.sequence_notes {
     graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
   }
-  graph.sequence_fragments.clear()
-  for fragment in self.sequence_fragments {
-    graph.sequence_fragments.push(fragment)
-  }
+}
+
+///|
+/// Materialize a new graph from immutable input + layout.
+pub fn LayoutResult::materialize(
+  self : LayoutResult,
+  graph : @graph.GraphInput,
+) -> @graph.Graph {
+  let materialized = @graph.Graph::from_input(graph)
+  self.apply_to_graph(materialized)
+  materialized
 }
 
 ///|

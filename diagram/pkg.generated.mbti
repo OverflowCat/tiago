@@ -9,9 +9,11 @@ import(
 // Values
 pub fn build(@graph.GraphInput, @engine_api.LayoutOutputs) -> Diagram
 
-pub fn from_laid_out_graph(@graph.Graph) -> Diagram
+pub fn build_render_graph(@graph.GraphInput, @engine_api.LayoutOutputs) -> RenderGraph
 
-pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(Engine, @graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> Diagram raise @engine_api.LayoutError
+pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Diagram raise @engine_api.LayoutError
+
+pub fn materialize(Diagram) -> RenderGraph
 
 // Errors
 
@@ -20,8 +22,91 @@ pub struct Diagram {
   graph : @graph.GraphInput
   layout : @engine_api.LayoutOutputs
 }
-pub fn Diagram::materialize(Self) -> @graph.Graph
 pub impl Show for Diagram
+
+pub struct RenderEdge {
+  index : Int
+  src_id : String
+  dst_id : String
+  src_arrow : Bool
+  dst_arrow : Bool
+  src_arrowhead : @graph.ArrowheadType
+  dst_arrowhead : @graph.ArrowheadType
+  src_anchor : String?
+  dst_anchor : String?
+  label : String
+  style : @graph.StyleInput
+  route : Array[@graph.Point]
+  bend_points : Array[@graph.Point]?
+  is_curve : Bool
+  z_index : Int
+  reference_count : Int
+  label_box : @graph.Box?
+  src_column_index : Int?
+  dst_column_index : Int?
+}
+pub impl Show for RenderEdge
+
+pub struct RenderGraph {
+  name : String
+  root : RenderObject
+  objects : Array[RenderObject]
+  edges : Array[RenderEdge]
+  activation_boxes : Array[(String, @graph.Box)]
+  sequence_notes : Array[(String, String, @graph.Box)]
+  sequence_fragments : Array[@engine_api.SequenceFragmentLayout]
+  layers : Array[RenderLayer]
+  scenarios : Array[RenderScenario]
+  steps : Array[RenderStep]
+  legend : @graph.LegendInput?
+}
+pub fn RenderGraph::has_layers(Self) -> Bool
+pub fn RenderGraph::has_scenarios(Self) -> Bool
+pub fn RenderGraph::has_steps(Self) -> Bool
+pub impl Show for RenderGraph
+
+pub struct RenderLayer {
+  name : String
+  graph : RenderGraph
+}
+pub impl Show for RenderLayer
+
+pub struct RenderObject {
+  id : String
+  label : String
+  shape_type : @graph.ShapeType
+  style : @graph.StyleInput
+  box : @graph.Box?
+  label_box : @graph.Box?
+  children : Array[RenderObject]
+  z_index : Int
+  icon : String?
+  tooltip : String?
+  link : String?
+  classes : Array[String]
+  grid_rows : Int?
+  grid_columns : Int?
+  grid_gap : Double?
+  horizontal_gap : Double?
+  vertical_gap : Double?
+  grid_column_span : Int?
+  grid_row_span : Int?
+  near : String?
+}
+pub fn RenderObject::is_container(Self) -> Bool
+pub impl Show for RenderObject
+
+pub struct RenderScenario {
+  name : String
+  graph : RenderGraph
+}
+pub impl Show for RenderScenario
+
+pub struct RenderStep {
+  name : String
+  graph : RenderGraph
+}
+pub impl Show for RenderStep
 
 // Type aliases
 

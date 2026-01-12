@@ -27,8 +27,11 @@ pub(all) suberror GraphCompileError {
 } derive(Eq, Show)
 
 ///|
-/// Compile an IR Map to Graph
-pub fn compile(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
+/// Compile an IR Map to GraphInput
+pub fn compile(
+  name : String,
+  ir : @ir.Map,
+) -> @graph.GraphInput raise GraphCompileError {
   let graph = Graph::new(name)
   // Extract class definitions
   let classes = extract_classes(ir)
@@ -46,7 +49,7 @@ pub fn compile(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
   compile_legend(graph, ir)
   // Set text dimensions for all objects and edges
   set_text_dimensions(graph)
-  graph
+  @graph.GraphInput::from_graph(graph)
 }
 
 ///|

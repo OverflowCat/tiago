@@ -23,7 +23,7 @@ pub fn fix_wrong_approach_direction(@graph.Graph) -> Unit
 
 pub fn is_sequence_diagram(@graph.Object) -> Bool
 
-pub fn layout(@graph.Graph, @engine_api.LayoutConfig, @engine_api.Direction) -> @engine_api.LayoutOutputs raise @engine_api.LayoutError
+pub fn layout(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> @engine_api.LayoutOutputs raise @engine_api.LayoutError
 
 pub fn layout_sequence(@graph.Object, @engine_api.LayoutConfig) -> Unit
 

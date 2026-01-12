@@ -22,10 +22,10 @@ fn compile_graph_no_layout(source : String) -> Result[@graph.Graph, String] {
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph = @exporter.compile("test", ir) catch {
+  let graph_input = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  Ok(graph)
+  Ok(@graph.Graph::from_input(graph_input))
 }
 
 ///|

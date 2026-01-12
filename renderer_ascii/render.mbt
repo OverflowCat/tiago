@@ -32,7 +32,7 @@ pub impl @render_api.Renderer for AsciiRenderer with render(
   _self,
   diagram : @diagram.Diagram,
 ) -> String raise @render_api.RenderError {
-  render_ascii(diagram.materialize(), AsciiConfig::new())
+  render_ascii(@diagram.materialize(diagram), AsciiConfig::new())
 }
 
 ///|
@@ -43,5 +43,5 @@ pub impl @render_api.Renderer for AsciiRenderer with format_name(_self) -> Strin
 ///|
 /// Render with custom configuration
 pub fn render(diagram : @diagram.Diagram, config : AsciiConfig) -> String {
-  render_ascii(diagram.materialize(), config)
+  render_ascii(@diagram.materialize(diagram), config)
 }

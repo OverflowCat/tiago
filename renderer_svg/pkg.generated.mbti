@@ -27,11 +27,11 @@ pub fn render(@diagram.Diagram, SvgConfig) -> String
 
 pub fn render_connection_ascii(@graph.ArrowheadType, @graph.ArrowheadType, String) -> String
 
-pub fn render_legend_svg(@svg.Svg, @graph.Legend, (Double, Double, Double, Double), SvgConfig) -> Unit
+pub fn render_legend_svg(@svg.Svg, @graph.LegendInput, (Double, Double, Double, Double), SvgConfig) -> Unit
 
 pub fn render_shape_svg(@graph.ShapeType, SvgShapeContext) -> Unit
 
-pub fn render_svg(@graph.Graph, SvgConfig) -> String
+pub fn render_svg(@diagram.RenderGraph, SvgConfig) -> String
 
 // Errors
 

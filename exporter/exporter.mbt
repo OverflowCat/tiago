@@ -13,9 +13,12 @@
 // limitations under the License.
 
 ///|
-/// IR → Graph exporter API.
+/// IR → GraphInput exporter API.
 
 ///|
-pub fn to_graph(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
+pub fn to_graph(
+  name : String,
+  ir : @ir.Map,
+) -> @graph.GraphInput raise GraphCompileError {
   compile(name, ir)
 }

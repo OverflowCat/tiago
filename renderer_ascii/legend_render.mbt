@@ -19,7 +19,7 @@
 /// Render a legend to ASCII
 pub fn render_legend_ascii(
   grid : @ascii.Grid,
-  legend : Legend,
+  legend : LegendInput,
   x : Int,
   y : Int,
   charset : @ascii.CharSet,

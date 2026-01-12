@@ -397,7 +397,7 @@ fn run_validate(args : Array[String]) -> Unit {
       return
     }
   }
-  // Compile to graph
+  // Compile to graph input
   let _ = @exporter.to_graph("diagram", ir) catch {
     e => {
       println("Graph error in \{input_path}: \{e}")
@@ -614,13 +614,13 @@ fn compile_to_diagram(
   let ir = @ir.compile_with_imports(ast, resolver) catch {
     e => return Err("IR error: \{e}")
   }
-  let graph = @exporter.to_graph("diagram", ir) catch {
+  let graph_input = @exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
   let diagram = @diagram.layout_with_engine(
     @engine_elk.ElkEngine::new(),
-    graph,
+    graph_input,
     config,
     @engine_api.Down,
   ) catch {

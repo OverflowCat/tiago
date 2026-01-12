@@ -108,7 +108,37 @@ pub struct EdgeInput {
   dst_column_index : Int?
 }
 pub fn EdgeInput::from_edge(Edge) -> Self
+pub fn EdgeInput::from_model(EdgeModel) -> Self
 pub impl Show for EdgeInput
+
+pub struct EdgeModel {
+  index : Int
+  src_id : String
+  dst_id : String
+  src_arrow : Bool
+  dst_arrow : Bool
+  src_arrowhead : ArrowheadType
+  dst_arrowhead : ArrowheadType
+  src_anchor : String?
+  dst_anchor : String?
+  label : String
+  style : StyleModel
+  route : Array[Point]
+  bend_points : Array[Point]?
+  is_curve : Bool
+  z_index : Int
+  reference_count : Int
+  label_box : Box?
+  src_column_index : Int?
+  dst_column_index : Int?
+  src_port : Port?
+  dst_port : Port?
+}
+pub fn EdgeModel::new(Int, String, String, Bool, Bool) -> Self
+pub fn EdgeModel::with_label(Self, String) -> Self
+pub fn EdgeModel::with_label_box(Self, Box?) -> Self
+pub fn EdgeModel::with_route(Self, Array[Point]) -> Self
+pub impl Show for EdgeModel
 
 pub(all) struct FragmentOperand {
   condition : String?
@@ -121,6 +151,12 @@ pub struct FragmentOperandInput {
   condition : String?
 }
 pub impl Show for FragmentOperandInput
+
+pub struct FragmentOperandModel {
+  condition : String?
+  separator_y : Double
+}
+pub impl Show for FragmentOperandModel
 
 pub(all) struct Graph {
   name : String
@@ -182,7 +218,27 @@ pub struct GraphInput {
   legend : LegendInput?
 }
 pub fn GraphInput::from_graph(Graph) -> Self
+pub fn GraphInput::from_model(GraphModel) -> Self
 pub impl Show for GraphInput
+
+pub struct GraphModel {
+  name : String
+  root : ObjectModel
+  objects : Array[ObjectModel]
+  edges : Array[EdgeModel]
+  activation_boxes : Array[(String, Box)]
+  sequence_notes : Array[(String, String, Box)]
+  sequence_fragments : Array[SequenceFragmentModel]
+  layers : Array[LayerModel]
+  scenarios : Array[ScenarioModel]
+  steps : Array[StepModel]
+  legend : LegendModel?
+}
+pub fn GraphModel::add_edge(Self, EdgeModel) -> Self
+pub fn GraphModel::add_object(Self, ObjectModel) -> Self
+pub fn GraphModel::new(String) -> Self
+pub fn GraphModel::with_legend(Self, LegendModel?) -> Self
+pub impl Show for GraphModel
 
 pub(all) enum GraphVariant {
   LayerVariant(name~ : String)
@@ -209,6 +265,12 @@ pub struct LayerInput {
   graph : GraphInput
 }
 pub impl Show for LayerInput
+
+pub struct LayerModel {
+  name : String
+  graph : GraphModel
+}
+pub impl Show for LayerModel
 
 pub struct Legend {
   mut title : String?
@@ -269,8 +331,25 @@ pub struct LegendInput {
   entry_gap : Double
   icon_size : Double
 }
+pub fn LegendInput::calculate_size(Self, Int) -> (Double, Double)
+pub fn LegendInput::entry_count(Self) -> Int
 pub fn LegendInput::from_legend(Legend) -> Self
+pub fn LegendInput::from_model(LegendModel) -> Self
+pub fn LegendInput::is_empty(Self) -> Bool
 pub impl Show for LegendInput
+
+pub struct LegendModel {
+  title : String?
+  position : LegendPosition
+  entries : Array[LegendEntry]
+  fill : String?
+  stroke : String?
+  padding : Double
+  entry_gap : Double
+  icon_size : Double
+}
+pub fn LegendModel::new() -> Self
+pub impl Show for LegendModel
 
 pub(all) enum LegendPosition {
   TopLeft
@@ -359,8 +438,38 @@ pub struct ObjectInput {
   grid_row_span : Int?
   near : String?
 }
+pub fn ObjectInput::from_model(ObjectModel) -> Self
 pub fn ObjectInput::from_object(Object) -> Self
 pub impl Show for ObjectInput
+
+pub struct ObjectModel {
+  id : String
+  label : String
+  shape_type : ShapeType
+  style : StyleModel
+  box : Box?
+  label_box : Box?
+  children : Array[ObjectModel]
+  z_index : Int
+  icon : String?
+  tooltip : String?
+  link : String?
+  classes : Array[String]
+  grid_rows : Int?
+  grid_columns : Int?
+  grid_gap : Double?
+  horizontal_gap : Double?
+  vertical_gap : Double?
+  grid_column_span : Int?
+  grid_row_span : Int?
+  near : String?
+}
+pub fn ObjectModel::add_child(Self, Self) -> Self
+pub fn ObjectModel::new(String) -> Self
+pub fn ObjectModel::with_box(Self, Box?) -> Self
+pub fn ObjectModel::with_label(Self, String) -> Self
+pub fn ObjectModel::with_label_box(Self, Box?) -> Self
+pub impl Show for ObjectModel
 
 pub(all) struct Point {
   x : Double
@@ -445,6 +554,12 @@ pub struct ScenarioInput {
 }
 pub impl Show for ScenarioInput
 
+pub struct ScenarioModel {
+  name : String
+  graph : GraphModel
+}
+pub impl Show for ScenarioModel
+
 pub(all) struct SequenceFragment {
   fragment_type : String
   mut condition : String?
@@ -464,7 +579,19 @@ pub struct SequenceFragmentInput {
   operands : Array[FragmentOperandInput]
 }
 pub fn SequenceFragmentInput::from_fragment(SequenceFragment) -> Self
+pub fn SequenceFragmentInput::from_model(SequenceFragmentModel) -> Self
 pub impl Show for SequenceFragmentInput
+
+pub struct SequenceFragmentModel {
+  fragment_type : String
+  condition : String?
+  bbox : Box?
+  start_index : Int
+  end_index : Int
+  operands : Array[FragmentOperandModel]
+}
+pub fn SequenceFragmentModel::new(String, Int, Int) -> Self
+pub impl Show for SequenceFragmentModel
 
 pub(all) enum ShapeType {
   Rectangle
@@ -516,6 +643,12 @@ pub struct StepInput {
   graph : GraphInput
 }
 pub impl Show for StepInput
+
+pub struct StepModel {
+  name : String
+  graph : GraphModel
+}
+pub impl Show for StepModel
 
 pub(all) struct Style {
   mut opacity : Double?
@@ -571,9 +704,39 @@ pub struct StyleInput {
   sketch : Bool?
   curved : Bool?
 }
+pub fn StyleInput::from_model(StyleModel) -> Self
 pub fn StyleInput::from_style(Style) -> Self
 pub impl Eq for StyleInput
 pub impl Show for StyleInput
+
+pub struct StyleModel {
+  opacity : Double?
+  stroke : String?
+  fill : String?
+  stroke_width : Double?
+  stroke_dash : Double?
+  border_radius : Double?
+  shadow : Bool?
+  three_d : Bool?
+  multiple : Bool?
+  font : String?
+  font_size : Int?
+  font_color : String?
+  bold : Bool?
+  italic : Bool?
+  underline : Bool?
+  animated : Bool?
+  filled : Bool?
+  double_border : Bool?
+  text_transform : String?
+  font_family : String?
+  fill_pattern : String?
+  sketch : Bool?
+  curved : Bool?
+}
+pub fn StyleModel::new() -> Self
+pub impl Eq for StyleModel
+pub impl Show for StyleModel
 
 pub struct VariantGraph {
   variant : GraphVariant
