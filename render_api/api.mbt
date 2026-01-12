@@ -68,7 +68,7 @@ pub fn RenderConfig::new() -> RenderConfig {
 ///|
 pub fn RenderConfig::with_padding(padding : Double) -> RenderConfig {
   let cfg = RenderConfig::new()
-  { ..cfg, padding }
+  { ..cfg, padding, }
 }
 
 ///|

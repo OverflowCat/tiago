@@ -4,6 +4,7 @@ package "Milky2018/diago/renderer_svg"
 import(
   "Milky2018/diago/diagram"
   "Milky2018/diago/graph"
+  "Milky2018/diago/render_api"
   "Milky2018/diago/svg"
 )
 
@@ -25,8 +26,6 @@ pub fn needs_start_marker(@graph.ArrowheadType) -> Bool
 pub fn render(@diagram.Diagram, SvgConfig) -> String
 
 pub fn render_connection_ascii(@graph.ArrowheadType, @graph.ArrowheadType, String) -> String
-
-pub fn render_graph(@graph.Graph, SvgConfig) -> String
 
 pub fn render_legend_svg(@svg.Svg, @graph.Legend, (Double, Double, Double, Double), SvgConfig) -> Unit
 
@@ -57,6 +56,13 @@ pub fn SvgConfig::new() -> Self
 pub fn SvgConfig::with_theme(Int) -> Self
 pub fn SvgConfig::with_theme_name(String) -> Self
 pub impl Show for SvgConfig
+
+pub struct SvgRenderer {
+  _marker : Unit
+}
+pub fn SvgRenderer::new() -> Self
+pub impl @render_api.Renderer for SvgRenderer
+pub impl Show for SvgRenderer
 
 pub struct SvgShapeContext {
   svg : @svg.Svg

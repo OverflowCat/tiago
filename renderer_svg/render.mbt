@@ -36,9 +36,7 @@ pub impl @render_api.Renderer for SvgRenderer with render(
 }
 
 ///|
-pub impl @render_api.Renderer for SvgRenderer with format_name(
-  _self,
-) -> String {
+pub impl @render_api.Renderer for SvgRenderer with format_name(_self) -> String {
   "svg"
 }
 
@@ -47,4 +45,3 @@ pub impl @render_api.Renderer for SvgRenderer with format_name(
 pub fn render(diagram : @diagram.Diagram, config : SvgConfig) -> String {
   render_svg(diagram.materialize(), config)
 }
-

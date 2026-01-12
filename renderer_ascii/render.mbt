@@ -36,9 +36,7 @@ pub impl @render_api.Renderer for AsciiRenderer with render(
 }
 
 ///|
-pub impl @render_api.Renderer for AsciiRenderer with format_name(
-  _self,
-) -> String {
+pub impl @render_api.Renderer for AsciiRenderer with format_name(_self) -> String {
   "ascii"
 }
 

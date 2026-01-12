@@ -1,0 +1,44 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/render_api"
+
+import(
+  "Milky2018/diago/diagram"
+)
+
+// Values
+pub fn invalid_diagram(String) -> RenderError
+
+pub fn render_failed(String) -> RenderError
+
+pub fn unsupported_format(String) -> RenderError
+
+// Errors
+pub suberror RenderError {
+  UnsupportedFormat(String)
+  RenderFailed(String)
+  InvalidDiagram(String)
+}
+pub impl Eq for RenderError
+pub impl Show for RenderError
+
+// Types and methods
+pub struct RenderConfig {
+  padding : Double
+  font_family : String
+  font_size : Int
+  background : String
+  dark_mode : Bool
+}
+pub fn RenderConfig::dark() -> Self
+pub fn RenderConfig::new() -> Self
+pub fn RenderConfig::with_padding(Double) -> Self
+pub impl Show for RenderConfig
+
+// Type aliases
+
+// Traits
+pub(open) trait Renderer {
+  render(Self, @diagram.Diagram) -> String raise RenderError
+  format_name(Self) -> String
+}
+

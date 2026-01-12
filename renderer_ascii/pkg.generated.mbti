@@ -5,14 +5,13 @@ import(
   "Milky2018/diago/ascii"
   "Milky2018/diago/diagram"
   "Milky2018/diago/graph"
+  "Milky2018/diago/render_api"
 )
 
 // Values
 pub fn render(@diagram.Diagram, AsciiConfig) -> String
 
 pub fn render_ascii(@graph.Graph, AsciiConfig) -> String
-
-pub fn render_graph(@graph.Graph, AsciiConfig) -> String
 
 pub fn render_legend_ascii(@ascii.Grid, @graph.Legend, Int, Int, @ascii.CharSet) -> Unit
 
@@ -35,6 +34,13 @@ pub struct AsciiConfig {
 pub fn AsciiConfig::new() -> Self
 pub fn AsciiConfig::unicode() -> Self
 pub impl Show for AsciiConfig
+
+pub struct AsciiRenderer {
+  _marker : Unit
+}
+pub fn AsciiRenderer::new() -> Self
+pub impl @render_api.Renderer for AsciiRenderer
+pub impl Show for AsciiRenderer
 
 // Type aliases
 

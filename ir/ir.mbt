@@ -462,4 +462,3 @@ pub fn Field::has_primary(self : Field) -> Bool {
 pub fn Field::has_composite(self : Field) -> Bool {
   self.composite is Some(_)
 }
-
