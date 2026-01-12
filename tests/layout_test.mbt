@@ -146,7 +146,7 @@ test "edges have route points" {
   let graph = compile_to_graph("a -> b", @engine_api.Direction::Down).unwrap()
   let edges = graph.get_edges()
   assert_true(edges.length() == 1)
-  let route = edges[0].get_route()
+  let route = edges[0].route
   assert_true(
     route.length() >= 2,
     msg="edge should have at least 2 route points",
@@ -163,7 +163,7 @@ test "edge bend points override routing" {
     #|}
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let edge = graph.get_edges()[0]
-  let route = edge.get_route()
+  let route = edge.route
   assert_true(route.length() >= 4, msg="expected bend points in route")
   assert_eq(route[1].get_x(), 10.0)
   assert_eq(route[1].get_y(), 20.0)
@@ -177,7 +177,7 @@ test "edge route connects source to destination" {
   let a = graph.find_object("a").unwrap()
   let b = graph.find_object("b").unwrap()
   let edges = graph.get_edges()
-  let route = edges[0].get_route()
+  let route = edges[0].route
   match (a.get_box(), b.get_box()) {
     (Some(box_a), Some(box_b)) => {
       let start = route[0]
@@ -225,7 +225,7 @@ test "shape is preserved in graph" {
     #|}
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let db = graph.find_object("db").unwrap()
-  inspect(db.get_shape(), content="cylinder")
+  inspect(db.shape_type.to_shape_string(), content="cylinder")
 }
 
 ///|
@@ -236,8 +236,8 @@ test "shape with label is preserved" {
     #|}
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let db = graph.find_object("database").unwrap()
-  inspect(db.get_label(), content="Database")
-  inspect(db.get_shape(), content="cylinder")
+  inspect(db.label, content="Database")
+  inspect(db.shape_type.to_shape_string(), content="cylinder")
 }
 
 ///|
@@ -311,9 +311,9 @@ test "sql_table edges connect to correct rows" {
   let mut found_posts_comments = false
   let mut found_users_comments = false
   for edge in graph.get_edges() {
-    let src = edge.get_src_id()
-    let dst = edge.get_dst_id()
-    let route = edge.get_route()
+    let src = edge.src_id
+    let dst = edge.dst_id
+    let route = edge.route
     guard route.length() >= 2 else { continue }
     let start = route[0]
     let end = route[route.length() - 1]
@@ -447,7 +447,7 @@ test "sql_table edges are clipped to boxes" {
     }
   }
   for edge in graph.get_edges() {
-    let route = edge.get_route()
+    let route = edge.route
     guard route.length() >= 2 else { continue }
     for i in 0..<(route.length() - 1) {
       let p0 = route[i]
@@ -456,7 +456,7 @@ test "sql_table edges are clipped to boxes" {
         let (table_id, row_idx, row_box) = row
         assert_false(
           line_segment_intersects_box(p0, p1, row_box),
-          msg="edge \{edge.get_src_id()} -> \{edge.get_dst_id()} seg \{i} intersects \{table_id} row \{row_idx}: (\{p0.get_x()},\{p0.get_y()}) -> (\{p1.get_x()},\{p1.get_y()}) vs box (\{row_box.get_x()},\{row_box.get_y()},\{row_box.get_width()},\{row_box.get_height()})",
+          msg="edge \{edge.src_id} -> \{edge.dst_id} seg \{i} intersects \{table_id} row \{row_idx}: (\{p0.get_x()},\{p0.get_y()}) -> (\{p1.get_x()},\{p1.get_y()}) vs box (\{row_box.get_x()},\{row_box.get_y()},\{row_box.get_width()},\{row_box.get_height()})",
         )
       }
     }

@@ -34,7 +34,7 @@ test "layer assignment classes.d2 - alice and bob at top" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
 
   // Should have no reversed edges (no cycles)
@@ -63,7 +63,7 @@ test "assign_layers simple chain" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have 3 layers
@@ -85,7 +85,7 @@ test "assign_layers diamond" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have 3 layers
@@ -121,7 +121,7 @@ test "assign_layers independent nodes" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // All nodes should be in layer 0
@@ -139,7 +139,7 @@ test "assign_layers with cycle" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Should have valid layers (at least 1)
@@ -156,7 +156,7 @@ test "nodes_by_layer grouping" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let result = assign_layers(graph, cycle_result)
   // Check nodes_by_layer

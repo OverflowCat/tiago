@@ -18,7 +18,7 @@
 
 ///|
 /// Layout children of a container in a grid pattern (with spanning support)
-fn layout_grid(container : @graph.Object, config : LayoutConfig) -> Unit {
+fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   let children = container.get_children()
   if children.length() == 0 {
     return
@@ -58,7 +58,7 @@ fn layout_grid(container : @graph.Object, config : LayoutConfig) -> Unit {
 ///|
 /// Compute grid dimensions (rows, columns, row_directed)
 fn compute_grid_dimensions(
-  container : @graph.Object,
+  container : Object,
   child_count : Int,
 ) -> (Int, Int, Bool) {
   match (container.get_grid_rows(), container.get_grid_columns()) {
@@ -107,7 +107,7 @@ priv struct CellPosition {
 /// Allocate cells for children considering spans
 /// Returns array of CellPosition for each child
 fn allocate_grid_cells(
-  children : Array[@graph.Object],
+  children : Array[Object],
   rows : Int,
   columns : Int,
   row_directed : Bool,
@@ -205,7 +205,7 @@ fn can_place_span(
 ///|
 /// Compute column widths considering spans
 fn compute_column_widths_with_spans(
-  children : Array[@graph.Object],
+  children : Array[Object],
   columns : Int,
   positions : Array[CellPosition],
   config : LayoutConfig,
@@ -262,7 +262,7 @@ fn compute_column_widths_with_spans(
 ///|
 /// Compute row heights considering spans
 fn compute_row_heights_with_spans(
-  children : Array[@graph.Object],
+  children : Array[Object],
   rows : Int,
   positions : Array[CellPosition],
   config : LayoutConfig,
@@ -319,7 +319,7 @@ fn compute_row_heights_with_spans(
 ///|
 /// Position children in grid cells with spanning support
 fn position_grid_children_with_spans(
-  children : Array[@graph.Object],
+  children : Array[Object],
   positions : Array[CellPosition],
   col_widths : Array[Double],
   row_heights : Array[Double],

@@ -26,7 +26,7 @@
 /// Assign ports for all edges in the graph
 /// Called after positioning (Phase 5/6), before routing (Phase 7)
 pub fn assign_ports(
-  graph : @graph.Graph,
+  graph : Graph,
   layers : Array[Array[String]],
   _config : LayoutConfig,
 ) -> Unit {
@@ -50,8 +50,8 @@ pub fn assign_ports(
           src, dst, src_layer, dst_layer,
         )
         // Create ports with initial position (will be adjusted later)
-        edge.src_port = Some(@graph.Port::new(src_side, 0.5))
-        edge.dst_port = Some(@graph.Port::new(dst_side, 0.5))
+        edge.src_port = Some(Port::new(src_side, 0.5))
+        edge.dst_port = Some(Port::new(dst_side, 0.5))
       }
       _ => ()
     }
@@ -68,50 +68,50 @@ pub fn assign_ports(
 /// Determine which sides the edge should connect to based on layer positions
 /// In Sugiyama layout, edges typically go from bottom of source to top of destination
 fn determine_port_sides(
-  src : @graph.Object,
-  dst : @graph.Object,
+  src : Object,
+  dst : Object,
   src_layer : Int,
   dst_layer : Int,
-) -> (@graph.PortSide, @graph.PortSide) {
+) -> (PortSide, PortSide) {
   match (src.get_box(), dst.get_box()) {
     (Some(src_box), Some(dst_box)) =>
       if src_layer < dst_layer {
         // Source is above destination (normal downward flow)
         // Source connects from BOTTOM, destination connects from TOP
-        (@graph.Bottom, @graph.Top)
+        (Bottom, Top)
       } else if src_layer > dst_layer {
         // Source is below destination (upward edge, reversed)
         // Source connects from TOP, destination connects from BOTTOM
-        (@graph.Top, @graph.Bottom)
+        (Top, Bottom)
       } else {
         // Same layer - use horizontal connection based on x-position
         let src_cx = src_box.x + src_box.width / 2.0
         let dst_cx = dst_box.x + dst_box.width / 2.0
         if src_cx < dst_cx {
           // Source is to the left
-          (@graph.Right, @graph.Left)
+          (Right, Left)
         } else {
           (
             // Source is to the right
-            @graph.Left,
-            @graph.Right,
+            Left,
+            Right,
           )
         }
       }
     _ =>
       // Fallback: use bottom/top for missing boxes
-      (@graph.Bottom, @graph.Top)
+      (Bottom, Top)
   }
 }
 
 ///|
 /// Group edges by their endpoint nodes and distribute port positions evenly
-fn distribute_ports_on_nodes(graph : @graph.Graph) -> Unit {
+fn distribute_ports_on_nodes(graph : Graph) -> Unit {
   // Build map of (node_id, side) -> list of edges
   // For source side
-  let src_edges : Map[String, Array[@graph.Edge]] = {}
+  let src_edges : Map[String, Array[Edge]] = {}
   // For destination side
-  let dst_edges : Map[String, Array[@graph.Edge]] = {}
+  let dst_edges : Map[String, Array[Edge]] = {}
   for edge in graph.edges {
     match edge.src_port {
       Some(port) => {
@@ -158,21 +158,18 @@ fn distribute_ports_on_nodes(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Convert port side to string for map keys
-fn port_side_to_string(side : @graph.PortSide) -> String {
+fn port_side_to_string(side : PortSide) -> String {
   match side {
-    @graph.Top => "top"
-    @graph.Bottom => "bottom"
-    @graph.Left => "left"
-    @graph.Right => "right"
+    Top => "top"
+    Bottom => "bottom"
+    Left => "left"
+    Right => "right"
   }
 }
 
 ///|
 /// Sort edges by destination x-coordinate
-fn sort_edges_by_dst_x(
-  edges : Array[@graph.Edge],
-  graph : @graph.Graph,
-) -> Array[@graph.Edge] {
+fn sort_edges_by_dst_x(edges : Array[Edge], graph : Graph) -> Array[Edge] {
   let result = edges.copy()
   // Insertion sort by destination x
   for i = 1; i < result.length(); i = i + 1 {
@@ -195,10 +192,7 @@ fn sort_edges_by_dst_x(
 
 ///|
 /// Sort edges by source x-coordinate
-fn sort_edges_by_src_x(
-  edges : Array[@graph.Edge],
-  graph : @graph.Graph,
-) -> Array[@graph.Edge] {
+fn sort_edges_by_src_x(edges : Array[Edge], graph : Graph) -> Array[Edge] {
   let result = edges.copy()
   // Insertion sort by source x
   for i = 1; i < result.length(); i = i + 1 {
@@ -221,7 +215,7 @@ fn sort_edges_by_src_x(
 
 ///|
 /// Get the x-coordinate of an object's center
-fn get_obj_center_x(graph : @graph.Graph, id : String) -> Double {
+fn get_obj_center_x(graph : Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
       match obj.get_box() {
@@ -234,16 +228,13 @@ fn get_obj_center_x(graph : @graph.Graph, id : String) -> Double {
 
 ///|
 /// Distribute port positions evenly along the side for source ports
-fn distribute_port_positions_src(
-  edges : Array[@graph.Edge],
-  count : Int,
-) -> Unit {
+fn distribute_port_positions_src(edges : Array[Edge], count : Int) -> Unit {
   for i, edge in edges {
     match edge.src_port {
       Some(port) => {
         // Distribute from 0.2 to 0.8 to leave margins
         let position = 0.2 + 0.6 * i.to_double() / (count - 1).to_double()
-        edge.src_port = Some(@graph.Port::new(port.side, position))
+        edge.src_port = Some(Port::new(port.side, position))
       }
       None => ()
     }
@@ -252,16 +243,13 @@ fn distribute_port_positions_src(
 
 ///|
 /// Distribute port positions evenly along the side for destination ports
-fn distribute_port_positions_dst(
-  edges : Array[@graph.Edge],
-  count : Int,
-) -> Unit {
+fn distribute_port_positions_dst(edges : Array[Edge], count : Int) -> Unit {
   for i, edge in edges {
     match edge.dst_port {
       Some(port) => {
         // Distribute from 0.2 to 0.8 to leave margins
         let position = 0.2 + 0.6 * i.to_double() / (count - 1).to_double()
-        edge.dst_port = Some(@graph.Port::new(port.side, position))
+        edge.dst_port = Some(Port::new(port.side, position))
       }
       None => ()
     }
@@ -271,9 +259,9 @@ fn distribute_port_positions_dst(
 ///|
 /// Distribute port positions for parallel edges (edges between same src/dst pair)
 /// This ensures multiple edges between the same nodes get different port positions
-fn distribute_parallel_edge_ports(graph : @graph.Graph) -> Unit {
+fn distribute_parallel_edge_ports(graph : Graph) -> Unit {
   // Group edges by normalized (src, dst) pair
-  let edge_groups : Map[String, Array[@graph.Edge]] = {}
+  let edge_groups : Map[String, Array[Edge]] = {}
   for edge in graph.edges {
     // Create normalized key (smaller id first)
     let key = if edge.src_id < edge.dst_id {
@@ -310,15 +298,13 @@ fn distribute_parallel_edge_ports(graph : @graph.Graph) -> Unit {
 
       // Update source port position (keep same side)
       match edge.src_port {
-        Some(port) =>
-          edge.src_port = Some(@graph.Port::new(port.side, position))
+        Some(port) => edge.src_port = Some(Port::new(port.side, position))
         None => ()
       }
 
       // Update destination port position (keep same side)
       match edge.dst_port {
-        Some(port) =>
-          edge.dst_port = Some(@graph.Port::new(port.side, position))
+        Some(port) => edge.dst_port = Some(Port::new(port.side, position))
         None => ()
       }
     }
@@ -327,7 +313,7 @@ fn distribute_parallel_edge_ports(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Compute absolute coordinates for each port based on node boxes
-fn compute_port_coordinates(graph : @graph.Graph) -> Unit {
+fn compute_port_coordinates(graph : Graph) -> Unit {
   for edge in graph.edges {
     // Compute source port coordinates
     match (edge.src_port, graph.find_object(edge.src_id)) {
@@ -360,26 +346,26 @@ fn compute_port_coordinates(graph : @graph.Graph) -> Unit {
 /// Compute the absolute point for a port on a box
 fn compute_port_point(
   box : @graph.Box,
-  side : @graph.PortSide,
+  side : PortSide,
   position : Double,
 ) -> @graph.Point {
   match side {
-    @graph.Top => {
+    Top => {
       // Position along top edge (left to right)
       let x = box.x + box.width * position
       @graph.Point::new(x, box.y)
     }
-    @graph.Bottom => {
+    Bottom => {
       // Position along bottom edge (left to right)
       let x = box.x + box.width * position
       @graph.Point::new(x, box.y + box.height)
     }
-    @graph.Left => {
+    Left => {
       // Position along left edge (top to bottom)
       let y = box.y + box.height * position
       @graph.Point::new(box.x, y)
     }
-    @graph.Right => {
+    Right => {
       // Position along right edge (top to bottom)
       let y = box.y + box.height * position
       @graph.Point::new(box.x + box.width, y)
@@ -390,7 +376,7 @@ fn compute_port_point(
 ///|
 /// Fix perpendicularity of edge connections after all post-processing
 /// This ensures the first and last segments are perpendicular to node boundaries
-pub fn fix_perpendicularity(graph : @graph.Graph) -> Unit {
+pub fn fix_perpendicularity(graph : Graph) -> Unit {
   for edge in graph.edges {
     if edge.route.length() < 2 {
       continue
@@ -407,10 +393,7 @@ pub fn fix_perpendicularity(graph : @graph.Graph) -> Unit {
 /// Strategy: Insert waypoint to create perpendicular first segment
 /// For left/right sides: insert waypoint at (p1.x, p0.y) for horizontal first segment
 /// For top/bottom sides: insert waypoint at (p0.x, p1.y) for vertical first segment
-fn fix_source_perpendicularity(
-  edge : @graph.Edge,
-  graph : @graph.Graph,
-) -> Unit {
+fn fix_source_perpendicularity(edge : Edge, graph : Graph) -> Unit {
   let src_obj = graph.find_object(edge.src_id)
   guard src_obj is Some(obj) else { return }
   guard obj.get_box() is Some(box) else { return }
@@ -475,7 +458,7 @@ fn fix_source_perpendicularity(
 /// Strategy: Insert waypoint to create perpendicular last segment
 /// For left/right sides: insert waypoint at (p1.x, p0.y) for horizontal last segment
 /// For top/bottom sides: insert waypoint at (p0.x, p1.y) for vertical last segment
-fn fix_dest_perpendicularity(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
+fn fix_dest_perpendicularity(edge : Edge, graph : Graph) -> Unit {
   let dst_obj = graph.find_object(edge.dst_id)
   guard dst_obj is Some(obj) else { return }
   guard obj.get_box() is Some(box) else { return }
@@ -550,11 +533,7 @@ fn points_approximately_equal(
 
 ///|
 /// Insert a waypoint at a specific index in the edge route
-fn insert_waypoint_at(
-  edge : @graph.Edge,
-  index : Int,
-  point : @graph.Point,
-) -> Unit {
+fn insert_waypoint_at(edge : Edge, index : Int, point : @graph.Point) -> Unit {
   let new_route : Array[@graph.Point] = []
   for i = 0; i < edge.route.length(); i = i + 1 {
     if i == index {

@@ -21,6 +21,66 @@ pub impl Eq for GraphCompileError
 pub impl Show for GraphCompileError
 
 // Types and methods
+type Edge
+pub fn Edge::new(Int, String, String, Bool, Bool) -> Self
+pub impl Show for Edge
+
+type Graph
+pub fn Graph::add_edge(Self, Edge) -> Unit
+pub fn Graph::add_layer(Self, Layer) -> Unit
+pub fn Graph::add_object(Self, Object) -> Unit
+pub fn Graph::add_scenario(Self, Scenario) -> Unit
+pub fn Graph::add_step(Self, Step) -> Unit
+pub fn Graph::find_object(Self, String) -> Object?
+pub fn Graph::new(String) -> Self
+pub fn Graph::set_legend(Self, Legend) -> Unit
+pub impl Show for Graph
+
+type Layer
+pub fn Layer::new(String, Graph) -> Self
+pub impl Show for Layer
+
+type Legend
+pub fn Legend::add_connection(Self, @graph.ArrowheadType, @graph.ArrowheadType, String) -> Unit
+pub fn Legend::add_entry(Self, LegendEntry) -> Unit
+pub fn Legend::add_separator(Self) -> Unit
+pub fn Legend::add_shape(Self, @graph.ShapeType, String) -> Unit
+pub fn Legend::new() -> Self
+pub fn Legend::set_entry_gap(Self, Double) -> Unit
+pub fn Legend::set_fill(Self, String) -> Unit
+pub fn Legend::set_icon_size(Self, Double) -> Unit
+pub fn Legend::set_padding(Self, Double) -> Unit
+pub fn Legend::set_position(Self, @graph.LegendPosition) -> Unit
+pub fn Legend::set_stroke(Self, String) -> Unit
+pub fn Legend::set_title(Self, String) -> Unit
+pub fn Legend::with_position(@graph.LegendPosition) -> Self
+pub impl Show for Legend
+
+type LegendEntry
+pub fn LegendEntry::connection(@graph.ArrowheadType, @graph.ArrowheadType, String, Style?) -> Self
+pub fn LegendEntry::custom(String, String) -> Self
+pub fn LegendEntry::separator() -> Self
+pub fn LegendEntry::shape(@graph.ShapeType, String, Style?) -> Self
+pub impl Show for LegendEntry
+
+type Object
+pub fn Object::add_child(Self, Self) -> Unit
+pub fn Object::new(String) -> Self
+pub fn Object::with_label(String, String) -> Self
+pub impl Show for Object
+
+type Scenario
+pub fn Scenario::new(String, Graph) -> Self
+pub impl Show for Scenario
+
+type Step
+pub fn Step::new(String, Graph) -> Self
+pub impl Show for Step
+
+type Style
+pub fn Style::new() -> Self
+pub impl Eq for Style
+pub impl Show for Style
 
 // Type aliases
 

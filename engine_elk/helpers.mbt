@@ -22,7 +22,7 @@ fn max(a : Double, b : Double) -> Double {
 }
 
 ///|
-fn ensure_text_dimensions(graph : @graph.Graph) -> Unit {
+fn ensure_text_dimensions(graph : Graph) -> Unit {
   for obj in graph.objects {
     ensure_object_text_dimensions(obj)
   }
@@ -36,7 +36,7 @@ fn ensure_text_dimensions(graph : @graph.Graph) -> Unit {
 }
 
 ///|
-fn ensure_object_text_dimensions(obj : @graph.Object) -> Unit {
+fn ensure_object_text_dimensions(obj : Object) -> Unit {
   if obj.label.length() > 0 && obj.label_box is None {
     let label_dims = @text_metrics.measure_label(
       obj.label,
@@ -83,7 +83,7 @@ fn ensure_object_text_dimensions(obj : @graph.Object) -> Unit {
 }
 
 ///|
-fn ensure_edge_text_dimensions(edge : @graph.Edge) -> Unit {
+fn ensure_edge_text_dimensions(edge : Edge) -> Unit {
   if edge.label.length() > 0 && edge.label_box is None {
     let label_dims = @text_metrics.measure_edge_label(
       edge.label,
@@ -96,14 +96,14 @@ fn ensure_edge_text_dimensions(edge : @graph.Edge) -> Unit {
 }
 
 ///|
-fn compute_sizes(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+fn compute_sizes(graph : Graph, config : LayoutConfig) -> Unit {
   for obj in graph.objects {
     compute_object_size(obj, config)
   }
 }
 
 ///|
-fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
+fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
   // SQL tables use compact row-based sizing (not container spacing)
   if obj.shape_type == @graph.SqlTable {
     let line_height = 18.0 // font_size (14) + 4
@@ -182,14 +182,14 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
 }
 
 ///|
-fn find_root_objects(graph : @graph.Graph) -> Array[@graph.Object] {
+fn find_root_objects(graph : Graph) -> Array[Object] {
   let child_ids : Array[String] = []
   for obj in graph.objects {
     for child in obj.children {
       child_ids.push(child.id)
     }
   }
-  let roots : Array[@graph.Object] = []
+  let roots : Array[Object] = []
   for obj in graph.objects {
     if not(child_ids.contains(obj.id)) {
       roots.push(obj)
@@ -258,7 +258,7 @@ fn get_sql_row_anchor_point(
 }
 
 ///|
-fn position_sql_table_children(graph : @graph.Graph) -> Unit {
+fn position_sql_table_children(graph : Graph) -> Unit {
   let line_height = 18.0
   let header_height = 26.0
   for obj in graph.objects {
@@ -351,7 +351,7 @@ pub fn find_edge_intersection(
 }
 
 ///|
-fn fix_node_overlaps(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+fn fix_node_overlaps(graph : Graph, config : LayoutConfig) -> Unit {
   let objects = graph.get_objects()
   let min_spacing = config.horizontal_spacing
   let mut changed = true
@@ -403,7 +403,7 @@ fn fix_node_overlaps(graph : @graph.Graph, config : LayoutConfig) -> Unit {
 }
 
 ///|
-fn is_child_of_obj(obj1 : @graph.Object, obj2 : @graph.Object) -> Bool {
+fn is_child_of_obj(obj1 : Object, obj2 : Object) -> Bool {
   for child in obj2.children {
     if child.id == obj1.id {
       return true

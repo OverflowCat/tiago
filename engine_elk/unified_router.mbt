@@ -98,7 +98,7 @@ fn OrthogonalRouteBuilder::extend_vertical(
 fn OrthogonalRouteBuilder::finish(
   self : OrthogonalRouteBuilder,
   end : @graph.Point,
-  end_side : @graph.PortSide,
+  end_side : PortSide,
 ) -> Array[@graph.Point] {
   let last = self.points[self.points.length() - 1]
   // If already at destination, just return
@@ -107,14 +107,14 @@ fn OrthogonalRouteBuilder::finish(
   }
   // Ensure final segment is perpendicular to the destination side
   match end_side {
-    @graph.Top | @graph.Bottom => {
+    Top | Bottom => {
       // Need vertical approach - first go horizontal to align x, then vertical
       if (last.x - end.x).abs() > 0.001 {
         self.extend_horizontal(end.x)
       }
       self.extend_vertical(end.y)
     }
-    @graph.Left | @graph.Right => {
+    Left | Right => {
       // Need horizontal approach - first go vertical to align y, then horizontal
       if (last.y - end.y).abs() > 0.001 {
         self.extend_vertical(end.y)
@@ -158,19 +158,19 @@ fn double_min(a : Double, b : Double) -> Double {
 fn route_simple(
   src : @graph.Point,
   dst : @graph.Point,
-  src_side : @graph.PortSide,
-  dst_side : @graph.PortSide,
+  src_side : PortSide,
+  dst_side : PortSide,
   offset : Double,
 ) -> Array[@graph.Point] {
   let builder = OrthogonalRouteBuilder::new(src)
   match (src_side, dst_side) {
     // Both vertical sides (Top/Bottom) - Z-shape with horizontal middle
-    (@graph.Top, @graph.Top) | (@graph.Bottom, @graph.Bottom) => {
+    (Top, Top) | (Bottom, Bottom) => {
       let mid_y = (src.y + dst.y) / 2.0 + offset
       builder.extend_vertical(mid_y)
       builder.extend_horizontal(dst.x)
     }
-    (@graph.Bottom, @graph.Top) =>
+    (Bottom, Top) =>
       // Normal downward flow
       if src.y < dst.y {
         // Direct Z-shape
@@ -183,7 +183,7 @@ fn route_simple(
         builder.extend_vertical(detour_y)
         builder.extend_horizontal(dst.x)
       }
-    (@graph.Top, @graph.Bottom) =>
+    (Top, Bottom) =>
       // Upward flow
       if src.y > dst.y {
         // Direct Z-shape
@@ -197,12 +197,12 @@ fn route_simple(
         builder.extend_horizontal(dst.x)
       }
     // Both horizontal sides (Left/Right) - Z-shape with vertical middle
-    (@graph.Left, @graph.Left) | (@graph.Right, @graph.Right) => {
+    (Left, Left) | (Right, Right) => {
       let mid_x = (src.x + dst.x) / 2.0 + offset
       builder.extend_horizontal(mid_x)
       builder.extend_vertical(dst.y)
     }
-    (@graph.Right, @graph.Left) =>
+    (Right, Left) =>
       // Normal rightward flow
       if src.x < dst.x {
         let mid_x = (src.x + dst.x) / 2.0 + offset
@@ -214,7 +214,7 @@ fn route_simple(
         builder.extend_horizontal(detour_x)
         builder.extend_vertical(dst.y)
       }
-    (@graph.Left, @graph.Right) =>
+    (Left, Right) =>
       // Leftward flow
       if src.x > dst.x {
         let mid_x = (src.x + dst.x) / 2.0 + offset
@@ -227,16 +227,16 @@ fn route_simple(
         builder.extend_vertical(dst.y)
       }
     // Mixed sides - L-shape
-    (@graph.Bottom, @graph.Left) | (@graph.Bottom, @graph.Right) =>
+    (Bottom, Left) | (Bottom, Right) =>
       // Exit bottom, enter horizontal - go vertical first, then horizontal
       builder.extend_vertical(dst.y + offset)
-    (@graph.Top, @graph.Left) | (@graph.Top, @graph.Right) =>
+    (Top, Left) | (Top, Right) =>
       // Exit top, enter horizontal - go vertical first, then horizontal
       builder.extend_vertical(dst.y + offset)
-    (@graph.Left, @graph.Top) | (@graph.Left, @graph.Bottom) =>
+    (Left, Top) | (Left, Bottom) =>
       // Exit left, enter vertical - go horizontal first, then vertical
       builder.extend_horizontal(dst.x + offset)
-    (@graph.Right, @graph.Top) | (@graph.Right, @graph.Bottom) =>
+    (Right, Top) | (Right, Bottom) =>
       // Exit right, enter vertical - go horizontal first, then vertical
       builder.extend_horizontal(dst.x + offset)
   }
@@ -250,10 +250,8 @@ fn route_simple(
 ///|
 /// Group edges by their source-destination pair for parallel edge handling.
 /// Uses normalized key (sorted src/dst) so both A->B and B->A go in same group.
-fn group_parallel_edges(
-  graph : @graph.Graph,
-) -> Map[String, Array[@graph.Edge]] {
-  let groups : Map[String, Array[@graph.Edge]] = {}
+fn group_parallel_edges(graph : Graph) -> Map[String, Array[Edge]] {
+  let groups : Map[String, Array[Edge]] = {}
   for edge in graph.edges {
     // Normalize key so A->B and B->A have same key
     let key = if edge.src_id <= edge.dst_id {
@@ -301,7 +299,7 @@ fn calculate_parallel_endpoint_extra(index : Int, group_size : Int) -> Double {
 
 ///|
 /// Check if an object ID refers to a field rendered inline inside an sql_table.
-fn is_sql_table_child_id(graph : @graph.Graph, obj_id : String) -> Bool {
+fn is_sql_table_child_id(graph : Graph, obj_id : String) -> Bool {
   match get_parent_id_from_field(obj_id) {
     Some(parent_id) =>
       match graph.find_object(parent_id) {
@@ -315,7 +313,7 @@ fn is_sql_table_child_id(graph : @graph.Graph, obj_id : String) -> Bool {
 ///|
 /// True if this object should be treated as a leaf obstacle during edge routing.
 /// Containers are allowed to be crossed; leaf nodes must be avoided.
-fn is_leaf_obstacle_node(obj : @graph.Object) -> Bool {
+fn is_leaf_obstacle_node(obj : Object) -> Bool {
   // sql_table renders children as rows, but the table itself behaves like a leaf node visually.
   if obj.shape_type == @graph.SqlTable {
     return true
@@ -438,18 +436,18 @@ impl Compare for AStarState with compare(a, b) {
 ///|
 /// Get required initial direction based on source port side
 /// Direction encoding: 0=start, 1=right, 2=left, 3=down, 4=up
-fn get_required_start_directions(src_side : @graph.PortSide) -> Array[Int] {
+fn get_required_start_directions(src_side : PortSide) -> Array[Int] {
   match src_side {
-    @graph.Top => [4] // Must start by going up (leaving from top)
-    @graph.Bottom => [3] // Must start by going down (leaving from bottom)
-    @graph.Left => [2] // Must start by going left (leaving from left)
-    @graph.Right => [1] // Must start by going right (leaving from right)
+    Top => [4] // Must start by going up (leaving from top)
+    Bottom => [3] // Must start by going down (leaving from bottom)
+    Left => [2] // Must start by going left (leaving from left)
+    Right => [1] // Must start by going right (leaving from right)
   }
 }
 
 ///|
 /// Check if a direction is allowed for the first move based on source port side
-fn is_valid_start_direction(dir : Int, src_side : @graph.PortSide) -> Bool {
+fn is_valid_start_direction(dir : Int, src_side : PortSide) -> Bool {
   get_required_start_directions(src_side).contains(dir)
 }
 
@@ -459,8 +457,8 @@ fn is_valid_start_direction(dir : Int, src_side : @graph.PortSide) -> Bool {
 fn route_with_astar(
   src : @graph.Point,
   dst : @graph.Point,
-  src_side : @graph.PortSide,
-  dst_side : @graph.PortSide,
+  src_side : PortSide,
+  dst_side : PortSide,
   obstacles : Array[@graph.Box],
   clearance : Double,
 ) -> Array[@graph.Point]? {
@@ -606,7 +604,7 @@ fn route_with_astar(
 /// The test uses tolerance=2.0 and requires dx/dy > tolerance, so segment needs > 2px.
 fn fix_endpoint_approach(
   route : Array[@graph.Point],
-  side : @graph.PortSide,
+  side : PortSide,
   min_segment_length : Double,
   is_start~ : Bool,
 ) -> Unit {
@@ -623,40 +621,40 @@ fn fix_endpoint_approach(
     let dy = p1.y - p0.y
     // Check if current direction is wrong
     let needs_fix = match side {
-      @graph.Top => dy >= 0.0 || dx.abs() > dy.abs() // Should go up
-      @graph.Bottom => dy <= 0.0 || dx.abs() > dy.abs() // Should go down
-      @graph.Left => dx >= 0.0 || dy.abs() > dx.abs() // Should go left
-      @graph.Right => dx <= 0.0 || dy.abs() > dx.abs() // Should go right
+      Top => dy >= 0.0 || dx.abs() > dy.abs() // Should go up
+      Bottom => dy <= 0.0 || dx.abs() > dy.abs() // Should go down
+      Left => dx >= 0.0 || dy.abs() > dx.abs() // Should go left
+      Right => dx <= 0.0 || dy.abs() > dx.abs() // Should go right
     }
     // Also check if segment is too short (even if direction is correct)
     let segment_too_short = match side {
-      @graph.Top | @graph.Bottom => dy.abs() <= min_segment_length
-      @graph.Left | @graph.Right => dx.abs() <= min_segment_length
+      Top | Bottom => dy.abs() <= min_segment_length
+      Left | Right => dx.abs() <= min_segment_length
     }
     if needs_fix || segment_too_short {
       // Determine if direction is correct but just too short
       let direction_correct = match side {
-        @graph.Top => dy < 0.0 && dx.abs() <= dy.abs() // Moving up (leaving from top)
-        @graph.Bottom => dy > 0.0 && dx.abs() <= dy.abs() // Moving down (leaving from bottom)
-        @graph.Left => dx < 0.0 && dy.abs() <= dx.abs() // Moving left (leaving from left)
-        @graph.Right => dx > 0.0 && dy.abs() <= dx.abs() // Moving right (leaving from right)
+        Top => dy < 0.0 && dx.abs() <= dy.abs() // Moving up (leaving from top)
+        Bottom => dy > 0.0 && dx.abs() <= dy.abs() // Moving down (leaving from bottom)
+        Left => dx < 0.0 && dy.abs() <= dx.abs() // Moving left (leaving from left)
+        Right => dx > 0.0 && dy.abs() <= dx.abs() // Moving right (leaving from right)
       }
       if direction_correct && segment_too_short {
         // Direction is correct, just extend the existing second point
         let new_p1 = match side {
-          @graph.Top => @graph.Point::new(p1.x, p0.y - min_segment_length)
-          @graph.Bottom => @graph.Point::new(p1.x, p0.y + min_segment_length)
-          @graph.Left => @graph.Point::new(p0.x - min_segment_length, p1.y)
-          @graph.Right => @graph.Point::new(p0.x + min_segment_length, p1.y)
+          Top => @graph.Point::new(p1.x, p0.y - min_segment_length)
+          Bottom => @graph.Point::new(p1.x, p0.y + min_segment_length)
+          Left => @graph.Point::new(p0.x - min_segment_length, p1.y)
+          Right => @graph.Point::new(p0.x + min_segment_length, p1.y)
         }
         route[1] = new_p1
       } else {
         // Direction is wrong, insert a new correction point
         let new_p1 = match side {
-          @graph.Top => @graph.Point::new(p0.x, p0.y - min_segment_length)
-          @graph.Bottom => @graph.Point::new(p0.x, p0.y + min_segment_length)
-          @graph.Left => @graph.Point::new(p0.x - min_segment_length, p0.y)
-          @graph.Right => @graph.Point::new(p0.x + min_segment_length, p0.y)
+          Top => @graph.Point::new(p0.x, p0.y - min_segment_length)
+          Bottom => @graph.Point::new(p0.x, p0.y + min_segment_length)
+          Left => @graph.Point::new(p0.x - min_segment_length, p0.y)
+          Right => @graph.Point::new(p0.x + min_segment_length, p0.y)
         }
         let new_route : Array[@graph.Point] = [p0, new_p1]
         for i in 1..<route.length() {
@@ -677,8 +675,8 @@ fn fix_endpoint_approach(
       let dy12 = (p2.y - p1.y).abs()
       if dx12 > 1.0 && dy12 > 1.0 {
         let corner = match side {
-          @graph.Left | @graph.Right => @graph.Point::new(p1.x, p2.y)
-          @graph.Top | @graph.Bottom => @graph.Point::new(p2.x, p1.y)
+          Left | Right => @graph.Point::new(p1.x, p2.y)
+          Top | Bottom => @graph.Point::new(p2.x, p1.y)
         }
         let new_route : Array[@graph.Point] = [route[0], p1, corner]
         for i in 2..<route.length() {
@@ -699,32 +697,32 @@ fn fix_endpoint_approach(
     let dy = pn.y - pn_1.y
     // Check if current direction is wrong
     let needs_fix = match side {
-      @graph.Top => dy <= 0.0 || dx.abs() > dy.abs() // Should arrive going down
-      @graph.Bottom => dy >= 0.0 || dx.abs() > dy.abs() // Should arrive going up
-      @graph.Left => dx <= 0.0 || dy.abs() > dx.abs() // Should arrive going right
-      @graph.Right => dx >= 0.0 || dy.abs() > dx.abs() // Should arrive going left
+      Top => dy <= 0.0 || dx.abs() > dy.abs() // Should arrive going down
+      Bottom => dy >= 0.0 || dx.abs() > dy.abs() // Should arrive going up
+      Left => dx <= 0.0 || dy.abs() > dx.abs() // Should arrive going right
+      Right => dx >= 0.0 || dy.abs() > dx.abs() // Should arrive going left
     }
     // Also check if segment is too short (even if direction is correct)
     let segment_too_short = match side {
-      @graph.Top | @graph.Bottom => dy.abs() <= min_segment_length
-      @graph.Left | @graph.Right => dx.abs() <= min_segment_length
+      Top | Bottom => dy.abs() <= min_segment_length
+      Left | Right => dx.abs() <= min_segment_length
     }
     if needs_fix || segment_too_short {
       // Determine if direction is correct but just too short
       let direction_correct = match side {
-        @graph.Top => dy > 0.0 && dx.abs() <= dy.abs() // Moving down toward top
-        @graph.Bottom => dy < 0.0 && dx.abs() <= dy.abs() // Moving up toward bottom
-        @graph.Left => dx > 0.0 && dy.abs() <= dx.abs() // Moving right toward left
-        @graph.Right => dx < 0.0 && dy.abs() <= dx.abs() // Moving left toward right
+        Top => dy > 0.0 && dx.abs() <= dy.abs() // Moving down toward top
+        Bottom => dy < 0.0 && dx.abs() <= dy.abs() // Moving up toward bottom
+        Left => dx > 0.0 && dy.abs() <= dx.abs() // Moving right toward left
+        Right => dx < 0.0 && dy.abs() <= dx.abs() // Moving left toward right
       }
       if direction_correct && segment_too_short {
         // Direction is correct, just extend the existing penultimate point
         // Also adjust the point before if needed to maintain orthogonality
         let new_pn_1 = match side {
-          @graph.Top => @graph.Point::new(pn_1.x, pn.y - min_segment_length)
-          @graph.Bottom => @graph.Point::new(pn_1.x, pn.y + min_segment_length)
-          @graph.Left => @graph.Point::new(pn.x - min_segment_length, pn_1.y)
-          @graph.Right => @graph.Point::new(pn.x + min_segment_length, pn_1.y)
+          Top => @graph.Point::new(pn_1.x, pn.y - min_segment_length)
+          Bottom => @graph.Point::new(pn_1.x, pn.y + min_segment_length)
+          Left => @graph.Point::new(pn.x - min_segment_length, pn_1.y)
+          Right => @graph.Point::new(pn.x + min_segment_length, pn_1.y)
         }
         // Check if we need to adjust the point before the penultimate
         // to maintain orthogonality
@@ -750,10 +748,10 @@ fn fix_endpoint_approach(
       } else {
         // Direction is wrong, insert a new correction point
         let new_pn_1 = match side {
-          @graph.Top => @graph.Point::new(pn.x, pn.y - min_segment_length)
-          @graph.Bottom => @graph.Point::new(pn.x, pn.y + min_segment_length)
-          @graph.Left => @graph.Point::new(pn.x - min_segment_length, pn.y)
-          @graph.Right => @graph.Point::new(pn.x + min_segment_length, pn.y)
+          Top => @graph.Point::new(pn.x, pn.y - min_segment_length)
+          Bottom => @graph.Point::new(pn.x, pn.y + min_segment_length)
+          Left => @graph.Point::new(pn.x - min_segment_length, pn.y)
+          Right => @graph.Point::new(pn.x + min_segment_length, pn.y)
         }
         let new_route : Array[@graph.Point] = []
         for i in 0..<last_idx {
@@ -803,12 +801,12 @@ fn astar_decode_state_5dir(
 /// - For Bottom side: must arrive by going up (dir=4)
 /// - For Left side: must arrive by going right (dir=1)
 /// - For Right side: must arrive by going left (dir=2)
-fn can_approach_goal_5dir(dir : Int, goal_side : @graph.PortSide) -> Bool {
+fn can_approach_goal_5dir(dir : Int, goal_side : PortSide) -> Bool {
   match (dir, goal_side) {
-    (3, @graph.Top) => true // Going down to reach top
-    (4, @graph.Bottom) => true // Going up to reach bottom
-    (1, @graph.Left) => true // Going right to reach left
-    (2, @graph.Right) => true // Going left to reach right
+    (3, Top) => true // Going down to reach top
+    (4, Bottom) => true // Going up to reach bottom
+    (1, Left) => true // Going right to reach left
+    (2, Right) => true // Going left to reach right
     (0, _) => true // Starting state (for very short routes)
     _ => false
   }
@@ -972,7 +970,7 @@ fn compress_collinear_points(
 ///|
 /// Port usage info for distribution
 priv struct PortUsage {
-  edge : @graph.Edge
+  edge : Edge
   is_source : Bool // true if this is the source port, false if destination
 }
 
@@ -981,7 +979,7 @@ priv struct PortUsage {
 /// This ensures edges from different sources to the same destination,
 /// or from the same source to different destinations, get different port positions.
 /// Also handles bidirectional edges (A->B and B->A) that touch the same node-side.
-fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
+fn distribute_shared_ports(graph : Graph) -> Unit {
   // Group ALL port usages by (node_id, side) - combining both source and destination
   let port_groups : Map[String, Array[PortUsage]] = {}
 
@@ -1037,33 +1035,33 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     let dst_center = dst_box_for_sides.center()
     let dx = dst_center.get_x() - src_center.get_x()
     let dy = dst_center.get_y() - src_center.get_y()
-    let (src_side, dst_side) : (@graph.PortSide, @graph.PortSide) = if is_sql_edge {
+    let (src_side, dst_side) : (PortSide, PortSide) = if is_sql_edge {
       // Keep sql_table row connections on left/right sides so they align with rows.
       if dx >= 0.0 {
-        (@graph.Right, @graph.Left)
+        (Right, Left)
       } else {
-        (@graph.Left, @graph.Right)
+        (Left, Right)
       }
     } else if dy.abs() > dx.abs() {
       if dy > 0.0 {
-        (@graph.Bottom, @graph.Top)
+        (Bottom, Top)
       } else {
-        (@graph.Top, @graph.Bottom)
+        (Top, Bottom)
       }
     } else if dx > 0.0 {
-      (@graph.Right, @graph.Left)
+      (Right, Left)
     } else {
-      (@graph.Left, @graph.Right)
+      (Left, Right)
     }
 
     // Store port sides (with default position 0.5)
-    edge.src_port = Some(@graph.Port::new(src_side, 0.5))
-    edge.dst_port = Some(@graph.Port::new(dst_side, 0.5))
+    edge.src_port = Some(Port::new(src_side, 0.5))
+    edge.dst_port = Some(Port::new(dst_side, 0.5))
 
     // For sql_table row connections, set fixed port points immediately.
     match src_sql_info {
       Some((table_box, col_idx, num_cols)) => {
-        let is_left_side = src_side == @graph.Left
+        let is_left_side = src_side == Left
         let pt = get_sql_row_anchor_point(
           table_box, col_idx, num_cols, is_left_side,
         )
@@ -1075,7 +1073,7 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
     }
     match dst_sql_info {
       Some((table_box, col_idx, num_cols)) => {
-        let is_left_side = dst_side == @graph.Left
+        let is_left_side = dst_side == Left
         let pt = get_sql_row_anchor_point(
           table_box, col_idx, num_cols, is_left_side,
         )
@@ -1138,10 +1136,10 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
       }
       if usage.is_source {
         if usage.edge.src_port is Some(port) {
-          usage.edge.src_port = Some(@graph.Port::new(port.side, position))
+          usage.edge.src_port = Some(Port::new(port.side, position))
         }
       } else if usage.edge.dst_port is Some(port) {
-        usage.edge.dst_port = Some(@graph.Port::new(port.side, position))
+        usage.edge.dst_port = Some(Port::new(port.side, position))
       }
     }
   }
@@ -1174,17 +1172,17 @@ fn distribute_shared_ports(graph : @graph.Graph) -> Unit {
 }
 
 ///|
-fn port_side_string(side : @graph.PortSide) -> String {
+fn port_side_string(side : PortSide) -> String {
   match side {
-    @graph.Top => "top"
-    @graph.Bottom => "bottom"
-    @graph.Left => "left"
-    @graph.Right => "right"
+    Top => "top"
+    Bottom => "bottom"
+    Left => "left"
+    Right => "right"
   }
 }
 
 ///|
-fn get_object_center_x(graph : @graph.Graph, id : String) -> Double {
+fn get_object_center_x(graph : Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
       match obj.get_box() {
@@ -1203,7 +1201,7 @@ fn get_object_center_x(graph : @graph.Graph, id : String) -> Double {
 /// Route all edges in the graph using unified routing.
 /// This is the single source of truth for edge routing.
 pub fn route_all_edges(
-  graph : @graph.Graph,
+  graph : Graph,
   _config : LayoutConfig,
   _direction : Direction,
 ) -> Unit {
@@ -1344,8 +1342,8 @@ pub fn route_all_edges(
 ///|
 /// Collect obstacles for a group of parallel edges (excludes all source and destination nodes)
 fn collect_obstacles_for_group(
-  graph : @graph.Graph,
-  edges : Array[@graph.Edge],
+  graph : Graph,
+  edges : Array[Edge],
   clearance : Double,
 ) -> Array[@graph.Box] {
   let obstacles : Array[@graph.Box] = []
@@ -1429,9 +1427,9 @@ fn add_route_as_obstacles(
 ///|
 /// Compute port info for sql_table field-level connections.
 fn get_sql_edge_port_info(
-  edge : @graph.Edge,
-  graph : @graph.Graph,
-) -> (@graph.Point, @graph.PortSide, @graph.Point, @graph.PortSide)? {
+  edge : Edge,
+  graph : Graph,
+) -> (@graph.Point, PortSide, @graph.Point, PortSide)? {
   // Resolve endpoint boxes used for side decisions.
   let (src_box_for_sides, src_sql_info) = if edge.src_column_index
     is Some(col_idx) {
@@ -1475,20 +1473,20 @@ fn get_sql_edge_port_info(
 
   // Keep sql_table row connections on left/right sides so they align with rows.
   let (src_side, dst_side) = if dx >= 0.0 {
-    (@graph.Right, @graph.Left)
+    (Right, Left)
   } else {
-    (@graph.Left, @graph.Right)
+    (Left, Right)
   }
   let src_pt = match src_sql_info {
     Some((table_box, col_idx, num_cols)) => {
-      let is_left_side = src_side == @graph.Left
+      let is_left_side = src_side == Left
       get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
     }
     None => get_port_point_on_side(src_box_for_sides, src_side, 0.5)
   }
   let dst_pt = match dst_sql_info {
     Some((table_box, col_idx, num_cols)) => {
-      let is_left_side = dst_side == @graph.Left
+      let is_left_side = dst_side == Left
       get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
     }
     None => get_port_point_on_side(dst_box_for_sides, dst_side, 0.5)
@@ -1499,9 +1497,9 @@ fn get_sql_edge_port_info(
 ///|
 /// Get port information for an edge
 fn get_port_info(
-  edge : @graph.Edge,
-  graph : @graph.Graph,
-) -> (@graph.Point, @graph.PortSide, @graph.Point, @graph.PortSide)? {
+  edge : Edge,
+  graph : Graph,
+) -> (@graph.Point, PortSide, @graph.Point, PortSide)? {
   // Try to get from pre-assigned ports
   match (edge.src_port, edge.dst_port) {
     (Some(src_port), Some(dst_port)) =>
@@ -1533,14 +1531,14 @@ fn get_port_info(
   let dy = dst_center.get_y() - src_center.get_y()
   let (src_side, dst_side) = if dy.abs() > dx.abs() {
     if dy > 0.0 {
-      (@graph.Bottom, @graph.Top)
+      (Bottom, Top)
     } else {
-      (@graph.Top, @graph.Bottom)
+      (Top, Bottom)
     }
   } else if dx > 0.0 {
-    (@graph.Right, @graph.Left)
+    (Right, Left)
   } else {
-    (@graph.Left, @graph.Right)
+    (Left, Right)
   }
   // Compute port points
   let src_pt = get_port_point_on_side(src_box, src_side, 0.5)
@@ -1553,23 +1551,23 @@ fn get_port_info(
 /// Position is 0.0-1.0 along the side.
 fn get_port_point_on_side(
   box : @graph.Box,
-  side : @graph.PortSide,
+  side : PortSide,
   position : Double,
 ) -> @graph.Point {
   match side {
-    @graph.Top => {
+    Top => {
       let x = box.x + box.width * position
       @graph.Point::new(x, box.y)
     }
-    @graph.Bottom => {
+    Bottom => {
       let x = box.x + box.width * position
       @graph.Point::new(x, box.y + box.height)
     }
-    @graph.Left => {
+    Left => {
       let y = box.y + box.height * position
       @graph.Point::new(box.x, y)
     }
-    @graph.Right => {
+    Right => {
       let y = box.y + box.height * position
       @graph.Point::new(box.x + box.width, y)
     }
@@ -1578,7 +1576,7 @@ fn get_port_point_on_side(
 
 ///|
 /// Route a self-loop edge
-fn route_self_loop_unified(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
+fn route_self_loop_unified(edge : Edge, graph : Graph) -> Unit {
   let obj = graph.find_object(edge.src_id)
   guard obj is Some(o) else { return }
   guard o.get_box() is Some(box) else { return }
@@ -1601,7 +1599,7 @@ fn route_self_loop_unified(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
 /// Update port sides to match actual route approach directions.
 /// This is needed because A* routing can find paths that approach from
 /// different directions than originally planned based on node positions.
-fn update_port_sides_from_routes(graph : @graph.Graph) -> Unit {
+fn update_port_sides_from_routes(graph : Graph) -> Unit {
   for edge in graph.edges {
     if edge.route.length() < 2 {
       continue
@@ -1641,7 +1639,7 @@ fn infer_port_side_from_segment(
   p1 : @graph.Point,
   p2 : @graph.Point,
   is_departure~ : Bool,
-) -> @graph.PortSide {
+) -> PortSide {
   let dx = p2.x - p1.x
   let dy = p2.y - p1.y
 
@@ -1651,29 +1649,29 @@ fn infer_port_side_from_segment(
     if is_departure {
       // Departing: going right means leaving from right side, going left means left side
       if dx > 0.0 {
-        @graph.Right
+        Right
       } else {
-        @graph.Left
+        Left
       }
       // Arriving: going right means entering from left side, going left means right side
     } else if dx > 0.0 {
-      @graph.Left
+      Left
     } else {
-      @graph.Right
+      Right
     }
     // Vertical segment
   } else if is_departure {
     // Departing: going down means leaving from bottom, going up means top
     if dy > 0.0 {
-      @graph.Bottom
+      Bottom
     } else {
-      @graph.Top
+      Top
     }
     // Arriving: going down means entering from top, going up means bottom
   } else if dy > 0.0 {
-    @graph.Top
+    Top
   } else {
-    @graph.Bottom
+    Bottom
   }
 }
 
@@ -1683,7 +1681,7 @@ fn infer_port_side_from_segment(
 
 ///|
 /// Compress all routes in the graph to remove redundant waypoints.
-pub fn compress_all_routes(graph : @graph.Graph) -> Unit {
+pub fn compress_all_routes(graph : Graph) -> Unit {
   for edge in graph.edges {
     // Preserve explicit user control points.
     if edge.bend_points is Some(_) {
@@ -1707,7 +1705,7 @@ pub fn compress_all_routes(graph : @graph.Graph) -> Unit {
 /// Fix endpoint approach directions for all edges.
 /// Instead of inserting correction points, we adjust the endpoint to
 /// the side that matches the actual approach direction.
-pub fn fix_all_endpoint_approaches(graph : @graph.Graph) -> Unit {
+pub fn fix_all_endpoint_approaches(graph : Graph) -> Unit {
   for edge in graph.edges {
     if edge.route.length() < 2 {
       continue
@@ -1865,7 +1863,7 @@ fn fix_endpoint_to_match_approach(
 ///|
 /// Fix approach direction when endpoint is near boundary but approach is wrong.
 /// This handles the case where the route approaches from the wrong direction.
-pub fn fix_wrong_approach_direction(graph : @graph.Graph) -> Unit {
+pub fn fix_wrong_approach_direction(graph : Graph) -> Unit {
   let tolerance = 5.0
   for edge in graph.edges {
     if edge.route.length() < 2 {
@@ -2017,7 +2015,7 @@ fn fix_wrong_approach_for_endpoint(
 ///|
 /// Remove tiny segments at route endpoints (less than min_length pixels).
 /// These can cause perpendicularity test failures.
-pub fn cleanup_tiny_endpoint_segments(graph : @graph.Graph) -> Unit {
+pub fn cleanup_tiny_endpoint_segments(graph : Graph) -> Unit {
   let min_length = 5.0
   for edge in graph.edges {
     if edge.route.length() < 3 {
@@ -2077,7 +2075,7 @@ pub fn cleanup_tiny_endpoint_segments(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Update port sides for an edge to match its actual route endpoints.
-fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
+fn update_edge_port_sides(edge : Edge, graph : Graph) -> Unit {
   if edge.route.length() < 2 {
     return
   }
@@ -2102,7 +2100,7 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     let p1 = edge.route[1]
     let side = infer_side_from_endpoint_position(p0, p1, box, is_start=true)
     let position = compute_position_on_side(p0, box, side)
-    edge.src_port = Some(@graph.Port::new(side, position))
+    edge.src_port = Some(Port::new(side, position))
     if edge.src_port is Some(port) {
       port.point = Some(p0)
     }
@@ -2128,7 +2126,7 @@ fn update_edge_port_sides(edge : @graph.Edge, graph : @graph.Graph) -> Unit {
     let pn_1 = edge.route[edge.route.length() - 2]
     let side = infer_side_from_endpoint_position(pn, pn_1, box, is_start=false)
     let position = compute_position_on_side(pn, box, side)
-    edge.dst_port = Some(@graph.Port::new(side, position))
+    edge.dst_port = Some(Port::new(side, position))
     if edge.dst_port is Some(port) {
       port.point = Some(pn)
     }
@@ -2151,7 +2149,7 @@ fn infer_side_from_endpoint_position(
   _other : @graph.Point,
   box : @graph.Box,
   is_start~ : Bool,
-) -> @graph.PortSide {
+) -> PortSide {
   // Ignore is_start - we just check where the endpoint actually is
   let _ = is_start
   let tolerance = 5.0
@@ -2171,23 +2169,23 @@ fn infer_side_from_endpoint_position(
     let is_horizontal = dx.abs() > dy.abs()
     if is_horizontal {
       if dx > 0.0 {
-        @graph.Right
+        Right
       } else {
-        @graph.Left
+        Left
       }
     } else if dy > 0.0 {
-      @graph.Bottom
+      Bottom
     } else {
-      @graph.Top
+      Top
     }
   } else if dist_left <= min_dist + tolerance {
-    @graph.Left
+    Left
   } else if dist_right <= min_dist + tolerance {
-    @graph.Right
+    Right
   } else if dist_top <= min_dist + tolerance {
-    @graph.Top
+    Top
   } else {
-    @graph.Bottom
+    Bottom
   }
 }
 
@@ -2195,14 +2193,14 @@ fn infer_side_from_endpoint_position(
 fn compute_position_on_side(
   point : @graph.Point,
   box : @graph.Box,
-  side : @graph.PortSide,
+  side : PortSide,
 ) -> Double {
   match side {
-    @graph.Top | @graph.Bottom => {
+    Top | Bottom => {
       let t = (point.x - box.x) / box.width
       clamp(t, 0.0, 1.0)
     }
-    @graph.Left | @graph.Right => {
+    Left | Right => {
       let t = (point.y - box.y) / box.height
       clamp(t, 0.0, 1.0)
     }

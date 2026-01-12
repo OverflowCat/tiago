@@ -18,7 +18,7 @@
 
 ///|
 /// Position edge labels to avoid overlaps with nodes and other labels
-fn position_edge_labels(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
   // Collect all node bounding boxes for overlap detection
   let node_boxes : Array[@graph.Box] = []
   for obj in graph.objects {
@@ -140,7 +140,7 @@ fn position_edge_labels(graph : @graph.Graph, config : LayoutConfig) -> Unit {
 
 ///|
 /// Compute the perpendicular direction to an edge for label offset
-fn compute_perpendicular_direction(edge : @graph.Edge) -> (Double, Double) {
+fn compute_perpendicular_direction(edge : Edge) -> (Double, Double) {
   let route = edge.get_route()
   if route.length() < 2 {
     return (0.0, 1.0) // Default to vertical offset

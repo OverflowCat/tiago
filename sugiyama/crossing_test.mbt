@@ -69,7 +69,7 @@ test "minimize_crossings simple graph" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -87,7 +87,7 @@ test "minimize_crossings preserves all nodes" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -118,7 +118,7 @@ test "minimize_crossings reduces crossings" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   // Store initial crossing count
@@ -146,7 +146,7 @@ test "minimize_crossings preserves original order for unconnected nodes" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -167,7 +167,7 @@ test "minimize_crossings preserves order within layer for nodes without neighbor
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -187,7 +187,7 @@ test "minimize_crossings preserves order within layer for nodes without neighbor
 /// Helper to count all crossings across all adjacent layer pairs
 fn count_all_crossings(
   layers : Array[Array[String]],
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   cycle_result : CycleBreakResult,
 ) -> Int {
   let mut total = 0

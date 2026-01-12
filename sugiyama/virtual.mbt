@@ -35,7 +35,7 @@ pub(all) struct VirtualNodeResult {
 ///|
 /// Insert virtual nodes for edges spanning multiple layers
 pub fn insert_virtual_nodes(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layer_result : LayerAssignment,
   cycle_result : CycleBreakResult,
 ) -> VirtualNodeResult {

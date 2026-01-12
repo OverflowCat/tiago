@@ -10,15 +10,15 @@ pub fn adjust_cross_rank_spacing(CoordinateResult, Array[Array[String]], Map[Str
 
 pub fn adjust_rank_spacing(CoordinateResult, Array[Array[String]], Map[String, Double], Double, Bool) -> Unit
 
-pub fn assign_coordinates(@graph.Graph, CrossingResult, CycleBreakResult, Map[String, Double], Map[String, Double], Double, Double) -> CoordinateResult
+pub fn assign_coordinates(@graph.GraphInput, CrossingResult, CycleBreakResult, Map[String, Double], Map[String, Double], Double, Double) -> CoordinateResult
 
 pub fn assign_coordinates_simple(CrossingResult, Map[String, Double], Map[String, Double], Double, Double, Double) -> CoordinateResult
 
-pub fn assign_layers(@graph.Graph, CycleBreakResult) -> LayerAssignment
+pub fn assign_layers(@graph.GraphInput, CycleBreakResult) -> LayerAssignment
 
-pub fn break_cycles(@graph.Graph) -> CycleBreakResult
+pub fn break_cycles(@graph.GraphInput) -> CycleBreakResult
 
-pub fn compute_container_ranks(@graph.Graph, Array[Array[String]]) -> ContainerRanks
+pub fn compute_container_ranks(@graph.GraphInput, Array[Array[String]]) -> ContainerRanks
 
 pub fn copy_layers(Array[Array[String]]) -> Array[Array[String]]
 
@@ -32,25 +32,25 @@ pub fn count_crossings_fast(Array[String], Array[String], Array[(String, String)
 
 pub fn count_crossings_fenwick(Array[String], Array[String], Array[(String, String, Double)]) -> Double
 
-pub fn expand_containers_to_fit(CoordinateResult, @graph.Graph, Array[Array[String]], ContainerRanks, Double) -> Unit
+pub fn expand_containers_to_fit(CoordinateResult, @graph.GraphInput, Array[Array[String]], ContainerRanks, Double) -> Unit
 
-pub fn fit_container_padding(CoordinateResult, @graph.Graph, Array[Array[String]], Double, Bool) -> Unit
+pub fn fit_container_padding(CoordinateResult, @graph.GraphInput, Array[Array[String]], Double, Bool) -> Unit
 
-pub fn get_effective_dst(@graph.Edge, CycleBreakResult) -> String
+pub fn get_effective_dst(@graph.EdgeInput, CycleBreakResult) -> String
 
-pub fn get_effective_src(@graph.Edge, CycleBreakResult) -> String
+pub fn get_effective_src(@graph.EdgeInput, CycleBreakResult) -> String
 
 pub fn get_virtual_edge_index(String) -> Int?
 
-pub fn insert_virtual_nodes(@graph.Graph, LayerAssignment, CycleBreakResult) -> VirtualNodeResult
+pub fn insert_virtual_nodes(@graph.GraphInput, LayerAssignment, CycleBreakResult) -> VirtualNodeResult
 
 pub fn is_edge_reversed(CycleBreakResult, Int) -> Bool
 
 pub fn is_virtual_node(String) -> Bool
 
-pub fn minimize_crossings(@graph.Graph, LayerAssignment, CycleBreakResult) -> CrossingResult
+pub fn minimize_crossings(@graph.GraphInput, LayerAssignment, CycleBreakResult) -> CrossingResult
 
-pub fn minimize_crossings_with_virtual(@graph.Graph, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
+pub fn minimize_crossings_with_virtual(@graph.GraphInput, LayerAssignment, CycleBreakResult, Map[String, Bool]) -> CrossingResult
 
 // Errors
 

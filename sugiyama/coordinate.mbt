@@ -36,7 +36,7 @@ pub(all) struct CoordinateResult {
 ///|
 /// Assign coordinates to nodes using Brandes-Köpf algorithm
 pub fn assign_coordinates(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   crossing_result : CrossingResult,
   cycle_result : CycleBreakResult,
   node_widths : Map[String, Double],
@@ -135,7 +135,7 @@ pub fn assign_coordinates(
 /// Compute dynamic rank spacing based on edge label heights
 /// Returns an array of spacing values, one for each layer gap (layers.length()-1 values)
 fn compute_dynamic_rank_spacing(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
   base_spacing : Double,
   cycle_result : CycleBreakResult,
@@ -191,7 +191,7 @@ fn compute_dynamic_rank_spacing(
 ///|
 /// Build upper and lower neighbor maps
 fn build_neighbors(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
   cycle_result : CycleBreakResult,
 ) -> (Map[String, Array[String]], Map[String, Array[String]]) {
@@ -683,7 +683,7 @@ fn sort_nodes_by_coord(
 /// This handles nested containers by ensuring minimum internal padding
 pub fn fit_container_padding(
   coords : CoordinateResult,
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
   padding : Double,
   is_horizontal : Bool,
@@ -691,9 +691,10 @@ pub fn fit_container_padding(
   // Build parent-child relationships
   let children_map : Map[String, Array[String]] = {}
   for obj in graph.objects {
-    if obj.children.length() > 0 {
+    let children = graph.children_of(obj)
+    if children.length() > 0 {
       let child_ids : Array[String] = []
-      for child in obj.children {
+      for child in children {
         child_ids.push(child.id)
       }
       children_map[obj.id] = child_ids
@@ -793,7 +794,7 @@ fn shift_nodes_y(
 /// of their children, reducing horizontal bends in edges
 fn center_parents_over_children(
   coords : CoordinateResult,
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
   node_widths : Map[String, Double],
   min_sep : Double,

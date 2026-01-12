@@ -18,11 +18,7 @@ using @diagram {type RenderEdge, type RenderGraph, type RenderObject}
 ///|
 using @graph {
   type ArrowheadType,
-  type LegendEntryInput,
   type LegendInput,
   type LegendPosition,
   type ShapeType,
-  type StyleInput,
-  type Point,
-  type Box,
 }

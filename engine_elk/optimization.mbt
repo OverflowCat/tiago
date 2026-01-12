@@ -18,7 +18,7 @@
 
 ///|
 /// Re-route edges that cross through unrelated nodes using A* maze routing.
-pub fn reroute_crossing_edges(graph : @graph.Graph) -> Unit {
+pub fn reroute_crossing_edges(graph : Graph) -> Unit {
   let canvas_bounds = compute_all_bounds(graph)
   for edge in graph.edges {
     if edge.route.length() < 2 {
@@ -35,10 +35,7 @@ pub fn reroute_crossing_edges(graph : @graph.Graph) -> Unit {
 
 ///|
 /// Check if an edge route crosses through any unrelated nodes
-fn edge_crosses_unrelated_nodes(
-  edge : @graph.Edge,
-  graph : @graph.Graph,
-) -> Bool {
+fn edge_crosses_unrelated_nodes(edge : Edge, graph : Graph) -> Bool {
   for i in 0..<(edge.route.length() - 1) {
     let p1 = edge.route[i]
     let p2 = edge.route[i + 1]
@@ -167,8 +164,8 @@ fn clip_obstacle_away_from_box(
 /// Route edge with fixed ports using maze router, with extra obstacles
 /// IMPORTANT: Uses assigned port sides from Phase 6.5 to guarantee perpendicularity
 fn route_fixed_ports_maze_with_extra_obstacles(
-  edge : @graph.Edge,
-  graph : @graph.Graph,
+  edge : Edge,
+  graph : Graph,
   canvas_bounds : (Double, Double, Double, Double),
   extra_obstacles : Array[@graph.Box],
 ) -> Bool {

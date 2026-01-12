@@ -43,7 +43,7 @@ pub(all) struct CycleBreakResult {
 /// Find edges that need to be reversed to break all cycles (Feedback Arc Set)
 /// Uses greedy DFS traversal - edges pointing to nodes on the current DFS stack
 /// are back-edges that create cycles.
-pub fn break_cycles(graph : @graph.Graph) -> CycleBreakResult {
+pub fn break_cycles(graph : @graph.GraphInput) -> CycleBreakResult {
   // Build adjacency list: node_id -> [(edge_index, target_id)]
   let adj : Map[String, Array[(Int, String)]] = {}
   for edge in graph.edges {
@@ -57,7 +57,7 @@ pub fn break_cycles(graph : @graph.Graph) -> CycleBreakResult {
   // Collect all node IDs
   let nodes : Array[String] = []
   for obj in graph.objects {
-    collect_node_ids(obj, nodes)
+    collect_node_ids(graph, obj, nodes)
   }
   // DFS state
   let state : Map[String, NodeState] = {}
@@ -78,10 +78,14 @@ pub fn break_cycles(graph : @graph.Graph) -> CycleBreakResult {
 
 ///|
 /// Collect all node IDs from object tree
-fn collect_node_ids(obj : @graph.Object, nodes : Array[String]) -> Unit {
+fn collect_node_ids(
+  graph : @graph.GraphInput,
+  obj : @graph.ObjectInput,
+  nodes : Array[String],
+) -> Unit {
   nodes.push(obj.id)
-  for child in obj.children {
-    collect_node_ids(child, nodes)
+  for child in graph.children_of(obj) {
+    collect_node_ids(graph, child, nodes)
   }
 }
 
@@ -133,7 +137,7 @@ pub fn is_edge_reversed(result : CycleBreakResult, edge_index : Int) -> Bool {
 ///|
 /// Get the effective source of an edge (accounting for reversal)
 pub fn get_effective_src(
-  edge : @graph.Edge,
+  edge : @graph.EdgeInput,
   result : CycleBreakResult,
 ) -> String {
   if is_edge_reversed(result, edge.index) {
@@ -146,7 +150,7 @@ pub fn get_effective_src(
 ///|
 /// Get the effective destination of an edge (accounting for reversal)
 pub fn get_effective_dst(
-  edge : @graph.Edge,
+  edge : @graph.EdgeInput,
   result : CycleBreakResult,
 ) -> String {
   if is_edge_reversed(result, edge.index) {

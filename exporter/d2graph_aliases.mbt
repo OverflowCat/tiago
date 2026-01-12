@@ -15,16 +15,7 @@
 ///|
 using @graph {
   type ArrowheadType,
-  type Edge,
-  type Graph,
-  type Legend,
-  type Layer,
-  type LegendEntry,
   type LegendPosition,
-  type Object,
   type Point,
-  type Scenario,
   type ShapeType,
-  type Step,
-  type Style,
 }

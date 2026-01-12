@@ -18,12 +18,12 @@
 
 ///|
 /// Convert PortSide to string for compatibility with legacy routing code
-fn port_side_to_side_string(side : @graph.PortSide) -> String {
+fn port_side_to_side_string(side : PortSide) -> String {
   match side {
-    @graph.Top => "top"
-    @graph.Bottom => "bottom"
-    @graph.Left => "left"
-    @graph.Right => "right"
+    Top => "top"
+    Bottom => "bottom"
+    Left => "left"
+    Right => "right"
   }
 }
 
@@ -31,7 +31,7 @@ fn port_side_to_side_string(side : @graph.PortSide) -> String {
 /// Route edges using pre-assigned ports
 /// This guarantees perpendicular connections since ports are on node sides
 pub fn route_edges_with_ports(
-  graph : @graph.Graph,
+  graph : Graph,
   _config : LayoutConfig,
   virtual_result : VirtualNodeResult,
 ) -> Unit {
@@ -109,10 +109,10 @@ pub fn route_edges_with_ports(
 /// Route an edge using pre-assigned ports
 /// Creates an orthogonal route that respects port sides
 fn route_edge_with_ports(
-  edge : @graph.Edge,
-  src_port : @graph.Port,
-  dst_port : @graph.Port,
-  _graph : @graph.Graph,
+  edge : Edge,
+  src_port : Port,
+  dst_port : Port,
+  _graph : Graph,
   parallel_index : Int,
 ) -> Unit {
   // Get port points
@@ -155,8 +155,8 @@ fn route_edge_with_ports(
 fn create_orthogonal_route_from_ports(
   src : @graph.Point,
   dst : @graph.Point,
-  src_side : @graph.PortSide,
-  dst_side : @graph.PortSide,
+  src_side : PortSide,
+  dst_side : PortSide,
   offset : Double,
 ) -> Array[@graph.Point] {
   let route : Array[@graph.Point] = []
@@ -165,14 +165,14 @@ fn create_orthogonal_route_from_ports(
   // Determine routing based on port sides
   // For orthogonal routes, offset is applied to the middle segment coordinate
   match (src_side, dst_side) {
-    (@graph.Top, @graph.Top) | (@graph.Bottom, @graph.Bottom) => {
+    (Top, Top) | (Bottom, Bottom) => {
       // Both vertical sides - need horizontal middle segment
       // Offset applied to mid_y for parallel edge separation
       let mid_y = (src.y + dst.y) / 2.0 + offset
       route.push(@graph.Point::new(src.x, mid_y))
       route.push(@graph.Point::new(dst.x, mid_y))
     }
-    (@graph.Top, @graph.Bottom) =>
+    (Top, Bottom) =>
       // Source exits top, destination enters from bottom
       if src.y > dst.y {
         // src is below dst - need horizontal detour
@@ -187,7 +187,7 @@ fn create_orthogonal_route_from_ports(
         route.push(@graph.Point::new(src.x, mid_y))
         route.push(@graph.Point::new(dst.x, mid_y))
       }
-    (@graph.Bottom, @graph.Top) =>
+    (Bottom, Top) =>
       // Source exits bottom, destination enters from top
       // This is the typical case in Sugiyama layout (downward flow)
       if src.y < dst.y {
@@ -203,14 +203,14 @@ fn create_orthogonal_route_from_ports(
         route.push(@graph.Point::new(mid_x, dst.y - 30.0))
         route.push(@graph.Point::new(dst.x, dst.y - 30.0))
       }
-    (@graph.Left, @graph.Left) | (@graph.Right, @graph.Right) => {
+    (Left, Left) | (Right, Right) => {
       // Both horizontal sides - need vertical middle segment
       // Offset applied to mid_x for parallel edge separation
       let mid_x = (src.x + dst.x) / 2.0 + offset
       route.push(@graph.Point::new(mid_x, src.y))
       route.push(@graph.Point::new(mid_x, dst.y))
     }
-    (@graph.Left, @graph.Right) =>
+    (Left, Right) =>
       // Source exits left, destination enters from right
       if src.x > dst.x {
         // Direct horizontal connection possible
@@ -225,7 +225,7 @@ fn create_orthogonal_route_from_ports(
         route.push(@graph.Point::new(dst.x + 30.0, mid_y))
         route.push(@graph.Point::new(dst.x + 30.0, dst.y))
       }
-    (@graph.Right, @graph.Left) =>
+    (Right, Left) =>
       // Source exits right, destination enters from left
       if src.x < dst.x {
         // Direct horizontal connection possible
@@ -240,16 +240,16 @@ fn create_orthogonal_route_from_ports(
         route.push(@graph.Point::new(dst.x - 30.0, mid_y))
         route.push(@graph.Point::new(dst.x - 30.0, dst.y))
       }
-    (@graph.Top, @graph.Left) | (@graph.Top, @graph.Right) =>
+    (Top, Left) | (Top, Right) =>
       // L-shape: vertical then horizontal
       route.push(@graph.Point::new(src.x, dst.y))
-    (@graph.Bottom, @graph.Left) | (@graph.Bottom, @graph.Right) =>
+    (Bottom, Left) | (Bottom, Right) =>
       // L-shape: vertical then horizontal
       route.push(@graph.Point::new(src.x, dst.y))
-    (@graph.Left, @graph.Top) | (@graph.Left, @graph.Bottom) =>
+    (Left, Top) | (Left, Bottom) =>
       // L-shape: horizontal then vertical
       route.push(@graph.Point::new(dst.x, src.y))
-    (@graph.Right, @graph.Top) | (@graph.Right, @graph.Bottom) =>
+    (Right, Top) | (Right, Bottom) =>
       // L-shape: horizontal then vertical
       route.push(@graph.Point::new(dst.x, src.y))
   }
@@ -260,7 +260,7 @@ fn create_orthogonal_route_from_ports(
 
 ///|
 /// Route a self-loop edge (where source and destination are the same node)
-fn route_self_loop(edge : @graph.Edge, box : @graph.Box) -> Unit {
+fn route_self_loop(edge : Edge, box : @graph.Box) -> Unit {
   // Create a loop that goes out from the right side, curves up/right, and comes back
   let loop_size = 30.0
   let right = box.x + box.width
@@ -291,8 +291,8 @@ fn route_self_loop(edge : @graph.Edge, box : @graph.Box) -> Unit {
 /// Get SQL table boxes for an edge with column indices
 /// Returns (src_box, src_num_cols, dst_box, dst_num_cols) if applicable
 fn get_sql_table_boxes(
-  graph : @graph.Graph,
-  edge : @graph.Edge,
+  graph : Graph,
+  edge : Edge,
 ) -> (@graph.Box, Int, @graph.Box, Int)? {
   // Get source box (either from parent table or direct object)
   let (src_box, src_num_cols) = if edge.src_column_index is Some(_) {
@@ -350,7 +350,7 @@ fn get_sql_table_boxes(
 ///|
 /// Route an edge through virtual nodes with SQL table support
 fn route_edge_through_virtual_sql(
-  edge : @graph.Edge,
+  edge : Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
   _virtual_ids : Array[String],
@@ -427,7 +427,7 @@ fn route_edge_through_virtual_sql(
 ///|
 /// Route a direct edge with SQL table support and parallel edge offset
 fn route_direct_edge_sql_parallel(
-  edge : @graph.Edge,
+  edge : Edge,
   src_box : @graph.Box,
   dst_box : @graph.Box,
   src_num_cols : Int,
@@ -515,7 +515,7 @@ fn route_direct_edge_sql_parallel(
 ///|
 /// Compute bounding box of all objects in the graph
 /// Returns (min_x, min_y, max_x, max_y)
-fn compute_all_bounds(graph : @graph.Graph) -> (Double, Double, Double, Double) {
+fn compute_all_bounds(graph : Graph) -> (Double, Double, Double, Double) {
   let mut min_x = 1.0e10
   let mut min_y = 1.0e10
   let mut max_x = -1.0e10
@@ -541,7 +541,7 @@ fn compute_all_bounds(graph : @graph.Graph) -> (Double, Double, Double, Double) 
 ///|
 /// Normalize coordinates to ensure all elements have non-negative positions
 /// This shifts the entire graph if any element has negative coordinates
-fn normalize_coordinates(graph : @graph.Graph) -> Unit {
+fn normalize_coordinates(graph : Graph) -> Unit {
   // Find minimum x and y across all elements (nodes and edge routes)
   let mut min_x = 0.0
   let mut min_y = 0.0

@@ -1,4 +1,3 @@
-// Copyright 2025 International Digital Economy Academy
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +29,7 @@ pub(all) struct ContainerRanks {
 ///|
 /// Compute which ranks each container spans based on child positions
 pub fn compute_container_ranks(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
 ) -> ContainerRanks {
   // Build rank map for all nodes
@@ -44,11 +43,11 @@ pub fn compute_container_ranks(
   let ending : Map[String, Int] = {}
   // Process each container object
   for obj in graph.objects {
-    if obj.children.length() == 0 {
+    if graph.children_of(obj).length() == 0 {
       continue
     }
     // Find min/max ranks of children (recursively)
-    let (min_rank, max_rank) = find_child_rank_range(obj, node_ranks)
+    let (min_rank, max_rank) = find_child_rank_range(graph, obj, node_ranks)
     if min_rank <= max_rank {
       starting[obj.id] = min_rank
       ending[obj.id] = max_rank
@@ -60,12 +59,13 @@ pub fn compute_container_ranks(
 ///|
 /// Find the rank range spanned by a container's children
 fn find_child_rank_range(
-  container : @graph.Object,
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
   node_ranks : Map[String, Int],
 ) -> (Int, Int) {
   let mut min_rank = 1000000
   let mut max_rank = -1
-  for child in container.children {
+  for child in graph.children_of(container) {
     // Check child's direct rank
     match node_ranks.get(child.id) {
       Some(rank) => {
@@ -79,8 +79,10 @@ fn find_child_rank_range(
       None => ()
     }
     // Recursively check nested containers
-    if child.children.length() > 0 {
-      let (child_min, child_max) = find_child_rank_range(child, node_ranks)
+    if graph.children_of(child).length() > 0 {
+      let (child_min, child_max) = find_child_rank_range(
+        graph, child, node_ranks,
+      )
       if child_min < min_rank {
         min_rank = child_min
       }
@@ -97,7 +99,7 @@ fn find_child_rank_range(
 /// Adjusts container boundaries and shifts content as needed
 pub fn expand_containers_to_fit(
   coords : CoordinateResult,
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layers : Array[Array[String]],
   container_ranks : ContainerRanks,
   padding : Double,
@@ -106,19 +108,23 @@ pub fn expand_containers_to_fit(
   let containers = collect_containers_by_depth(graph)
   // Process bottom-up (deepest containers first)
   for container in containers {
-    expand_single_container(coords, container, layers, container_ranks, padding)
+    expand_single_container(
+      coords, graph, container, layers, container_ranks, padding,
+    )
   }
 }
 
 ///|
 /// Collect containers ordered by nesting depth (deepest first)
-fn collect_containers_by_depth(graph : @graph.Graph) -> Array[@graph.Object] {
-  let result : Array[@graph.Object] = []
+fn collect_containers_by_depth(
+  graph : @graph.GraphInput,
+) -> Array[@graph.ObjectInput] {
+  let result : Array[@graph.ObjectInput] = []
   let depths : Map[String, Int] = {}
   // Calculate depth for each container
   for obj in graph.objects {
-    if obj.children.length() > 0 {
-      depths[obj.id] = calculate_container_depth(obj)
+    if graph.children_of(obj).length() > 0 {
+      depths[obj.id] = calculate_container_depth(graph, obj)
       result.push(obj)
     }
   }
@@ -129,11 +135,14 @@ fn collect_containers_by_depth(graph : @graph.Graph) -> Array[@graph.Object] {
 
 ///|
 /// Calculate nesting depth of a container
-fn calculate_container_depth(container : @graph.Object) -> Int {
+fn calculate_container_depth(
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
+) -> Int {
   let mut max_child_depth = 0
-  for child in container.children {
-    if child.children.length() > 0 {
-      let child_depth = calculate_container_depth(child)
+  for child in graph.children_of(container) {
+    if graph.children_of(child).length() > 0 {
+      let child_depth = calculate_container_depth(graph, child)
       if child_depth > max_child_depth {
         max_child_depth = child_depth
       }
@@ -145,7 +154,7 @@ fn calculate_container_depth(container : @graph.Object) -> Int {
 ///|
 /// Sort containers by depth (insertion sort)
 fn sort_containers_by_depth(
-  containers : Array[@graph.Object],
+  containers : Array[@graph.ObjectInput],
   depths : Map[String, Int],
 ) -> Unit {
   let n = containers.length()
@@ -170,12 +179,13 @@ fn sort_containers_by_depth(
 /// Expand a single container to fit its children
 fn expand_single_container(
   coords : CoordinateResult,
-  container : @graph.Object,
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
   _layers : Array[Array[String]],
   _container_ranks : ContainerRanks,
   padding : Double,
 ) -> Unit {
-  if container.children.length() == 0 {
+  if graph.children_of(container).length() == 0 {
     return
   }
   // Get container bounds
@@ -183,7 +193,7 @@ fn expand_single_container(
   let container_y = coords.y_coords.get(container.id).unwrap_or(0.0)
   // Compute bounding box of children
   let (min_x, min_y, max_x, max_y) = compute_child_bounds(
-    container, coords, padding,
+    graph, container, coords, padding,
   )
   // Check if children extend beyond container with padding
   let required_left = min_x - padding
@@ -191,11 +201,11 @@ fn expand_single_container(
   // Shift children if they're too close to container edge
   if required_left < container_x {
     let shift = container_x - required_left + padding
-    shift_container_children_x(container, coords, shift)
+    shift_container_children_x(graph, container, coords, shift)
   }
   if required_top < container_y {
     let shift = container_y - required_top + padding
-    shift_container_children_y(container, coords, shift)
+    shift_container_children_y(graph, container, coords, shift)
   }
   ignore(max_x)
   ignore(max_y)
@@ -204,7 +214,8 @@ fn expand_single_container(
 ///|
 /// Compute bounding box of a container's children
 fn compute_child_bounds(
-  container : @graph.Object,
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
   coords : CoordinateResult,
   padding : Double,
 ) -> (Double, Double, Double, Double) {
@@ -212,14 +223,14 @@ fn compute_child_bounds(
   let mut min_y = 1.0e10
   let mut max_x = -1.0e10
   let mut max_y = -1.0e10
-  for child in container.children {
+  for child in graph.children_of(container) {
     let x = coords.x_coords.get(child.id).unwrap_or(0.0)
     let y = coords.y_coords.get(child.id).unwrap_or(0.0)
-    let width = match child.box {
+    let width = match child.get_box() {
       Some(b) => b.width
       None => 100.0
     }
-    let height = match child.box {
+    let height = match child.get_box() {
       Some(b) => b.height
       None => 60.0
     }
@@ -236,9 +247,9 @@ fn compute_child_bounds(
       max_y = y + height
     }
     // Recursively include nested container children
-    if child.children.length() > 0 {
+    if graph.children_of(child).length() > 0 {
       let (child_min_x, child_min_y, child_max_x, child_max_y) = compute_child_bounds(
-        child, coords, padding,
+        graph, child, coords, padding,
       )
       if child_min_x < min_x {
         min_x = child_min_x
@@ -260,16 +271,17 @@ fn compute_child_bounds(
 ///|
 /// Shift all children of a container horizontally
 fn shift_container_children_x(
-  container : @graph.Object,
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
   coords : CoordinateResult,
   shift : Double,
 ) -> Unit {
-  for child in container.children {
+  for child in graph.children_of(container) {
     let old_x = coords.x_coords.get(child.id).unwrap_or(0.0)
     coords.x_coords[child.id] = old_x + shift
     // Recursively shift nested children
-    if child.children.length() > 0 {
-      shift_container_children_x(child, coords, shift)
+    if graph.children_of(child).length() > 0 {
+      shift_container_children_x(graph, child, coords, shift)
     }
   }
 }
@@ -277,16 +289,17 @@ fn shift_container_children_x(
 ///|
 /// Shift all children of a container vertically
 fn shift_container_children_y(
-  container : @graph.Object,
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
   coords : CoordinateResult,
   shift : Double,
 ) -> Unit {
-  for child in container.children {
+  for child in graph.children_of(container) {
     let old_y = coords.y_coords.get(child.id).unwrap_or(0.0)
     coords.y_coords[child.id] = old_y + shift
     // Recursively shift nested children
-    if child.children.length() > 0 {
-      shift_container_children_y(child, coords, shift)
+    if graph.children_of(child).length() > 0 {
+      shift_container_children_y(graph, child, coords, shift)
     }
   }
 }

@@ -1348,8 +1348,7 @@ fn compute_destination_offset(
   let mut edge_index = 0
   for e in graph.edges {
     if e.dst_id == dst_id {
-      if e.src_id == edge.src_id &&
-        e.dst_id == edge.dst_id {
+      if e.src_id == edge.src_id && e.dst_id == edge.dst_id {
         edge_index = total_incoming
       }
       total_incoming = total_incoming + 1

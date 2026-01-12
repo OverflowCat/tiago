@@ -1,0 +1,7 @@
+{
+  "import": [
+    "Milky2018/diago/graph",
+    { "path": "Milky2018/diago/engine_elk/elk/base", "alias": "base" },
+    { "path": "Milky2018/diago/engine_elk/elk/layered", "alias": "layered" }
+  ]
+}

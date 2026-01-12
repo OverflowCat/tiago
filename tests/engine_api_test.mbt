@@ -46,24 +46,168 @@ impl @engine_api.LayoutEngine for FakeEngine with layout(
 }
 
 ///|
+fn root_input(child_ids : Array[String]) -> @graph.ObjectInput {
+  @graph.ObjectInput::from_parts(
+    "root",
+    "root",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    child_ids,
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+}
+
+///|
+fn object_input(id : String, box : @graph.Box?) -> @graph.ObjectInput {
+  @graph.ObjectInput::from_parts(
+    id,
+    id,
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    box,
+    None,
+    [],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+}
+
+///|
+fn graph_input(
+  name : String,
+  child_ids : Array[String],
+  objects : Array[@graph.ObjectInput],
+  edges : Array[@graph.EdgeInput],
+  layers : Array[@graph.LayerInput],
+  scenarios : Array[@graph.ScenarioInput],
+  steps : Array[@graph.StepInput],
+) -> @graph.GraphInput {
+  @graph.GraphInput::from_parts(
+    name,
+    root_input(child_ids),
+    objects,
+    edges,
+    [],
+    layers,
+    scenarios,
+    steps,
+    None,
+  )
+}
+
+///|
+struct RoundtripEngine {
+  _marker : Unit
+} derive(Show)
+
+///|
+fn RoundtripEngine::new() -> RoundtripEngine {
+  { _marker: () }
+}
+
+///|
+impl @engine_api.LayoutEngine for RoundtripEngine with layout(
+  _self,
+  _graph,
+  _config,
+  _direction,
+) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
+  let result = @engine_api.LayoutResult::new()
+  result.nodes["a"] = @engine_api.NodeLayout::from_box(
+    @graph.Box::new(1.0, 2.0, 3.0, 4.0),
+  )
+  result.nodes["b"] = @engine_api.NodeLayout::from_box(
+    @graph.Box::new(10.0, 20.0, 30.0, 40.0),
+  )
+  result.edges[7] = @engine_api.EdgeLayout::new([
+    @graph.Point::new(1.0, 1.0),
+    @graph.Point::new(2.0, 2.0),
+  ])
+  result.edge_labels[7] = @engine_api.NodeLayout::from_box(
+    @graph.Box::new(5.0, 6.0, 7.0, 8.0),
+  )
+  result.activation_boxes.push(
+    ("a", @engine_api.NodeLayout::from_box(@graph.Box::new(9.0, 9.0, 1.0, 2.0))),
+  )
+  result.sequence_notes.push(
+    (
+      "a",
+      "note",
+      @engine_api.NodeLayout::from_box(@graph.Box::new(3.0, 4.0, 5.0, 6.0)),
+    ),
+  )
+  result
+}
+
+///|
 test "layout_with_engine applies to variants" {
-  let graph = @graph.Graph::new("base")
-  graph.add_object(@graph.Object::new("a"))
-  let layer_graph = @graph.Graph::new("layer")
-  layer_graph.add_object(@graph.Object::new("b"))
-  graph.add_layer(@graph.Layer::new("L1", layer_graph))
-  let scenario_graph = @graph.Graph::new("scenario")
-  scenario_graph.add_object(@graph.Object::new("c"))
-  graph.add_scenario(@graph.Scenario::new("S1", scenario_graph))
-  let step_graph = @graph.Graph::new("step")
-  step_graph.add_object(@graph.Object::new("d"))
-  graph.add_step(@graph.Step::new("step1", step_graph))
+  let base_objects = [object_input("a", None)]
+  let layer_graph = graph_input(
+    "layer",
+    ["b"],
+    [object_input("b", None)],
+    [],
+    [],
+    [],
+    [],
+  )
+  let scenario_graph = graph_input(
+    "scenario",
+    ["c"],
+    [object_input("c", None)],
+    [],
+    [],
+    [],
+    [],
+  )
+  let step_graph = graph_input(
+    "step",
+    ["d"],
+    [object_input("d", None)],
+    [],
+    [],
+    [],
+    [],
+  )
+  let graph = graph_input(
+    "base",
+    ["a"],
+    base_objects,
+    [],
+    [@graph.LayerInput::new("L1", layer_graph)],
+    [@graph.ScenarioInput::new("S1", scenario_graph)],
+    [@graph.StepInput::new("step1", step_graph)],
+  )
   let engine = FakeEngine::new()
   let config = @engine_api.LayoutConfig::new()
-  let input = @graph.GraphInput::from_graph(graph)
   let outputs = @engine_api.layout_with_engine(
     engine,
-    input,
+    graph,
     config,
     @engine_api.Direction::Down,
   )
@@ -75,23 +219,17 @@ test "layout_with_engine applies to variants" {
 
 ///|
 test "layout result roundtrips via graph" {
-  let graph = @graph.Graph::new("roundtrip")
-  let a = @graph.Object::new("a")
-  let b = @graph.Object::new("b")
-  a.set_box(@graph.Box::new(1.0, 2.0, 3.0, 4.0))
-  b.set_box(@graph.Box::new(10.0, 20.0, 30.0, 40.0))
-  graph.add_object(a)
-  graph.add_object(b)
-  let edge = @graph.Edge::new(7, "a", "b", false, true)
-  edge.add_route_point(@graph.Point::new(1.0, 1.0))
-  edge.add_route_point(@graph.Point::new(2.0, 2.0))
-  edge.set_label_box(@graph.Box::new(5.0, 6.0, 7.0, 8.0))
-  graph.add_edge(edge)
-  graph.activation_boxes.push(("a", @graph.Box::new(9.0, 9.0, 1.0, 2.0)))
-  graph.sequence_notes.push(("a", "note", @graph.Box::new(3.0, 4.0, 5.0, 6.0)))
-  let layout = @engine_api.LayoutResult::from_graph(graph)
-  let input = @graph.GraphInput::from_graph(graph)
-  let materialized = layout.materialize(input)
+  let objects = [object_input("a", None), object_input("b", None)]
+  let edges = [@graph.EdgeInput::new(7, "a", "b", false, true)]
+  let graph = graph_input("roundtrip", ["a", "b"], objects, edges, [], [], [])
+  let engine = RoundtripEngine::new()
+  let outputs = @engine_api.layout_with_engine(
+    engine,
+    graph,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Direction::Down,
+  )
+  let materialized = @diagram.materialize(@diagram.build(graph, outputs))
   match materialized.find_object("a").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(1.0, 2.0, 3.0, 4.0))
     None => fail("a should have a box")
@@ -102,8 +240,8 @@ test "layout result roundtrips via graph" {
   }
   let e = materialized.get_edges()[0]
   assert_eq(e.index, 7)
-  assert_eq(e.get_route().length(), 2)
-  match e.get_label_box() {
+  assert_eq(e.route.length(), 2)
+  match e.label_box {
     Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
     None => fail("edge should have label box")
   }
@@ -113,49 +251,37 @@ test "layout result roundtrips via graph" {
 
 ///|
 test "engine implementations must not mutate input graph" {
-  let graph = @graph.Graph::new("pure")
-  graph.add_object(@graph.Object::new("a"))
-  graph.add_object(@graph.Object::new("b"))
-  graph.add_edge(@graph.Edge::new(0, "a", "b", false, true))
+  let objects = [
+    object_input("a", Some(@graph.Box::new(1.0, 1.0, 2.0, 2.0))),
+    object_input("b", Some(@graph.Box::new(3.0, 3.0, 4.0, 4.0))),
+  ]
+  let edges = [@graph.EdgeInput::new(0, "a", "b", false, true)]
+  let graph = graph_input("pure", ["a", "b"], objects, edges, [], [], [])
 
   // Snapshot relevant layout state before calling engine.layout(...)
   let boxes_before : Array[@graph.Box?] = []
   for obj in graph.get_objects() {
-    boxes_before.push(obj.get_box())
+    boxes_before.push(obj.box)
   }
-  let routes_before : Array[Int] = []
   let labels_before : Array[@graph.Box?] = []
-  let src_ports_before : Array[@graph.Port?] = []
-  let dst_ports_before : Array[@graph.Port?] = []
   for e in graph.get_edges() {
-    routes_before.push(e.get_route().length())
-    labels_before.push(e.get_label_box())
-    src_ports_before.push(e.src_port)
-    dst_ports_before.push(e.dst_port)
+    labels_before.push(e.label_box)
   }
-  let activation_before = graph.activation_boxes.length()
-  let notes_before = graph.sequence_notes.length()
   let engine = @engine_elk.ElkEngine::new()
   let config = @engine_api.LayoutConfig::new()
-  let input = @graph.GraphInput::from_graph(graph)
-  ignore(engine.layout(input, config, @engine_api.Direction::Down)) catch {
+  ignore(engine.layout(graph, config, @engine_api.Direction::Down)) catch {
     e => fail("engine.layout should not fail: \{e}")
   }
 
   // Input graph must remain unchanged after engine.layout(...)
   let mut i = 0
   for obj in graph.get_objects() {
-    assert_eq(obj.get_box(), boxes_before[i])
+    assert_eq(obj.box, boxes_before[i])
     i = i + 1
   }
   let mut j = 0
   for e in graph.get_edges() {
-    assert_eq(e.get_route().length(), routes_before[j])
-    assert_eq(e.get_label_box(), labels_before[j])
-    assert_eq(e.src_port, src_ports_before[j])
-    assert_eq(e.dst_port, dst_ports_before[j])
+    assert_eq(e.label_box, labels_before[j])
     j = j + 1
   }
-  assert_eq(graph.activation_boxes.length(), activation_before)
-  assert_eq(graph.sequence_notes.length(), notes_before)
 }

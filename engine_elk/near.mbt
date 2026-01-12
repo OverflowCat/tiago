@@ -36,7 +36,7 @@ fn is_near_constant(near : String) -> Bool {
 
 ///|
 /// Apply near positioning to all objects that have it set
-fn apply_near_positioning(graph : @graph.Graph, config : LayoutConfig) -> Unit {
+fn apply_near_positioning(graph : Graph, config : LayoutConfig) -> Unit {
   // Get root bounding box (for constant positions relative to root)
   let root_box = compute_root_bounding_box(graph)
   // Apply near positioning to each object
@@ -53,7 +53,7 @@ fn apply_near_positioning(graph : @graph.Graph, config : LayoutConfig) -> Unit {
 
 ///|
 /// Compute bounding box containing all root objects
-fn compute_root_bounding_box(graph : @graph.Graph) -> @graph.Box {
+fn compute_root_bounding_box(graph : Graph) -> @graph.Box {
   let mut min_x = 0.0
   let mut min_y = 0.0
   let mut max_x = 0.0
@@ -90,7 +90,7 @@ fn compute_root_bounding_box(graph : @graph.Graph) -> @graph.Box {
 ///|
 /// Apply constant near position (top-left, center, etc.)
 fn apply_constant_near(
-  obj : @graph.Object,
+  obj : Object,
   near : String,
   parent_box : @graph.Box,
   config : LayoutConfig,
@@ -143,8 +143,8 @@ fn apply_constant_near(
 ///|
 /// Apply near positioning relative to another object
 fn apply_object_near(
-  graph : @graph.Graph,
-  obj : @graph.Object,
+  graph : Graph,
+  obj : Object,
   target_id : String,
   config : LayoutConfig,
 ) -> Unit {

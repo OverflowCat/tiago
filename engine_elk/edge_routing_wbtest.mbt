@@ -17,13 +17,50 @@
 
 ///|
 fn layout_to_graph_for_routing(
-  graph : @graph.Graph,
+  graph : Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> @graph.Graph raise LayoutError {
-  let input = @graph.GraphInput::from_graph(graph)
-  let outputs = layout(input, config, direction)
-  outputs.layout.materialize(input)
+) -> Graph raise LayoutError {
+  let outputs = layout(graph.to_input(), config, direction)
+  let materialized = Graph::from_input(graph.to_input())
+  apply_layout_result_for_routing(outputs.layout, materialized)
+  materialized
+}
+
+///|
+fn apply_layout_result_for_routing(
+  layout : @engine_api.LayoutResult,
+  graph : Graph,
+) -> Unit {
+  for obj in graph.objects {
+    match layout.nodes.get(obj.id) {
+      Some(node_layout) => obj.set_box(node_layout.to_box())
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    match layout.edges.get(edge.index) {
+      Some(edge_layout) => {
+        edge.route.clear()
+        for p in edge_layout.points {
+          edge.route.push(p)
+        }
+      }
+      None => ()
+    }
+    match layout.edge_labels.get(edge.index) {
+      Some(label_layout) => edge.label_box = Some(label_layout.to_box())
+      None => ()
+    }
+  }
+  graph.activation_boxes.clear()
+  for box in layout.activation_boxes {
+    graph.activation_boxes.push((box.0, box.1.to_box()))
+  }
+  graph.sequence_notes.clear()
+  for note in layout.sequence_notes {
+    graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
+  }
 }
 
 ///|
@@ -67,12 +104,12 @@ fn point_on_boundary(
 ///|
 /// Test: Simple two-node vertical arrangement (A above B)
 test "edge routing: two nodes vertical - A above B" {
-  let graph = @graph.Graph::new("test")
-  let a = @graph.Object::with_label("A", "Node A")
-  let b = @graph.Object::with_label("B", "Node B")
+  let graph = Graph::new("test")
+  let a = Object::with_label("A", "Node A")
+  let b = Object::with_label("B", "Node B")
   graph.add_object(a)
   graph.add_object(b)
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -107,12 +144,12 @@ test "edge routing: two nodes vertical - A above B" {
 ///|
 /// Test: Two nodes horizontal arrangement (A left of B)
 test "edge routing: two nodes horizontal - A left of B" {
-  let graph = @graph.Graph::new("test")
-  let a = @graph.Object::with_label("A", "Node A")
-  let b = @graph.Object::with_label("B", "Node B")
+  let graph = Graph::new("test")
+  let a = Object::with_label("A", "Node A")
+  let b = Object::with_label("B", "Node B")
   graph.add_object(a)
   graph.add_object(b)
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Right) catch {
     e => fail("layout failed: \{e}")
@@ -136,12 +173,12 @@ test "edge routing: two nodes horizontal - A left of B" {
 ///|
 /// Test: Three nodes in chain (A -> B -> C)
 test "edge routing: chain A -> B -> C" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_object(@graph.Object::with_label("C", "C"))
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_object(Object::with_label("C", "C"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -154,11 +191,11 @@ test "edge routing: chain A -> B -> C" {
 ///|
 /// Test: Cycle (A -> B, B -> A) - tests reversed edges
 test "edge routing: cycle A <-> B" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "B", "A", false, true))
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "B", "A", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -193,13 +230,13 @@ test "edge routing: cycle A <-> B" {
 test "edge routing: same layer - multiple sources to one target" {
   // Create a graph where multiple nodes connect to the same target
   // This can cause nodes to be placed in the same layer
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_object(@graph.Object::with_label("C", "C"))
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_object(Object::with_label("C", "C"))
   // A and B both point to C
-  graph.add_edge(@graph.Edge::new(0, "A", "C", false, true))
-  graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
+  graph.add_edge(Edge::new(0, "A", "C", false, true))
+  graph.add_edge(Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -230,15 +267,15 @@ test "edge routing: same layer - multiple sources to one target" {
 ///|
 /// Test: Complex graph with cycle - similar to failing property test
 test "edge routing: complex with cycle" {
-  let graph = @graph.Graph::new("test")
+  let graph = Graph::new("test")
   // Create nodes similar to the failing test case
-  graph.add_object(@graph.Object::with_label("N1", "N1"))
-  graph.add_object(@graph.Object::with_label("N2", "N2"))
-  graph.add_object(@graph.Object::with_label("N3", "N3"))
+  graph.add_object(Object::with_label("N1", "N1"))
+  graph.add_object(Object::with_label("N2", "N2"))
+  graph.add_object(Object::with_label("N3", "N3"))
   // Create a cycle
-  graph.add_edge(@graph.Edge::new(0, "N1", "N2", false, true))
-  graph.add_edge(@graph.Edge::new(1, "N2", "N3", false, true))
-  graph.add_edge(@graph.Edge::new(2, "N3", "N1", false, true)) // Back edge
+  graph.add_edge(Edge::new(0, "N1", "N2", false, true))
+  graph.add_edge(Edge::new(1, "N2", "N3", false, true))
+  graph.add_edge(Edge::new(2, "N3", "N1", false, true)) // Back edge
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -269,11 +306,11 @@ test "edge routing: complex with cycle" {
 ///|
 /// Test: Parallel edges (A -> B and A -> B again)
 test "edge routing: parallel edges" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "A", "B", false, true)) // Duplicate
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "A", "B", false, true)) // Duplicate
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -296,13 +333,13 @@ test "edge routing: parallel edges" {
 ///|
 /// Test: Bidirectional edges (A -> B and B -> A)
 test "edge routing: bidirectional edges" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "B", "A", false, true))
-  graph.add_edge(@graph.Edge::new(2, "A", "B", false, true)) // Duplicate
-  graph.add_edge(@graph.Edge::new(3, "B", "A", false, true)) // Duplicate
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "B", "A", false, true))
+  graph.add_edge(Edge::new(2, "A", "B", false, true)) // Duplicate
+  graph.add_edge(Edge::new(3, "B", "A", false, true)) // Duplicate
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -322,15 +359,15 @@ test "edge routing: bidirectional edges" {
 ///|
 /// Test: Diamond pattern (A -> B, A -> C, B -> D, C -> D)
 test "edge routing: diamond pattern" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::with_label("A", "A"))
-  graph.add_object(@graph.Object::with_label("B", "B"))
-  graph.add_object(@graph.Object::with_label("C", "C"))
-  graph.add_object(@graph.Object::with_label("D", "D"))
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "A", "C", false, true))
-  graph.add_edge(@graph.Edge::new(2, "B", "D", false, true))
-  graph.add_edge(@graph.Edge::new(3, "C", "D", false, true))
+  let graph = Graph::new("test")
+  graph.add_object(Object::with_label("A", "A"))
+  graph.add_object(Object::with_label("B", "B"))
+  graph.add_object(Object::with_label("C", "C"))
+  graph.add_object(Object::with_label("D", "D"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "A", "C", false, true))
+  graph.add_edge(Edge::new(2, "B", "D", false, true))
+  graph.add_edge(Edge::new(3, "C", "D", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")

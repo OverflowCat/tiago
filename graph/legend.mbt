@@ -58,13 +58,13 @@ pub fn LegendPosition::to_position_string(self : LegendPosition) -> String {
 /// A single entry in the legend
 pub(all) enum LegendEntry {
   /// A shape entry with optional custom style
-  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : Style?)
+  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : StyleInput?)
   /// A connection/edge entry showing arrowheads
   ConnectionEntry(
     src_arrow~ : ArrowheadType,
     dst_arrow~ : ArrowheadType,
     label~ : String,
-    style~ : Style?
+    style~ : StyleInput?
   )
   /// A custom entry with icon URL or symbol
   CustomEntry(icon~ : String, label~ : String)
@@ -77,7 +77,7 @@ pub(all) enum LegendEntry {
 pub fn LegendEntry::shape(
   shape : ShapeType,
   label : String,
-  style : Style?,
+  style : StyleInput?,
 ) -> LegendEntry {
   ShapeEntry(shape~, label~, style~)
 }
@@ -88,7 +88,7 @@ pub fn LegendEntry::connection(
   src_arrow : ArrowheadType,
   dst_arrow : ArrowheadType,
   label : String,
-  style : Style?,
+  style : StyleInput?,
 ) -> LegendEntry {
   ConnectionEntry(src_arrow~, dst_arrow~, label~, style~)
 }
@@ -247,7 +247,6 @@ pub fn Legend::calculate_size(
   }
   let mut max_label_width = 0.0
   let mut total_height = self.padding * 2.0
-  // Add title height if present
   match self.title {
     Some(t) => {
       max_label_width = t.length().to_double() * font_size.to_double() * 0.6
@@ -255,7 +254,6 @@ pub fn Legend::calculate_size(
     }
     None => ()
   }
-  // Calculate entry dimensions
   for entry in self.entries {
     match entry {
       ShapeEntry(label~, ..)
@@ -274,7 +272,6 @@ pub fn Legend::calculate_size(
       Separator => total_height = total_height + 4.0 + self.entry_gap
     }
   }
-  // Width = padding + icon + gap + label + padding
   let width = self.padding * 2.0 +
     self.icon_size +
     self.entry_gap +

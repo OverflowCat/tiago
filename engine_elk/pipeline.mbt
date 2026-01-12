@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
+fn reset_graph_layout_state(graph : Graph) -> Unit {
   for obj in graph.objects {
     match obj.box {
       Some(b) => obj.box = Some(@graph.Box::new(0.0, 0.0, b.width, b.height))
@@ -42,7 +42,7 @@ fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
 
 ///|
 fn layout_graph(
-  graph : @graph.Graph,
+  graph : Graph,
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
@@ -86,7 +86,7 @@ fn layout_graph(
 ///|
 /// Convenience wrapper matching the legacy `layout.layout` API.
 pub fn layout(
-  graph : @graph.GraphInput,
+  graph : GraphInput,
   config : LayoutConfig,
   direction : Direction,
 ) -> @engine_api.LayoutOutputs raise LayoutError {

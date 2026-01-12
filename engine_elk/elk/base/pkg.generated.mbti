@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Milky2018/diago/elk/base"
+package "Milky2018/diago/engine_elk/elk/base"
 
 // Values
 pub fn create_edge(String, String, String) -> ElkEdge

@@ -45,6 +45,29 @@ pub fn RenderObject::is_container(self : RenderObject) -> Bool {
 }
 
 ///|
+pub fn RenderObject::get_id(self : RenderObject) -> String {
+  self.id
+}
+
+///|
+pub fn RenderObject::get_box(self : RenderObject) -> @graph.Box? {
+  self.box
+}
+
+///|
+pub fn RenderObject::get_label_box(self : RenderObject) -> @graph.Box? {
+  self.label_box
+}
+
+///|
+pub fn RenderObject::center(self : RenderObject) -> @graph.Point? {
+  match self.box {
+    Some(b) => Some(b.center())
+    None => None
+  }
+}
+
+///|
 pub struct RenderEdge {
   index : Int
   src_id : String
@@ -113,6 +136,106 @@ pub fn RenderGraph::has_scenarios(self : RenderGraph) -> Bool {
 ///|
 pub fn RenderGraph::has_steps(self : RenderGraph) -> Bool {
   self.steps.length() > 0
+}
+
+///|
+pub fn RenderGraph::get_objects(self : RenderGraph) -> Array[RenderObject] {
+  self.objects
+}
+
+///|
+pub fn RenderGraph::get_edges(self : RenderGraph) -> Array[RenderEdge] {
+  self.edges
+}
+
+///|
+pub fn RenderGraph::find_object(
+  self : RenderGraph,
+  id : String,
+) -> RenderObject? {
+  if self.root.id == id {
+    return Some(self.root)
+  }
+  for obj in self.objects {
+    if obj.id == id {
+      return Some(obj)
+    }
+  }
+  None
+}
+
+///|
+pub fn RenderGraph::has_legend(self : RenderGraph) -> Bool {
+  match self.legend {
+    Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
+    None => false
+  }
+}
+
+///|
+pub fn RenderGraph::layer_names(self : RenderGraph) -> Array[String] {
+  let names : Array[String] = []
+  for layer in self.layers {
+    names.push(layer.name)
+  }
+  names
+}
+
+///|
+pub fn RenderGraph::scenario_names(self : RenderGraph) -> Array[String] {
+  let names : Array[String] = []
+  for scenario in self.scenarios {
+    names.push(scenario.name)
+  }
+  names
+}
+
+///|
+pub fn RenderGraph::step_names(self : RenderGraph) -> Array[String] {
+  let names : Array[String] = []
+  for step in self.steps {
+    names.push(step.name)
+  }
+  names
+}
+
+///|
+pub fn RenderGraph::get_layer(
+  self : RenderGraph,
+  name : String,
+) -> RenderGraph? {
+  for layer in self.layers {
+    if layer.name == name {
+      return Some(layer.graph)
+    }
+  }
+  None
+}
+
+///|
+pub fn RenderGraph::get_scenario(
+  self : RenderGraph,
+  name : String,
+) -> RenderGraph? {
+  for scenario in self.scenarios {
+    if scenario.name == name {
+      return Some(scenario.graph)
+    }
+  }
+  None
+}
+
+///|
+pub fn RenderGraph::get_step_by_name(
+  self : RenderGraph,
+  name : String,
+) -> RenderGraph? {
+  for step in self.steps {
+    if step.name == name {
+      return Some(step.graph)
+    }
+  }
+  None
 }
 
 ///|

@@ -111,11 +111,24 @@ pub struct EdgeLayout {
 } derive(Show)
 
 ///|
+pub fn EdgeLayout::new(points : Array[@graph.Point]) -> EdgeLayout {
+  { points, }
+}
+
+///|
 /// Sequence diagram fragment layout operand.
 pub struct FragmentOperandLayout {
   condition : String?
   separator_y : Double
 } derive(Show)
+
+///|
+pub fn FragmentOperandLayout::new(
+  condition : String?,
+  separator_y : Double,
+) -> FragmentOperandLayout {
+  { condition, separator_y }
+}
 
 ///|
 /// Sequence diagram fragment layout information.
@@ -127,6 +140,18 @@ pub struct SequenceFragmentLayout {
   end_index : Int
   operands : Array[FragmentOperandLayout]
 } derive(Show)
+
+///|
+pub fn SequenceFragmentLayout::new(
+  fragment_type : String,
+  condition : String?,
+  bbox : @graph.Box?,
+  start_index : Int,
+  end_index : Int,
+  operands : Array[FragmentOperandLayout],
+) -> SequenceFragmentLayout {
+  { fragment_type, condition, bbox, start_index, end_index, operands }
+}
 
 ///|
 /// Complete layout information for a rendered diagram graph.
@@ -187,103 +212,6 @@ pub fn LayoutResult::new() -> LayoutResult {
     sequence_notes: [],
     sequence_fragments: [],
   }
-}
-
-///|
-pub fn LayoutResult::from_graph(graph : @graph.Graph) -> LayoutResult {
-  let result = LayoutResult::new()
-  for obj in graph.objects {
-    match obj.box {
-      Some(b) => result.nodes[obj.id] = NodeLayout::from_box(b)
-      None => ()
-    }
-  }
-  for edge in graph.edges {
-    let points : Array[@graph.Point] = []
-    for p in edge.route {
-      points.push(@graph.Point::new(p.x, p.y))
-    }
-    result.edges[edge.index] = { points, }
-    match edge.get_label_box() {
-      Some(b) => result.edge_labels[edge.index] = NodeLayout::from_box(b)
-      None => ()
-    }
-  }
-  for ab in graph.activation_boxes {
-    result.activation_boxes.push((ab.0, NodeLayout::from_box(ab.1)))
-  }
-  for note in graph.sequence_notes {
-    result.sequence_notes.push((note.0, note.1, NodeLayout::from_box(note.2)))
-  }
-  for fragment in graph.sequence_fragments {
-    result.sequence_fragments.push(fragment_layout_from_fragment(fragment))
-  }
-  result
-}
-
-///|
-fn fragment_layout_from_fragment(
-  fragment : @graph.SequenceFragment,
-) -> SequenceFragmentLayout {
-  let operands : Array[FragmentOperandLayout] = []
-  for op in fragment.operands {
-    operands.push({ condition: op.condition, separator_y: op.separator_y })
-  }
-  {
-    fragment_type: fragment.fragment_type,
-    condition: fragment.condition,
-    bbox: fragment.bbox,
-    start_index: fragment.start_index,
-    end_index: fragment.end_index,
-    operands,
-  }
-}
-
-///|
-fn LayoutResult::apply_to_graph(
-  self : LayoutResult,
-  graph : @graph.Graph,
-) -> Unit {
-  for obj in graph.objects {
-    match self.nodes.get(obj.id) {
-      Some(layout) => obj.set_box(layout.to_box())
-      None => ()
-    }
-  }
-  for edge in graph.edges {
-    match self.edges.get(edge.index) {
-      Some(layout) => {
-        edge.route.clear()
-        for p in layout.points {
-          edge.route.push(p)
-        }
-      }
-      None => ()
-    }
-    match self.edge_labels.get(edge.index) {
-      Some(layout) => edge.label_box = Some(layout.to_box())
-      None => ()
-    }
-  }
-  graph.activation_boxes.clear()
-  for box in self.activation_boxes {
-    graph.activation_boxes.push((box.0, box.1.to_box()))
-  }
-  graph.sequence_notes.clear()
-  for note in self.sequence_notes {
-    graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
-  }
-}
-
-///|
-/// Materialize a new graph from immutable input + layout.
-pub fn LayoutResult::materialize(
-  self : LayoutResult,
-  graph : @graph.GraphInput,
-) -> @graph.Graph {
-  let materialized = @graph.Graph::from_input(graph)
-  self.apply_to_graph(materialized)
-  materialized
 }
 
 ///|

@@ -89,16 +89,13 @@ pub fn ActivationBox::get_box(self : ActivationBox) -> @graph.Box {
 
 ///|
 /// Layout a sequence diagram container
-pub fn layout_sequence(
-  container : @graph.Object,
-  config : LayoutConfig,
-) -> Unit {
+pub fn layout_sequence(container : Object, config : LayoutConfig) -> Unit {
   let children = container.get_children()
   if children.length() == 0 {
     return
   }
   // Collect actors (direct children of sequence diagram)
-  let actors : Array[@graph.Object] = []
+  let actors : Array[Object] = []
   for child in children {
     actors.push(child)
   }
@@ -165,8 +162,8 @@ pub(all) struct SequenceLayoutResult {
 ///|
 /// Layout a sequence diagram container with message routing
 pub fn layout_sequence_with_messages(
-  container : @graph.Object,
-  graph : @graph.Graph,
+  container : Object,
+  graph : Graph,
   config : LayoutConfig,
 ) -> Unit {
   let _ = layout_sequence_with_activations(container, graph, config)
@@ -176,8 +173,8 @@ pub fn layout_sequence_with_messages(
 ///|
 /// Layout a sequence diagram container with message routing and return activation boxes
 pub fn layout_sequence_with_activations(
-  container : @graph.Object,
-  graph : @graph.Graph,
+  container : Object,
+  graph : Graph,
   config : LayoutConfig,
 ) -> SequenceLayoutResult {
   let children = container.get_children()
@@ -186,8 +183,8 @@ pub fn layout_sequence_with_activations(
   }
   // Collect actors (direct children of sequence diagram that have edge refs)
   // and groups (containers with fragment-like labels that are not actors)
-  let actors : Array[@graph.Object] = []
-  let groups : Array[@graph.Object] = []
+  let actors : Array[Object] = []
+  let groups : Array[Object] = []
   let container_id = container.get_id()
   for child in children {
     // Check if this child is involved in any edges - if so, it's an actor
@@ -272,7 +269,7 @@ pub fn layout_sequence_with_activations(
 ///|
 /// Place actors horizontally at the top
 fn place_sequence_actors(
-  actors : Array[@graph.Object],
+  actors : Array[Object],
   config : LayoutConfig,
 ) -> Double {
   let mut max_height = 0.0
@@ -297,10 +294,10 @@ fn place_sequence_actors(
 ///|
 /// Collect all edges that represent messages in the sequence diagram
 fn collect_sequence_messages_from_graph(
-  graph : @graph.Graph,
+  graph : Graph,
   container_id : String,
-) -> Array[@graph.Edge] {
-  let messages : Array[@graph.Edge] = []
+) -> Array[Edge] {
+  let messages : Array[Edge] = []
   // Find edges whose source and destination are children of this container
   for edge in graph.get_edges() {
     let src_id = edge.get_src_id()
@@ -337,8 +334,8 @@ fn is_child_of_container(node_id : String, container_id : String) -> Bool {
 /// Route messages with positions tracking
 /// Returns (final_y, activation_boxes, message_positions)
 fn route_messages_with_positions(
-  messages : Array[@graph.Edge],
-  actors : Array[@graph.Object],
+  messages : Array[Edge],
+  actors : Array[Object],
   start_y : Double,
 ) -> (Double, Array[ActivationBox], Map[Int, Double]) {
   let mut current_y = start_y
@@ -415,11 +412,11 @@ fn route_messages_with_positions(
 ///|
 /// Create sequence fragments from groups
 fn create_sequence_fragments(
-  graph : @graph.Graph,
-  groups : Array[@graph.Object],
-  messages : Array[@graph.Edge],
+  graph : Graph,
+  groups : Array[Object],
+  messages : Array[Edge],
   message_positions : Map[Int, Double],
-  actors : Array[@graph.Object],
+  actors : Array[Object],
 ) -> Unit {
   let fragment_padding = 10.0
   for group in groups {
@@ -460,9 +457,7 @@ fn create_sequence_fragments(
         max_y - min_y + min_message_distance + fragment_padding * 2.0,
       )
       // Create the fragment
-      let fragment = @graph.SequenceFragment::new(
-        fragment_type, start_idx, end_idx,
-      )
+      let fragment = SequenceFragment::new(fragment_type, start_idx, end_idx)
       fragment.bbox = Some(bbox)
       // Parse condition from label if present (e.g., "alt [x > 0]")
       fragment.condition = parse_fragment_condition(group_label)
@@ -473,7 +468,7 @@ fn create_sequence_fragments(
 
 ///|
 /// Check if an object is a sequence group/fragment (container with fragment-like label)
-fn is_sequence_group(obj : @graph.Object) -> Bool {
+fn is_sequence_group(obj : Object) -> Bool {
   if not(obj.is_container()) {
     return false
   }
@@ -542,7 +537,7 @@ fn edge_belongs_to_group(
 
 ///|
 /// Compute the horizontal span of all actors (leftmost x to rightmost x + width)
-fn compute_actor_span(actors : Array[@graph.Object]) -> (Double, Double) {
+fn compute_actor_span(actors : Array[Object]) -> (Double, Double) {
   let mut left = 1000000.0 // Large value as infinity placeholder
   let mut right = -1000000.0 // Large negative value
   for actor in actors {
@@ -592,10 +587,7 @@ fn substring(s : String, start : Int, end : Int) -> String {
 
 ///|
 /// Find an actor whose ID ends with the given suffix
-fn find_actor_by_suffix(
-  actors : Array[@graph.Object],
-  suffix : String,
-) -> @graph.Object? {
+fn find_actor_by_suffix(actors : Array[Object], suffix : String) -> Object? {
   for actor in actors {
     let id = actor.get_id()
     if id.has_suffix("." + suffix) || id == suffix {
@@ -607,12 +599,7 @@ fn find_actor_by_suffix(
 
 ///|
 /// Route a single message between two actors
-fn route_message(
-  edge : @graph.Edge,
-  src : @graph.Object,
-  dst : @graph.Object,
-  y : Double,
-) -> Unit {
+fn route_message(edge : Edge, src : Object, dst : Object, y : Double) -> Unit {
   // Clear existing route points
   edge.route.clear()
   if src.get_box() is Some(src_box) && dst.get_box() is Some(dst_box) {
@@ -641,15 +628,15 @@ fn route_message(
 
 ///|
 /// Check if object is a sequence diagram
-pub fn is_sequence_diagram(obj : @graph.Object) -> Bool {
+pub fn is_sequence_diagram(obj : Object) -> Bool {
   obj.get_shape() == "sequence_diagram"
 }
 
 ///|
 /// Check if an object is an actor in a sequence diagram (involved in edges)
 fn is_actor_in_sequence(
-  obj : @graph.Object,
-  graph : @graph.Graph,
+  obj : Object,
+  graph : Graph,
   container_id : String,
 ) -> Bool {
   let obj_id = obj.get_id()
@@ -674,11 +661,7 @@ fn is_actor_in_sequence(
 
 ///|
 /// Check if an object is a note (child of an actor with no edge references)
-fn is_sequence_note(
-  obj : @graph.Object,
-  graph : @graph.Graph,
-  container_id : String,
-) -> Bool {
+fn is_sequence_note(obj : Object, graph : Graph, container_id : String) -> Bool {
   // Notes are objects that are NOT involved in any edges
   // and have no children
   if obj.get_children().length() > 0 {
@@ -691,8 +674,8 @@ fn is_sequence_note(
 ///|
 /// Collect notes from actors and position them below their parent actor
 fn collect_and_position_notes(
-  actors : Array[@graph.Object],
-  graph : @graph.Graph,
+  actors : Array[Object],
+  graph : Graph,
   container_id : String,
   start_y : Double,
 ) -> Array[SequenceNote] {
@@ -725,8 +708,8 @@ fn collect_and_position_notes(
 ///|
 /// Add lifeline edges for each actor (dashed vertical lines from actor bottom to diagram end)
 fn add_lifeline_edges(
-  graph : @graph.Graph,
-  actors : Array[@graph.Object],
+  graph : Graph,
+  actors : Array[Object],
   actor_bottom_y : Double,
   end_y : Double,
   config : LayoutConfig,
@@ -738,7 +721,7 @@ fn add_lifeline_edges(
       // Create a lifeline edge with no arrows and dashed stroke
       let edge_index = graph.get_edges().length()
       let lifeline_id = actor.get_id() + "__lifeline"
-      let edge = @graph.Edge::new(
+      let edge = Edge::new(
         edge_index, lifeline_id, // Use a pseudo ID for the lifeline source
          lifeline_id, // Same for destination (self-edge)
          false, // No source arrow
@@ -757,13 +740,13 @@ fn add_lifeline_edges(
 ///|
 /// Add activation boxes as objects
 fn add_activation_box_objects(
-  graph : @graph.Graph,
+  graph : Graph,
   activation_boxes : Array[ActivationBox],
 ) -> Unit {
   for i, ab in activation_boxes {
     let box = ab.get_box()
     let obj_id = ab.actor_id + "__activation_" + i.to_string()
-    let obj = @graph.Object::new(obj_id)
+    let obj = Object::new(obj_id)
     obj.set_label("") // No label for activation boxes
     obj.set_box(box)
     // Store in graph's activation_boxes for backward compatibility

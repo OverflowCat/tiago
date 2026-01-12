@@ -60,9 +60,19 @@ pub struct RenderGraph {
   steps : Array[RenderStep]
   legend : @graph.LegendInput?
 }
+pub fn RenderGraph::find_object(Self, String) -> RenderObject?
+pub fn RenderGraph::get_edges(Self) -> Array[RenderEdge]
+pub fn RenderGraph::get_layer(Self, String) -> Self?
+pub fn RenderGraph::get_objects(Self) -> Array[RenderObject]
+pub fn RenderGraph::get_scenario(Self, String) -> Self?
+pub fn RenderGraph::get_step_by_name(Self, String) -> Self?
 pub fn RenderGraph::has_layers(Self) -> Bool
+pub fn RenderGraph::has_legend(Self) -> Bool
 pub fn RenderGraph::has_scenarios(Self) -> Bool
 pub fn RenderGraph::has_steps(Self) -> Bool
+pub fn RenderGraph::layer_names(Self) -> Array[String]
+pub fn RenderGraph::scenario_names(Self) -> Array[String]
+pub fn RenderGraph::step_names(Self) -> Array[String]
 pub impl Show for RenderGraph
 
 pub struct RenderLayer {
@@ -93,6 +103,10 @@ pub struct RenderObject {
   grid_row_span : Int?
   near : String?
 }
+pub fn RenderObject::center(Self) -> @graph.Point?
+pub fn RenderObject::get_box(Self) -> @graph.Box?
+pub fn RenderObject::get_id(Self) -> String
+pub fn RenderObject::get_label_box(Self) -> @graph.Box?
 pub fn RenderObject::is_container(Self) -> Bool
 pub impl Show for RenderObject
 

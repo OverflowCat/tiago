@@ -29,7 +29,7 @@ pub fn ArrowheadType::to_ascii(Self, Bool) -> String
 pub impl Eq for ArrowheadType
 pub impl Show for ArrowheadType
 
-pub(all) struct Box {
+pub struct Box {
   x : Double
   y : Double
   width : Double
@@ -51,43 +51,6 @@ pub fn Box::zero() -> Self
 pub impl Eq for Box
 pub impl Show for Box
 
-pub(all) struct Edge {
-  index : Int
-  src_id : String
-  dst_id : String
-  src_arrow : Bool
-  dst_arrow : Bool
-  mut src_arrowhead : ArrowheadType
-  mut dst_arrowhead : ArrowheadType
-  mut src_anchor : String?
-  mut dst_anchor : String?
-  mut label : String
-  style : Style
-  route : Array[Point]
-  mut bend_points : Array[Point]?
-  is_curve : Bool
-  z_index : Int
-  mut reference_count : Int
-  mut label_box : Box?
-  mut src_column_index : Int?
-  mut dst_column_index : Int?
-  mut src_port : Port?
-  mut dst_port : Port?
-}
-pub fn Edge::add_route_point(Self, Point) -> Unit
-pub fn Edge::arrow_string(Self) -> String
-pub fn Edge::get_bend_points(Self) -> Array[Point]?
-pub fn Edge::get_dst_id(Self) -> String
-pub fn Edge::get_label_box(Self) -> Box?
-pub fn Edge::get_route(Self) -> Array[Point]
-pub fn Edge::get_src_id(Self) -> String
-pub fn Edge::midpoint(Self) -> Point?
-pub fn Edge::new(Int, String, String, Bool, Bool) -> Self
-pub fn Edge::set_bend_points(Self, Array[Point]) -> Unit
-pub fn Edge::set_label(Self, String) -> Unit
-pub fn Edge::set_label_box(Self, Box) -> Unit
-pub impl Show for Edge
-
 pub struct EdgeInput {
   index : Int
   src_id : String
@@ -104,11 +67,16 @@ pub struct EdgeInput {
   is_curve : Bool
   z_index : Int
   reference_count : Int
+  label_box : Box?
   src_column_index : Int?
   dst_column_index : Int?
 }
-pub fn EdgeInput::from_edge(Edge) -> Self
 pub fn EdgeInput::from_model(EdgeModel) -> Self
+pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String, StyleInput, Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
+pub fn EdgeInput::get_dst_id(Self) -> String
+pub fn EdgeInput::get_label_box(Self) -> Box?
+pub fn EdgeInput::get_src_id(Self) -> String
+pub fn EdgeInput::new(Int, String, String, Bool, Bool) -> Self
 pub impl Show for EdgeInput
 
 pub struct EdgeModel {
@@ -131,8 +99,6 @@ pub struct EdgeModel {
   label_box : Box?
   src_column_index : Int?
   dst_column_index : Int?
-  src_port : Port?
-  dst_port : Port?
 }
 pub fn EdgeModel::new(Int, String, String, Bool, Bool) -> Self
 pub fn EdgeModel::with_label(Self, String) -> Self
@@ -140,16 +106,10 @@ pub fn EdgeModel::with_label_box(Self, Box?) -> Self
 pub fn EdgeModel::with_route(Self, Array[Point]) -> Self
 pub impl Show for EdgeModel
 
-pub(all) struct FragmentOperand {
-  condition : String?
-  mut separator_y : Double
-}
-pub fn FragmentOperand::new(String?) -> Self
-pub impl Show for FragmentOperand
-
 pub struct FragmentOperandInput {
   condition : String?
 }
+pub fn FragmentOperandInput::new(String?) -> Self
 pub impl Show for FragmentOperandInput
 
 pub struct FragmentOperandModel {
@@ -157,54 +117,6 @@ pub struct FragmentOperandModel {
   separator_y : Double
 }
 pub impl Show for FragmentOperandModel
-
-pub(all) struct Graph {
-  name : String
-  root : Object
-  objects : Array[Object]
-  edges : Array[Edge]
-  mut activation_boxes : Array[(String, Box)]
-  mut sequence_notes : Array[(String, String, Box)]
-  sequence_fragments : Array[SequenceFragment]
-  layers : Array[Layer]
-  scenarios : Array[Scenario]
-  steps : Array[Step]
-  mut legend : Legend?
-}
-pub fn Graph::add_edge(Self, Edge) -> Unit
-pub fn Graph::add_fragment(Self, SequenceFragment) -> Unit
-pub fn Graph::add_layer(Self, Layer) -> Unit
-pub fn Graph::add_object(Self, Object) -> Unit
-pub fn Graph::add_scenario(Self, Scenario) -> Unit
-pub fn Graph::add_step(Self, Step) -> Unit
-pub fn Graph::all_variants(Self) -> Array[VariantGraph]
-pub fn Graph::clone_deep(Self) -> Self
-pub fn Graph::edges_from(Self, String) -> Array[Edge]
-pub fn Graph::edges_to(Self, String) -> Array[Edge]
-pub fn Graph::find_object(Self, String) -> Object?
-pub fn Graph::from_input(GraphInput) -> Self
-pub fn Graph::get_edges(Self) -> Array[Edge]
-pub fn Graph::get_layer(Self, String) -> Self?
-pub fn Graph::get_layers(Self) -> Array[Layer]
-pub fn Graph::get_legend(Self) -> Legend?
-pub fn Graph::get_objects(Self) -> Array[Object]
-pub fn Graph::get_scenario(Self, String) -> Self?
-pub fn Graph::get_scenarios(Self) -> Array[Scenario]
-pub fn Graph::get_step(Self, Int) -> Self?
-pub fn Graph::get_step_by_name(Self, String) -> Self?
-pub fn Graph::get_steps(Self) -> Array[Step]
-pub fn Graph::has_fragments(Self) -> Bool
-pub fn Graph::has_layers(Self) -> Bool
-pub fn Graph::has_legend(Self) -> Bool
-pub fn Graph::has_scenarios(Self) -> Bool
-pub fn Graph::has_steps(Self) -> Bool
-pub fn Graph::has_variants(Self) -> Bool
-pub fn Graph::layer_names(Self) -> Array[String]
-pub fn Graph::new(String) -> Self
-pub fn Graph::scenario_names(Self) -> Array[String]
-pub fn Graph::set_legend(Self, Legend) -> Unit
-pub fn Graph::step_names(Self) -> Array[String]
-pub impl Show for Graph
 
 pub struct GraphInput {
   name : String
@@ -217,8 +129,13 @@ pub struct GraphInput {
   steps : Array[StepInput]
   legend : LegendInput?
 }
-pub fn GraphInput::from_graph(Graph) -> Self
+pub fn GraphInput::children_of(Self, ObjectInput) -> Array[ObjectInput]
+pub fn GraphInput::find_object(Self, String) -> ObjectInput?
 pub fn GraphInput::from_model(GraphModel) -> Self
+pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?) -> Self
+pub fn GraphInput::get_edges(Self) -> Array[EdgeInput]
+pub fn GraphInput::get_objects(Self) -> Array[ObjectInput]
+pub fn GraphInput::new(String) -> Self
 pub impl Show for GraphInput
 
 pub struct GraphModel {
@@ -240,30 +157,11 @@ pub fn GraphModel::new(String) -> Self
 pub fn GraphModel::with_legend(Self, LegendModel?) -> Self
 pub impl Show for GraphModel
 
-pub(all) enum GraphVariant {
-  LayerVariant(name~ : String)
-  ScenarioVariant(name~ : String)
-  StepVariant(index~ : Int, name~ : String)
-}
-pub fn GraphVariant::layer(String) -> Self
-pub fn GraphVariant::name(Self) -> String
-pub fn GraphVariant::scenario(String) -> Self
-pub fn GraphVariant::step(Int, String) -> Self
-pub fn GraphVariant::step_index(Self) -> Int?
-pub fn GraphVariant::variant_type(Self) -> VariantType
-pub impl Show for GraphVariant
-
-pub(all) struct Layer {
-  name : String
-  graph : Graph
-}
-pub fn Layer::new(String, Graph) -> Self
-pub impl Show for Layer
-
 pub struct LayerInput {
   name : String
   graph : GraphInput
 }
+pub fn LayerInput::new(String, GraphInput) -> Self
 pub impl Show for LayerInput
 
 pub struct LayerModel {
@@ -301,15 +199,15 @@ pub fn Legend::with_position(LegendPosition) -> Self
 pub impl Show for Legend
 
 pub(all) enum LegendEntry {
-  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : Style?)
-  ConnectionEntry(src_arrow~ : ArrowheadType, dst_arrow~ : ArrowheadType, label~ : String, style~ : Style?)
+  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : StyleInput?)
+  ConnectionEntry(src_arrow~ : ArrowheadType, dst_arrow~ : ArrowheadType, label~ : String, style~ : StyleInput?)
   CustomEntry(icon~ : String, label~ : String)
   Separator
 }
-pub fn LegendEntry::connection(ArrowheadType, ArrowheadType, String, Style?) -> Self
+pub fn LegendEntry::connection(ArrowheadType, ArrowheadType, String, StyleInput?) -> Self
 pub fn LegendEntry::custom(String, String) -> Self
 pub fn LegendEntry::separator() -> Self
-pub fn LegendEntry::shape(ShapeType, String, Style?) -> Self
+pub fn LegendEntry::shape(ShapeType, String, StyleInput?) -> Self
 pub impl Show for LegendEntry
 
 pub enum LegendEntryInput {
@@ -318,7 +216,10 @@ pub enum LegendEntryInput {
   CustomEntry(icon~ : String, label~ : String)
   Separator
 }
-pub fn LegendEntryInput::from_entry(LegendEntry) -> Self
+pub fn LegendEntryInput::connection(ArrowheadType, ArrowheadType, String, StyleInput?) -> Self
+pub fn LegendEntryInput::custom(String, String) -> Self
+pub fn LegendEntryInput::separator() -> Self
+pub fn LegendEntryInput::shape(ShapeType, String, StyleInput?) -> Self
 pub impl Show for LegendEntryInput
 
 pub struct LegendInput {
@@ -333,15 +234,15 @@ pub struct LegendInput {
 }
 pub fn LegendInput::calculate_size(Self, Int) -> (Double, Double)
 pub fn LegendInput::entry_count(Self) -> Int
-pub fn LegendInput::from_legend(Legend) -> Self
 pub fn LegendInput::from_model(LegendModel) -> Self
+pub fn LegendInput::from_parts(String?, LegendPosition, Array[LegendEntryInput], String?, String?, Double, Double, Double) -> Self
 pub fn LegendInput::is_empty(Self) -> Bool
 pub impl Show for LegendInput
 
 pub struct LegendModel {
   title : String?
   position : LegendPosition
-  entries : Array[LegendEntry]
+  entries : Array[LegendEntryInput]
   fill : String?
   stroke : String?
   padding : Double
@@ -363,66 +264,13 @@ pub fn LegendPosition::to_position_string(Self) -> String
 pub impl Eq for LegendPosition
 pub impl Show for LegendPosition
 
-pub(all) struct Object {
-  id : String
-  mut label : String
-  mut shape_type : ShapeType
-  style : Style
-  mut box : Box?
-  mut label_box : Box?
-  children : Array[Object]
-  z_index : Int
-  mut icon : String?
-  mut tooltip : String?
-  mut link : String?
-  classes : Array[String]
-  mut grid_rows : Int?
-  mut grid_columns : Int?
-  mut grid_gap : Double?
-  mut horizontal_gap : Double?
-  mut vertical_gap : Double?
-  mut grid_column_span : Int?
-  mut grid_row_span : Int?
-  mut near : String?
-}
-pub fn Object::add_child(Self, Self) -> Unit
-pub fn Object::center(Self) -> Point?
-pub fn Object::find_child(Self, String) -> Self?
-pub fn Object::get_box(Self) -> Box?
-pub fn Object::get_children(Self) -> Array[Self]
-pub fn Object::get_grid_column_span(Self) -> Int
-pub fn Object::get_grid_columns(Self) -> Int?
-pub fn Object::get_grid_row_span(Self) -> Int
-pub fn Object::get_grid_rows(Self) -> Int?
-pub fn Object::get_horizontal_gap(Self) -> Double
-pub fn Object::get_id(Self) -> String
-pub fn Object::get_label(Self) -> String
-pub fn Object::get_near(Self) -> String?
-pub fn Object::get_shape(Self) -> String
-pub fn Object::get_shape_type(Self) -> ShapeType
-pub fn Object::get_vertical_gap(Self) -> Double
-pub fn Object::has_near(Self) -> Bool
-pub fn Object::is_container(Self) -> Bool
-pub fn Object::is_grid_diagram(Self) -> Bool
-pub fn Object::new(String) -> Self
-pub fn Object::set_box(Self, Box) -> Unit
-pub fn Object::set_grid_column_span(Self, Int) -> Unit
-pub fn Object::set_grid_columns(Self, Int) -> Unit
-pub fn Object::set_grid_gap(Self, Double) -> Unit
-pub fn Object::set_grid_row_span(Self, Int) -> Unit
-pub fn Object::set_grid_rows(Self, Int) -> Unit
-pub fn Object::set_label(Self, String) -> Unit
-pub fn Object::set_near(Self, String) -> Unit
-pub fn Object::set_shape(Self, String) -> Unit
-pub fn Object::set_shape_type(Self, ShapeType) -> Unit
-pub fn Object::with_label(String, String) -> Self
-pub impl Show for Object
-
 pub struct ObjectInput {
   id : String
   label : String
   shape_type : ShapeType
   style : StyleInput
+  box : Box?
+  label_box : Box?
   child_ids : Array[String]
   z_index : Int
   icon : String?
@@ -439,7 +287,10 @@ pub struct ObjectInput {
   near : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_object(Object) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?) -> Self
+pub fn ObjectInput::get_box(Self) -> Box?
+pub fn ObjectInput::get_label_box(Self) -> Box?
+pub fn ObjectInput::new(String) -> Self
 pub impl Show for ObjectInput
 
 pub struct ObjectModel {
@@ -471,7 +322,7 @@ pub fn ObjectModel::with_label(Self, String) -> Self
 pub fn ObjectModel::with_label_box(Self, Box?) -> Self
 pub impl Show for ObjectModel
 
-pub(all) struct Point {
+pub struct Point {
   x : Double
   y : Double
 }
@@ -485,30 +336,6 @@ pub fn Point::sub(Self, Self) -> Self
 pub fn Point::zero() -> Self
 pub impl Eq for Point
 pub impl Show for Point
-
-pub(all) struct Port {
-  side : PortSide
-  position : Double
-  mut point : Point?
-}
-pub fn Port::get_point(Self) -> Point?
-pub fn Port::get_position(Self) -> Double
-pub fn Port::get_side(Self) -> PortSide
-pub fn Port::is_horizontal(Self) -> Bool
-pub fn Port::is_vertical(Self) -> Bool
-pub fn Port::new(PortSide, Double) -> Self
-pub fn Port::set_point(Self, Point) -> Unit
-pub impl Eq for Port
-pub impl Show for Port
-
-pub(all) enum PortSide {
-  Top
-  Bottom
-  Left
-  Right
-}
-pub impl Eq for PortSide
-pub impl Show for PortSide
 
 pub struct Route {
   style : RouteStyle
@@ -541,17 +368,11 @@ pub fn RouteStyle::to_route_string(Self) -> String
 pub impl Eq for RouteStyle
 pub impl Show for RouteStyle
 
-pub(all) struct Scenario {
-  name : String
-  graph : Graph
-}
-pub fn Scenario::new(String, Graph) -> Self
-pub impl Show for Scenario
-
 pub struct ScenarioInput {
   name : String
   graph : GraphInput
 }
+pub fn ScenarioInput::new(String, GraphInput) -> Self
 pub impl Show for ScenarioInput
 
 pub struct ScenarioModel {
@@ -560,17 +381,6 @@ pub struct ScenarioModel {
 }
 pub impl Show for ScenarioModel
 
-pub(all) struct SequenceFragment {
-  fragment_type : String
-  mut condition : String?
-  mut bbox : Box?
-  start_index : Int
-  end_index : Int
-  operands : Array[FragmentOperand]
-}
-pub fn SequenceFragment::new(String, Int, Int) -> Self
-pub impl Show for SequenceFragment
-
 pub struct SequenceFragmentInput {
   fragment_type : String
   condition : String?
@@ -578,8 +388,8 @@ pub struct SequenceFragmentInput {
   end_index : Int
   operands : Array[FragmentOperandInput]
 }
-pub fn SequenceFragmentInput::from_fragment(SequenceFragment) -> Self
 pub fn SequenceFragmentInput::from_model(SequenceFragmentModel) -> Self
+pub fn SequenceFragmentInput::new(String, String?, Int, Int, Array[FragmentOperandInput]) -> Self
 pub impl Show for SequenceFragmentInput
 
 pub struct SequenceFragmentModel {
@@ -631,17 +441,11 @@ pub fn ShapeType::to_shape_string(Self) -> String
 pub impl Eq for ShapeType
 pub impl Show for ShapeType
 
-pub(all) struct Step {
-  name : String
-  graph : Graph
-}
-pub fn Step::new(String, Graph) -> Self
-pub impl Show for Step
-
 pub struct StepInput {
   name : String
   graph : GraphInput
 }
+pub fn StepInput::new(String, GraphInput) -> Self
 pub impl Show for StepInput
 
 pub struct StepModel {
@@ -649,35 +453,6 @@ pub struct StepModel {
   graph : GraphModel
 }
 pub impl Show for StepModel
-
-pub(all) struct Style {
-  mut opacity : Double?
-  mut stroke : String?
-  mut fill : String?
-  mut stroke_width : Double?
-  mut stroke_dash : Double?
-  mut border_radius : Double?
-  mut shadow : Bool?
-  mut three_d : Bool?
-  multiple : Bool?
-  font : String?
-  mut font_size : Int?
-  mut font_color : String?
-  mut bold : Bool?
-  mut italic : Bool?
-  underline : Bool?
-  mut animated : Bool?
-  filled : Bool?
-  mut double_border : Bool?
-  mut text_transform : String?
-  mut font_family : String?
-  mut fill_pattern : String?
-  mut sketch : Bool?
-  mut curved : Bool?
-}
-pub fn Style::new() -> Self
-pub impl Eq for Style
-pub impl Show for Style
 
 pub struct StyleInput {
   opacity : Double?
@@ -705,7 +480,8 @@ pub struct StyleInput {
   curved : Bool?
 }
 pub fn StyleInput::from_model(StyleModel) -> Self
-pub fn StyleInput::from_style(Style) -> Self
+pub fn StyleInput::from_parts(Double?, String?, String?, Double?, Double?, Double?, Bool?, Bool?, Bool?, String?, Int?, String?, Bool?, Bool?, Bool?, Bool?, Bool?, Bool?, String?, String?, String?, Bool?, Bool?) -> Self
+pub fn StyleInput::new() -> Self
 pub impl Eq for StyleInput
 pub impl Show for StyleInput
 
@@ -737,23 +513,6 @@ pub struct StyleModel {
 pub fn StyleModel::new() -> Self
 pub impl Eq for StyleModel
 pub impl Show for StyleModel
-
-pub struct VariantGraph {
-  variant : GraphVariant
-  graph : Graph
-}
-pub fn VariantGraph::name(Self) -> String
-pub fn VariantGraph::new(GraphVariant, Graph) -> Self
-pub fn VariantGraph::variant_type(Self) -> VariantType
-pub impl Show for VariantGraph
-
-pub(all) enum VariantType {
-  Layer
-  Scenario
-  Step
-}
-pub impl Eq for VariantType
-pub impl Show for VariantType
 
 pub struct Waypoint {
   x : Double

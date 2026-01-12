@@ -22,7 +22,7 @@ test "break_cycles detects simple cycle" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   // Should have found one back-edge to break
   inspect(result.had_cycles, content="true")
@@ -36,7 +36,7 @@ test "break_cycles handles DAG" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   // No cycles to break
   inspect(result.had_cycles, content="false")
@@ -50,7 +50,7 @@ test "break_cycles handles self-loop" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   // Self-loop is a cycle
   inspect(result.had_cycles, content="true")
@@ -63,7 +63,7 @@ test "break_cycles handles diamond" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   inspect(result.had_cycles, content="false")
 }
@@ -75,7 +75,7 @@ test "break_cycles handles multiple cycles" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   inspect(result.had_cycles, content="true")
   // Should break at least 2 edges (one per cycle)
@@ -88,7 +88,7 @@ test "get_effective_src/dst respects reversal" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let result = break_cycles(graph)
   // At least one edge should be reversed
   let mut found_reversed = false

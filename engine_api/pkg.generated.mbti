@@ -36,12 +36,14 @@ pub impl Show for Direction
 pub struct EdgeLayout {
   points : Array[@graph.Point]
 }
+pub fn EdgeLayout::new(Array[@graph.Point]) -> Self
 pub impl Show for EdgeLayout
 
 pub struct FragmentOperandLayout {
   condition : String?
   separator_y : Double
 }
+pub fn FragmentOperandLayout::new(String?, Double) -> Self
 pub impl Show for FragmentOperandLayout
 
 pub struct LayoutConfig {
@@ -72,8 +74,6 @@ pub struct LayoutResult {
   sequence_notes : Array[(String, String, NodeLayout)]
   sequence_fragments : Array[SequenceFragmentLayout]
 }
-pub fn LayoutResult::from_graph(@graph.Graph) -> Self
-pub fn LayoutResult::materialize(Self, @graph.GraphInput) -> @graph.Graph
 pub fn LayoutResult::new() -> Self
 pub impl Show for LayoutResult
 
@@ -95,6 +95,7 @@ pub struct SequenceFragmentLayout {
   end_index : Int
   operands : Array[FragmentOperandLayout]
 }
+pub fn SequenceFragmentLayout::new(String, String?, @graph.Box?, Int, Int, Array[FragmentOperandLayout]) -> Self
 pub impl Show for SequenceFragmentLayout
 
 // Type aliases

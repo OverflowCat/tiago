@@ -20,6 +20,20 @@
 /// visual properties.
 
 ///|
+using @graph {
+  type ArrowheadType,
+  type Box,
+  type EdgeInput,
+  type FragmentOperandInput,
+  type GraphInput,
+  type ObjectInput,
+  type Point,
+  type SequenceFragmentInput,
+  type ShapeType,
+  type StyleInput,
+}
+
+///|
 /// The main graph structure
 pub(all) struct Graph {
   name : String
@@ -39,7 +53,7 @@ pub(all) struct Graph {
   /// Named steps - animation frames (for steps: {...})
   steps : Array[Step]
   /// Legend configuration
-  mut legend : Legend?
+  mut legend : @graph.LegendInput?
 } derive(Show)
 
 ///|
@@ -203,22 +217,6 @@ pub(all) struct Edge {
 } derive(Show)
 
 ///|
-/// Bounding box for positioning
-pub(all) struct Box {
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-} derive(Eq, Show)
-
-///|
-/// A 2D point
-pub(all) struct Point {
-  x : Double
-  y : Double
-} derive(Eq, Show)
-
-///|
 /// Port side for edge connections
 pub(all) enum PortSide {
   Top
@@ -294,6 +292,324 @@ pub fn Graph::new(name : String) -> Graph {
 }
 
 ///|
+/// Materialize a mutable graph from immutable input.
+pub fn Graph::from_input(input : GraphInput) -> Graph {
+  let objects : Array[Object] = []
+  let object_by_id : Map[String, Object] = {}
+  let root = Object::from_input_shallow(input.root)
+  object_by_id[root.id] = root
+  for obj in input.objects {
+    let created = Object::from_input_shallow(obj)
+    object_by_id[created.id] = created
+    objects.push(created)
+  }
+  Object::wire_children(object_by_id, input.root)
+  for obj in input.objects {
+    Object::wire_children(object_by_id, obj)
+  }
+  let edges : Array[Edge] = []
+  for e in input.edges {
+    edges.push(Edge::from_input(e))
+  }
+  let fragments : Array[SequenceFragment] = []
+  for f in input.sequence_fragments {
+    fragments.push(SequenceFragment::from_input(f))
+  }
+  let layers : Array[Layer] = []
+  for layer in input.layers {
+    layers.push(Layer::new(layer.name, Graph::from_input(layer.graph)))
+  }
+  let scenarios : Array[Scenario] = []
+  for scenario in input.scenarios {
+    scenarios.push(
+      Scenario::new(scenario.name, Graph::from_input(scenario.graph)),
+    )
+  }
+  let steps : Array[Step] = []
+  for step in input.steps {
+    steps.push(Step::new(step.name, Graph::from_input(step.graph)))
+  }
+  {
+    name: input.name,
+    root,
+    objects,
+    edges,
+    activation_boxes: [],
+    sequence_notes: [],
+    sequence_fragments: fragments,
+    layers,
+    scenarios,
+    steps,
+    legend: input.legend,
+  }
+}
+
+///|
+/// Convert a mutable graph back to immutable input.
+pub fn Graph::to_input(self : Graph) -> GraphInput {
+  let objects : Array[ObjectInput] = []
+  for obj in self.objects {
+    objects.push(Object::to_input(obj))
+  }
+  let edges : Array[EdgeInput] = []
+  for edge in self.edges {
+    edges.push(Edge::to_input(edge))
+  }
+  let fragments : Array[SequenceFragmentInput] = []
+  for fragment in self.sequence_fragments {
+    fragments.push(SequenceFragment::to_input(fragment))
+  }
+  let layers : Array[@graph.LayerInput] = []
+  for layer in self.layers {
+    layers.push(@graph.LayerInput::new(layer.name, layer.graph.to_input()))
+  }
+  let scenarios : Array[@graph.ScenarioInput] = []
+  for scenario in self.scenarios {
+    scenarios.push(
+      @graph.ScenarioInput::new(scenario.name, scenario.graph.to_input()),
+    )
+  }
+  let steps : Array[@graph.StepInput] = []
+  for step in self.steps {
+    steps.push(@graph.StepInput::new(step.name, step.graph.to_input()))
+  }
+  @graph.GraphInput::from_parts(
+    self.name,
+    Object::to_input(self.root),
+    objects,
+    edges,
+    fragments,
+    layers,
+    scenarios,
+    steps,
+    self.legend,
+  )
+}
+
+///|
+fn Style::from_input(input : StyleInput) -> Style {
+  {
+    opacity: input.opacity,
+    stroke: input.stroke,
+    fill: input.fill,
+    stroke_width: input.stroke_width,
+    stroke_dash: input.stroke_dash,
+    border_radius: input.border_radius,
+    shadow: input.shadow,
+    three_d: input.three_d,
+    multiple: input.multiple,
+    font: input.font,
+    font_size: input.font_size,
+    font_color: input.font_color,
+    bold: input.bold,
+    italic: input.italic,
+    underline: input.underline,
+    animated: input.animated,
+    filled: input.filled,
+    double_border: input.double_border,
+    text_transform: input.text_transform,
+    font_family: input.font_family,
+    fill_pattern: input.fill_pattern,
+    sketch: input.sketch,
+    curved: input.curved,
+  }
+}
+
+///|
+fn Style::to_input(style : Style) -> StyleInput {
+  @graph.StyleInput::from_parts(
+    style.opacity,
+    style.stroke,
+    style.fill,
+    style.stroke_width,
+    style.stroke_dash,
+    style.border_radius,
+    style.shadow,
+    style.three_d,
+    style.multiple,
+    style.font,
+    style.font_size,
+    style.font_color,
+    style.bold,
+    style.italic,
+    style.underline,
+    style.animated,
+    style.filled,
+    style.double_border,
+    style.text_transform,
+    style.font_family,
+    style.fill_pattern,
+    style.sketch,
+    style.curved,
+  )
+}
+
+///|
+fn Object::to_input(obj : Object) -> ObjectInput {
+  let child_ids : Array[String] = []
+  for child in obj.children {
+    child_ids.push(child.id)
+  }
+  let classes : Array[String] = []
+  for c in obj.classes {
+    classes.push(c)
+  }
+  @graph.ObjectInput::from_parts(
+    obj.id,
+    obj.label,
+    obj.shape_type,
+    Style::to_input(obj.style),
+    obj.box,
+    obj.label_box,
+    child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+  )
+}
+
+///|
+fn Edge::to_input(edge : Edge) -> EdgeInput {
+  @graph.EdgeInput::from_parts(
+    edge.index,
+    edge.src_id,
+    edge.dst_id,
+    edge.src_arrow,
+    edge.dst_arrow,
+    edge.src_arrowhead,
+    edge.dst_arrowhead,
+    edge.src_anchor,
+    edge.dst_anchor,
+    edge.label,
+    Style::to_input(edge.style),
+    edge.bend_points,
+    edge.is_curve,
+    edge.z_index,
+    edge.reference_count,
+    edge.label_box,
+    edge.src_column_index,
+    edge.dst_column_index,
+  )
+}
+
+///|
+fn SequenceFragment::to_input(
+  fragment : SequenceFragment,
+) -> SequenceFragmentInput {
+  let operands : Array[FragmentOperandInput] = []
+  for op in fragment.operands {
+    operands.push(@graph.FragmentOperandInput::new(op.condition))
+  }
+  @graph.SequenceFragmentInput::new(
+    fragment.fragment_type,
+    fragment.condition,
+    fragment.start_index,
+    fragment.end_index,
+    operands,
+  )
+}
+
+///|
+fn Object::from_input_shallow(input : ObjectInput) -> Object {
+  {
+    id: input.id,
+    label: input.label,
+    shape_type: input.shape_type,
+    style: Style::from_input(input.style),
+    box: input.box,
+    label_box: input.label_box,
+    children: [],
+    z_index: input.z_index,
+    icon: input.icon,
+    tooltip: input.tooltip,
+    link: input.link,
+    classes: input.classes,
+    grid_rows: input.grid_rows,
+    grid_columns: input.grid_columns,
+    grid_gap: input.grid_gap,
+    horizontal_gap: input.horizontal_gap,
+    vertical_gap: input.vertical_gap,
+    grid_column_span: input.grid_column_span,
+    grid_row_span: input.grid_row_span,
+    near: input.near,
+  }
+}
+
+///|
+fn Object::wire_children(
+  object_by_id : Map[String, Object],
+  input : ObjectInput,
+) -> Unit {
+  match object_by_id.get(input.id) {
+    Some(obj) => {
+      obj.children.clear()
+      for child_id in input.child_ids {
+        match object_by_id.get(child_id) {
+          Some(child) => obj.children.push(child)
+          None => ()
+        }
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn Edge::from_input(input : EdgeInput) -> Edge {
+  {
+    index: input.index,
+    src_id: input.src_id,
+    dst_id: input.dst_id,
+    src_arrow: input.src_arrow,
+    dst_arrow: input.dst_arrow,
+    src_arrowhead: input.src_arrowhead,
+    dst_arrowhead: input.dst_arrowhead,
+    src_anchor: input.src_anchor,
+    dst_anchor: input.dst_anchor,
+    label: input.label,
+    style: Style::from_input(input.style),
+    route: [],
+    bend_points: input.bend_points,
+    is_curve: input.is_curve,
+    z_index: input.z_index,
+    reference_count: input.reference_count,
+    label_box: input.label_box,
+    src_column_index: input.src_column_index,
+    dst_column_index: input.dst_column_index,
+    src_port: None,
+    dst_port: None,
+  }
+}
+
+///|
+fn SequenceFragment::from_input(
+  input : SequenceFragmentInput,
+) -> SequenceFragment {
+  let operands : Array[FragmentOperand] = []
+  for op in input.operands {
+    operands.push({ condition: op.condition, separator_y: 0.0 })
+  }
+  {
+    fragment_type: input.fragment_type,
+    condition: input.condition,
+    bbox: None,
+    start_index: input.start_index,
+    end_index: input.end_index,
+    operands,
+  }
+}
+
+///|
 /// Add a sequence fragment to the graph
 pub fn Graph::add_fragment(self : Graph, fragment : SequenceFragment) -> Unit {
   self.sequence_fragments.push(fragment)
@@ -307,13 +623,13 @@ pub fn Graph::has_fragments(self : Graph) -> Bool {
 
 ///|
 /// Get the graph's legend
-pub fn Graph::get_legend(self : Graph) -> Legend? {
+pub fn Graph::get_legend(self : Graph) -> @graph.LegendInput? {
   self.legend
 }
 
 ///|
 /// Set the graph's legend
-pub fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
+pub fn Graph::set_legend(self : Graph, legend : @graph.LegendInput) -> Unit {
   self.legend = Some(legend)
 }
 
@@ -321,7 +637,7 @@ pub fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
 /// Check if the graph has a legend configured
 pub fn Graph::has_legend(self : Graph) -> Bool {
   match self.legend {
-    Some(l) => not(l.is_empty()) && l.position != Hidden
+    Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
     None => false
   }
 }
@@ -366,31 +682,6 @@ pub fn Graph::get_step_by_name(self : Graph, name : String) -> Graph? {
     }
   }
   None
-}
-
-///|
-/// Get all variants as VariantGraph array
-pub fn Graph::all_variants(self : Graph) -> Array[VariantGraph] {
-  let variants : Array[VariantGraph] = []
-  // Add layers
-  for layer in self.layers {
-    variants.push(
-      VariantGraph::new(GraphVariant::layer(layer.name), layer.graph),
-    )
-  }
-  // Add scenarios
-  for scenario in self.scenarios {
-    variants.push(
-      VariantGraph::new(GraphVariant::scenario(scenario.name), scenario.graph),
-    )
-  }
-  // Add steps
-  for i, step in self.steps {
-    variants.push(
-      VariantGraph::new(GraphVariant::step(i + 1, step.name), step.graph),
-    )
-  }
-  variants
 }
 
 ///|
@@ -534,26 +825,6 @@ pub fn Edge::new(
     src_port: None,
     dst_port: None,
   }
-}
-
-///|
-pub fn Box::new(x : Double, y : Double, width : Double, height : Double) -> Box {
-  { x, y, width, height }
-}
-
-///|
-pub fn Box::zero() -> Box {
-  { x: 0.0, y: 0.0, width: 0.0, height: 0.0 }
-}
-
-///|
-pub fn Point::new(x : Double, y : Double) -> Point {
-  { x, y }
-}
-
-///|
-pub fn Point::zero() -> Point {
-  { x: 0.0, y: 0.0 }
 }
 
 ///|
@@ -938,96 +1209,6 @@ pub fn Object::center(self : Object) -> Point? {
 }
 
 // ============================================================================
-// Box operations
-// ============================================================================
-
-///|
-/// Get the center point of the box
-pub fn Box::center(self : Box) -> Point {
-  Point::new(self.x + self.width / 2.0, self.y + self.height / 2.0)
-}
-
-///|
-/// Get the top-left corner
-pub fn Box::top_left(self : Box) -> Point {
-  Point::new(self.x, self.y)
-}
-
-///|
-/// Get the top-right corner
-pub fn Box::top_right(self : Box) -> Point {
-  Point::new(self.x + self.width, self.y)
-}
-
-///|
-/// Get the bottom-left corner
-pub fn Box::bottom_left(self : Box) -> Point {
-  Point::new(self.x, self.y + self.height)
-}
-
-///|
-/// Get the bottom-right corner
-pub fn Box::bottom_right(self : Box) -> Point {
-  Point::new(self.x + self.width, self.y + self.height)
-}
-
-///|
-/// Check if a point is inside the box
-pub fn Box::contains(self : Box, p : Point) -> Bool {
-  p.x >= self.x &&
-  p.x <= self.x + self.width &&
-  p.y >= self.y &&
-  p.y <= self.y + self.height
-}
-
-///|
-/// Check if this box intersects another
-pub fn Box::intersects(self : Box, other : Box) -> Bool {
-  not(
-    self.x + self.width < other.x ||
-    other.x + other.width < self.x ||
-    self.y + self.height < other.y ||
-    other.y + other.height < self.y,
-  )
-}
-
-///|
-/// Get x coordinate
-pub fn Box::get_x(self : Box) -> Double {
-  self.x
-}
-
-///|
-/// Get y coordinate
-pub fn Box::get_y(self : Box) -> Double {
-  self.y
-}
-
-///|
-/// Get width
-pub fn Box::get_width(self : Box) -> Double {
-  self.width
-}
-
-///|
-/// Get height
-pub fn Box::get_height(self : Box) -> Double {
-  self.height
-}
-
-///|
-/// Get x coordinate
-pub fn Point::get_x(self : Point) -> Double {
-  self.x
-}
-
-///|
-/// Get y coordinate
-pub fn Point::get_y(self : Point) -> Double {
-  self.y
-}
-
-// ============================================================================
 // Edge operations
 // ============================================================================
 
@@ -1118,34 +1299,4 @@ pub fn Edge::set_label_box(self : Edge, box : Box) -> Unit {
 /// Get the computed label bounding box
 pub fn Edge::get_label_box(self : Edge) -> Box? {
   self.label_box
-}
-
-// ============================================================================
-// Point operations
-// ============================================================================
-
-///|
-/// Calculate distance to another point
-pub fn Point::distance(self : Point, other : Point) -> Double {
-  let dx = self.x - other.x
-  let dy = self.y - other.y
-  (dx * dx + dy * dy).sqrt()
-}
-
-///|
-/// Add two points
-pub fn Point::add(self : Point, other : Point) -> Point {
-  Point::new(self.x + other.x, self.y + other.y)
-}
-
-///|
-/// Subtract another point
-pub fn Point::sub(self : Point, other : Point) -> Point {
-  Point::new(self.x - other.x, self.y - other.y)
-}
-
-///|
-/// Scale by a factor
-pub fn Point::scale(self : Point, factor : Double) -> Point {
-  Point::new(self.x * factor, self.y * factor)
 }

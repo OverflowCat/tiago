@@ -22,7 +22,7 @@ test "assign_coordinates simple chain" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -58,7 +58,7 @@ test "assign_coordinates diamond" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)
@@ -87,7 +87,7 @@ test "assign_coordinates_simple" {
   let (ast, _) = @parser.parse(source)
   let ir = @ir.compile(ast)
   let graph_input = @exporter.compile("test", ir)
-  let graph = @graph.Graph::from_input(graph_input)
+  let graph = graph_input
   let cycle_result = break_cycles(graph)
   let layer_result = assign_layers(graph, cycle_result)
   let crossing_result = minimize_crossings(graph, layer_result, cycle_result)

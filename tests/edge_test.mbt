@@ -291,9 +291,10 @@ test "edge label has computed position" {
     #|a -> b: test label
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   // The edge should have a label_box set by automatic positioning
-  assert_eq(graph.edges.length(), 1)
-  let edge = graph.edges[0]
-  assert_true(edge.get_label_box() is Some(_))
+  let edges = graph.get_edges()
+  assert_eq(edges.length(), 1)
+  let edge = edges[0]
+  assert_true(edge.label_box is Some(_))
 }
 
 ///|
@@ -304,9 +305,9 @@ test "multiple edge labels are positioned" {
     #|c -> d: third
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   // All edges with labels should have label_box set
-  for edge in graph.edges {
+  for edge in graph.get_edges() {
     if edge.label != "" {
-      assert_true(edge.get_label_box() is Some(_))
+      assert_true(edge.label_box is Some(_))
     }
   }
 }

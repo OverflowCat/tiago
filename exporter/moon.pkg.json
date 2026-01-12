@@ -1,6 +1,5 @@
 {
   "import": [
-    "Milky2018/diago/text_metrics",
     "Milky2018/diago/ir",
     "Milky2018/diago/graph"
   ]

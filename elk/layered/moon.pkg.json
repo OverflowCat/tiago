@@ -1,5 +1,0 @@
-{
-  "import": [
-    { "path": "Milky2018/diago/elk/base", "alias": "elk" }
-  ]
-}

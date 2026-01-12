@@ -19,6 +19,597 @@
 /// layout and rendering.
 
 ///|
+struct Style {
+  mut opacity : Double?
+  mut stroke : String?
+  mut fill : String?
+  mut stroke_width : Double?
+  stroke_dash : Double?
+  mut border_radius : Double?
+  mut shadow : Bool?
+  mut three_d : Bool?
+  multiple : Bool?
+  font : String?
+  mut font_size : Int?
+  mut font_color : String?
+  mut bold : Bool?
+  mut italic : Bool?
+  underline : Bool?
+  mut animated : Bool?
+  filled : Bool?
+  mut double_border : Bool?
+  mut text_transform : String?
+  mut font_family : String?
+  mut fill_pattern : String?
+  mut sketch : Bool?
+  mut curved : Bool?
+} derive(Eq, Show)
+
+///|
+pub fn Style::new() -> Style {
+  {
+    opacity: None,
+    stroke: None,
+    fill: None,
+    stroke_width: None,
+    stroke_dash: None,
+    border_radius: None,
+    shadow: None,
+    three_d: None,
+    multiple: None,
+    font: None,
+    font_size: None,
+    font_color: None,
+    bold: None,
+    italic: None,
+    underline: None,
+    animated: None,
+    filled: None,
+    double_border: None,
+    text_transform: None,
+    font_family: None,
+    fill_pattern: None,
+    sketch: None,
+    curved: None,
+  }
+}
+
+///|
+struct Object {
+  id : String
+  mut label : String
+  mut shape_type : ShapeType
+  style : Style
+  children : Array[Object]
+  z_index : Int
+  mut icon : String?
+  mut tooltip : String?
+  mut link : String?
+  classes : Array[String]
+  mut grid_rows : Int?
+  mut grid_columns : Int?
+  mut grid_gap : Double?
+  mut horizontal_gap : Double?
+  mut vertical_gap : Double?
+  mut grid_column_span : Int?
+  mut grid_row_span : Int?
+  mut near : String?
+} derive(Show)
+
+///|
+pub fn Object::new(id : String) -> Object {
+  {
+    id,
+    label: id,
+    shape_type: Rectangle,
+    style: Style::new(),
+    children: [],
+    z_index: 0,
+    icon: None,
+    tooltip: None,
+    link: None,
+    classes: [],
+    grid_rows: None,
+    grid_columns: None,
+    grid_gap: None,
+    horizontal_gap: None,
+    vertical_gap: None,
+    grid_column_span: None,
+    grid_row_span: None,
+    near: None,
+  }
+}
+
+///|
+pub fn Object::with_label(id : String, label : String) -> Object {
+  let obj = Object::new(id)
+  obj.label = label
+  obj
+}
+
+///|
+pub fn Object::add_child(self : Object, child : Object) -> Unit {
+  self.children.push(child)
+}
+
+///|
+struct Edge {
+  index : Int
+  src_id : String
+  dst_id : String
+  src_arrow : Bool
+  dst_arrow : Bool
+  mut src_arrowhead : ArrowheadType
+  mut dst_arrowhead : ArrowheadType
+  mut src_anchor : String?
+  mut dst_anchor : String?
+  mut label : String
+  style : Style
+  mut bend_points : Array[Point]?
+  is_curve : Bool
+  z_index : Int
+  mut reference_count : Int
+  mut src_column_index : Int?
+  mut dst_column_index : Int?
+} derive(Show)
+
+///|
+pub fn Edge::new(
+  index : Int,
+  src_id : String,
+  dst_id : String,
+  src_arrow : Bool,
+  dst_arrow : Bool,
+) -> Edge {
+  {
+    index,
+    src_id,
+    dst_id,
+    src_arrow,
+    dst_arrow,
+    src_arrowhead: if src_arrow {
+      Triangle
+    } else {
+      None
+    },
+    dst_arrowhead: if dst_arrow {
+      Triangle
+    } else {
+      None
+    },
+    src_anchor: None,
+    dst_anchor: None,
+    label: "",
+    style: Style::new(),
+    bend_points: None,
+    is_curve: false,
+    z_index: 0,
+    reference_count: 1,
+    src_column_index: None,
+    dst_column_index: None,
+  }
+}
+
+///|
+enum LegendEntry {
+  ShapeEntry(shape~ : ShapeType, label~ : String, style~ : Style?)
+  ConnectionEntry(
+    src_arrow~ : ArrowheadType,
+    dst_arrow~ : ArrowheadType,
+    label~ : String,
+    style~ : Style?
+  )
+  CustomEntry(icon~ : String, label~ : String)
+  Separator
+} derive(Show)
+
+///|
+pub fn LegendEntry::shape(
+  shape : ShapeType,
+  label : String,
+  style : Style?,
+) -> LegendEntry {
+  ShapeEntry(shape~, label~, style~)
+}
+
+///|
+pub fn LegendEntry::connection(
+  src_arrow : ArrowheadType,
+  dst_arrow : ArrowheadType,
+  label : String,
+  style : Style?,
+) -> LegendEntry {
+  ConnectionEntry(src_arrow~, dst_arrow~, label~, style~)
+}
+
+///|
+pub fn LegendEntry::custom(icon : String, label : String) -> LegendEntry {
+  CustomEntry(icon~, label~)
+}
+
+///|
+pub fn LegendEntry::separator() -> LegendEntry {
+  Separator
+}
+
+///|
+struct Legend {
+  mut title : String?
+  mut position : LegendPosition
+  entries : Array[LegendEntry]
+  mut fill : String?
+  mut stroke : String?
+  mut padding : Double
+  mut entry_gap : Double
+  mut icon_size : Double
+} derive(Show)
+
+///|
+pub fn Legend::new() -> Legend {
+  {
+    title: None,
+    position: BottomRight,
+    entries: [],
+    fill: Some("#ffffff"),
+    stroke: Some("#cccccc"),
+    padding: 12.0,
+    entry_gap: 8.0,
+    icon_size: 20.0,
+  }
+}
+
+///|
+pub fn Legend::with_position(position : LegendPosition) -> Legend {
+  let legend = Legend::new()
+  legend.position = position
+  legend
+}
+
+///|
+pub fn Legend::add_entry(self : Legend, entry : LegendEntry) -> Unit {
+  self.entries.push(entry)
+}
+
+///|
+pub fn Legend::add_shape(
+  self : Legend,
+  shape : ShapeType,
+  label : String,
+) -> Unit {
+  self.entries.push(LegendEntry::shape(shape, label, None))
+}
+
+///|
+pub fn Legend::add_connection(
+  self : Legend,
+  src_arrow : ArrowheadType,
+  dst_arrow : ArrowheadType,
+  label : String,
+) -> Unit {
+  self.entries.push(LegendEntry::connection(src_arrow, dst_arrow, label, None))
+}
+
+///|
+pub fn Legend::add_separator(self : Legend) -> Unit {
+  self.entries.push(LegendEntry::separator())
+}
+
+///|
+pub fn Legend::set_title(self : Legend, title : String) -> Unit {
+  self.title = Some(title)
+}
+
+///|
+pub fn Legend::set_position(self : Legend, position : LegendPosition) -> Unit {
+  self.position = position
+}
+
+///|
+pub fn Legend::set_fill(self : Legend, fill : String) -> Unit {
+  self.fill = Some(fill)
+}
+
+///|
+pub fn Legend::set_stroke(self : Legend, stroke : String) -> Unit {
+  self.stroke = Some(stroke)
+}
+
+///|
+pub fn Legend::set_padding(self : Legend, padding : Double) -> Unit {
+  self.padding = padding
+}
+
+///|
+pub fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Unit {
+  self.entry_gap = entry_gap
+}
+
+///|
+pub fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Unit {
+  self.icon_size = icon_size
+}
+
+///|
+struct Graph {
+  name : String
+  root : Object
+  objects : Array[Object]
+  edges : Array[Edge]
+  layers : Array[Layer]
+  scenarios : Array[Scenario]
+  steps : Array[Step]
+  mut legend : Legend?
+} derive(Show)
+
+///|
+struct Layer {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+struct Scenario {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+struct Step {
+  name : String
+  graph : Graph
+} derive(Show)
+
+///|
+pub fn Layer::new(name : String, graph : Graph) -> Layer {
+  { name, graph }
+}
+
+///|
+pub fn Scenario::new(name : String, graph : Graph) -> Scenario {
+  { name, graph }
+}
+
+///|
+pub fn Step::new(name : String, graph : Graph) -> Step {
+  { name, graph }
+}
+
+///|
+pub fn Graph::new(name : String) -> Graph {
+  let root = Object::new("root")
+  {
+    name,
+    root,
+    objects: [],
+    edges: [],
+    layers: [],
+    scenarios: [],
+    steps: [],
+    legend: None,
+  }
+}
+
+///|
+pub fn Graph::add_object(self : Graph, obj : Object) -> Unit {
+  self.objects.push(obj)
+}
+
+///|
+pub fn Graph::add_edge(self : Graph, edge : Edge) -> Unit {
+  self.edges.push(edge)
+}
+
+///|
+pub fn Graph::add_layer(self : Graph, layer : Layer) -> Unit {
+  self.layers.push(layer)
+}
+
+///|
+pub fn Graph::add_scenario(self : Graph, scenario : Scenario) -> Unit {
+  self.scenarios.push(scenario)
+}
+
+///|
+pub fn Graph::add_step(self : Graph, step : Step) -> Unit {
+  self.steps.push(step)
+}
+
+///|
+pub fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
+  self.legend = Some(legend)
+}
+
+///|
+pub fn Graph::find_object(self : Graph, id : String) -> Object? {
+  for obj in self.objects {
+    if obj.id == id {
+      return Some(obj)
+    }
+  }
+  None
+}
+
+///|
+fn style_to_input(style : Style) -> @graph.StyleInput {
+  @graph.StyleInput::from_parts(
+    style.opacity,
+    style.stroke,
+    style.fill,
+    style.stroke_width,
+    style.stroke_dash,
+    style.border_radius,
+    style.shadow,
+    style.three_d,
+    style.multiple,
+    style.font,
+    style.font_size,
+    style.font_color,
+    style.bold,
+    style.italic,
+    style.underline,
+    style.animated,
+    style.filled,
+    style.double_border,
+    style.text_transform,
+    style.font_family,
+    style.fill_pattern,
+    style.sketch,
+    style.curved,
+  )
+}
+
+///|
+fn legend_entry_to_input(entry : LegendEntry) -> @graph.LegendEntryInput {
+  match entry {
+    ShapeEntry(shape~, label~, style~) => {
+      let style_input = match style {
+        Some(s) => Some(style_to_input(s))
+        None => None
+      }
+      @graph.LegendEntryInput::shape(shape, label, style_input)
+    }
+    ConnectionEntry(src_arrow~, dst_arrow~, label~, style~) => {
+      let style_input = match style {
+        Some(s) => Some(style_to_input(s))
+        None => None
+      }
+      @graph.LegendEntryInput::connection(
+        src_arrow, dst_arrow, label, style_input,
+      )
+    }
+    CustomEntry(icon~, label~) => @graph.LegendEntryInput::custom(icon, label)
+    Separator => @graph.LegendEntryInput::separator()
+  }
+}
+
+///|
+fn legend_to_input(legend : Legend) -> @graph.LegendInput {
+  let entries : Array[@graph.LegendEntryInput] = []
+  for entry in legend.entries {
+    entries.push(legend_entry_to_input(entry))
+  }
+  @graph.LegendInput::from_parts(
+    legend.title,
+    legend.position,
+    entries,
+    legend.fill,
+    legend.stroke,
+    legend.padding,
+    legend.entry_gap,
+    legend.icon_size,
+  )
+}
+
+///|
+fn object_to_input(obj : Object) -> @graph.ObjectInput {
+  let child_ids : Array[String] = []
+  for child in obj.children {
+    child_ids.push(child.id)
+  }
+  let classes : Array[String] = []
+  for c in obj.classes {
+    classes.push(c)
+  }
+  @graph.ObjectInput::from_parts(
+    obj.id,
+    obj.label,
+    obj.shape_type,
+    style_to_input(obj.style),
+    None,
+    None,
+    child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+  )
+}
+
+///|
+fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
+  let bend_points = match edge.bend_points {
+    Some(ps) => {
+      let copied : Array[Point] = []
+      for p in ps {
+        copied.push(p)
+      }
+      Some(copied)
+    }
+    None => None
+  }
+  @graph.EdgeInput::from_parts(
+    edge.index,
+    edge.src_id,
+    edge.dst_id,
+    edge.src_arrow,
+    edge.dst_arrow,
+    edge.src_arrowhead,
+    edge.dst_arrowhead,
+    edge.src_anchor,
+    edge.dst_anchor,
+    edge.label,
+    style_to_input(edge.style),
+    bend_points,
+    edge.is_curve,
+    edge.z_index,
+    edge.reference_count,
+    None,
+    edge.src_column_index,
+    edge.dst_column_index,
+  )
+}
+
+///|
+fn graph_to_input(graph : Graph) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(object_to_input(obj))
+  }
+  let edges : Array[@graph.EdgeInput] = []
+  for e in graph.edges {
+    edges.push(edge_to_input(e))
+  }
+  let layers : Array[@graph.LayerInput] = []
+  for layer in graph.layers {
+    layers.push(@graph.LayerInput::new(layer.name, graph_to_input(layer.graph)))
+  }
+  let scenarios : Array[@graph.ScenarioInput] = []
+  for scenario in graph.scenarios {
+    scenarios.push(
+      @graph.ScenarioInput::new(scenario.name, graph_to_input(scenario.graph)),
+    )
+  }
+  let steps : Array[@graph.StepInput] = []
+  for step in graph.steps {
+    steps.push(@graph.StepInput::new(step.name, graph_to_input(step.graph)))
+  }
+  let legend = match graph.legend {
+    Some(l) => Some(legend_to_input(l))
+    None => None
+  }
+  @graph.GraphInput::from_parts(
+    graph.name,
+    object_to_input(graph.root),
+    objects,
+    edges,
+    [],
+    layers,
+    scenarios,
+    steps,
+    legend,
+  )
+}
+
+///|
 /// Compilation error
 pub(all) suberror GraphCompileError {
   InvalidShape(String)
@@ -47,9 +638,7 @@ pub fn compile(
   handle_root_shape(graph, ir)
   // Compile legend configuration (and/or auto-generate legend)
   compile_legend(graph, ir)
-  // Set text dimensions for all objects and edges
-  set_text_dimensions(graph)
-  @graph.GraphInput::from_graph(graph)
+  graph_to_input(graph)
 }
 
 ///|
@@ -1428,102 +2017,5 @@ fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
         None => ()
       }
     None => ()
-  }
-}
-
-// ============================================================================
-// Text Dimension Calculation (following D2's approach)
-// ============================================================================
-
-///|
-/// Compute and set text dimensions for all objects and edges
-/// This follows D2's SetDimensions approach: calculate once at graph compilation
-/// and store in obj.box/obj.label_box/edge.label_box for later stages.
-fn set_text_dimensions(graph : Graph) -> Unit {
-  // Set dimensions for all objects
-  for obj in graph.objects {
-    set_object_text_dimensions(obj)
-  }
-
-  // Recursively set dimensions for root's children
-  for child in graph.root.children {
-    set_object_text_dimensions(child)
-  }
-  set_object_text_dimensions(graph.root)
-
-  // Set dimensions for all edges
-  for edge in graph.edges {
-    set_edge_text_dimensions(edge)
-  }
-}
-
-///|
-/// Set text dimensions for a single object
-fn set_object_text_dimensions(obj : Object) -> Unit {
-  // Check if object already has a box (explicitly set by user)
-  match obj.box {
-    Some(_) =>
-      // Has box, just ensure label_box is set
-      if obj.label.length() > 0 && obj.label_box is None {
-        let label_dims = @text_metrics.measure_label(
-          obj.label,
-          obj.style.font_size.unwrap_or(16),
-          false,
-          obj.style.bold.unwrap_or(false),
-          obj.style.italic.unwrap_or(false),
-        )
-        obj.label_box = Some(
-          @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
-        )
-      }
-    None =>
-      // No box, calculate from text
-      if obj.label.length() > 0 {
-        let label_dims = @text_metrics.measure_label(
-          obj.label,
-          obj.style.font_size.unwrap_or(16),
-          false,
-          obj.style.bold.unwrap_or(false),
-          obj.style.italic.unwrap_or(false),
-        )
-        let min_width = 100.0
-        let min_height = 60.0
-        let width = if label_dims.width > min_width {
-          label_dims.width
-        } else {
-          min_width
-        }
-        let height = if label_dims.height > min_height {
-          label_dims.height
-        } else {
-          min_height
-        }
-        obj.box = Some(@graph.Box::new(0.0, 0.0, width, height))
-        obj.label_box = Some(
-          @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
-        )
-      } else {
-        // No label, use default size
-        obj.box = Some(@graph.Box::new(0.0, 0.0, 100.0, 60.0))
-      }
-  }
-
-  // Recursively process children
-  for child in obj.children {
-    set_object_text_dimensions(child)
-  }
-}
-
-///|
-/// Set text dimensions for an edge
-fn set_edge_text_dimensions(edge : Edge) -> Unit {
-  if edge.label.length() > 0 {
-    let label_dims = @text_metrics.measure_edge_label(
-      edge.label,
-      edge.style.font_size.unwrap_or(14),
-    )
-    edge.label_box = Some(
-      @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
-    )
   }
 }

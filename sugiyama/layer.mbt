@@ -35,7 +35,7 @@ pub(all) struct LayerAssignment {
 /// Assign layers to nodes in the graph
 /// Uses longest path for initial assignment, then network simplex to optimize
 pub fn assign_layers(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   cycle_result : CycleBreakResult,
 ) -> LayerAssignment {
   // Build adjacency using effective edge directions (after cycle breaking)
@@ -44,7 +44,7 @@ pub fn assign_layers(
   let all_nodes : Array[String] = []
   // Collect all nodes
   for obj in graph.objects {
-    collect_all_nodes(obj, all_nodes)
+    collect_all_nodes(graph, obj, all_nodes)
   }
   // Initialize adjacency lists
   for node in all_nodes {
@@ -73,10 +73,14 @@ pub fn assign_layers(
 
 ///|
 /// Collect all node IDs from object tree
-fn collect_all_nodes(obj : @graph.Object, nodes : Array[String]) -> Unit {
+fn collect_all_nodes(
+  graph : @graph.GraphInput,
+  obj : @graph.ObjectInput,
+  nodes : Array[String],
+) -> Unit {
   nodes.push(obj.id)
-  for child in obj.children {
-    collect_all_nodes(child, nodes)
+  for child in graph.children_of(obj) {
+    collect_all_nodes(graph, child, nodes)
   }
 }
 

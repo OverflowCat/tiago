@@ -52,7 +52,7 @@ fn get_parent_id_from_dotted_id(id : String) -> String? {
 
 ///|
 /// Check if an object is a child of an sql_table (should not participate in ELK layout)
-fn is_sql_table_child(obj : @graph.Object, graph : @graph.Graph) -> Bool {
+fn is_sql_table_child(obj : Object, graph : Graph) -> Bool {
   match get_parent_id_from_dotted_id(obj.id) {
     Some(parent_id) =>
       match graph.find_object(parent_id) {
@@ -65,7 +65,7 @@ fn is_sql_table_child(obj : @graph.Object, graph : @graph.Graph) -> Bool {
 
 ///|
 /// Convert a diago Graph to an ELK ElkNode for layout
-fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
+fn graph_to_elk(graph : Graph, config : LayoutConfig) -> @elk.ElkNode {
   let root = @elk.ElkNode::new("root")
 
   // Convert all objects to ELK nodes
@@ -123,10 +123,7 @@ fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
 
 ///|
 /// Convert a diago Object to an ELK node
-fn object_to_elk_node(
-  obj : @graph.Object,
-  config : LayoutConfig,
-) -> @elk.ElkNode {
+fn object_to_elk_node(obj : Object, config : LayoutConfig) -> @elk.ElkNode {
   let elk_node = @elk.ElkNode::new(obj.id)
 
   // Set size from existing box
@@ -175,7 +172,7 @@ fn object_to_elk_node(
 /// Apply ELK layout results back to a diago Graph
 fn elk_to_graph(
   elk_root : @elk.ElkNode,
-  graph : @graph.Graph,
+  graph : Graph,
   _config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
@@ -220,10 +217,7 @@ fn collect_elk_nodes(
 
 ///|
 /// Apply positions from ELK children to Graph object children
-fn apply_children_positions(
-  obj : @graph.Object,
-  elk_node : @elk.ElkNode,
-) -> Unit {
+fn apply_children_positions(obj : Object, elk_node : @elk.ElkNode) -> Unit {
   for child in obj.children {
     for elk_child in elk_node.children {
       if elk_child.id == child.id {
@@ -248,7 +242,7 @@ fn apply_children_positions(
 /// Apply edge routes from ELK to Graph with perpendicularity adjustment
 fn apply_edge_routes(
   elk_root : @elk.ElkNode,
-  graph : @graph.Graph,
+  graph : Graph,
   elk_map : Map[String, @elk.ElkNode],
   direction : Direction,
 ) -> Unit {
@@ -530,7 +524,7 @@ fn adjust_end_point_perpendicular(
 ///|
 /// Run ELK layout on a graph
 pub fn run_elk_layout(
-  graph : @graph.Graph,
+  graph : Graph,
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {

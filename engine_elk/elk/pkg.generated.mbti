@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "Milky2018/diago/elk"
+package "Milky2018/diago/engine_elk/elk"
 
 import(
-  "Milky2018/diago/elk/base"
+  "Milky2018/diago/engine_elk/elk/base"
   "Milky2018/diago/graph"
 )
 
@@ -17,19 +17,13 @@ pub fn create_labeled_node(String, String) -> @base.ElkNode
 
 pub fn default_options(@base.LayoutAlgorithm) -> @base.LayoutOptions
 
-pub fn elk_port_side_to_graph(@base.PortSide) -> @graph.PortSide
-
-pub fn from_graph(@graph.Graph) -> @base.ElkNode
-
-pub fn graph_port_side_to_elk(@graph.PortSide) -> @base.PortSide
+pub fn from_graph(@graph.GraphInput) -> @base.ElkNode
 
 pub fn is_algorithm_implemented(@base.LayoutAlgorithm) -> Bool
 
 pub fn layout(@base.ElkNode, @base.LayoutOptions) -> Unit raise LayoutError
 
-pub fn layout_diago_graph(@graph.Graph, @base.LayoutOptions) -> Unit raise LayoutError
-
-pub fn to_graph(@base.ElkNode, @graph.Graph) -> Unit
+pub fn to_graph(@base.ElkNode, @graph.GraphInput) -> Unit
 
 // Errors
 pub suberror LayoutError {

@@ -32,7 +32,7 @@ pub(all) struct CrossingResult {
 /// Performs alternating up/down sweeps to iteratively improve ordering
 /// Preserves original definition order as tie-breaker for nodes with equal barycenters
 pub fn minimize_crossings(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layer_result : LayerAssignment,
   cycle_result : CycleBreakResult,
 ) -> CrossingResult {
@@ -72,7 +72,7 @@ pub fn minimize_crossings(
 /// Build adjacency lists between layers
 /// Returns (upper_neighbors, lower_neighbors) maps
 fn build_layer_adjacency(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layer_result : LayerAssignment,
   cycle_result : CycleBreakResult,
 ) -> (Map[String, Array[String]], Map[String, Array[String]]) {
@@ -303,7 +303,7 @@ pub fn count_crossings(
 /// Virtual nodes are included in the layer ordering but need special handling
 /// for neighbor computation (they connect to virtual chain neighbors)
 pub fn minimize_crossings_with_virtual(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layer_result : LayerAssignment,
   cycle_result : CycleBreakResult,
   _virtual_nodes : Map[String, Bool],
@@ -341,7 +341,7 @@ pub fn minimize_crossings_with_virtual(
 ///|
 /// Build adjacency lists including virtual node chains
 fn build_layer_adjacency_with_virtual(
-  graph : @graph.Graph,
+  graph : @graph.GraphInput,
   layer_result : LayerAssignment,
   cycle_result : CycleBreakResult,
   _virtual_nodes : Map[String, Bool],

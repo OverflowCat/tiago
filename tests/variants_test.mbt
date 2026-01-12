@@ -16,7 +16,7 @@
 /// Exporter regression tests for variants + stable IDs
 
 ///|
-fn compile_graph_no_layout(source : String) -> Result[@graph.Graph, String] {
+fn compile_graph_no_layout(source : String) -> Result[@graph.GraphInput, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
@@ -25,7 +25,7 @@ fn compile_graph_no_layout(source : String) -> Result[@graph.Graph, String] {
   let graph_input = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
-  Ok(@graph.Graph::from_input(graph_input))
+  Ok(graph_input)
 }
 
 ///|
@@ -45,13 +45,29 @@ test "exporter compiles layers/scenarios/steps" {
   assert_false(graph.find_object("layers") is Some(_))
   assert_false(graph.find_object("scenarios") is Some(_))
   assert_false(graph.find_object("steps") is Some(_))
-  assert_eq(graph.layer_names(), ["L1"])
-  assert_eq(graph.scenario_names(), ["S1"])
-  assert_eq(graph.step_names(), ["step1"])
-  assert_true(graph.get_layer("L1").unwrap().find_object("b") is Some(_))
-  assert_true(graph.get_scenario("S1").unwrap().find_object("c") is Some(_))
+  let layer_names : Array[String] = []
+  for layer in graph.layers {
+    layer_names.push(layer.name)
+  }
+  let scenario_names : Array[String] = []
+  for scenario in graph.scenarios {
+    scenario_names.push(scenario.name)
+  }
+  let step_names : Array[String] = []
+  for step in graph.steps {
+    step_names.push(step.name)
+  }
+  assert_eq(layer_names, ["L1"])
+  assert_eq(scenario_names, ["S1"])
+  assert_eq(step_names, ["step1"])
   assert_true(
-    graph.get_step_by_name("step1").unwrap().find_object("d") is Some(_),
+    graph.layers[0].graph.find_object("b") is Some(_),
+  )
+  assert_true(
+    graph.scenarios[0].graph.find_object("c") is Some(_),
+  )
+  assert_true(
+    graph.steps[0].graph.find_object("d") is Some(_),
   )
 }
 
@@ -65,16 +81,16 @@ test "exporter object IDs are deterministic" {
   let g2 = compile_graph_no_layout(source).unwrap()
   let ids1 : Array[String] = []
   for o in g1.get_objects() {
-    ids1.push(o.get_id())
+    ids1.push(o.id)
   }
   let ids2 : Array[String] = []
   for o in g2.get_objects() {
-    ids2.push(o.get_id())
+    ids2.push(o.id)
   }
   assert_eq(ids1, ids2)
   let e1 = g1.get_edges()[0]
   let e2 = g2.get_edges()[0]
   assert_eq(e1.index, e2.index)
-  assert_eq(e1.get_src_id(), e2.get_src_id())
-  assert_eq(e1.get_dst_id(), e2.get_dst_id())
+  assert_eq(e1.src_id, e2.src_id)
+  assert_eq(e1.dst_id, e2.dst_id)
 }

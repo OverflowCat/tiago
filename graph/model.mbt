@@ -20,7 +20,7 @@
 pub struct LegendModel {
   title : String?
   position : LegendPosition
-  entries : Array[LegendEntry]
+  entries : Array[LegendEntryInput]
   fill : String?
   stroke : String?
   padding : Double
@@ -43,8 +43,9 @@ pub fn LegendModel::new() -> LegendModel {
 }
 
 ///|
-/// Immutable sequence fragment operand
+#warnings("-struct_never_constructed")
 pub struct FragmentOperandModel {
+  /// Immutable sequence fragment operand
   condition : String?
   separator_y : Double
 } derive(Show)
@@ -206,8 +207,6 @@ pub struct EdgeModel {
   label_box : Box?
   src_column_index : Int?
   dst_column_index : Int?
-  src_port : Port?
-  dst_port : Port?
 } derive(Show)
 
 ///|
@@ -246,8 +245,6 @@ pub fn EdgeModel::new(
     label_box: None,
     src_column_index: None,
     dst_column_index: None,
-    src_port: None,
-    dst_port: None,
   }
 }
 
@@ -268,22 +265,25 @@ pub struct GraphModel {
 } derive(Show)
 
 ///|
-/// Immutable layer model
+#warnings("-struct_never_constructed")
 pub struct LayerModel {
+  /// Immutable layer model
   name : String
   graph : GraphModel
 } derive(Show)
 
 ///|
-/// Immutable scenario model
+#warnings("-struct_never_constructed")
 pub struct ScenarioModel {
+  /// Immutable scenario model
   name : String
   graph : GraphModel
 } derive(Show)
 
 ///|
-/// Immutable step model
+#warnings("-struct_never_constructed")
 pub struct StepModel {
+  /// Immutable step model
   name : String
   graph : GraphModel
 } derive(Show)

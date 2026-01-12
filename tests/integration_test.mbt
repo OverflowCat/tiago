@@ -61,11 +61,11 @@ fn compile_to_diagram(
 }
 
 ///|
-/// Compile diago source to laid-out Graph (for position testing)
+/// Compile diago source to laid-out render graph (for position testing)
 fn compile_to_graph(
   source : String,
   direction : @engine_api.Direction,
-) -> Result[@graph.Graph, String] {
+) -> Result[@diagram.RenderGraph, String] {
   match compile_to_diagram(source, direction) {
     Ok(diagram) => Ok(@diagram.materialize(diagram))
     Err(e) => Err(e)

@@ -31,19 +31,56 @@ test "layout config with_spacing" {
 
 ///|
 fn layout_to_graph(
-  graph : @graph.Graph,
+  graph : Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> @graph.Graph raise LayoutError {
-  let input = @graph.GraphInput::from_graph(graph)
-  let outputs = layout(input, config, direction)
-  outputs.layout.materialize(input)
+) -> Graph raise LayoutError {
+  let outputs = layout(graph.to_input(), config, direction)
+  let materialized = Graph::from_input(graph.to_input())
+  apply_layout_result_for_layout(outputs.layout, materialized)
+  materialized
+}
+
+///|
+fn apply_layout_result_for_layout(
+  layout : @engine_api.LayoutResult,
+  graph : Graph,
+) -> Unit {
+  for obj in graph.objects {
+    match layout.nodes.get(obj.id) {
+      Some(node_layout) => obj.set_box(node_layout.to_box())
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    match layout.edges.get(edge.index) {
+      Some(edge_layout) => {
+        edge.route.clear()
+        for p in edge_layout.points {
+          edge.route.push(p)
+        }
+      }
+      None => ()
+    }
+    match layout.edge_labels.get(edge.index) {
+      Some(label_layout) => edge.label_box = Some(label_layout.to_box())
+      None => ()
+    }
+  }
+  graph.activation_boxes.clear()
+  for box in layout.activation_boxes {
+    graph.activation_boxes.push((box.0, box.1.to_box()))
+  }
+  graph.sequence_notes.clear()
+  for note in layout.sequence_notes {
+    graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
+  }
 }
 
 ///|
 test "layout single object" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::new("a"))
+  let graph = Graph::new("test")
+  graph.add_object(Object::new("a"))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -61,9 +98,9 @@ test "layout single object" {
 
 ///|
 test "layout multiple objects horizontally" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::new("a"))
-  graph.add_object(@graph.Object::new("b"))
+  let graph = Graph::new("test")
+  graph.add_object(Object::new("a"))
+  graph.add_object(Object::new("b"))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Right) catch {
     e => fail("layout failed: \{e}")
@@ -79,10 +116,10 @@ test "layout multiple objects horizontally" {
 
 ///|
 test "layout edge routing" {
-  let graph = @graph.Graph::new("test")
-  graph.add_object(@graph.Object::new("a"))
-  graph.add_object(@graph.Object::new("b"))
-  graph.add_edge(@graph.Edge::new(0, "a", "b", false, true))
+  let graph = Graph::new("test")
+  graph.add_object(Object::new("a"))
+  graph.add_object(Object::new("b"))
+  graph.add_edge(Edge::new(0, "a", "b", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -94,10 +131,10 @@ test "layout edge routing" {
 
 ///|
 test "layout container with children" {
-  let graph = @graph.Graph::new("test")
-  let parent = @graph.Object::new("parent")
-  let child1 = @graph.Object::new("child1")
-  let child2 = @graph.Object::new("child2")
+  let graph = Graph::new("test")
+  let parent = Object::new("parent")
+  let child1 = Object::new("child1")
+  let child2 = Object::new("child2")
   parent.add_child(child1)
   parent.add_child(child2)
   graph.add_object(parent)
@@ -152,12 +189,12 @@ test "max helper" {
 
 ///|
 test "grid layout with rows" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("grid")
+  let graph = Graph::new("test")
+  let container = Object::new("grid")
   container.set_grid_rows(2)
   // Add 4 children
   for i in 0..<4 {
-    let child = @graph.Object::new("c\{i}")
+    let child = Object::new("c\{i}")
     container.add_child(child)
     graph.add_object(child)
   }
@@ -178,12 +215,12 @@ test "grid layout with rows" {
 
 ///|
 test "grid layout with columns" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("grid")
+  let graph = Graph::new("test")
+  let container = Object::new("grid")
   container.set_grid_columns(3)
   // Add 6 children
   for i in 0..<6 {
-    let child = @graph.Object::new("c\{i}")
+    let child = Object::new("c\{i}")
     container.add_child(child)
     graph.add_object(child)
   }
@@ -201,21 +238,21 @@ test "grid layout with columns" {
 ///|
 test "grid dimensions calculation" {
   // Test grid-rows only
-  let obj1 = @graph.Object::new("test1")
+  let obj1 = Object::new("test1")
   obj1.set_grid_rows(2)
   let (rows1, cols1, dir1) = compute_grid_dimensions(obj1, 5)
   assert_eq(rows1, 2)
   assert_eq(cols1, 3) // ceil(5/2) = 3
   assert_true(dir1) // row directed
   // Test grid-columns only
-  let obj2 = @graph.Object::new("test2")
+  let obj2 = Object::new("test2")
   obj2.set_grid_columns(3)
   let (rows2, cols2, dir2) = compute_grid_dimensions(obj2, 5)
   assert_eq(rows2, 2) // ceil(5/3) = 2
   assert_eq(cols2, 3)
   assert_true(!dir2) // column directed
   // Test both rows and columns
-  let obj3 = @graph.Object::new("test3")
+  let obj3 = Object::new("test3")
   obj3.set_grid_rows(2)
   obj3.set_grid_columns(3)
   let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
@@ -227,13 +264,13 @@ test "grid dimensions calculation" {
 ///|
 test "grid cell allocation with spanning" {
   // Create children with various spans
-  let child1 = @graph.Object::new("header") // Header spans all 3 columns
+  let child1 = Object::new("header") // Header spans all 3 columns
   child1.set_grid_column_span(3)
-  let child2 = @graph.Object::new("sidebar") // Sidebar spans 2 rows
+  let child2 = Object::new("sidebar") // Sidebar spans 2 rows
   child2.set_grid_row_span(2)
-  let child3 = @graph.Object::new("content")
+  let child3 = Object::new("content")
   // Default 1x1 span
-  let child4 = @graph.Object::new("footer") // Footer spans 2 columns
+  let child4 = Object::new("footer") // Footer spans 2 columns
   child4.set_grid_column_span(2)
   let children = [child1, child2, child3, child4]
   // Allocate cells in a 3x3 grid
@@ -271,7 +308,7 @@ test "sum_with_gap" {
 
 ///|
 test "is_sequence_diagram" {
-  let obj = @graph.Object::new("test")
+  let obj = Object::new("test")
   assert_true(!is_sequence_diagram(obj)) // default is rectangle
   obj.set_shape("sequence_diagram")
   assert_true(is_sequence_diagram(obj))
@@ -279,12 +316,12 @@ test "is_sequence_diagram" {
 
 ///|
 test "sequence layout basic" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::new("alice")
-  let bob = @graph.Object::new("bob")
+  let alice = Object::new("alice")
+  let bob = Object::new("bob")
   container.add_child(alice)
   container.add_child(bob)
   graph.add_object(container)
@@ -306,19 +343,19 @@ test "sequence layout basic" {
 
 ///|
 test "sequence layout with messages" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors as children of container
-  let alice = @graph.Object::new("seq.alice")
-  let bob = @graph.Object::new("seq.bob")
+  let alice = Object::new("seq.alice")
+  let bob = Object::new("seq.bob")
   container.add_child(alice)
   container.add_child(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
   // Add a message edge from alice to bob
-  let msg = @graph.Edge::new(0, "seq.alice", "seq.bob", false, true)
+  let msg = Edge::new(0, "seq.alice", "seq.bob", false, true)
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with messages
@@ -336,16 +373,16 @@ test "sequence layout with messages" {
 
 ///|
 test "sequence layout self-referential message" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add single actor
-  let alice = @graph.Object::new("seq.alice")
+  let alice = Object::new("seq.alice")
   container.add_child(alice)
   graph.add_object(container)
   graph.add_object(alice)
   // Add a self-referential message
-  let msg = @graph.Edge::new(0, "seq.alice", "seq.alice", false, true)
+  let msg = Edge::new(0, "seq.alice", "seq.alice", false, true)
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with messages
@@ -357,20 +394,20 @@ test "sequence layout self-referential message" {
 
 ///|
 test "sequence layout activation boxes" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::new("seq.alice")
-  let bob = @graph.Object::new("seq.bob")
+  let alice = Object::new("seq.alice")
+  let bob = Object::new("seq.bob")
   container.add_child(alice)
   container.add_child(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
   // Add messages: alice -> bob, bob -> alice (creates activation box for bob)
-  let msg1 = @graph.Edge::new(0, "seq.alice", "seq.bob", false, true)
-  let msg2 = @graph.Edge::new(1, "seq.bob", "seq.alice", false, true)
+  let msg1 = Edge::new(0, "seq.alice", "seq.bob", false, true)
+  let msg2 = Edge::new(1, "seq.bob", "seq.alice", false, true)
   graph.add_edge(msg1)
   graph.add_edge(msg2)
   let config = LayoutConfig::new()
@@ -388,16 +425,16 @@ test "sequence layout activation boxes" {
 
 ///|
 test "sequence layout self-message activation" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add single actor
-  let alice = @graph.Object::new("seq.alice")
+  let alice = Object::new("seq.alice")
   container.add_child(alice)
   graph.add_object(container)
   graph.add_object(alice)
   // Add a self-referential message
-  let msg = @graph.Edge::new(0, "seq.alice", "seq.alice", false, true)
+  let msg = Edge::new(0, "seq.alice", "seq.alice", false, true)
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with activations
@@ -412,14 +449,14 @@ test "sequence layout self-message activation" {
 
 ///|
 test "sequence layout with notes" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::new("seq.alice")
-  let bob = @graph.Object::new("seq.bob")
+  let alice = Object::new("seq.alice")
+  let bob = Object::new("seq.bob")
   // Add a note as a child of alice
-  let note = @graph.Object::with_label("seq.alice.note1", "This is a note")
+  let note = Object::with_label("seq.alice.note1", "This is a note")
   alice.add_child(note)
   container.add_child(alice)
   container.add_child(bob)
@@ -428,7 +465,7 @@ test "sequence layout with notes" {
   graph.add_object(bob)
   graph.add_object(note)
   // Add a message between alice and bob (so they are recognized as actors)
-  let msg = @graph.Edge::new(0, "seq.alice", "seq.bob", false, true)
+  let msg = Edge::new(0, "seq.alice", "seq.bob", false, true)
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with activations (which includes notes)
@@ -444,14 +481,14 @@ test "sequence layout with notes" {
 
 ///|
 test "sequence layout multiple notes per actor" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::new("seq.alice")
+  let alice = Object::new("seq.alice")
   // Add two notes as children of alice
-  let note1 = @graph.Object::with_label("seq.alice.note1", "First note")
-  let note2 = @graph.Object::with_label("seq.alice.note2", "Second note")
+  let note1 = Object::with_label("seq.alice.note1", "First note")
+  let note2 = Object::with_label("seq.alice.note2", "Second note")
   alice.add_child(note1)
   alice.add_child(note2)
   container.add_child(alice)
@@ -480,16 +517,16 @@ test "SequenceNote constructor" {
 
 ///|
 test "sequence layout with opt group creates fragment" {
-  let graph = @graph.Graph::new("test")
-  let container = @graph.Object::new("seq")
+  let graph = Graph::new("test")
+  let container = Object::new("seq")
   container.set_shape("sequence_diagram")
   // Add actors
-  let alice = @graph.Object::with_label("seq.alice", "Alice")
-  let bob = @graph.Object::with_label("seq.bob", "Bob")
+  let alice = Object::with_label("seq.alice", "Alice")
+  let bob = Object::with_label("seq.bob", "Bob")
   // Add opt group (container with label starting with "opt")
-  let opt_group = @graph.Object::with_label("seq.opt", "opt")
+  let opt_group = Object::with_label("seq.opt", "opt")
   // Add a dummy child to make it a container
-  let dummy = @graph.Object::new("seq.opt.dummy")
+  let dummy = Object::new("seq.opt.dummy")
   opt_group.add_child(dummy)
   container.add_child(alice)
   container.add_child(bob)
@@ -500,9 +537,9 @@ test "sequence layout with opt group creates fragment" {
   graph.add_object(opt_group)
   graph.add_object(dummy)
   // Add edges - including one "inside" the opt group
-  let edge1 = @graph.Edge::new(0, "seq.alice", "seq.bob", false, true)
+  let edge1 = Edge::new(0, "seq.alice", "seq.bob", false, true)
   edge1.label = "Hello"
-  let edge2 = @graph.Edge::new(1, "seq.opt.alice", "seq.opt.bob", false, true)
+  let edge2 = Edge::new(1, "seq.opt.alice", "seq.opt.bob", false, true)
   edge2.label = "optional message"
   graph.add_edge(edge1)
   graph.add_edge(edge2)
@@ -519,16 +556,16 @@ test "sequence layout with opt group creates fragment" {
 ///|
 test "debug: simple linear graph" {
   // Simple case: 3 nodes, linear arrangement
-  let graph = @graph.Graph::new("test")
+  let graph = Graph::new("test")
 
   // 3 nodes with clear parent-child relationship
-  graph.add_object(@graph.Object::with_label("A", "Node A"))
-  graph.add_object(@graph.Object::with_label("B", "Node B"))
-  graph.add_object(@graph.Object::with_label("C", "Node C"))
+  graph.add_object(Object::with_label("A", "Node A"))
+  graph.add_object(Object::with_label("B", "Node B"))
+  graph.add_object(Object::with_label("C", "Node C"))
 
   // Simple chain: A -> B -> C
-  graph.add_edge(@graph.Edge::new(0, "A", "B", false, true))
-  graph.add_edge(@graph.Edge::new(1, "B", "C", false, true))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -579,20 +616,20 @@ test "debug: simple linear graph" {
 ///|
 test "debug: cyclic graph with bidirectional edges" {
   // Failing case from property tests: cyclic graph
-  let graph = @graph.Graph::new("test")
+  let graph = Graph::new("test")
 
   // 3 nodes
-  graph.add_object(@graph.Object::with_label("5", "o"))
-  graph.add_object(@graph.Object::with_label("I", "O"))
-  graph.add_object(@graph.Object::with_label("A", "2"))
+  graph.add_object(Object::with_label("5", "o"))
+  graph.add_object(Object::with_label("I", "O"))
+  graph.add_object(Object::with_label("A", "2"))
 
   // 6 edges (cyclic with bidirectional)
-  graph.add_edge(@graph.Edge::new(0, "5", "I", false, true))
-  graph.add_edge(@graph.Edge::new(1, "A", "5", false, true))
-  graph.add_edge(@graph.Edge::new(2, "5", "A", false, true))
-  graph.add_edge(@graph.Edge::new(3, "A", "I", false, true))
-  graph.add_edge(@graph.Edge::new(4, "I", "5", false, true))
-  graph.add_edge(@graph.Edge::new(5, "5", "I", false, true))
+  graph.add_edge(Edge::new(0, "5", "I", false, true))
+  graph.add_edge(Edge::new(1, "A", "5", false, true))
+  graph.add_edge(Edge::new(2, "5", "A", false, true))
+  graph.add_edge(Edge::new(3, "A", "I", false, true))
+  graph.add_edge(Edge::new(4, "I", "5", false, true))
+  graph.add_edge(Edge::new(5, "5", "I", false, true))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
@@ -636,19 +673,19 @@ test "debug: cyclic graph with bidirectional edges" {
 ///|
 test "root-level sequence diagram layout" {
   // Create a graph with root-level sequence diagram (no prefix on actors)
-  let graph = @graph.Graph::new("test")
+  let graph = Graph::new("test")
   // Set root to be a sequence diagram
   graph.root.set_shape("sequence_diagram")
   // Add actors (without "root." prefix - just like compiled from diago)
-  let alice = @graph.Object::with_label("alice", "Alice")
-  let bob = @graph.Object::with_label("bob", "Bob")
+  let alice = Object::with_label("alice", "Alice")
+  let bob = Object::with_label("bob", "Bob")
   // Make actors children of root
   graph.root.add_child(alice)
   graph.root.add_child(bob)
   graph.add_object(alice)
   graph.add_object(bob)
   // Add a message between actors
-  let edge = @graph.Edge::new(0, "alice", "bob", false, true)
+  let edge = Edge::new(0, "alice", "bob", false, true)
   edge.label = "Hello"
   graph.add_edge(edge)
   // Verify preconditions
