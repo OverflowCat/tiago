@@ -22,6 +22,80 @@ fn max(a : Double, b : Double) -> Double {
 }
 
 ///|
+fn ensure_text_dimensions(graph : @graph.Graph) -> Unit {
+  for obj in graph.objects {
+    ensure_object_text_dimensions(obj)
+  }
+  for child in graph.root.children {
+    ensure_object_text_dimensions(child)
+  }
+  ensure_object_text_dimensions(graph.root)
+  for edge in graph.edges {
+    ensure_edge_text_dimensions(edge)
+  }
+}
+
+///|
+fn ensure_object_text_dimensions(obj : @graph.Object) -> Unit {
+  if obj.label.length() > 0 && obj.label_box is None {
+    let label_dims = @text_metrics.measure_label(
+      obj.label,
+      obj.style.font_size.unwrap_or(16),
+      false,
+      obj.style.bold.unwrap_or(false),
+      obj.style.italic.unwrap_or(false),
+    )
+    obj.label_box = Some(
+      @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
+    )
+  }
+  match obj.box {
+    Some(_) => ()
+    None =>
+      if obj.label.length() > 0 {
+        let label_dims = @text_metrics.measure_label(
+          obj.label,
+          obj.style.font_size.unwrap_or(16),
+          false,
+          obj.style.bold.unwrap_or(false),
+          obj.style.italic.unwrap_or(false),
+        )
+        let min_width = 100.0
+        let min_height = 60.0
+        let width = if label_dims.width > min_width {
+          label_dims.width
+        } else {
+          min_width
+        }
+        let height = if label_dims.height > min_height {
+          label_dims.height
+        } else {
+          min_height
+        }
+        obj.box = Some(@graph.Box::new(0.0, 0.0, width, height))
+      } else {
+        obj.box = Some(@graph.Box::new(0.0, 0.0, 100.0, 60.0))
+      }
+  }
+  for child in obj.children {
+    ensure_object_text_dimensions(child)
+  }
+}
+
+///|
+fn ensure_edge_text_dimensions(edge : @graph.Edge) -> Unit {
+  if edge.label.length() > 0 && edge.label_box is None {
+    let label_dims = @text_metrics.measure_edge_label(
+      edge.label,
+      edge.style.font_size.unwrap_or(14),
+    )
+    edge.label_box = Some(
+      @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
+    )
+  }
+}
+
+///|
 fn compute_sizes(graph : @graph.Graph, config : LayoutConfig) -> Unit {
   for obj in graph.objects {
     compute_object_size(obj, config)
@@ -38,18 +112,21 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
     let columns_height = obj.children.length().to_double() * line_height +
       padding
     let total_height = header_height + columns_height
-    // Width: max of label and column labels
-    let mut max_width = estimate_label_width(obj.label, config)
+    // Width: max of label and column labels (use precomputed label boxes)
+    let mut max_width = match obj.label_box {
+      Some(b) => b.width
+      None =>
+        abort(
+          "Sql table '\{obj.id}' has no label_box; sizes must be precomputed",
+        )
+    }
     for child in obj.children {
-      let col_name = get_field_name_from_dotted_id(child.id)
-      let col_text = if child.label.length() > 0 {
-        col_name + ": " + child.label
-      } else {
-        col_name
-      }
-      let col_width = estimate_label_width(col_text, config)
-      if col_width > max_width {
-        max_width = col_width
+      match child.label_box {
+        Some(b) => if b.width > max_width { max_width = b.width }
+        None =>
+          abort(
+            "Sql table column '\{child.id}' has no label_box; sizes must be precomputed",
+          )
       }
     }
     obj.set_box(@graph.Box::new(0.0, 0.0, max_width, total_height))
@@ -66,7 +143,10 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
           }
           total_height = total_height + b.height + config.vertical_spacing
         }
-        None => ()
+        None =>
+          abort(
+            "Container child '\{child.id}' has no box; sizes must be precomputed",
+          )
       }
     }
     // Remove last spacing
@@ -85,20 +165,20 @@ fn compute_object_size(obj : @graph.Object, config : LayoutConfig) -> Unit {
       ),
     )
   } else {
-    // Leaf node: use default size or compute from label
-    let width = estimate_label_width(obj.label, config)
-    let height = config.default_height
-    obj.set_box(@graph.Box::new(0.0, 0.0, width, height))
+    // Leaf node: use precomputed size
+    match obj.get_box() {
+      Some(b) =>
+        obj.set_box(
+          @graph.Box::new(
+            0.0,
+            0.0,
+            max(b.width, config.default_width),
+            max(b.height, config.default_height),
+          ),
+        )
+      None => abort("Object '\{obj.id}' has no box; sizes must be precomputed")
+    }
   }
-}
-
-///|
-fn estimate_label_width(label : String, config : LayoutConfig) -> Double {
-  // Simple estimation: 8 pixels per character + padding
-  let char_width = 8.0
-  let padding = 20.0
-  let width = label.length().to_double() * char_width + padding
-  max(width, config.default_width)
 }
 
 ///|

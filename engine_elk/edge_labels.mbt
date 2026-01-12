@@ -36,13 +36,13 @@ fn position_edge_labels(graph : @graph.Graph, config : LayoutConfig) -> Unit {
     }
     match edge.midpoint() {
       Some(mid) => {
-        // Estimate label dimensions (similar to SVG render)
-        let padding = 4.0
-        let char_width = 7.0
-        let font_size = 12.0
-        let label_width = edge.label.length().to_double() * char_width +
-          padding * 2.0
-        let label_height = font_size + padding * 2.0
+        let (label_width, label_height) = match edge.label_box {
+          Some(b) => (b.width, b.height)
+          None =>
+            abort(
+              "Edge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
+            )
+        }
         // Initial label box centered at midpoint
         let mut label_x = mid.x - label_width / 2.0
         let mut label_y = mid.y - label_height / 2.0

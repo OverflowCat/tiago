@@ -2392,37 +2392,9 @@ fn render_svg_edge(
         )
       }
       None =>
-        // Fallback to midpoint positioning
-        match edge.midpoint() {
-          Some(mid) => {
-            let padding = 4.0
-            let label_width = edge.label.length().to_double() * 7.0 +
-              padding * 2.0
-            let label_height = config.font_size.to_double() + padding * 2.0
-            svg.add(
-              @svg.rect(
-                mid.x - label_width / 2.0,
-                mid.y - label_height / 2.0,
-                label_width,
-                label_height,
-                fill="white",
-                stroke="none",
-                rx=Some(3.0),
-                ry=Some(3.0),
-              ),
-            )
-            svg.add(
-              @svg.text(
-                mid.x,
-                mid.y,
-                edge.label,
-                font_family=config.font_family,
-                font_size=config.font_size - 2,
-              ),
-            )
-          }
-          None => ()
-        }
+        abort(
+          "Edge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
+        )
     }
   }
   // Close sketch filter group if opened

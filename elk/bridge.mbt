@@ -64,7 +64,7 @@ pub fn from_graph(graph : @graph.Graph) -> ElkNode {
 fn convert_object(obj : @graph.Object) -> ElkNode {
   let node = ElkNode::new(obj.id)
 
-  // Set size/position from box
+  // Use pre-computed dimensions from graph compilation (D2's approach)
   match obj.box {
     Some(b) => {
       node.x = b.x
@@ -72,20 +72,27 @@ fn convert_object(obj : @graph.Object) -> ElkNode {
       node.width = b.width
       node.height = b.height
     }
-    None => {
-      // Default size
-      node.width = 100.0
-      node.height = 60.0
-    }
+    None =>
+      // No box - this should not happen since set_text_dimensions sets it
+      abort(
+        "Object '\{obj.id}' has no computed dimensions. Text dimensions should have been set during graph compilation.",
+      )
   }
 
-  // Add label
+  // Add label with pre-computed dimensions
   if obj.label.length() > 0 {
-    let label = ElkLabel::new(obj.id + "_label", obj.label)
-    // Estimate label size
-    label.width = obj.label.length().to_double() * 8.0
-    label.height = 14.0
-    node.add_label(label)
+    match obj.label_box {
+      Some(label_box) => {
+        let label = ElkLabel::new(obj.id + "_label", obj.label)
+        label.width = label_box.width
+        label.height = label_box.height
+        node.add_label(label)
+      }
+      None =>
+        abort(
+          "Object '\{obj.id}' has label but no computed label dimensions. Text dimensions should have been set during graph compilation.",
+        )
+    }
   }
 
   // Convert children recursively
@@ -104,15 +111,23 @@ fn convert_edge(edge : @graph.Edge) -> ElkEdge {
     edge.dst_id,
   )
 
-  // Add label if present
+  // Use pre-computed label dimensions (D2's approach)
   if edge.label.length() > 0 {
-    let label = ElkLabel::new(
-      "e" + edge.index.to_string() + "_label",
-      edge.label,
-    )
-    label.width = edge.label.length().to_double() * 8.0
-    label.height = 14.0
-    elk_edge.labels.push(label)
+    match edge.label_box {
+      Some(label_box) => {
+        let label = ElkLabel::new(
+          "e" + edge.index.to_string() + "_label",
+          edge.label,
+        )
+        label.width = label_box.width
+        label.height = label_box.height
+        elk_edge.labels.push(label)
+      }
+      None =>
+        abort(
+          "Edge \{edge.index} (\{edge.src_id} -> \{edge.dst_id}) has label but no computed label dimensions. Text dimensions should have been set during graph compilation.",
+        )
+    }
   }
 
   // Convert route to sections if present

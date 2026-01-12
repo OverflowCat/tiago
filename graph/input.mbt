@@ -444,6 +444,7 @@ fn Object::from_input_shallow(input : ObjectInput) -> Object {
     shape_type: input.shape_type,
     style: Style::from_input(input.style),
     box: None,
+    label_box: None,
     children: [],
     z_index: input.z_index,
     icon: input.icon,

@@ -1,0 +1,32 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/text_metrics"
+
+// Values
+pub fn measure_edge_label(String, Int) -> TextDimensions
+
+pub fn measure_label(String, Int, Bool, Bool, Bool) -> TextDimensions
+
+pub fn measure_text(String, Int, Bool, Bool, Bool) -> MeasuredText
+
+// Errors
+
+// Types and methods
+pub struct MeasuredText {
+  dimensions : TextDimensions
+  line_count : Int
+  max_line_width : Double
+}
+pub impl Eq for MeasuredText
+pub impl Show for MeasuredText
+
+pub struct TextDimensions {
+  width : Double
+  height : Double
+}
+pub impl Eq for TextDimensions
+pub impl Show for TextDimensions
+
+// Type aliases
+
+// Traits
+

@@ -44,6 +44,8 @@ pub fn compile(name : String, ir : @ir.Map) -> Graph raise GraphCompileError {
   handle_root_shape(graph, ir)
   // Compile legend configuration (and/or auto-generate legend)
   compile_legend(graph, ir)
+  // Set text dimensions for all objects and edges
+  set_text_dimensions(graph)
   graph
 }
 
@@ -1423,5 +1425,102 @@ fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
         None => ()
       }
     None => ()
+  }
+}
+
+// ============================================================================
+// Text Dimension Calculation (following D2's approach)
+// ============================================================================
+
+///|
+/// Compute and set text dimensions for all objects and edges
+/// This follows D2's SetDimensions approach: calculate once at graph compilation
+/// and store in obj.box/obj.label_box/edge.label_box for later stages.
+fn set_text_dimensions(graph : Graph) -> Unit {
+  // Set dimensions for all objects
+  for obj in graph.objects {
+    set_object_text_dimensions(obj)
+  }
+
+  // Recursively set dimensions for root's children
+  for child in graph.root.children {
+    set_object_text_dimensions(child)
+  }
+  set_object_text_dimensions(graph.root)
+
+  // Set dimensions for all edges
+  for edge in graph.edges {
+    set_edge_text_dimensions(edge)
+  }
+}
+
+///|
+/// Set text dimensions for a single object
+fn set_object_text_dimensions(obj : Object) -> Unit {
+  // Check if object already has a box (explicitly set by user)
+  match obj.box {
+    Some(_) =>
+      // Has box, just ensure label_box is set
+      if obj.label.length() > 0 && obj.label_box is None {
+        let label_dims = @text_metrics.measure_label(
+          obj.label,
+          obj.style.font_size.unwrap_or(16),
+          false,
+          obj.style.bold.unwrap_or(false),
+          obj.style.italic.unwrap_or(false),
+        )
+        obj.label_box = Some(
+          @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
+        )
+      }
+    None =>
+      // No box, calculate from text
+      if obj.label.length() > 0 {
+        let label_dims = @text_metrics.measure_label(
+          obj.label,
+          obj.style.font_size.unwrap_or(16),
+          false,
+          obj.style.bold.unwrap_or(false),
+          obj.style.italic.unwrap_or(false),
+        )
+        let min_width = 100.0
+        let min_height = 60.0
+        let width = if label_dims.width > min_width {
+          label_dims.width
+        } else {
+          min_width
+        }
+        let height = if label_dims.height > min_height {
+          label_dims.height
+        } else {
+          min_height
+        }
+        obj.box = Some(@graph.Box::new(0.0, 0.0, width, height))
+        obj.label_box = Some(
+          @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
+        )
+      } else {
+        // No label, use default size
+        obj.box = Some(@graph.Box::new(0.0, 0.0, 100.0, 60.0))
+      }
+  }
+
+  // Recursively process children
+  for child in obj.children {
+    set_object_text_dimensions(child)
+  }
+}
+
+///|
+/// Set text dimensions for an edge
+fn set_edge_text_dimensions(edge : Edge) -> Unit {
+  if edge.label.length() > 0 {
+    let label_dims = @text_metrics.measure_edge_label(
+      edge.label,
+      edge.style.font_size.unwrap_or(14),
+    )
+    edge.label_box = Some(
+      @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
+    )
   }
 }

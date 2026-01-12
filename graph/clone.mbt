@@ -77,7 +77,11 @@ fn clone_object_shallow(obj : Object) -> Object {
     label: obj.label,
     shape_type: obj.shape_type,
     style: clone_style(obj.style),
-    box: match obj.get_box() {
+    box: match obj.box {
+      Some(b) => Some(clone_box(b))
+      None => None
+    },
+    label_box: match obj.label_box {
       Some(b) => Some(clone_box(b))
       None => None
     },

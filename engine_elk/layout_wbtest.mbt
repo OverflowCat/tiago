@@ -130,17 +130,6 @@ test "layout container with children" {
 }
 
 ///|
-test "estimate label width" {
-  let config = LayoutConfig::new()
-  // Short label
-  let short_width = estimate_label_width("a", config)
-  assert_true(short_width >= config.default_width)
-  // Longer label should be wider
-  let long_width = estimate_label_width("This is a longer label", config)
-  assert_true(long_width > short_width)
-}
-
-///|
 test "find edge intersection" {
   let box = @graph.Box::new(0.0, 0.0, 100.0, 60.0)
   let center = box.center()

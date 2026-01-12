@@ -759,16 +759,11 @@ fn line_segment_intersects_box(
 /// Check that text labels fit within their container
 /// Returns true if all node labels fit within their bounding boxes
 pub fn text_fits_container(graph : @graph.Graph) -> Bool {
-  let char_width = 7.0 // Approximate character width
-  let padding = 10.0 // Padding on each side
   for obj in graph.get_objects() {
-    guard obj.get_box() is Some(box) else { continue }
-    // Estimate text width
-    let text_width = obj.label.length().to_double() * char_width
-    let required_width = text_width + padding * 2.0
-    // Check if box is wide enough
-    if box.width < required_width - 0.001 {
-      return false
+    guard obj.get_box() is Some(box) else { return false }
+    match obj.label_box {
+      Some(label_box) => if box.width < label_box.width - 0.001 { return false }
+      None => return false
     }
   }
   true

@@ -100,11 +100,21 @@ fn graph_to_elk(graph : @graph.Graph, config : LayoutConfig) -> @elk.ElkNode {
     let elk_edge = @elk.ElkEdge::new("e" + i.to_string(), src_id, dst_id)
     // Add label if present
     if edge.label.length() > 0 {
-      let label = @elk.ElkLabel::new("e" + i.to_string() + "_label", edge.label)
-      // Estimate label size
-      label.width = edge.label.length().to_double() * 8.0 + 20.0
-      label.height = 20.0
-      elk_edge.labels.push(label)
+      match edge.label_box {
+        Some(b) => {
+          let label = @elk.ElkLabel::new(
+            "e" + i.to_string() + "_label",
+            edge.label,
+          )
+          label.width = b.width
+          label.height = b.height
+          elk_edge.labels.push(label)
+        }
+        None =>
+          abort(
+            "Edge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
+          )
+      }
     }
     root.add_edge(elk_edge)
   }
@@ -119,10 +129,9 @@ fn object_to_elk_node(
 ) -> @elk.ElkNode {
   let elk_node = @elk.ElkNode::new(obj.id)
 
-  // Set size from existing box or compute from label
+  // Set size from existing box
   match obj.get_box() {
     Some(b) => {
-      // Use computed size, ensuring minimum dimensions
       elk_node.width = if b.width > 0.0 {
         b.width
       } else {
@@ -134,26 +143,21 @@ fn object_to_elk_node(
         config.default_height
       }
     }
-    None => {
-      // Estimate size from label with minimum size
-      let char_width = 8.0
-      let padding = 20.0
-      let label_width = obj.label.length().to_double() * char_width + padding
-      elk_node.width = if label_width > config.default_width {
-        label_width
-      } else {
-        config.default_width
-      }
-      elk_node.height = config.default_height
-    }
+    None => abort("Object '\{obj.id}' has no box; sizes must be precomputed")
   }
 
   // Add label
   if obj.label.length() > 0 {
-    let label = @elk.ElkLabel::new(obj.id + "_label", obj.label)
-    label.width = obj.label.length().to_double() * 8.0
-    label.height = 14.0
-    elk_node.add_label(label)
+    match obj.label_box {
+      Some(b) => {
+        let label = @elk.ElkLabel::new(obj.id + "_label", obj.label)
+        label.width = b.width
+        label.height = b.height
+        elk_node.add_label(label)
+      }
+      None =>
+        abort("Object '\{obj.id}' has no label_box; sizes must be precomputed")
+    }
   }
 
   // Handle children for containers

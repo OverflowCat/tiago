@@ -123,6 +123,8 @@ pub(all) struct Object {
   style : Style
   /// Position and size
   mut box : Box?
+  /// Computed label bounding box (for layout engines)
+  mut label_box : Box?
   /// Child objects (for containers)
   children : Array[Object]
   /// Z-index for layering
@@ -468,6 +470,7 @@ pub fn Object::new(id : String) -> Object {
     shape_type: Rectangle,
     style: Style::new(),
     box: None,
+    label_box: None,
     children: [],
     z_index: 0,
     icon: None,

@@ -15,11 +15,23 @@
 ///|
 fn reset_graph_layout_state(graph : @graph.Graph) -> Unit {
   for obj in graph.objects {
-    obj.box = None
+    match obj.box {
+      Some(b) => obj.box = Some(@graph.Box::new(0.0, 0.0, b.width, b.height))
+      None => ()
+    }
+    match obj.label_box {
+      Some(b) =>
+        obj.label_box = Some(@graph.Box::new(0.0, 0.0, b.width, b.height))
+      None => ()
+    }
   }
   for edge in graph.edges {
     edge.route.clear()
-    edge.label_box = None
+    match edge.label_box {
+      Some(b) =>
+        edge.label_box = Some(@graph.Box::new(0.0, 0.0, b.width, b.height))
+      None => ()
+    }
     edge.src_port = None
     edge.dst_port = None
   }
@@ -34,6 +46,7 @@ fn layout_graph(
   config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
+  ensure_text_dimensions(graph)
   reset_graph_layout_state(graph)
   if is_sequence_diagram(graph.root) && graph.root.is_container() {
     let result = layout_sequence_with_activations(graph.root, graph, config)

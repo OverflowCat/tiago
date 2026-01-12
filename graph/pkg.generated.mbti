@@ -290,6 +290,7 @@ pub(all) struct Object {
   mut shape_type : ShapeType
   style : Style
   mut box : Box?
+  mut label_box : Box?
   children : Array[Object]
   z_index : Int
   mut icon : String?
