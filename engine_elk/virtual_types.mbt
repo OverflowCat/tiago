@@ -14,6 +14,7 @@
 
 ///|
 /// Minimal virtual-node routing carrier used by legacy routing helpers.
-pub(all) struct VirtualNodeResult {
+#warnings("-struct_never_constructed")
+struct VirtualNodeResult {
   edge_virtual_nodes : Map[Int, Array[String]]
 } derive(Show)

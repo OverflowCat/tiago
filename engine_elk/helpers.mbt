@@ -129,14 +129,14 @@ fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
           )
       }
     }
-    obj.set_box(@graph.Box::new(0.0, 0.0, max_width, total_height))
+    obj.box = Some(@graph.Box::new(0.0, 0.0, max_width, total_height))
   } else if obj.is_container() {
     // Container: compute based on children
     let mut max_width = 0.0
     let mut total_height = 0.0
     for child in obj.children {
       compute_object_size(child, config)
-      match child.get_box() {
+      match child.box {
         Some(b) => {
           if b.width > max_width {
             max_width = b.width
@@ -156,7 +156,7 @@ fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
     // Add padding
     let width = max_width + config.container_padding * 2.0
     let height = total_height + config.container_padding * 2.0
-    obj.set_box(
+    obj.box = Some(
       @graph.Box::new(
         0.0,
         0.0,
@@ -166,9 +166,9 @@ fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
     )
   } else {
     // Leaf node: use precomputed size
-    match obj.get_box() {
+    match obj.box {
       Some(b) =>
-        obj.set_box(
+        obj.box = Some(
           @graph.Box::new(
             0.0,
             0.0,
@@ -265,12 +265,12 @@ fn position_sql_table_children(graph : Graph) -> Unit {
     if obj.shape_type != @graph.SqlTable {
       continue
     }
-    guard obj.get_box() is Some(table_box) else { continue }
+    guard obj.box is Some(table_box) else { continue }
     for i, child in obj.children {
       let row_center_y = table_box.y +
         header_height +
         line_height * (i.to_double() + 0.7)
-      child.set_box(
+      child.box = Some(
         @graph.Box::new(
           table_box.x,
           row_center_y - line_height / 2.0,
@@ -352,7 +352,7 @@ pub fn find_edge_intersection(
 
 ///|
 fn fix_node_overlaps(graph : Graph, config : LayoutConfig) -> Unit {
-  let objects = graph.get_objects()
+  let objects = graph.objects
   let min_spacing = config.horizontal_spacing
   let mut changed = true
   let mut iterations = 0
@@ -364,8 +364,8 @@ fn fix_node_overlaps(graph : Graph, config : LayoutConfig) -> Unit {
       for j in (i + 1)..<objects.length() {
         let obj1 = objects[i]
         let obj2 = objects[j]
-        guard obj1.get_box() is Some(box1) else { continue }
-        guard obj2.get_box() is Some(box2) else { continue }
+        guard obj1.box is Some(box1) else { continue }
+        guard obj2.box is Some(box2) else { continue }
         if is_child_of_obj(obj1, obj2) || is_child_of_obj(obj2, obj1) {
           continue
         }
@@ -375,23 +375,23 @@ fn fix_node_overlaps(graph : Graph, config : LayoutConfig) -> Unit {
           if dy.abs() > dx.abs() {
             if dy >= 0.0 {
               let new_y = box1.y + box1.height + min_spacing
-              obj2.set_box(
+              obj2.box = Some(
                 @graph.Box::new(box2.x, new_y, box2.width, box2.height),
               )
             } else {
               let new_y = box2.y + box2.height + min_spacing
-              obj1.set_box(
+              obj1.box = Some(
                 @graph.Box::new(box1.x, new_y, box1.width, box1.height),
               )
             }
           } else if dx >= 0.0 {
             let new_x = box1.x + box1.width + min_spacing
-            obj2.set_box(
+            obj2.box = Some(
               @graph.Box::new(new_x, box2.y, box2.width, box2.height),
             )
           } else {
             let new_x = box2.x + box2.width + min_spacing
-            obj1.set_box(
+            obj1.box = Some(
               @graph.Box::new(new_x, box1.y, box1.width, box1.height),
             )
           }

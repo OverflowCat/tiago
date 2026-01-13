@@ -16,13 +16,157 @@
 /// Regression tests for edge routing perpendicularity
 
 ///|
+fn style_to_input_for_routing(style : Style) -> @graph.StyleInput {
+  @graph.StyleInput::from_parts(
+    style.opacity,
+    style.stroke,
+    style.fill,
+    style.stroke_width,
+    style.stroke_dash,
+    style.border_radius,
+    style.shadow,
+    style.three_d,
+    style.multiple,
+    style.font,
+    style.font_size,
+    style.font_color,
+    style.bold,
+    style.italic,
+    style.underline,
+    style.animated,
+    style.filled,
+    style.double_border,
+    style.text_transform,
+    style.font_family,
+    style.fill_pattern,
+    style.sketch,
+    style.curved,
+  )
+}
+
+///|
+fn object_to_input_for_routing(obj : Object) -> @graph.ObjectInput {
+  let child_ids : Array[String] = []
+  for child in obj.children {
+    child_ids.push(child.id)
+  }
+  let classes : Array[String] = []
+  for c in obj.classes {
+    classes.push(c)
+  }
+  @graph.ObjectInput::from_parts(
+    obj.id,
+    obj.label,
+    obj.shape_type,
+    style_to_input_for_routing(obj.style),
+    obj.box,
+    obj.label_box,
+    child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+  )
+}
+
+///|
+fn edge_to_input_for_routing(edge : Edge) -> @graph.EdgeInput {
+  @graph.EdgeInput::from_parts(
+    edge.index,
+    edge.src_id,
+    edge.dst_id,
+    edge.src_arrow,
+    edge.dst_arrow,
+    edge.src_arrowhead,
+    edge.dst_arrowhead,
+    edge.src_anchor,
+    edge.dst_anchor,
+    edge.label,
+    style_to_input_for_routing(edge.style),
+    edge.bend_points,
+    edge.is_curve,
+    edge.z_index,
+    edge.reference_count,
+    edge.label_box,
+    edge.src_column_index,
+    edge.dst_column_index,
+  )
+}
+
+///|
+fn fragment_to_input_for_routing(
+  fragment : SequenceFragment,
+) -> @graph.SequenceFragmentInput {
+  let operands : Array[@graph.FragmentOperandInput] = []
+  for op in fragment.operands {
+    operands.push(@graph.FragmentOperandInput::new(op.condition))
+  }
+  @graph.SequenceFragmentInput::new(
+    fragment.fragment_type,
+    fragment.condition,
+    fragment.start_index,
+    fragment.end_index,
+    operands,
+  )
+}
+
+///|
+fn graph_to_input_for_routing(graph : Graph) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(object_to_input_for_routing(obj))
+  }
+  let edges : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    edges.push(edge_to_input_for_routing(edge))
+  }
+  let fragments : Array[@graph.SequenceFragmentInput] = []
+  for fragment in graph.sequence_fragments {
+    fragments.push(fragment_to_input_for_routing(fragment))
+  }
+  @graph.GraphInput::from_parts(
+    graph.name,
+    object_to_input_for_routing(graph.root),
+    objects,
+    edges,
+    fragments,
+    [],
+    [],
+    [],
+    graph.legend,
+  )
+}
+
+///|
+fn new_graph_for_routing(name : String) -> Graph {
+  Graph::from_input(@graph.GraphInput::new(name))
+}
+
+///|
+fn object_with_label_for_routing(id : String, label : String) -> Object {
+  let obj = Object::new(id)
+  obj.label = label
+  obj
+}
+
+///|
 fn layout_to_graph_for_routing(
   graph : Graph,
   config : LayoutConfig,
   direction : Direction,
 ) -> Graph raise LayoutError {
-  let outputs = layout(graph.to_input(), config, direction)
-  let materialized = Graph::from_input(graph.to_input())
+  let input = graph_to_input_for_routing(graph)
+  let outputs = layout(input, config, direction)
+  let materialized = Graph::from_input(input)
   apply_layout_result_for_routing(outputs.layout, materialized)
   materialized
 }
@@ -34,7 +178,7 @@ fn apply_layout_result_for_routing(
 ) -> Unit {
   for obj in graph.objects {
     match layout.nodes.get(obj.id) {
-      Some(node_layout) => obj.set_box(node_layout.to_box())
+      Some(node_layout) => obj.box = Some(node_layout.to_box())
       None => ()
     }
   }
@@ -104,9 +248,9 @@ fn point_on_boundary(
 ///|
 /// Test: Simple two-node vertical arrangement (A above B)
 test "edge routing: two nodes vertical - A above B" {
-  let graph = Graph::new("test")
-  let a = Object::with_label("A", "Node A")
-  let b = Object::with_label("B", "Node B")
+  let graph = new_graph_for_routing("test")
+  let a = object_with_label_for_routing("A", "Node A")
+  let b = object_with_label_for_routing("B", "Node B")
   graph.add_object(a)
   graph.add_object(b)
   graph.add_edge(Edge::new(0, "A", "B", false, true))
@@ -120,7 +264,7 @@ test "edge routing: two nodes vertical - A above B" {
   inspect(edge.route.length() >= 2, content="true")
 
   // Get node boxes
-  let a_box = laid_out.find_object("A").unwrap().get_box().unwrap()
+  let a_box = laid_out.find_object("A").unwrap().box.unwrap()
 
   // Check first segment
   let p0 = edge.route[0]
@@ -144,9 +288,9 @@ test "edge routing: two nodes vertical - A above B" {
 ///|
 /// Test: Two nodes horizontal arrangement (A left of B)
 test "edge routing: two nodes horizontal - A left of B" {
-  let graph = Graph::new("test")
-  let a = Object::with_label("A", "Node A")
-  let b = Object::with_label("B", "Node B")
+  let graph = new_graph_for_routing("test")
+  let a = object_with_label_for_routing("A", "Node A")
+  let b = object_with_label_for_routing("B", "Node B")
   graph.add_object(a)
   graph.add_object(b)
   graph.add_edge(Edge::new(0, "A", "B", false, true))
@@ -156,7 +300,7 @@ test "edge routing: two nodes horizontal - A left of B" {
   }
   let edge = laid_out.edges[0]
   inspect(edge.route.length() >= 2, content="true")
-  let a_box = laid_out.find_object("A").unwrap().get_box().unwrap()
+  let a_box = laid_out.find_object("A").unwrap().box.unwrap()
   let p0 = edge.route[0]
   let p1 = edge.route[1]
   let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -173,10 +317,10 @@ test "edge routing: two nodes horizontal - A left of B" {
 ///|
 /// Test: Three nodes in chain (A -> B -> C)
 test "edge routing: chain A -> B -> C" {
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
-  graph.add_object(Object::with_label("C", "C"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
+  graph.add_object(object_with_label_for_routing("C", "C"))
   graph.add_edge(Edge::new(0, "A", "B", false, true))
   graph.add_edge(Edge::new(1, "B", "C", false, true))
   let config = LayoutConfig::new()
@@ -191,9 +335,9 @@ test "edge routing: chain A -> B -> C" {
 ///|
 /// Test: Cycle (A -> B, B -> A) - tests reversed edges
 test "edge routing: cycle A <-> B" {
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
   graph.add_edge(Edge::new(0, "A", "B", false, true))
   graph.add_edge(Edge::new(1, "B", "A", false, true))
   let config = LayoutConfig::new()
@@ -204,7 +348,7 @@ test "edge routing: cycle A <-> B" {
   for edge in laid_out.edges {
     if edge.route.length() >= 2 {
       let src_obj = laid_out.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.get_box().unwrap()
+      let src_box = src_obj.box.unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -230,10 +374,10 @@ test "edge routing: cycle A <-> B" {
 test "edge routing: same layer - multiple sources to one target" {
   // Create a graph where multiple nodes connect to the same target
   // This can cause nodes to be placed in the same layer
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
-  graph.add_object(Object::with_label("C", "C"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
+  graph.add_object(object_with_label_for_routing("C", "C"))
   // A and B both point to C
   graph.add_edge(Edge::new(0, "A", "C", false, true))
   graph.add_edge(Edge::new(1, "B", "C", false, true))
@@ -245,7 +389,7 @@ test "edge routing: same layer - multiple sources to one target" {
   for edge in laid_out.edges {
     if edge.route.length() >= 2 {
       let src_obj = laid_out.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.get_box().unwrap()
+      let src_box = src_obj.box.unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -267,11 +411,11 @@ test "edge routing: same layer - multiple sources to one target" {
 ///|
 /// Test: Complex graph with cycle - similar to failing property test
 test "edge routing: complex with cycle" {
-  let graph = Graph::new("test")
+  let graph = new_graph_for_routing("test")
   // Create nodes similar to the failing test case
-  graph.add_object(Object::with_label("N1", "N1"))
-  graph.add_object(Object::with_label("N2", "N2"))
-  graph.add_object(Object::with_label("N3", "N3"))
+  graph.add_object(object_with_label_for_routing("N1", "N1"))
+  graph.add_object(object_with_label_for_routing("N2", "N2"))
+  graph.add_object(object_with_label_for_routing("N3", "N3"))
   // Create a cycle
   graph.add_edge(Edge::new(0, "N1", "N2", false, true))
   graph.add_edge(Edge::new(1, "N2", "N3", false, true))
@@ -284,7 +428,7 @@ test "edge routing: complex with cycle" {
   for edge in laid_out.edges {
     if edge.route.length() >= 2 {
       let src_obj = laid_out.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.get_box().unwrap()
+      let src_box = src_obj.box.unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)
@@ -306,9 +450,9 @@ test "edge routing: complex with cycle" {
 ///|
 /// Test: Parallel edges (A -> B and A -> B again)
 test "edge routing: parallel edges" {
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
   graph.add_edge(Edge::new(0, "A", "B", false, true))
   graph.add_edge(Edge::new(1, "A", "B", false, true)) // Duplicate
   let config = LayoutConfig::new()
@@ -318,11 +462,11 @@ test "edge routing: parallel edges" {
 
   // Check that boxes are assigned
   inspect(
-    laid_out.find_object("A").unwrap().get_box() is Some(_),
+    laid_out.find_object("A").unwrap().box is Some(_),
     content="true",
   )
   inspect(
-    laid_out.find_object("B").unwrap().get_box() is Some(_),
+    laid_out.find_object("B").unwrap().box is Some(_),
     content="true",
   )
   // Check that routes are assigned
@@ -333,9 +477,9 @@ test "edge routing: parallel edges" {
 ///|
 /// Test: Bidirectional edges (A -> B and B -> A)
 test "edge routing: bidirectional edges" {
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
   graph.add_edge(Edge::new(0, "A", "B", false, true))
   graph.add_edge(Edge::new(1, "B", "A", false, true))
   graph.add_edge(Edge::new(2, "A", "B", false, true)) // Duplicate
@@ -347,11 +491,11 @@ test "edge routing: bidirectional edges" {
 
   // Check that boxes are assigned
   inspect(
-    laid_out.find_object("A").unwrap().get_box() is Some(_),
+    laid_out.find_object("A").unwrap().box is Some(_),
     content="true",
   )
   inspect(
-    laid_out.find_object("B").unwrap().get_box() is Some(_),
+    laid_out.find_object("B").unwrap().box is Some(_),
     content="true",
   )
 }
@@ -359,11 +503,11 @@ test "edge routing: bidirectional edges" {
 ///|
 /// Test: Diamond pattern (A -> B, A -> C, B -> D, C -> D)
 test "edge routing: diamond pattern" {
-  let graph = Graph::new("test")
-  graph.add_object(Object::with_label("A", "A"))
-  graph.add_object(Object::with_label("B", "B"))
-  graph.add_object(Object::with_label("C", "C"))
-  graph.add_object(Object::with_label("D", "D"))
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
+  graph.add_object(object_with_label_for_routing("C", "C"))
+  graph.add_object(object_with_label_for_routing("D", "D"))
   graph.add_edge(Edge::new(0, "A", "B", false, true))
   graph.add_edge(Edge::new(1, "A", "C", false, true))
   graph.add_edge(Edge::new(2, "B", "D", false, true))
@@ -376,7 +520,7 @@ test "edge routing: diamond pattern" {
   for edge in laid_out.edges {
     if edge.route.length() >= 2 {
       let src_obj = laid_out.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.get_box().unwrap()
+      let src_box = src_obj.box.unwrap()
       let p0 = edge.route[0]
       let p1 = edge.route[1]
       let first_horiz = is_horizontal(p0, p1, 2.0)

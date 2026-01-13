@@ -109,21 +109,21 @@ pub fn LegendEntry::separator() -> LegendEntry {
 /// The legend configuration for a diagram
 pub struct Legend {
   /// Optional title for the legend
-  mut title : String?
+  title : String?
   /// Position of the legend in the diagram
-  mut position : LegendPosition
+  position : LegendPosition
   /// Legend entries
   entries : Array[LegendEntry]
   /// Background fill color
-  mut fill : String?
+  fill : String?
   /// Border stroke color
-  mut stroke : String?
+  stroke : String?
   /// Padding inside the legend box
-  mut padding : Double
+  padding : Double
   /// Gap between entries
-  mut entry_gap : Double
+  entry_gap : Double
   /// Size of shape icons in legend
-  mut icon_size : Double
+  icon_size : Double
 } derive(Show)
 
 ///|
@@ -145,8 +145,7 @@ pub fn Legend::new() -> Legend {
 /// Create a legend with a specific position
 pub fn Legend::with_position(position : LegendPosition) -> Legend {
   let legend = Legend::new()
-  legend.position = position
-  legend
+  { ..legend, position }
 }
 
 ///|
@@ -183,38 +182,38 @@ pub fn Legend::add_separator(self : Legend) -> Unit {
 }
 
 ///|
-pub fn Legend::set_title(self : Legend, title : String) -> Unit {
-  self.title = Some(title)
+pub fn Legend::set_title(self : Legend, title : String) -> Legend {
+  { ..self, title: Some(title) }
 }
 
 ///|
-pub fn Legend::set_position(self : Legend, position : LegendPosition) -> Unit {
-  self.position = position
+pub fn Legend::set_position(self : Legend, position : LegendPosition) -> Legend {
+  { ..self, position }
 }
 
 ///|
-pub fn Legend::set_fill(self : Legend, fill : String) -> Unit {
-  self.fill = Some(fill)
+pub fn Legend::set_fill(self : Legend, fill : String) -> Legend {
+  { ..self, fill: Some(fill) }
 }
 
 ///|
-pub fn Legend::set_stroke(self : Legend, stroke : String) -> Unit {
-  self.stroke = Some(stroke)
+pub fn Legend::set_stroke(self : Legend, stroke : String) -> Legend {
+  { ..self, stroke: Some(stroke) }
 }
 
 ///|
-pub fn Legend::set_padding(self : Legend, padding : Double) -> Unit {
-  self.padding = padding
+pub fn Legend::set_padding(self : Legend, padding : Double) -> Legend {
+  { ..self, padding }
 }
 
 ///|
-pub fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Unit {
-  self.entry_gap = entry_gap
+pub fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Legend {
+  { ..self, entry_gap }
 }
 
 ///|
-pub fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Unit {
-  self.icon_size = icon_size
+pub fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Legend {
+  { ..self, icon_size }
 }
 
 ///|

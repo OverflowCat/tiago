@@ -5,8 +5,5 @@
     { "path": "Milky2018/diago/graph", "alias": "graph" },
     "Milky2018/diago/engine_elk/elk",
     { "path": "Milky2018/diago/engine_elk/elk/layered", "alias": "layered" }
-  ],
-  "wbtest-import": [
-    { "path": "moonbitlang/quickcheck", "alias": "qc" }
   ]
 }

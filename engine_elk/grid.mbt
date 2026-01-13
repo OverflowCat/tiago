@@ -17,14 +17,46 @@
 // ============================================================================
 
 ///|
+fn horizontal_gap(container : Object) -> Double {
+  match container.horizontal_gap {
+    Some(v) => v
+    None =>
+      match container.grid_gap {
+        Some(v) => v
+        None => 40.0
+      }
+  }
+}
+
+///|
+fn vertical_gap(container : Object) -> Double {
+  match container.vertical_gap {
+    Some(v) => v
+    None =>
+      match container.grid_gap {
+        Some(v) => v
+        None => 40.0
+      }
+  }
+}
+
+///|
+fn grid_span(value : Int?) -> Int {
+  match value {
+    Some(v) => if v >= 1 { v } else { 1 }
+    None => 1
+  }
+}
+
+///|
 /// Layout children of a container in a grid pattern (with spanning support)
 fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
-  let children = container.get_children()
+  let children = container.children
   if children.length() == 0 {
     return
   }
-  let h_gap = container.get_horizontal_gap()
-  let v_gap = container.get_vertical_gap()
+  let h_gap = horizontal_gap(container)
+  let v_gap = vertical_gap(container)
   // Determine rows and columns
   let (rows, columns, row_directed) = compute_grid_dimensions(
     container,
@@ -50,7 +82,7 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
     config.container_padding * 2.0
   let total_height = sum_with_gap(row_heights, v_gap) +
     config.container_padding * 2.0
-  container.set_box(
+  container.box = Some(
     @graph.Box::new(0.0, 0.0, max(total_width, 100.0), max(total_height, 60.0)),
   )
 }
@@ -61,7 +93,7 @@ fn compute_grid_dimensions(
   container : Object,
   child_count : Int,
 ) -> (Int, Int, Bool) {
-  match (container.get_grid_rows(), container.get_grid_columns()) {
+  match (container.grid_rows, container.grid_columns) {
     (Some(r), Some(c)) => (r, c, true)
     (Some(r), None) => {
       let columns = (child_count + r - 1) / r
@@ -120,8 +152,8 @@ fn allocate_grid_cells(
   }
   let positions : Array[CellPosition] = []
   for child in children {
-    let col_span = min(child.get_grid_column_span(), columns)
-    let row_span = min(child.get_grid_row_span(), rows)
+    let col_span = min(grid_span(child.grid_column_span), columns)
+    let row_span = min(grid_span(child.grid_row_span), rows)
     // Find next available cell that can fit this span
     match
       find_available_cell(
@@ -221,7 +253,7 @@ fn compute_column_widths_with_spans(
     }
     let pos = positions[i]
     if pos.col_span == 1 {
-      let child_width = match child.get_box() {
+      let child_width = match child.box {
         Some(b) => b.get_width()
         None => config.default_width
       }
@@ -237,7 +269,7 @@ fn compute_column_widths_with_spans(
     }
     let pos = positions[i]
     if pos.col_span > 1 {
-      let child_width = match child.get_box() {
+      let child_width = match child.box {
         Some(b) => b.get_width()
         None => config.default_width * pos.col_span.to_double()
       }
@@ -278,7 +310,7 @@ fn compute_row_heights_with_spans(
     }
     let pos = positions[i]
     if pos.row_span == 1 {
-      let child_height = match child.get_box() {
+      let child_height = match child.box {
         Some(b) => b.get_height()
         None => config.default_height
       }
@@ -294,7 +326,7 @@ fn compute_row_heights_with_spans(
     }
     let pos = positions[i]
     if pos.row_span > 1 {
-      let child_height = match child.get_box() {
+      let child_height = match child.box {
         Some(b) => b.get_height()
         None => config.default_height * pos.row_span.to_double()
       }
@@ -365,7 +397,7 @@ fn position_grid_children_with_spans(
         height = height + v_gap
       }
     }
-    child.set_box(@graph.Box::new(x, y, width, height))
+    child.box = Some(@graph.Box::new(x, y, width, height))
   }
 }
 

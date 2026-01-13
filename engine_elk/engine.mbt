@@ -53,7 +53,7 @@ fn layout_result_from_graph(graph : Graph) -> @engine_api.LayoutResult {
       points.push(@graph.Point::new(p.x, p.y))
     }
     result.edges[edge.index] = @engine_api.EdgeLayout::new(points)
-    match edge.get_label_box() {
+    match edge.label_box {
       Some(b) =>
         result.edge_labels[edge.index] = @engine_api.NodeLayout::from_box(b)
       None => ()

@@ -1003,12 +1003,12 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
         Some(p) => p
         None => continue
       }
-      guard parent.get_box() is Some(table_box) else { continue }
+      guard parent.box is Some(table_box) else { continue }
       (table_box, Some((table_box, col_idx, parent.children.length())))
     } else {
       let src_obj = graph.find_object(edge.src_id)
       guard src_obj is Some(src) else { continue }
-      guard src.get_box() is Some(src_box) else { continue }
+      guard src.box is Some(src_box) else { continue }
       (src_box, None)
     }
     let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
@@ -1021,12 +1021,12 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
         Some(p) => p
         None => continue
       }
-      guard parent.get_box() is Some(table_box) else { continue }
+      guard parent.box is Some(table_box) else { continue }
       (table_box, Some((table_box, col_idx, parent.children.length())))
     } else {
       let dst_obj = graph.find_object(edge.dst_id)
       guard dst_obj is Some(dst) else { continue }
-      guard dst.get_box() is Some(dst_box) else { continue }
+      guard dst.box is Some(dst_box) else { continue }
       (dst_box, None)
     }
 
@@ -1149,7 +1149,7 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
     if edge.src_port is Some(src_port) {
       if src_port.point is None {
         if graph.find_object(edge.src_id) is Some(obj) {
-          if obj.get_box() is Some(box) {
+          if obj.box is Some(box) {
             src_port.point = Some(
               get_port_point_on_side(box, src_port.side, src_port.position),
             )
@@ -1160,7 +1160,7 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
     if edge.dst_port is Some(dst_port) {
       if dst_port.point is None {
         if graph.find_object(edge.dst_id) is Some(obj) {
-          if obj.get_box() is Some(box) {
+          if obj.box is Some(box) {
             dst_port.point = Some(
               get_port_point_on_side(box, dst_port.side, dst_port.position),
             )
@@ -1185,7 +1185,7 @@ fn port_side_string(side : PortSide) -> String {
 fn get_object_center_x(graph : Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
-      match obj.get_box() {
+      match obj.box {
         Some(b) => b.x + b.width / 2.0
         None => 0.0
       }
@@ -1200,7 +1200,7 @@ fn get_object_center_x(graph : Graph, id : String) -> Double {
 ///|
 /// Route all edges in the graph using unified routing.
 /// This is the single source of truth for edge routing.
-pub fn route_all_edges(
+fn route_all_edges(
   graph : Graph,
   _config : LayoutConfig,
   _direction : Direction,
@@ -1388,7 +1388,7 @@ fn collect_obstacles_for_group(
     if !is_leaf_obstacle_node(obj) {
       continue
     }
-    if obj.get_box() is Some(b) {
+    if obj.box is Some(b) {
       if sql_parent_ids.contains(obj.id) {
         obstacles.push(shrink_box_by(b, clearance))
       } else {
@@ -1441,12 +1441,12 @@ fn get_sql_edge_port_info(
       Some(p) => p
       None => return None
     }
-    guard parent.get_box() is Some(table_box) else { return None }
+    guard parent.box is Some(table_box) else { return None }
     (table_box, Some((table_box, col_idx, parent.children.length())))
   } else {
     let src_obj = graph.find_object(edge.src_id)
     guard src_obj is Some(src) else { return None }
-    guard src.get_box() is Some(src_box) else { return None }
+    guard src.box is Some(src_box) else { return None }
     (src_box, None)
   }
   let (dst_box_for_sides, dst_sql_info) = if edge.dst_column_index
@@ -1459,12 +1459,12 @@ fn get_sql_edge_port_info(
       Some(p) => p
       None => return None
     }
-    guard parent.get_box() is Some(table_box) else { return None }
+    guard parent.box is Some(table_box) else { return None }
     (table_box, Some((table_box, col_idx, parent.children.length())))
   } else {
     let dst_obj = graph.find_object(edge.dst_id)
     guard dst_obj is Some(dst) else { return None }
-    guard dst.get_box() is Some(dst_box) else { return None }
+    guard dst.box is Some(dst_box) else { return None }
     (dst_box, None)
   }
   let src_center = src_box_for_sides.center()
@@ -1522,8 +1522,8 @@ fn get_port_info(
   let dst_obj = graph.find_object(edge.dst_id)
   guard src_obj is Some(src) else { return None }
   guard dst_obj is Some(dst) else { return None }
-  guard src.get_box() is Some(src_box) else { return None }
-  guard dst.get_box() is Some(dst_box) else { return None }
+  guard src.box is Some(src_box) else { return None }
+  guard dst.box is Some(dst_box) else { return None }
   // Determine best sides based on relative positions
   let src_center = src_box.center()
   let dst_center = dst_box.center()
@@ -1579,7 +1579,7 @@ fn get_port_point_on_side(
 fn route_self_loop_unified(edge : Edge, graph : Graph) -> Unit {
   let obj = graph.find_object(edge.src_id)
   guard obj is Some(o) else { return }
-  guard o.get_box() is Some(box) else { return }
+  guard o.box is Some(box) else { return }
   // Create a self-loop on the right side
   let loop_offset = 30.0
   let start_y = box.y + box.height * 0.3
@@ -1681,7 +1681,7 @@ fn infer_port_side_from_segment(
 
 ///|
 /// Compress all routes in the graph to remove redundant waypoints.
-pub fn compress_all_routes(graph : Graph) -> Unit {
+fn compress_all_routes(graph : Graph) -> Unit {
   for edge in graph.edges {
     // Preserve explicit user control points.
     if edge.bend_points is Some(_) {
@@ -1705,7 +1705,7 @@ pub fn compress_all_routes(graph : Graph) -> Unit {
 /// Fix endpoint approach directions for all edges.
 /// Instead of inserting correction points, we adjust the endpoint to
 /// the side that matches the actual approach direction.
-pub fn fix_all_endpoint_approaches(graph : Graph) -> Unit {
+fn fix_all_endpoint_approaches(graph : Graph) -> Unit {
   for edge in graph.edges {
     if edge.route.length() < 2 {
       continue
@@ -1719,14 +1719,14 @@ pub fn fix_all_endpoint_approaches(graph : Graph) -> Unit {
       match get_parent_id_from_field(edge.dst_id) {
         Some(parent_id) =>
           match graph.find_object(parent_id) {
-            Some(obj) => obj.get_box()
+            Some(obj) => obj.box
             None => None
           }
         None => None
       }
     } else {
       match graph.find_object(edge.dst_id) {
-        Some(obj) => obj.get_box()
+        Some(obj) => obj.box
         None => None
       }
     }
@@ -1738,14 +1738,14 @@ pub fn fix_all_endpoint_approaches(graph : Graph) -> Unit {
       match get_parent_id_from_field(edge.src_id) {
         Some(parent_id) =>
           match graph.find_object(parent_id) {
-            Some(obj) => obj.get_box()
+            Some(obj) => obj.box
             None => None
           }
         None => None
       }
     } else {
       match graph.find_object(edge.src_id) {
-        Some(obj) => obj.get_box()
+        Some(obj) => obj.box
         None => None
       }
     }
@@ -1863,7 +1863,8 @@ fn fix_endpoint_to_match_approach(
 ///|
 /// Fix approach direction when endpoint is near boundary but approach is wrong.
 /// This handles the case where the route approaches from the wrong direction.
-pub fn fix_wrong_approach_direction(graph : Graph) -> Unit {
+#warnings("-unused_value")
+fn fix_wrong_approach_direction(graph : Graph) -> Unit {
   let tolerance = 5.0
   for edge in graph.edges {
     if edge.route.length() < 2 {
@@ -1871,12 +1872,12 @@ pub fn fix_wrong_approach_direction(graph : Graph) -> Unit {
     }
     // Fix destination
     let dst_obj = graph.find_object(edge.dst_id)
-    if dst_obj is Some(obj) && obj.get_box() is Some(box) {
+    if dst_obj is Some(obj) && obj.box is Some(box) {
       fix_wrong_approach_for_endpoint(edge.route, box, is_start=false)
     }
     // Fix source
     let src_obj = graph.find_object(edge.src_id)
-    if src_obj is Some(obj) && obj.get_box() is Some(box) {
+    if src_obj is Some(obj) && obj.box is Some(box) {
       fix_wrong_approach_for_endpoint(edge.route, box, is_start=true)
     }
   }
@@ -2015,7 +2016,8 @@ fn fix_wrong_approach_for_endpoint(
 ///|
 /// Remove tiny segments at route endpoints (less than min_length pixels).
 /// These can cause perpendicularity test failures.
-pub fn cleanup_tiny_endpoint_segments(graph : Graph) -> Unit {
+#warnings("-unused_value")
+fn cleanup_tiny_endpoint_segments(graph : Graph) -> Unit {
   let min_length = 5.0
   for edge in graph.edges {
     if edge.route.length() < 3 {
@@ -2084,14 +2086,14 @@ fn update_edge_port_sides(edge : Edge, graph : Graph) -> Unit {
     match get_parent_id_from_field(edge.src_id) {
       Some(parent_id) =>
         match graph.find_object(parent_id) {
-          Some(obj) => obj.get_box()
+          Some(obj) => obj.box
           None => None
         }
       None => None
     }
   } else {
     match graph.find_object(edge.src_id) {
-      Some(obj) => obj.get_box()
+      Some(obj) => obj.box
       None => None
     }
   }
@@ -2110,14 +2112,14 @@ fn update_edge_port_sides(edge : Edge, graph : Graph) -> Unit {
     match get_parent_id_from_field(edge.dst_id) {
       Some(parent_id) =>
         match graph.find_object(parent_id) {
-          Some(obj) => obj.get_box()
+          Some(obj) => obj.box
           None => None
         }
       None => None
     }
   } else {
     match graph.find_object(edge.dst_id) {
-      Some(obj) => obj.get_box()
+      Some(obj) => obj.box
       None => None
     }
   }

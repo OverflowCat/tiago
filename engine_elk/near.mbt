@@ -41,7 +41,7 @@ fn apply_near_positioning(graph : Graph, config : LayoutConfig) -> Unit {
   let root_box = compute_root_bounding_box(graph)
   // Apply near positioning to each object
   for obj in graph.objects {
-    if obj.get_near() is Some(near) {
+    if obj.near is Some(near) {
       if is_near_constant(near) {
         apply_constant_near(obj, near, root_box, config)
       } else {
@@ -61,7 +61,7 @@ fn compute_root_bounding_box(graph : Graph) -> @graph.Box {
   let mut first = true
   let roots = find_root_objects(graph)
   for obj in roots {
-    if obj.get_box() is Some(b) {
+    if obj.box is Some(b) {
       if first {
         min_x = b.x
         min_y = b.y
@@ -95,7 +95,7 @@ fn apply_constant_near(
   parent_box : @graph.Box,
   config : LayoutConfig,
 ) -> Unit {
-  if obj.get_box() is Some(b) {
+  if obj.box is Some(b) {
     let margin = config.container_padding
     let (x, y) = match near.to_lower() {
       "top-left" => (parent_box.x + margin, parent_box.y + margin)
@@ -136,7 +136,7 @@ fn apply_constant_near(
         )
       _ => (b.x, b.y) // Keep current position if unknown
     }
-    obj.set_box(@graph.Box::new(x, y, b.width, b.height))
+    obj.box = Some(@graph.Box::new(x, y, b.width, b.height))
   }
 }
 
@@ -149,13 +149,13 @@ fn apply_object_near(
   config : LayoutConfig,
 ) -> Unit {
   // Find the target object
-  if obj.get_box() is Some(obj_box) &&
+  if obj.box is Some(obj_box) &&
     graph.find_object(target_id) is Some(target_obj) &&
-    target_obj.get_box() is Some(target_box) {
+    target_obj.box is Some(target_box) {
     // Position the object near the target (to the right and slightly below)
     let margin = config.horizontal_spacing / 2.0
     let x = target_box.x + target_box.width + margin
     let y = target_box.y
-    obj.set_box(@graph.Box::new(x, y, obj_box.width, obj_box.height))
+    obj.box = Some(@graph.Box::new(x, y, obj_box.width, obj_box.height))
   }
 }

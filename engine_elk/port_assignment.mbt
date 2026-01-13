@@ -25,7 +25,8 @@
 ///|
 /// Assign ports for all edges in the graph
 /// Called after positioning (Phase 5/6), before routing (Phase 7)
-pub fn assign_ports(
+#warnings("-unused_value")
+fn assign_ports(
   graph : Graph,
   layers : Array[Array[String]],
   _config : LayoutConfig,
@@ -73,7 +74,7 @@ fn determine_port_sides(
   src_layer : Int,
   dst_layer : Int,
 ) -> (PortSide, PortSide) {
-  match (src.get_box(), dst.get_box()) {
+  match (src.box, dst.box) {
     (Some(src_box), Some(dst_box)) =>
       if src_layer < dst_layer {
         // Source is above destination (normal downward flow)
@@ -218,7 +219,7 @@ fn sort_edges_by_src_x(edges : Array[Edge], graph : Graph) -> Array[Edge] {
 fn get_obj_center_x(graph : Graph, id : String) -> Double {
   match graph.find_object(id) {
     Some(obj) =>
-      match obj.get_box() {
+      match obj.box {
         Some(b) => b.x + b.width / 2.0
         None => 0.0
       }
@@ -318,7 +319,7 @@ fn compute_port_coordinates(graph : Graph) -> Unit {
     // Compute source port coordinates
     match (edge.src_port, graph.find_object(edge.src_id)) {
       (Some(port), Some(obj)) =>
-        match obj.get_box() {
+        match obj.box {
           Some(box) => {
             let point = compute_port_point(box, port.side, port.position)
             port.point = Some(point)
@@ -330,7 +331,7 @@ fn compute_port_coordinates(graph : Graph) -> Unit {
     // Compute destination port coordinates
     match (edge.dst_port, graph.find_object(edge.dst_id)) {
       (Some(port), Some(obj)) =>
-        match obj.get_box() {
+        match obj.box {
           Some(box) => {
             let point = compute_port_point(box, port.side, port.position)
             port.point = Some(point)
@@ -376,7 +377,8 @@ fn compute_port_point(
 ///|
 /// Fix perpendicularity of edge connections after all post-processing
 /// This ensures the first and last segments are perpendicular to node boundaries
-pub fn fix_perpendicularity(graph : Graph) -> Unit {
+#warnings("-unused_value")
+fn fix_perpendicularity(graph : Graph) -> Unit {
   for edge in graph.edges {
     if edge.route.length() < 2 {
       continue
@@ -396,7 +398,7 @@ pub fn fix_perpendicularity(graph : Graph) -> Unit {
 fn fix_source_perpendicularity(edge : Edge, graph : Graph) -> Unit {
   let src_obj = graph.find_object(edge.src_id)
   guard src_obj is Some(obj) else { return }
-  guard obj.get_box() is Some(box) else { return }
+  guard obj.box is Some(box) else { return }
   guard edge.route.length() >= 2 else { return }
   let p0 = edge.route[0]
   let p1 = edge.route[1]
@@ -461,7 +463,7 @@ fn fix_source_perpendicularity(edge : Edge, graph : Graph) -> Unit {
 fn fix_dest_perpendicularity(edge : Edge, graph : Graph) -> Unit {
   let dst_obj = graph.find_object(edge.dst_id)
   guard dst_obj is Some(obj) else { return }
-  guard obj.get_box() is Some(box) else { return }
+  guard obj.box is Some(box) else { return }
   guard edge.route.length() >= 2 else { return }
   let last_idx = edge.route.length() - 1
   let p0 = edge.route[last_idx - 1]

@@ -30,7 +30,8 @@ fn port_side_to_side_string(side : PortSide) -> String {
 ///|
 /// Route edges using pre-assigned ports
 /// This guarantees perpendicular connections since ports are on node sides
-pub fn route_edges_with_ports(
+#warnings("-unused_value")
+fn route_edges_with_ports(
   graph : Graph,
   _config : LayoutConfig,
   virtual_result : VirtualNodeResult,
@@ -44,7 +45,7 @@ pub fn route_edges_with_ports(
     if edge.src_id == edge.dst_id {
       let src_obj = graph.find_object(edge.src_id)
       guard src_obj is Some(src) else { continue }
-      guard src.get_box() is Some(box) else { continue }
+      guard src.box is Some(box) else { continue }
       route_self_loop(edge, box)
       continue
     }
@@ -84,10 +85,10 @@ pub fn route_edges_with_ports(
         }
         let src = src_obj.unwrap()
         let dst = dst_obj.unwrap()
-        if src.get_box() is None || dst.get_box() is None {
+        if src.box is None || dst.box is None {
           continue
         }
-        (src.get_box().unwrap(), 0, dst.get_box().unwrap(), 0)
+        (src.box.unwrap(), 0, dst.box.unwrap(), 0)
       }
     }
     // Check if this edge has virtual nodes
@@ -305,19 +306,19 @@ fn get_sql_table_boxes(
       Some(p) => p
       None => return None
     }
-    if parent.get_box() is None {
+    if parent.box is None {
       return None
     }
-    (parent.get_box().unwrap(), parent.children.length())
+    (parent.box.unwrap(), parent.children.length())
   } else {
     let obj = match graph.find_object(edge.src_id) {
       Some(o) => o
       None => return None
     }
-    if obj.get_box() is None {
+    if obj.box is None {
       return None
     }
-    (obj.get_box().unwrap(), 0)
+    (obj.box.unwrap(), 0)
   }
   // Get destination box (either from parent table or direct object)
   let (dst_box, dst_num_cols) = if edge.dst_column_index is Some(_) {
@@ -330,19 +331,19 @@ fn get_sql_table_boxes(
       Some(p) => p
       None => return None
     }
-    if parent.get_box() is None {
+    if parent.box is None {
       return None
     }
-    (parent.get_box().unwrap(), parent.children.length())
+    (parent.box.unwrap(), parent.children.length())
   } else {
     let obj = match graph.find_object(edge.dst_id) {
       Some(o) => o
       None => return None
     }
-    if obj.get_box() is None {
+    if obj.box is None {
       return None
     }
-    (obj.get_box().unwrap(), 0)
+    (obj.box.unwrap(), 0)
   }
   Some((src_box, src_num_cols, dst_box, dst_num_cols))
 }
@@ -521,7 +522,7 @@ fn compute_all_bounds(graph : Graph) -> (Double, Double, Double, Double) {
   let mut max_x = -1.0e10
   let mut max_y = -1.0e10
   for obj in graph.objects {
-    guard obj.get_box() is Some(box) else { continue }
+    guard obj.box is Some(box) else { continue }
     if box.x < min_x {
       min_x = box.x
     }
@@ -547,7 +548,7 @@ fn normalize_coordinates(graph : Graph) -> Unit {
   let mut min_y = 0.0
   // Check object boxes
   for obj in graph.objects {
-    if obj.get_box() is Some(box) {
+    if obj.box is Some(box) {
       if box.x < min_x {
         min_x = box.x
       }
@@ -585,9 +586,9 @@ fn normalize_coordinates(graph : Graph) -> Unit {
   let shift_y = if min_y < 0.0 { -min_y } else { 0.0 }
   // Shift all object boxes
   for obj in graph.objects {
-    match obj.get_box() {
+    match obj.box {
       Some(box) =>
-        obj.set_box(
+        obj.box = Some(
           @graph.Box::new(
             box.x + shift_x,
             box.y + shift_y,

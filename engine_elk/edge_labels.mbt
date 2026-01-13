@@ -22,7 +22,7 @@ fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
   // Collect all node bounding boxes for overlap detection
   let node_boxes : Array[@graph.Box] = []
   for obj in graph.objects {
-    match obj.get_box() {
+    match obj.box {
       Some(b) => node_boxes.push(b)
       None => ()
     }
@@ -52,7 +52,7 @@ fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
         // Calculate perpendicular direction to the edge
         let (perp_x, perp_y) = compute_perpendicular_direction(edge)
         // Also get the edge direction for along-edge offsets
-        let route = edge.get_route()
+        let route = edge.route
         let (edge_dx, edge_dy) = if route.length() >= 2 {
           let p1 = route[0]
           let p2 = route[route.length() - 1]
@@ -130,7 +130,7 @@ fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
           }
         }
         // Store the computed label box
-        edge.set_label_box(label_box)
+        edge.label_box = Some(label_box)
         label_boxes.push(label_box)
       }
       None => ()
@@ -141,7 +141,7 @@ fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
 ///|
 /// Compute the perpendicular direction to an edge for label offset
 fn compute_perpendicular_direction(edge : Edge) -> (Double, Double) {
-  let route = edge.get_route()
+  let route = edge.route
   if route.length() < 2 {
     return (0.0, 1.0) // Default to vertical offset
   }

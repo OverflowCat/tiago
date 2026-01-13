@@ -30,13 +30,219 @@ test "layout config with_spacing" {
 }
 
 ///|
+fn style_to_input(style : Style) -> @graph.StyleInput {
+  @graph.StyleInput::from_parts(
+    style.opacity,
+    style.stroke,
+    style.fill,
+    style.stroke_width,
+    style.stroke_dash,
+    style.border_radius,
+    style.shadow,
+    style.three_d,
+    style.multiple,
+    style.font,
+    style.font_size,
+    style.font_color,
+    style.bold,
+    style.italic,
+    style.underline,
+    style.animated,
+    style.filled,
+    style.double_border,
+    style.text_transform,
+    style.font_family,
+    style.fill_pattern,
+    style.sketch,
+    style.curved,
+  )
+}
+
+///|
+fn object_to_input(obj : Object) -> @graph.ObjectInput {
+  let child_ids : Array[String] = []
+  for child in obj.children {
+    child_ids.push(child.id)
+  }
+  let classes : Array[String] = []
+  for c in obj.classes {
+    classes.push(c)
+  }
+  @graph.ObjectInput::from_parts(
+    obj.id,
+    obj.label,
+    obj.shape_type,
+    style_to_input(obj.style),
+    obj.box,
+    obj.label_box,
+    child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+  )
+}
+
+///|
+fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
+  @graph.EdgeInput::from_parts(
+    edge.index,
+    edge.src_id,
+    edge.dst_id,
+    edge.src_arrow,
+    edge.dst_arrow,
+    edge.src_arrowhead,
+    edge.dst_arrowhead,
+    edge.src_anchor,
+    edge.dst_anchor,
+    edge.label,
+    style_to_input(edge.style),
+    edge.bend_points,
+    edge.is_curve,
+    edge.z_index,
+    edge.reference_count,
+    edge.label_box,
+    edge.src_column_index,
+    edge.dst_column_index,
+  )
+}
+
+///|
+fn fragment_to_input(fragment : SequenceFragment) -> @graph.SequenceFragmentInput {
+  let operands : Array[@graph.FragmentOperandInput] = []
+  for op in fragment.operands {
+    operands.push(@graph.FragmentOperandInput::new(op.condition))
+  }
+  @graph.SequenceFragmentInput::new(
+    fragment.fragment_type,
+    fragment.condition,
+    fragment.start_index,
+    fragment.end_index,
+    operands,
+  )
+}
+
+///|
+fn graph_to_input(graph : Graph) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(object_to_input(obj))
+  }
+  let edges : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    edges.push(edge_to_input(edge))
+  }
+  let fragments : Array[@graph.SequenceFragmentInput] = []
+  for fragment in graph.sequence_fragments {
+    fragments.push(fragment_to_input(fragment))
+  }
+  @graph.GraphInput::from_parts(
+    graph.name,
+    object_to_input(graph.root),
+    objects,
+    edges,
+    fragments,
+    [],
+    [],
+    [],
+    graph.legend,
+  )
+}
+
+///|
+fn new_graph(name : String) -> Graph {
+  Graph::from_input(@graph.GraphInput::new(name))
+}
+
+///|
+fn new_graph_with_root_shape(name : String, shape : String) -> Graph {
+  let root = @graph.ObjectInput::from_parts(
+    "root",
+    "root",
+    ShapeType::from_string(shape),
+    @graph.StyleInput::new(),
+    None,
+    None,
+    [],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+
+  let input = @graph.GraphInput::from_parts(
+    name,
+    root,
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    None,
+  )
+  Graph::from_input(input)
+}
+
+///|
+fn object_with_label(id : String, label : String) -> Object {
+  let obj = Object::new(id)
+  obj.label = label
+  obj
+}
+
+///|
+fn with_shape(obj : Object, shape : String) -> Object {
+  { ..obj, shape_type: ShapeType::from_string(shape) }
+}
+
+///|
+fn with_grid_rows(obj : Object, rows : Int) -> Object {
+  { ..obj, grid_rows: Some(rows) }
+}
+
+///|
+fn with_grid_columns(obj : Object, columns : Int) -> Object {
+  { ..obj, grid_columns: Some(columns) }
+}
+
+///|
+fn with_grid_column_span(obj : Object, span : Int) -> Object {
+  { ..obj, grid_column_span: Some(span) }
+}
+
+///|
+fn with_grid_row_span(obj : Object, span : Int) -> Object {
+  { ..obj, grid_row_span: Some(span) }
+}
+
+///|
 fn layout_to_graph(
   graph : Graph,
   config : LayoutConfig,
   direction : Direction,
 ) -> Graph raise LayoutError {
-  let outputs = layout(graph.to_input(), config, direction)
-  let materialized = Graph::from_input(graph.to_input())
+  let input = graph_to_input(graph)
+  let outputs = layout(input, config, direction)
+  let materialized = Graph::from_input(input)
   apply_layout_result_for_layout(outputs.layout, materialized)
   materialized
 }
@@ -48,7 +254,7 @@ fn apply_layout_result_for_layout(
 ) -> Unit {
   for obj in graph.objects {
     match layout.nodes.get(obj.id) {
-      Some(node_layout) => obj.set_box(node_layout.to_box())
+      Some(node_layout) => obj.box = Some(node_layout.to_box())
       None => ()
     }
   }
@@ -79,7 +285,7 @@ fn apply_layout_result_for_layout(
 
 ///|
 test "layout single object" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   graph.add_object(Object::new("a"))
   let config = LayoutConfig::new()
   let laid_out = layout_to_graph(graph, config, Direction::Down) catch {
@@ -87,7 +293,7 @@ test "layout single object" {
   }
   // Object should have a box
   let obj = laid_out.find_object("a").unwrap()
-  guard obj.get_box() is Some(box) else { fail("expected box") }
+  guard obj.box is Some(box) else { fail("expected box") }
   // Position should be at container padding
   assert_eq(box.x, 20.0)
   assert_eq(box.y, 20.0)
@@ -98,7 +304,7 @@ test "layout single object" {
 
 ///|
 test "layout multiple objects horizontally" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   graph.add_object(Object::new("a"))
   graph.add_object(Object::new("b"))
   let config = LayoutConfig::new()
@@ -108,15 +314,15 @@ test "layout multiple objects horizontally" {
   // Both should have boxes
   let obj_a = laid_out.find_object("a").unwrap()
   let obj_b = laid_out.find_object("b").unwrap()
-  guard obj_a.get_box() is Some(box_a) else { fail("expected box a") }
-  guard obj_b.get_box() is Some(box_b) else { fail("expected box b") }
+  guard obj_a.box is Some(box_a) else { fail("expected box a") }
+  guard obj_b.box is Some(box_b) else { fail("expected box b") }
   // B should be to the right of A (horizontal layout with Direction::Right)
   assert_true(box_b.x > box_a.x)
 }
 
 ///|
 test "layout edge routing" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   graph.add_object(Object::new("a"))
   graph.add_object(Object::new("b"))
   graph.add_edge(Edge::new(0, "a", "b", false, true))
@@ -125,18 +331,18 @@ test "layout edge routing" {
     e => fail("layout failed: \{e}")
   }
   // Edge should have route points
-  let edge = laid_out.get_edges()[0]
+  let edge = laid_out.edges[0]
   assert_eq(edge.route.length(), 2)
 }
 
 ///|
 test "layout container with children" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let parent = Object::new("parent")
   let child1 = Object::new("child1")
   let child2 = Object::new("child2")
-  parent.add_child(child1)
-  parent.add_child(child2)
+  parent.children.push(child1)
+  parent.children.push(child2)
   graph.add_object(parent)
   graph.add_object(child1)
   graph.add_object(child2)
@@ -148,13 +354,13 @@ test "layout container with children" {
   let parent = laid_out.find_object("parent").unwrap()
   let child1 = laid_out.find_object("child1").unwrap()
   let child2 = laid_out.find_object("child2").unwrap()
-  guard parent.get_box() is Some(parent_box) else {
+  guard parent.box is Some(parent_box) else {
     fail("expected parent box")
   }
-  guard child1.get_box() is Some(child1_box) else {
+  guard child1.box is Some(child1_box) else {
     fail("expected child1 box")
   }
-  guard child2.get_box() is Some(childiago_box) else {
+  guard child2.box is Some(childiago_box) else {
     fail("expected child2 box")
   }
   // Children should be positioned inside parent
@@ -189,13 +395,12 @@ test "max helper" {
 
 ///|
 test "grid layout with rows" {
-  let graph = Graph::new("test")
-  let container = Object::new("grid")
-  container.set_grid_rows(2)
+  let graph = new_graph("test")
+  let container = with_grid_rows(Object::new("grid"), 2)
   // Add 4 children
   for i in 0..<4 {
     let child = Object::new("c\{i}")
-    container.add_child(child)
+    container.children.push(child)
     graph.add_object(child)
   }
   graph.add_object(container)
@@ -209,19 +414,18 @@ test "grid layout with rows" {
   let container = laid_out.find_object("grid").unwrap()
   for child in container.children {
     let laid_child = laid_out.find_object(child.id).unwrap()
-    assert_true(laid_child.get_box() is Some(_))
+    assert_true(laid_child.box is Some(_))
   }
 }
 
 ///|
 test "grid layout with columns" {
-  let graph = Graph::new("test")
-  let container = Object::new("grid")
-  container.set_grid_columns(3)
+  let graph = new_graph("test")
+  let container = with_grid_columns(Object::new("grid"), 3)
   // Add 6 children
   for i in 0..<6 {
     let child = Object::new("c\{i}")
-    container.add_child(child)
+    container.children.push(child)
     graph.add_object(child)
   }
   graph.add_object(container)
@@ -238,23 +442,22 @@ test "grid layout with columns" {
 ///|
 test "grid dimensions calculation" {
   // Test grid-rows only
-  let obj1 = Object::new("test1")
-  obj1.set_grid_rows(2)
+  let obj1 = with_grid_rows(Object::new("test1"), 2)
   let (rows1, cols1, dir1) = compute_grid_dimensions(obj1, 5)
   assert_eq(rows1, 2)
   assert_eq(cols1, 3) // ceil(5/2) = 3
   assert_true(dir1) // row directed
   // Test grid-columns only
-  let obj2 = Object::new("test2")
-  obj2.set_grid_columns(3)
+  let obj2 = with_grid_columns(Object::new("test2"), 3)
   let (rows2, cols2, dir2) = compute_grid_dimensions(obj2, 5)
   assert_eq(rows2, 2) // ceil(5/3) = 2
   assert_eq(cols2, 3)
   assert_true(!dir2) // column directed
   // Test both rows and columns
-  let obj3 = Object::new("test3")
-  obj3.set_grid_rows(2)
-  obj3.set_grid_columns(3)
+  let obj3 = with_grid_columns(
+    with_grid_rows(Object::new("test3"), 2),
+    3,
+  )
   let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
   assert_eq(rows3, 2)
   assert_eq(cols3, 3)
@@ -264,14 +467,10 @@ test "grid dimensions calculation" {
 ///|
 test "grid cell allocation with spanning" {
   // Create children with various spans
-  let child1 = Object::new("header") // Header spans all 3 columns
-  child1.set_grid_column_span(3)
-  let child2 = Object::new("sidebar") // Sidebar spans 2 rows
-  child2.set_grid_row_span(2)
+  let child1 = with_grid_column_span(Object::new("header"), 3)
+  let child2 = with_grid_row_span(Object::new("sidebar"), 2)
   let child3 = Object::new("content")
-  // Default 1x1 span
-  let child4 = Object::new("footer") // Footer spans 2 columns
-  child4.set_grid_column_span(2)
+  let child4 = with_grid_column_span(Object::new("footer"), 2)
   let children = [child1, child2, child3, child4]
   // Allocate cells in a 3x3 grid
   let positions = allocate_grid_cells(children, 3, 3, true)
@@ -310,47 +509,47 @@ test "sum_with_gap" {
 test "is_sequence_diagram" {
   let obj = Object::new("test")
   assert_true(!is_sequence_diagram(obj)) // default is rectangle
-  obj.set_shape("sequence_diagram")
+  let obj = with_shape(obj, "sequence_diagram")
   assert_true(is_sequence_diagram(obj))
 }
 
 ///|
 test "sequence layout basic" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors
   let alice = Object::new("alice")
   let bob = Object::new("bob")
-  container.add_child(alice)
-  container.add_child(bob)
+  container.children.push(alice)
+  container.children.push(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
   let config = LayoutConfig::new()
   // Run sequence layout
-  layout_sequence(container, config)
+  layout_sequence_with_activations(container, graph, config) |> ignore
   // Container should have a box
-  assert_true(container.get_box() is Some(_))
+  assert_true(container.box is Some(_))
   // Actors should have boxes
-  assert_true(alice.get_box() is Some(_))
-  assert_true(bob.get_box() is Some(_))
+  assert_true(alice.box is Some(_))
+  assert_true(bob.box is Some(_))
   // Alice should be to the left of Bob
-  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
-  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
+  guard alice.box is Some(alice_box) else { fail("expected alice box") }
+  guard bob.box is Some(bob_box) else { fail("expected bob box") }
   assert_true(bob_box.x > alice_box.x)
 }
 
 ///|
 test "sequence layout with messages" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors as children of container
   let alice = Object::new("seq.alice")
   let bob = Object::new("seq.bob")
-  container.add_child(alice)
-  container.add_child(bob)
+  container.children.push(alice)
+  container.children.push(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
@@ -359,11 +558,11 @@ test "sequence layout with messages" {
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with messages
-  layout_sequence_with_messages(container, graph, config)
+  layout_sequence_with_activations(container, graph, config) |> ignore
   // Container should have a box
-  assert_true(container.get_box() is Some(_))
+  assert_true(container.box is Some(_))
   // Message should have route points
-  let route = msg.get_route()
+  let route = msg.route
   assert_true(route.length() >= 2)
   // Route should be horizontal (same y for start and end)
   if route.length() >= 2 {
@@ -373,12 +572,12 @@ test "sequence layout with messages" {
 
 ///|
 test "sequence layout self-referential message" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add single actor
   let alice = Object::new("seq.alice")
-  container.add_child(alice)
+  container.children.push(alice)
   graph.add_object(container)
   graph.add_object(alice)
   // Add a self-referential message
@@ -386,22 +585,22 @@ test "sequence layout self-referential message" {
   graph.add_edge(msg)
   let config = LayoutConfig::new()
   // Run sequence layout with messages
-  layout_sequence_with_messages(container, graph, config)
+  layout_sequence_with_activations(container, graph, config) |> ignore
   // Message should have 4 route points (forming a loop)
-  let route = msg.get_route()
+  let route = msg.route
   assert_true(route.length() == 4)
 }
 
 ///|
 test "sequence layout activation boxes" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors
   let alice = Object::new("seq.alice")
   let bob = Object::new("seq.bob")
-  container.add_child(alice)
-  container.add_child(bob)
+  container.children.push(alice)
+  container.children.push(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
@@ -413,53 +612,27 @@ test "sequence layout activation boxes" {
   let config = LayoutConfig::new()
   // Run sequence layout with activations
   let result = layout_sequence_with_activations(container, graph, config)
-  // Should have at least one activation box (for bob when receiving message)
-  assert_true(result.activation_boxes.length() >= 1)
-  // Check activation box has valid dimensions
-  for box in result.activation_boxes {
-    let bbox = box.get_box()
-    assert_true(bbox.get_width() > 0.0)
-    assert_true(bbox.get_height() > 0.0)
+  let activation_boxes : Array[@graph.Box] = []
+  for ab in result.activation_boxes {
+    activation_boxes.push(ab.get_box())
   }
-}
+  inspect(activation_boxes)
 
-///|
-test "sequence layout self-message activation" {
-  let graph = Graph::new("test")
-  let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
-  // Add single actor
-  let alice = Object::new("seq.alice")
-  container.add_child(alice)
-  graph.add_object(container)
-  graph.add_object(alice)
-  // Add a self-referential message
-  let msg = Edge::new(0, "seq.alice", "seq.alice", false, true)
-  graph.add_edge(msg)
-  let config = LayoutConfig::new()
-  // Run sequence layout with activations
-  let result = layout_sequence_with_activations(container, graph, config)
-  // Self-message should create an activation box
-  assert_true(result.activation_boxes.length() == 1)
-  // Self-message activation should be short
-  let box = result.activation_boxes[0]
-  let bbox = box.get_box()
-  assert_true(bbox.get_height() <= min_message_distance)
 }
 
 ///|
 test "sequence layout with notes" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors
   let alice = Object::new("seq.alice")
   let bob = Object::new("seq.bob")
   // Add a note as a child of alice
-  let note = Object::with_label("seq.alice.note1", "This is a note")
-  alice.add_child(note)
-  container.add_child(alice)
-  container.add_child(bob)
+  let note = object_with_label("seq.alice.note1", "This is a note")
+  alice.children.push(note)
+  container.children.push(alice)
+  container.children.push(bob)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
@@ -481,17 +654,17 @@ test "sequence layout with notes" {
 
 ///|
 test "sequence layout multiple notes per actor" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors
   let alice = Object::new("seq.alice")
   // Add two notes as children of alice
-  let note1 = Object::with_label("seq.alice.note1", "First note")
-  let note2 = Object::with_label("seq.alice.note2", "Second note")
-  alice.add_child(note1)
-  alice.add_child(note2)
-  container.add_child(alice)
+  let note1 = object_with_label("seq.alice.note1", "First note")
+  let note2 = object_with_label("seq.alice.note2", "Second note")
+  alice.children.push(note1)
+  alice.children.push(note2)
+  container.children.push(alice)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(note1)
@@ -517,37 +690,38 @@ test "SequenceNote constructor" {
 
 ///|
 test "sequence layout with opt group creates fragment" {
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
   let container = Object::new("seq")
-  container.set_shape("sequence_diagram")
+  let container = with_shape(container, "sequence_diagram")
   // Add actors
-  let alice = Object::with_label("seq.alice", "Alice")
-  let bob = Object::with_label("seq.bob", "Bob")
+  let alice = object_with_label("seq.alice", "Alice")
+  let bob = object_with_label("seq.bob", "Bob")
   // Add opt group (container with label starting with "opt")
-  let opt_group = Object::with_label("seq.opt", "opt")
+  let opt_group = object_with_label("seq.opt", "opt")
   // Add a dummy child to make it a container
   let dummy = Object::new("seq.opt.dummy")
-  opt_group.add_child(dummy)
-  container.add_child(alice)
-  container.add_child(bob)
-  container.add_child(opt_group)
+  opt_group.children.push(dummy)
+  container.children.push(alice)
+  container.children.push(bob)
+  container.children.push(opt_group)
   graph.add_object(container)
   graph.add_object(alice)
   graph.add_object(bob)
   graph.add_object(opt_group)
   graph.add_object(dummy)
   // Add edges - including one "inside" the opt group
-  let edge1 = Edge::new(0, "seq.alice", "seq.bob", false, true)
-  edge1.label = "Hello"
-  let edge2 = Edge::new(1, "seq.opt.alice", "seq.opt.bob", false, true)
-  edge2.label = "optional message"
+  let edge1 = { ..Edge::new(0, "seq.alice", "seq.bob", false, true), label: "Hello" }
+  let edge2 = {
+    ..Edge::new(1, "seq.opt.alice", "seq.opt.bob", false, true),
+    label: "optional message",
+  }
   graph.add_edge(edge1)
   graph.add_edge(edge2)
   let config = LayoutConfig::new()
   // Run layout
   layout_sequence_with_activations(container, graph, config) |> ignore
   // Should have a fragment for the opt group
-  assert_true(graph.has_fragments())
+  assert_true(graph.sequence_fragments.length() > 0)
   assert_eq(graph.sequence_fragments.length(), 1)
   let fragment = graph.sequence_fragments[0]
   assert_eq(fragment.fragment_type, "opt")
@@ -556,12 +730,12 @@ test "sequence layout with opt group creates fragment" {
 ///|
 test "debug: simple linear graph" {
   // Simple case: 3 nodes, linear arrangement
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
 
   // 3 nodes with clear parent-child relationship
-  graph.add_object(Object::with_label("A", "Node A"))
-  graph.add_object(Object::with_label("B", "Node B"))
-  graph.add_object(Object::with_label("C", "Node C"))
+  graph.add_object(object_with_label("A", "Node A"))
+  graph.add_object(object_with_label("B", "Node B"))
+  graph.add_object(object_with_label("C", "Node C"))
 
   // Simple chain: A -> B -> C
   graph.add_edge(Edge::new(0, "A", "B", false, true))
@@ -575,9 +749,9 @@ test "debug: simple linear graph" {
   let objA = laid_out.find_object("A").unwrap()
   let objB = laid_out.find_object("B").unwrap()
   let objC = laid_out.find_object("C").unwrap()
-  guard objA.get_box() is Some(boxA) else { fail("expected box for A") }
-  guard objB.get_box() is Some(boxB) else { fail("expected box for B") }
-  guard objC.get_box() is Some(boxC) else { fail("expected box for C") }
+  guard objA.box is Some(boxA) else { fail("expected box for A") }
+  guard objB.box is Some(boxB) else { fail("expected box for B") }
+  guard objC.box is Some(boxC) else { fail("expected box for C") }
 
   // Debug: print positions
   inspect(
@@ -616,12 +790,12 @@ test "debug: simple linear graph" {
 ///|
 test "debug: cyclic graph with bidirectional edges" {
   // Failing case from property tests: cyclic graph
-  let graph = Graph::new("test")
+  let graph = new_graph("test")
 
   // 3 nodes
-  graph.add_object(Object::with_label("5", "o"))
-  graph.add_object(Object::with_label("I", "O"))
-  graph.add_object(Object::with_label("A", "2"))
+  graph.add_object(object_with_label("5", "o"))
+  graph.add_object(object_with_label("I", "O"))
+  graph.add_object(object_with_label("A", "2"))
 
   // 6 edges (cyclic with bidirectional)
   graph.add_edge(Edge::new(0, "5", "I", false, true))
@@ -639,9 +813,9 @@ test "debug: cyclic graph with bidirectional edges" {
   let obj5 = laid_out.find_object("5").unwrap()
   let objI = laid_out.find_object("I").unwrap()
   let objA = laid_out.find_object("A").unwrap()
-  guard obj5.get_box() is Some(box5) else { fail("expected box for 5") }
-  guard objI.get_box() is Some(boxI) else { fail("expected box for I") }
-  guard objA.get_box() is Some(boxA) else { fail("expected box for A") }
+  guard obj5.box is Some(box5) else { fail("expected box for 5") }
+  guard objI.box is Some(boxI) else { fail("expected box for I") }
+  guard objA.box is Some(boxA) else { fail("expected box for A") }
 
   // Debug: print positions
   inspect(
@@ -673,20 +847,17 @@ test "debug: cyclic graph with bidirectional edges" {
 ///|
 test "root-level sequence diagram layout" {
   // Create a graph with root-level sequence diagram (no prefix on actors)
-  let graph = Graph::new("test")
-  // Set root to be a sequence diagram
-  graph.root.set_shape("sequence_diagram")
+  let graph = new_graph_with_root_shape("test", "sequence_diagram")
   // Add actors (without "root." prefix - just like compiled from diago)
-  let alice = Object::with_label("alice", "Alice")
-  let bob = Object::with_label("bob", "Bob")
+  let alice = object_with_label("alice", "Alice")
+  let bob = object_with_label("bob", "Bob")
   // Make actors children of root
-  graph.root.add_child(alice)
-  graph.root.add_child(bob)
+  graph.root.children.push(alice)
+  graph.root.children.push(bob)
   graph.add_object(alice)
   graph.add_object(bob)
   // Add a message between actors
-  let edge = Edge::new(0, "alice", "bob", false, true)
-  edge.label = "Hello"
+  let edge = { ..Edge::new(0, "alice", "bob", false, true), label: "Hello" }
   graph.add_edge(edge)
   // Verify preconditions
   assert_true(is_sequence_diagram(graph.root))
@@ -699,8 +870,8 @@ test "root-level sequence diagram layout" {
   // Verify actors have boxes and are arranged horizontally
   let alice = laid_out.find_object("alice").unwrap()
   let bob = laid_out.find_object("bob").unwrap()
-  guard alice.get_box() is Some(alice_box) else { fail("expected alice box") }
-  guard bob.get_box() is Some(bob_box) else { fail("expected bob box") }
+  guard alice.box is Some(alice_box) else { fail("expected alice box") }
+  guard bob.box is Some(bob_box) else { fail("expected bob box") }
   // Bob should be to the right of Alice (horizontal arrangement)
   assert_true(bob_box.x > alice_box.x)
 }

@@ -127,7 +127,7 @@ fn object_to_elk_node(obj : Object, config : LayoutConfig) -> @elk.ElkNode {
   let elk_node = @elk.ElkNode::new(obj.id)
 
   // Set size from existing box
-  match obj.get_box() {
+  match obj.box {
     Some(b) => {
       elk_node.width = if b.width > 0.0 {
         b.width
@@ -184,7 +184,7 @@ fn elk_to_graph(
   for obj in graph.objects {
     match elk_map.get(obj.id) {
       Some(elk_node) => {
-        obj.set_box(
+        obj.box = Some(
           @graph.Box::new(
             elk_node.x,
             elk_node.y,
@@ -222,8 +222,8 @@ fn apply_children_positions(obj : Object, elk_node : @elk.ElkNode) -> Unit {
     for elk_child in elk_node.children {
       if elk_child.id == child.id {
         // Child positions are relative to parent in ELK
-        let parent_box = obj.get_box().unwrap_or(@graph.Box::zero())
-        child.set_box(
+        let parent_box = obj.box.unwrap_or(@graph.Box::zero())
+        child.box = Some(
           @graph.Box::new(
             parent_box.x + elk_child.x,
             parent_box.y + elk_child.y,
@@ -523,7 +523,7 @@ fn adjust_end_point_perpendicular(
 
 ///|
 /// Run ELK layout on a graph
-pub fn run_elk_layout(
+fn run_elk_layout(
   graph : Graph,
   config : LayoutConfig,
   direction : Direction,
