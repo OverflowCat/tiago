@@ -14,15 +14,7 @@ pub struct LexError {
 pub impl Eq for LexError
 pub impl Show for LexError
 
-pub struct Lexer {
-  source : String
-  chars : Array[Char]
-  mut pos : Int
-  mut line : Int
-  mut column : Int
-  tokens : Array[Token]
-  errors : Array[LexError]
-}
+type Lexer
 pub fn Lexer::new(String) -> Self
 pub fn Lexer::tokenize(Self) -> (Array[Token], Array[LexError])
 

@@ -60,9 +60,9 @@ fn max_double(a : Double, b : Double) -> Double {
 
 ///|
 /// Execute the layered layout algorithm
-pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
-  let resolved_options = @elk.resolve_options_for_graph(options, graph)
-  fn ensure_label_size(label : @elk.ElkLabel) -> Unit {
+fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
+  let resolved_options = resolve_options_for_graph(options, graph)
+  fn ensure_label_size(label : ElkLabel) -> Unit {
     if label.width <= 0.0 {
       label.width = label.text.length().to_double() * 8.0
     }
@@ -71,8 +71,8 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
     }
   }
 
-  fn ensure_sizes(node : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
-    let node_options = @elk.resolve_options_for_node(options, node)
+  fn ensure_sizes(node : ElkNode, options : LayoutOptions) -> Unit {
+    let node_options = resolve_options_for_node(options, node)
     for label in node.labels {
       ensure_label_size(label)
     }
@@ -118,13 +118,11 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   // First, recursively layout compound nodes (children with their own children)
   for child in graph.children {
     if child.children.length() > 0 {
-      layout(child, resolved_options)
+      elk_layered_layout(child, resolved_options)
       // Update child size to contain its children
       let (child_w, child_h) = child.calculate_bounds()
-      let child_options = @elk.resolve_options_for_node(resolved_options, child)
-      let padding = child_options.padding.unwrap_or(
-        @elk.ElkPadding::uniform(12.0),
-      )
+      let child_options = resolve_options_for_node(resolved_options, child)
+      let padding = child_options.padding.unwrap_or(ElkPadding::uniform(12.0))
       child.width = child_w + padding.left + padding.right
       child.height = child_h + padding.top + padding.bottom
     }
@@ -136,7 +134,7 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   // Get options with defaults
   let direction = match resolved_options.direction {
     Some(d) => d
-    None => @elk.Down
+    None => Down
   }
   let thoroughness = match resolved_options.thoroughness {
     Some(t) => t
@@ -146,14 +144,14 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   // Phase 1: Cycle Breaking
   let cycle_strategy = match resolved_options.cycle_breaking_strategy {
     Some(s) => s
-    None => @elk.GreedyModelOrder
+    None => GreedyModelOrder
   }
   break_cycles(lgraph, cycle_strategy)
 
   // Phase 2: Layer Assignment
   let layer_strategy = match resolved_options.layering_strategy {
     Some(s) => s
-    None => @elk.LongestPath
+    None => LongestPath
   }
   assign_layers(lgraph, layer_strategy)
 
@@ -166,21 +164,21 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
   // Phase 3: Crossing Minimization
   let crossing_strategy = match resolved_options.crossing_min_strategy {
     Some(s) => s
-    None => @elk.LayerSweep
+    None => LayerSweep
   }
   minimize_crossings(lgraph, crossing_strategy, thoroughness)
 
   // Phase 4: Node Placement
   let placement_strategy = match resolved_options.node_placement_strategy {
     Some(s) => s
-    None => @elk.BrandesKoepf
+    None => BrandesKoepf
   } // Default to Brandes-Koepf like ELK
   place_nodes(lgraph, resolved_options, placement_strategy, direction)
 
   // Phase 5: Edge Routing
   let routing = match resolved_options.edge_routing {
     Some(r) => r
-    None => @elk.Orthogonal
+    None => Orthogonal
   }
   route_edges(lgraph, routing, direction)
 
@@ -200,13 +198,11 @@ pub fn layout(graph : @elk.ElkNode, options : @elk.LayoutOptions) -> Unit {
 
 ///|
 /// Break cycles in the graph by reversing certain edges
-fn break_cycles(graph : LGraph, strategy : @elk.CycleBreakingStrategy) -> Unit {
+fn break_cycles(graph : LGraph, strategy : CycleBreakingStrategy) -> Unit {
   match strategy {
-    @elk.GreedyCycleBreaker | @elk.GreedyModelOrder =>
-      greedy_cycle_breaker(graph)
-    @elk.DepthFirst => dfs_cycle_breaker(graph)
-    @elk.InteractiveCycleBreaker | @elk.ModelOrder =>
-      greedy_cycle_breaker(graph)
+    GreedyCycleBreaker | GreedyModelOrder => greedy_cycle_breaker(graph)
+    DepthFirst => dfs_cycle_breaker(graph)
+    InteractiveCycleBreaker | ModelOrder => greedy_cycle_breaker(graph)
   }
 }
 
@@ -330,10 +326,10 @@ fn dfs_cycle_breaker(graph : LGraph) -> Unit {
 
 ///|
 /// Assign nodes to layers
-fn assign_layers(graph : LGraph, strategy : @elk.LayeringStrategy) -> Unit {
+fn assign_layers(graph : LGraph, strategy : LayeringStrategy) -> Unit {
   match strategy {
-    @elk.LongestPath => longest_path_layering(graph)
-    @elk.NetworkSimplex => network_simplex_layering(graph)
+    LongestPath => longest_path_layering(graph)
+    NetworkSimplex => network_simplex_layering(graph)
     _ => longest_path_layering(graph) // Default
   }
 }
@@ -454,7 +450,7 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 
 ///|
 /// Insert dummy nodes for edges spanning multiple layers
-fn insert_dummy_nodes(graph : LGraph, options : @elk.LayoutOptions) -> Unit {
+fn insert_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
   // Collect long edges
   let long_edges = graph.get_long_edges()
   let mut dummy_count = 0
@@ -472,11 +468,11 @@ fn insert_dummy_nodes(graph : LGraph, options : @elk.LayoutOptions) -> Unit {
 
     // Create dummy nodes for each intermediate layer
     // Mark the original long edge so later phases can skip routing it directly.
-    edge.properties.set("diago.layered.longEdgeSplit", @elk.Bool(true))
+    edge.properties.set("diago.layered.longEdgeSplit", Bool(true))
     let mut prev_node_id = edge.source_id
     let direction = if target_layer > source_layer { 1 } else { -1 }
     let layer_distance = (target_layer - source_layer).abs()
-    let label_layer = if edge.labels.is_empty() {
+    let label_layer : Int? = if edge.labels.is_empty() {
       None
     } else {
       Some(source_layer + direction * (layer_distance / 2))
@@ -509,7 +505,7 @@ fn insert_dummy_nodes(graph : LGraph, options : @elk.LayoutOptions) -> Unit {
         dummy.height = sum_h + gaps * label_spacing
         dummy.properties.set(
           "diago.layered.edgeLabelSpacing",
-          @elk.Double(label_spacing),
+          Double(label_spacing),
         )
       } else {
         dummy.width = 1.0 // Minimal width for dummy
@@ -620,7 +616,7 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
               for dummy in dummies {
                 let bend_x = dummy.x + dummy.width / 2.0
                 let bend_y = dummy.y + dummy.height / 2.0
-                edge.bend_points.push(@elk.ElkPoint::new(bend_x, bend_y))
+                edge.bend_points.push(ElkPoint::new(bend_x, bend_y))
                 if dummy.node_type is LabelDummy && !edge.labels.is_empty() {
                   // Place edge labels at the label dummy position (absolute coords).
                   let spacing = dummy.properties.get_double_or(
@@ -714,12 +710,12 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
 /// Minimize edge crossings between layers
 fn minimize_crossings(
   graph : LGraph,
-  strategy : @elk.CrossingMinimizationStrategy,
+  strategy : CrossingMinimizationStrategy,
   thoroughness : Int,
 ) -> Unit {
   match strategy {
-    @elk.LayerSweep => layer_sweep_crossing_min(graph, thoroughness)
-    @elk.InteractiveCrossMin | @elk.None => () // No minimization
+    LayerSweep => layer_sweep_crossing_min(graph, thoroughness)
+    InteractiveCrossMin | None => () // No minimization
   }
 }
 
@@ -833,13 +829,13 @@ fn order_layer_by_barycenter(
 /// Place nodes with final x,y coordinates
 fn place_nodes(
   graph : LGraph,
-  options : @elk.LayoutOptions,
-  strategy : @elk.NodePlacementStrategy,
-  direction : @elk.LayoutDirection,
+  options : LayoutOptions,
+  strategy : NodePlacementStrategy,
+  direction : LayoutDirection,
 ) -> Unit {
   match strategy {
-    @elk.Simple => simple_node_placement(graph, options, direction)
-    @elk.BrandesKoepf => brandes_koepf_placement(graph, options, direction)
+    Simple => simple_node_placement(graph, options, direction)
+    BrandesKoepf => brandes_koepf_placement(graph, options, direction)
     _ => simple_node_placement(graph, options, direction)
   }
 }
@@ -848,12 +844,12 @@ fn place_nodes(
 /// Simple node placement - evenly distributed within layers
 fn simple_node_placement(
   graph : LGraph,
-  options : @elk.LayoutOptions,
-  direction : @elk.LayoutDirection,
+  options : LayoutOptions,
+  direction : LayoutDirection,
 ) -> Unit {
   let node_spacing = options.node_node_spacing.unwrap_or(20.0)
   let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
-  let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))
+  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
 
   // Determine if horizontal or vertical layout
   let is_horizontal = direction.is_horizontal()
@@ -861,8 +857,8 @@ fn simple_node_placement(
   // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let reverse_layers = match direction {
-    @elk.Up => !is_horizontal
-    @elk.Left => is_horizontal
+    Up => !is_horizontal
+    Left => is_horizontal
     _ => false
   }
   let layers : Array[LLayer] = []
@@ -916,8 +912,8 @@ fn simple_node_placement(
 /// Brandes-Koepf placement - uses the full implementation
 fn brandes_koepf_placement(
   graph : LGraph,
-  options : @elk.LayoutOptions,
-  direction : @elk.LayoutDirection,
+  options : LayoutOptions,
+  direction : LayoutDirection,
 ) -> Unit {
   // Use the full Brandes-Koepf implementation
   run_brandes_koepf(graph, options, direction)
@@ -931,20 +927,20 @@ fn brandes_koepf_placement(
 /// Route edges between nodes
 fn route_edges(
   graph : LGraph,
-  routing : @elk.EdgeRouting,
-  direction : @elk.LayoutDirection,
+  routing : EdgeRouting,
+  direction : LayoutDirection,
 ) -> Unit {
   match routing {
-    @elk.Orthogonal => orthogonal_routing(graph, direction)
-    @elk.Polyline => polyline_routing(graph, direction)
-    @elk.Splines => spline_routing(graph, direction)
-    @elk.Undefined => orthogonal_routing(graph, direction)
+    Orthogonal => orthogonal_routing(graph, direction)
+    Polyline => polyline_routing(graph, direction)
+    Splines => spline_routing(graph, direction)
+    Undefined => orthogonal_routing(graph, direction)
   }
 }
 
 ///|
 /// Orthogonal edge routing - strict 90-degree turns with slot assignment
-fn orthogonal_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+fn orthogonal_routing(graph : LGraph, direction : LayoutDirection) -> Unit {
   let edge_spacing = 10.0 // Default edge spacing
 
   // Use improved routing with slot assignment
@@ -959,7 +955,7 @@ fn orthogonal_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit 
 
 ///|
 /// Polyline edge routing - direct connections with bend points
-fn polyline_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+fn polyline_routing(graph : LGraph, direction : LayoutDirection) -> Unit {
   // For polyline, edges go directly through dummy node positions
   // Bend points are already set from dummy nodes
   let _ = graph
@@ -969,7 +965,7 @@ fn polyline_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
 
 ///|
 /// Spline edge routing (placeholder)
-fn spline_routing(graph : LGraph, direction : @elk.LayoutDirection) -> Unit {
+fn spline_routing(graph : LGraph, direction : LayoutDirection) -> Unit {
   // For now, fall back to polyline
   polyline_routing(graph, direction)
 }

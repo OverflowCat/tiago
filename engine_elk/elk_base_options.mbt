@@ -22,7 +22,7 @@
 
 ///|
 /// Available layout algorithms
-pub(all) enum LayoutAlgorithm {
+enum LayoutAlgorithm {
   Layered
   Force
   Stress
@@ -39,7 +39,7 @@ pub(all) enum LayoutAlgorithm {
 } derive(Show, Eq)
 
 ///|
-pub fn LayoutAlgorithm::from_string(s : String) -> LayoutAlgorithm? {
+fn LayoutAlgorithm::from_string(s : String) -> LayoutAlgorithm? {
   match s.to_upper() {
     "LAYERED" => Some(Layered)
     "FORCE" => Some(Force)
@@ -60,7 +60,7 @@ pub fn LayoutAlgorithm::from_string(s : String) -> LayoutAlgorithm? {
 
 ///|
 /// Layout direction (primary axis for layered layout)
-pub(all) enum LayoutDirection {
+enum LayoutDirection {
   Undefined
   Right
   Left
@@ -69,7 +69,7 @@ pub(all) enum LayoutDirection {
 } derive(Show, Eq)
 
 ///|
-pub fn LayoutDirection::from_string(s : String) -> LayoutDirection? {
+fn LayoutDirection::from_string(s : String) -> LayoutDirection? {
   match s.to_upper() {
     "UNDEFINED" => Some(Undefined)
     "RIGHT" => Some(Right)
@@ -81,7 +81,7 @@ pub fn LayoutDirection::from_string(s : String) -> LayoutDirection? {
 }
 
 ///|
-pub fn LayoutDirection::is_horizontal(self : LayoutDirection) -> Bool {
+fn LayoutDirection::is_horizontal(self : LayoutDirection) -> Bool {
   match self {
     Right | Left => true
     _ => false
@@ -89,7 +89,7 @@ pub fn LayoutDirection::is_horizontal(self : LayoutDirection) -> Bool {
 }
 
 ///|
-pub fn LayoutDirection::is_vertical(self : LayoutDirection) -> Bool {
+fn LayoutDirection::is_vertical(self : LayoutDirection) -> Bool {
   match self {
     Down | Up => true
     _ => false
@@ -102,7 +102,7 @@ pub fn LayoutDirection::is_vertical(self : LayoutDirection) -> Bool {
 
 ///|
 /// Edge routing style
-pub(all) enum EdgeRouting {
+enum EdgeRouting {
   Undefined
   Polyline
   Orthogonal
@@ -110,7 +110,7 @@ pub(all) enum EdgeRouting {
 } derive(Show, Eq)
 
 ///|
-pub fn EdgeRouting::from_string(s : String) -> EdgeRouting? {
+fn EdgeRouting::from_string(s : String) -> EdgeRouting? {
   match s.to_upper() {
     "UNDEFINED" => Some(Undefined)
     "POLYLINE" => Some(Polyline)
@@ -122,7 +122,7 @@ pub fn EdgeRouting::from_string(s : String) -> EdgeRouting? {
 
 ///|
 /// Edge type for differentiating edge kinds
-pub(all) enum EdgeType {
+enum EdgeType {
   Undefined
   Directed
   Undirected
@@ -137,7 +137,7 @@ pub(all) enum EdgeType {
 
 ///|
 /// Cycle breaking strategy
-pub(all) enum CycleBreakingStrategy {
+enum CycleBreakingStrategy {
   GreedyCycleBreaker
   DepthFirst
   InteractiveCycleBreaker
@@ -146,7 +146,7 @@ pub(all) enum CycleBreakingStrategy {
 } derive(Show, Eq)
 
 ///|
-pub fn CycleBreakingStrategy::from_string(s : String) -> CycleBreakingStrategy? {
+fn CycleBreakingStrategy::from_string(s : String) -> CycleBreakingStrategy? {
   match s.to_upper() {
     "GREEDY" | "GREEDY_CYCLE_BREAKER" | "GREEDYCYCLEBREAKER" =>
       Some(GreedyCycleBreaker)
@@ -161,7 +161,7 @@ pub fn CycleBreakingStrategy::from_string(s : String) -> CycleBreakingStrategy? 
 
 ///|
 /// Layer assignment strategy
-pub(all) enum LayeringStrategy {
+enum LayeringStrategy {
   NetworkSimplex
   LongestPath
   InteractiveLayering
@@ -173,7 +173,7 @@ pub(all) enum LayeringStrategy {
 } derive(Show, Eq)
 
 ///|
-pub fn LayeringStrategy::from_string(s : String) -> LayeringStrategy? {
+fn LayeringStrategy::from_string(s : String) -> LayeringStrategy? {
   match s.to_upper() {
     "NETWORK_SIMPLEX" | "NETWORKSIMPLEX" => Some(NetworkSimplex)
     "LONGEST_PATH" | "LONGESTPATH" => Some(LongestPath)
@@ -192,14 +192,14 @@ pub fn LayeringStrategy::from_string(s : String) -> LayeringStrategy? {
 
 ///|
 /// Crossing minimization strategy
-pub(all) enum CrossingMinimizationStrategy {
+enum CrossingMinimizationStrategy {
   LayerSweep
   InteractiveCrossMin
   None
 } derive(Show, Eq)
 
 ///|
-pub fn CrossingMinimizationStrategy::from_string(
+fn CrossingMinimizationStrategy::from_string(
   s : String,
 ) -> CrossingMinimizationStrategy? {
   match s.to_upper() {
@@ -213,7 +213,7 @@ pub fn CrossingMinimizationStrategy::from_string(
 
 ///|
 /// Greedy switch type for crossing minimization
-pub(all) enum GreedySwitchType {
+enum GreedySwitchType {
   Off
   OneSided
   TwoSided
@@ -221,7 +221,7 @@ pub(all) enum GreedySwitchType {
 
 ///|
 /// Node placement strategy
-pub(all) enum NodePlacementStrategy {
+enum NodePlacementStrategy {
   BrandesKoepf
   LinearSegments
   Simple
@@ -229,7 +229,7 @@ pub(all) enum NodePlacementStrategy {
 } derive(Show, Eq)
 
 ///|
-pub fn NodePlacementStrategy::from_string(s : String) -> NodePlacementStrategy? {
+fn NodePlacementStrategy::from_string(s : String) -> NodePlacementStrategy? {
   match s.to_upper() {
     "BRANDES_KOEPF" | "BRANDESKOEPF" => Some(BrandesKoepf)
     "LINEAR_SEGMENTS" | "LINEARSEGMENTS" => Some(LinearSegments)
@@ -241,7 +241,7 @@ pub fn NodePlacementStrategy::from_string(s : String) -> NodePlacementStrategy? 
 
 ///|
 /// Brandes-Koepf node placement mode
-pub(all) enum BKNodePlacementMode {
+enum BKNodePlacementMode {
   Average
   LeftUp
   LeftDown
@@ -251,14 +251,14 @@ pub(all) enum BKNodePlacementMode {
 
 ///|
 /// Edge straightening strategy for Brandes-Koepf
-pub(all) enum EdgeStraighteningStrategy {
+enum EdgeStraighteningStrategy {
   None
   ImproveStraightness
 } derive(Show, Eq)
 
 ///|
 /// Node flexibility for network simplex placement
-pub(all) enum NodeFlexibility {
+enum NodeFlexibility {
   None
   NodeSize
   NodeSizeWhereSpacePermits
@@ -270,7 +270,7 @@ pub(all) enum NodeFlexibility {
 
 ///|
 /// Port constraints level
-pub(all) enum PortConstraints {
+enum PortConstraints {
   Undefined
   Free
   FixedSide
@@ -281,7 +281,7 @@ pub(all) enum PortConstraints {
 
 ///|
 /// Port alignment within side
-pub(all) enum PortAlignment {
+enum PortAlignment {
   Undefined
   Distributed
   Justified
@@ -292,7 +292,7 @@ pub(all) enum PortAlignment {
 
 ///|
 /// Port label placement
-pub(all) enum PortLabelPlacement {
+enum PortLabelPlacement {
   Inside
   Outside
   NextToPortIfPossible
@@ -302,7 +302,7 @@ pub(all) enum PortLabelPlacement {
 
 ///|
 /// Port sort order
-pub(all) enum PortSortingStrategy {
+enum PortSortingStrategy {
   InputOrder
   PortDegree
 } derive(Show, Eq)
@@ -313,7 +313,7 @@ pub(all) enum PortSortingStrategy {
 
 ///|
 /// Node size constraints
-pub(all) enum NodeSizeConstraints {
+enum NodeSizeConstraints {
   None
   Ports
   PortLabels
@@ -324,7 +324,7 @@ pub(all) enum NodeSizeConstraints {
 
 ///|
 /// Node size options (bit flags combined)
-pub(all) enum NodeSizeOptions {
+enum NodeSizeOptions {
   DefaultMinimumSize
   MinimumSizeAccountsForPadding
   ComputePadding
@@ -338,7 +338,7 @@ pub(all) enum NodeSizeOptions {
 
 ///|
 /// Node label placement
-pub(all) enum NodeLabelPlacement {
+enum NodeLabelPlacement {
   Inside
   Outside
   Horizontal
@@ -356,7 +356,7 @@ pub(all) enum NodeLabelPlacement {
 
 ///|
 /// Edge label placement strategy
-pub(all) enum EdgeLabelPlacement {
+enum EdgeLabelPlacement {
   Undefined
   Center
   Head
@@ -365,7 +365,7 @@ pub(all) enum EdgeLabelPlacement {
 
 ///|
 /// Edge label side selection
-pub(all) enum EdgeLabelSideSelection {
+enum EdgeLabelSideSelection {
   AlwaysUp
   AlwaysDown
   DirectionUp
@@ -380,7 +380,7 @@ pub(all) enum EdgeLabelSideSelection {
 
 ///|
 /// Hierarchy handling mode
-pub(all) enum HierarchyHandling {
+enum HierarchyHandling {
   Inherit
   Include
   Separate
@@ -388,7 +388,7 @@ pub(all) enum HierarchyHandling {
 
 ///|
 /// Content alignment within compound nodes
-pub(all) enum ContentAlignment {
+enum ContentAlignment {
   None
   Horizontal
   Vertical
@@ -401,7 +401,7 @@ pub(all) enum ContentAlignment {
 
 ///|
 /// Compaction strategy
-pub(all) enum CompactionStrategy {
+enum CompactionStrategy {
   None
   Polyomino
   Rectangle
@@ -409,7 +409,7 @@ pub(all) enum CompactionStrategy {
 
 ///|
 /// Graph compaction strategy
-pub(all) enum GraphCompactionStrategy {
+enum GraphCompactionStrategy {
   None
   LeftToRight
   RightToLeft
@@ -423,7 +423,7 @@ pub(all) enum GraphCompactionStrategy {
 
 ///|
 /// Self-loop distribution strategy
-pub(all) enum SelfLoopDistribution {
+enum SelfLoopDistribution {
   North
   NorthSouth
   Equally
@@ -431,7 +431,7 @@ pub(all) enum SelfLoopDistribution {
 
 ///|
 /// Self-loop ordering strategy
-pub(all) enum SelfLoopOrdering {
+enum SelfLoopOrdering {
   Stacked
   Sequenced
 } derive(Show, Eq)
@@ -442,7 +442,7 @@ pub(all) enum SelfLoopOrdering {
 
 ///|
 /// Force model type
-pub(all) enum ForceModelType {
+enum ForceModelType {
   Eades
   FruchtermanReingold
 } derive(Show, Eq)
@@ -453,7 +453,7 @@ pub(all) enum ForceModelType {
 
 ///|
 /// Spacing configuration
-pub(all) struct SpacingOptions {
+struct SpacingOptions {
   node_node : Double
   node_node_between_layers : Double
   edge_node : Double
@@ -471,7 +471,7 @@ pub(all) struct SpacingOptions {
 } derive(Show, Eq)
 
 ///|
-pub fn SpacingOptions::default() -> SpacingOptions {
+fn SpacingOptions::default() -> SpacingOptions {
   {
     node_node: 20.0,
     node_node_between_layers: 20.0,
@@ -496,7 +496,7 @@ pub fn SpacingOptions::default() -> SpacingOptions {
 
 ///|
 /// Complete layout options configuration
-pub(all) struct LayoutOptions {
+struct LayoutOptions {
   // Core options
   algorithm : LayoutAlgorithm?
   direction : LayoutDirection?
@@ -608,7 +608,7 @@ pub(all) struct LayoutOptions {
 } derive(Show, Eq)
 
 ///|
-pub fn LayoutOptions::new() -> LayoutOptions {
+fn LayoutOptions::new() -> LayoutOptions {
   {
     algorithm: None,
     direction: None,
@@ -686,7 +686,7 @@ pub fn LayoutOptions::new() -> LayoutOptions {
 
 ///|
 /// Create default options for layered algorithm
-pub fn LayoutOptions::layered() -> LayoutOptions {
+fn LayoutOptions::layered() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
     algorithm: Some(Layered),
@@ -707,7 +707,7 @@ pub fn LayoutOptions::layered() -> LayoutOptions {
 
 ///|
 /// Create default options for force algorithm
-pub fn LayoutOptions::force() -> LayoutOptions {
+fn LayoutOptions::force() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
     algorithm: Some(Force),
@@ -722,7 +722,7 @@ pub fn LayoutOptions::force() -> LayoutOptions {
 
 ///|
 /// Create default options for stress algorithm
-pub fn LayoutOptions::stress() -> LayoutOptions {
+fn LayoutOptions::stress() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
     algorithm: Some(Stress),
@@ -733,7 +733,7 @@ pub fn LayoutOptions::stress() -> LayoutOptions {
 
 ///|
 /// Create default options for radial algorithm
-pub fn LayoutOptions::radial() -> LayoutOptions {
+fn LayoutOptions::radial() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
     algorithm: Some(Radial),
@@ -744,7 +744,7 @@ pub fn LayoutOptions::radial() -> LayoutOptions {
 
 ///|
 /// Create default options for tree algorithm
-pub fn LayoutOptions::tree() -> LayoutOptions {
+fn LayoutOptions::tree() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
     algorithm: Some(MrTree),
@@ -760,7 +760,7 @@ pub fn LayoutOptions::tree() -> LayoutOptions {
 // ============================================================================
 
 ///|
-pub fn LayoutOptions::with_algorithm(
+fn LayoutOptions::with_algorithm(
   self : LayoutOptions,
   alg : LayoutAlgorithm,
 ) -> LayoutOptions {
@@ -768,7 +768,7 @@ pub fn LayoutOptions::with_algorithm(
 }
 
 ///|
-pub fn LayoutOptions::with_direction(
+fn LayoutOptions::with_direction(
   self : LayoutOptions,
   dir : LayoutDirection,
 ) -> LayoutOptions {
@@ -776,7 +776,7 @@ pub fn LayoutOptions::with_direction(
 }
 
 ///|
-pub fn LayoutOptions::with_edge_routing(
+fn LayoutOptions::with_edge_routing(
   self : LayoutOptions,
   routing : EdgeRouting,
 ) -> LayoutOptions {
@@ -784,7 +784,7 @@ pub fn LayoutOptions::with_edge_routing(
 }
 
 ///|
-pub fn LayoutOptions::with_node_spacing(
+fn LayoutOptions::with_node_spacing(
   self : LayoutOptions,
   spacing : Double,
 ) -> LayoutOptions {
@@ -792,7 +792,7 @@ pub fn LayoutOptions::with_node_spacing(
 }
 
 ///|
-pub fn LayoutOptions::with_layer_spacing(
+fn LayoutOptions::with_layer_spacing(
   self : LayoutOptions,
   spacing : Double,
 ) -> LayoutOptions {
@@ -800,7 +800,7 @@ pub fn LayoutOptions::with_layer_spacing(
 }
 
 ///|
-pub fn LayoutOptions::with_edge_spacing(
+fn LayoutOptions::with_edge_spacing(
   self : LayoutOptions,
   spacing : Double,
 ) -> LayoutOptions {
@@ -808,7 +808,7 @@ pub fn LayoutOptions::with_edge_spacing(
 }
 
 ///|
-pub fn LayoutOptions::with_padding(
+fn LayoutOptions::with_padding(
   self : LayoutOptions,
   padding : ElkPadding,
 ) -> LayoutOptions {
@@ -816,7 +816,7 @@ pub fn LayoutOptions::with_padding(
 }
 
 ///|
-pub fn LayoutOptions::with_uniform_padding(
+fn LayoutOptions::with_uniform_padding(
   self : LayoutOptions,
   value : Double,
 ) -> LayoutOptions {
@@ -824,7 +824,7 @@ pub fn LayoutOptions::with_uniform_padding(
 }
 
 ///|
-pub fn LayoutOptions::with_port_constraints(
+fn LayoutOptions::with_port_constraints(
   self : LayoutOptions,
   constraints : PortConstraints,
 ) -> LayoutOptions {
@@ -832,7 +832,7 @@ pub fn LayoutOptions::with_port_constraints(
 }
 
 ///|
-pub fn LayoutOptions::with_hierarchy_handling(
+fn LayoutOptions::with_hierarchy_handling(
   self : LayoutOptions,
   handling : HierarchyHandling,
 ) -> LayoutOptions {
@@ -840,7 +840,7 @@ pub fn LayoutOptions::with_hierarchy_handling(
 }
 
 ///|
-pub fn LayoutOptions::with_thoroughness(
+fn LayoutOptions::with_thoroughness(
   self : LayoutOptions,
   value : Int,
 ) -> LayoutOptions {
@@ -848,7 +848,7 @@ pub fn LayoutOptions::with_thoroughness(
 }
 
 ///|
-pub fn LayoutOptions::with_aspect_ratio(
+fn LayoutOptions::with_aspect_ratio(
   self : LayoutOptions,
   ratio : Double,
 ) -> LayoutOptions {
@@ -856,12 +856,12 @@ pub fn LayoutOptions::with_aspect_ratio(
 }
 
 ///|
-pub fn LayoutOptions::interactive(self : LayoutOptions) -> LayoutOptions {
+fn LayoutOptions::interactive(self : LayoutOptions) -> LayoutOptions {
   { ..self, interactive: Some(true) }
 }
 
 ///|
-pub fn LayoutOptions::with_cycle_breaking(
+fn LayoutOptions::with_cycle_breaking(
   self : LayoutOptions,
   strategy : CycleBreakingStrategy,
 ) -> LayoutOptions {
@@ -869,7 +869,7 @@ pub fn LayoutOptions::with_cycle_breaking(
 }
 
 ///|
-pub fn LayoutOptions::with_layering(
+fn LayoutOptions::with_layering(
   self : LayoutOptions,
   strategy : LayeringStrategy,
 ) -> LayoutOptions {
@@ -877,7 +877,7 @@ pub fn LayoutOptions::with_layering(
 }
 
 ///|
-pub fn LayoutOptions::with_crossing_min(
+fn LayoutOptions::with_crossing_min(
   self : LayoutOptions,
   strategy : CrossingMinimizationStrategy,
 ) -> LayoutOptions {
@@ -885,7 +885,7 @@ pub fn LayoutOptions::with_crossing_min(
 }
 
 ///|
-pub fn LayoutOptions::with_node_placement(
+fn LayoutOptions::with_node_placement(
   self : LayoutOptions,
   strategy : NodePlacementStrategy,
 ) -> LayoutOptions {
@@ -893,7 +893,7 @@ pub fn LayoutOptions::with_node_placement(
 }
 
 ///|
-pub fn LayoutOptions::with_custom(
+fn LayoutOptions::with_custom(
   self : LayoutOptions,
   key : String,
   value : PropertyValue,
@@ -921,7 +921,7 @@ fn[T] merge_opt(child : T?, parent : T?) -> T? {
 
 ///|
 /// Merge two option sets (child overrides parent)
-pub fn LayoutOptions::merge(
+fn LayoutOptions::merge(
   parent : LayoutOptions,
   child : LayoutOptions,
 ) -> LayoutOptions {
@@ -1167,7 +1167,7 @@ pub fn LayoutOptions::merge(
 
 ///|
 /// Convert LayoutOptions to ElkProperties for attachment to nodes
-pub fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
+fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
   let props = ElkProperties::new()
   match self.algorithm {
     Some(alg) => props.set("elk.algorithm", Enum(alg.to_string()))
@@ -1256,7 +1256,7 @@ pub fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
 
 ///|
 /// Parse a subset of ELK properties into LayoutOptions (unknown keys ignored).
-pub fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
+fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
   let mut options = LayoutOptions::new()
   fn get_string_any(props : ElkProperties, keys : Array[String]) -> String? {
     for key in keys {

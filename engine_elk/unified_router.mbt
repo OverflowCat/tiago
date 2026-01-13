@@ -1061,7 +1061,7 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
     // For sql_table row connections, set fixed port points immediately.
     match src_sql_info {
       Some((table_box, col_idx, num_cols)) => {
-        let is_left_side = src_side == Left
+        let is_left_side = src_side == PortSide::Left
         let pt = get_sql_row_anchor_point(
           table_box, col_idx, num_cols, is_left_side,
         )
@@ -1073,7 +1073,7 @@ fn distribute_shared_ports(graph : Graph) -> Unit {
     }
     match dst_sql_info {
       Some((table_box, col_idx, num_cols)) => {
-        let is_left_side = dst_side == Left
+        let is_left_side = dst_side == PortSide::Left
         let pt = get_sql_row_anchor_point(
           table_box, col_idx, num_cols, is_left_side,
         )
@@ -1473,20 +1473,20 @@ fn get_sql_edge_port_info(
 
   // Keep sql_table row connections on left/right sides so they align with rows.
   let (src_side, dst_side) = if dx >= 0.0 {
-    (Right, Left)
+    (PortSide::Right, PortSide::Left)
   } else {
-    (Left, Right)
+    (PortSide::Left, PortSide::Right)
   }
   let src_pt = match src_sql_info {
     Some((table_box, col_idx, num_cols)) => {
-      let is_left_side = src_side == Left
+      let is_left_side = src_side == PortSide::Left
       get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
     }
     None => get_port_point_on_side(src_box_for_sides, src_side, 0.5)
   }
   let dst_pt = match dst_sql_info {
     Some((table_box, col_idx, num_cols)) => {
-      let is_left_side = dst_side == Left
+      let is_left_side = dst_side == PortSide::Left
       get_sql_row_anchor_point(table_box, col_idx, num_cols, is_left_side)
     }
     None => get_port_point_on_side(dst_box_for_sides, dst_side, 0.5)
@@ -1531,14 +1531,14 @@ fn get_port_info(
   let dy = dst_center.get_y() - src_center.get_y()
   let (src_side, dst_side) = if dy.abs() > dx.abs() {
     if dy > 0.0 {
-      (Bottom, Top)
+      (PortSide::Bottom, PortSide::Top)
     } else {
-      (Top, Bottom)
+      (PortSide::Top, PortSide::Bottom)
     }
   } else if dx > 0.0 {
-    (Right, Left)
+    (PortSide::Right, PortSide::Left)
   } else {
-    (Left, Right)
+    (PortSide::Left, PortSide::Right)
   }
   // Compute port points
   let src_pt = get_port_point_on_side(src_box, src_side, 0.5)

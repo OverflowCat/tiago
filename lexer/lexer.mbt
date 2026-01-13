@@ -14,8 +14,7 @@
 
 ///|
 /// Lexer for the diago diagram language
-pub struct Lexer {
-  source : String
+struct Lexer {
   chars : Array[Char] // pre-converted characters for easy indexing
   mut pos : Int // current character position
   mut line : Int // current line (1-indexed)
@@ -35,7 +34,7 @@ pub struct LexError {
 /// Create a new lexer for the given source
 pub fn Lexer::new(source : String) -> Lexer {
   let chars = source.to_array()
-  { source, chars, pos: 0, line: 1, column: 1, tokens: [], errors: [] }
+  { chars, pos: 0, line: 1, column: 1, tokens: [], errors: [] }
 }
 
 ///|

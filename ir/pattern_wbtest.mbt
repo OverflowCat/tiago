@@ -81,12 +81,10 @@ test "match_pattern with wildcard" {
 test "double_glob" {
   // Create a map with nested fields
   let m = Map::new()
-  let server = Field::simple("server")
   let server_map = Map::new()
   server_map.add_field(Field::simple("db"))
   server_map.add_field(Field::simple("cache"))
-  server.composite = Some(Composite::Map(server_map))
-  m.add_field(server)
+  m.add_field(Field::new("server", None, Some(Composite::Map(server_map)), []))
   m.add_field(Field::simple("client"))
   // Double glob should return all fields recursively
   let fields = m.double_glob()
@@ -98,11 +96,9 @@ test "double_glob skips board keywords" {
   let m = Map::new()
   m.add_field(Field::simple("server"))
   // Add layers with children
-  let layers = Field::simple("layers")
   let layers_map = Map::new()
   layers_map.add_field(Field::simple("layer1"))
-  layers.composite = Some(Composite::Map(layers_map))
-  m.add_field(layers)
+  m.add_field(Field::new("layers", None, Some(Composite::Map(layers_map)), []))
   // Double glob should not include layers or its children
   let fields = m.double_glob()
   assert_eq(fields.length(), 1) // only server
@@ -113,11 +109,9 @@ test "triple_glob includes all" {
   let m = Map::new()
   m.add_field(Field::simple("server"))
   // Add layers with children
-  let layers = Field::simple("layers")
   let layers_map = Map::new()
   layers_map.add_field(Field::simple("layer1"))
-  layers.composite = Some(Composite::Map(layers_map))
-  m.add_field(layers)
+  m.add_field(Field::new("layers", None, Some(Composite::Map(layers_map)), []))
   // Triple glob should include fields inside layers
   let fields = m.triple_glob()
   assert_eq(fields.length(), 2) // server and layer1 (not layers itself)
@@ -136,12 +130,11 @@ test "single_glob" {
 
 ///|
 test "evaluate_filter shape" {
-  let field = Field::simple("mybox")
   let field_map = Map::new()
-  let shape_field = Field::simple("shape")
-  shape_field.primary = Some(Scalar::string("rectangle"))
-  field_map.add_field(shape_field)
-  field.composite = Some(Composite::Map(field_map))
+  field_map.add_field(
+    Field::new("shape", Some(Scalar::string("rectangle")), None, []),
+  )
+  let field = Field::new("mybox", None, Some(Composite::Map(field_map)), [])
   let parent = Map::new()
   parent.add_field(field)
   let ctx = FilterContext::new(field, parent)
@@ -169,9 +162,7 @@ test "apply_glob_properties" {
   m.add_field(Field::simple("client"))
   // Create properties map
   let props = Map::new()
-  let fill_field = Field::simple("fill")
-  fill_field.primary = Some(Scalar::string("red"))
-  props.add_field(fill_field)
+  props.add_field(Field::new("fill", Some(Scalar::string("red")), None, []))
   // Apply to all matching server*
   m.apply_glob_properties(["server", "*"], props, [])
   // server1 and server2 should have fill property
@@ -187,26 +178,18 @@ test "apply_glob_properties" {
 test "apply_glob_properties with filter" {
   let m = Map::new()
   // Create server1 with shape: rectangle
-  let server1 = Field::simple("server1")
   let s1map = Map::new()
-  let shape1 = Field::simple("shape")
-  shape1.primary = Some(Scalar::string("rectangle"))
-  s1map.add_field(shape1)
-  server1.composite = Some(Composite::Map(s1map))
-  m.add_field(server1)
+  s1map.add_field(
+    Field::new("shape", Some(Scalar::string("rectangle")), None, []),
+  )
+  m.add_field(Field::new("server1", None, Some(Composite::Map(s1map)), []))
   // Create server2 with shape: circle
-  let server2 = Field::simple("server2")
   let s2map = Map::new()
-  let shape2 = Field::simple("shape")
-  shape2.primary = Some(Scalar::string("circle"))
-  s2map.add_field(shape2)
-  server2.composite = Some(Composite::Map(s2map))
-  m.add_field(server2)
+  s2map.add_field(Field::new("shape", Some(Scalar::string("circle")), None, []))
+  m.add_field(Field::new("server2", None, Some(Composite::Map(s2map)), []))
   // Create properties
   let props = Map::new()
-  let fill = Field::simple("fill")
-  fill.primary = Some(Scalar::string("blue"))
-  props.add_field(fill)
+  props.add_field(Field::new("fill", Some(Scalar::string("blue")), None, []))
   // Apply with filter: only rectangles
   let filters : Array[(Bool, String, String)] = [(false, "shape", "rectangle")]
   m.apply_glob_properties(["**"], props, filters)

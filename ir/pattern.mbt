@@ -368,15 +368,17 @@ pub fn Map::apply_glob_properties(
   properties : Map,
   filters : Array[(Bool, String, String)],
 ) -> Unit {
-  // Collect matching fields
-  let fields = if is_double_glob(pattern) {
-    self.double_glob()
-  } else if is_triple_glob(pattern) {
-    self.triple_glob()
-  } else {
-    self.single_glob(pattern)
+  if is_double_glob(pattern) {
+    self.apply_multi_glob_properties(properties, filters, false)
+    return
   }
-  // Apply properties to each matching field that passes filters
+  if is_triple_glob(pattern) {
+    self.apply_multi_glob_properties(properties, filters, true)
+    return
+  }
+
+  // Single-level glob: apply only within this map
+  let fields = self.single_glob(pattern)
   for f in fields {
     let ctx = FilterContext::new(f, self)
     let mut passes_all = true
@@ -390,41 +392,176 @@ pub fn Map::apply_glob_properties(
       }
     }
     if passes_all {
-      apply_properties_to_field(f, properties)
+      let updated = apply_properties_to_field(f, properties)
+      self.set_field(updated)
+    }
+  }
+}
+
+///|
+/// Apply properties recursively for **/*** patterns.
+/// `include_boards` matches the *** behavior: descend into boards but do not
+/// apply to reserved keywords, and do not apply to the board field itself.
+fn Map::apply_multi_glob_properties(
+  self : Map,
+  properties : Map,
+  filters : Array[(Bool, String, String)],
+  include_boards : Bool,
+) -> Unit {
+  // Snapshot fields so newly added properties (like `style`) aren't re-visited.
+  let snapshot : Array[Field] = []
+  for f in self.fields {
+    snapshot.push(f)
+  }
+  for f in snapshot {
+    // Capture original children before any mutation.
+    let child_map = match f.composite {
+      Some(Composite::Map(m)) => Some(m)
+      _ => None
+    }
+    if include_boards {
+      // Triple glob (***): descend into boards, but don't apply to reserved keywords.
+      if is_board_keyword(f.name) {
+        match child_map {
+          Some(m) =>
+            m.apply_multi_glob_properties(properties, filters, include_boards)
+          None => ()
+        }
+        continue
+      }
+      if is_reserved_keyword(f.name) {
+        continue
+      }
+      // Double glob (**): don't apply to reserved keywords (including `style`).
+    } else if is_reserved_keyword(f.name) {
+      continue
+    }
+
+    // Apply properties to this field if it passes filters.
+    let ctx = FilterContext::new(f, self)
+    let mut passes_all = true
+    for filter in filters {
+      let (negated, key, value) = filter
+      let result = evaluate_filter(ctx, key, value)
+      let passes = if negated { !result } else { result }
+      if !passes {
+        passes_all = false
+        break
+      }
+    }
+    if passes_all {
+      let updated = apply_properties_to_field(f, properties)
+      self.set_field(updated)
+    }
+
+    // Descend into original children (not newly added properties).
+    match child_map {
+      Some(m) =>
+        m.apply_multi_glob_properties(properties, filters, include_boards)
+      None => ()
+    }
+  }
+}
+
+///|
+fn clone_value_for_properties(v : Value) -> Value {
+  match v {
+    Value::Scalar(s) => Value::Scalar(s)
+    Value::Array(a) => Value::Array(clone_irarray_for_properties(a))
+    Value::Map(m) => Value::Map(clone_map_for_properties(m))
+  }
+}
+
+///|
+fn clone_irarray_for_properties(a : IRArray) -> IRArray {
+  let values : Array[Value] = []
+  for v in a.values {
+    values.push(clone_value_for_properties(v))
+  }
+  IRArray::new(values)
+}
+
+///|
+fn clone_composite_for_properties(c : Composite) -> Composite {
+  match c {
+    Composite::Array(a) => Composite::Array(clone_irarray_for_properties(a))
+    Composite::Map(m) => Composite::Map(clone_map_for_properties(m))
+  }
+}
+
+///|
+fn clone_field_for_properties(f : Field) -> Field {
+  let composite = match f.composite {
+    Some(c) => Some(clone_composite_for_properties(c))
+    None => None
+  }
+  Field::new(f.name, f.primary, composite, [])
+}
+
+///|
+fn clone_map_for_properties(m : Map) -> Map {
+  let out = Map::new()
+  for f in m.fields {
+    out.add_field(clone_field_for_properties(f))
+  }
+  // Edges are not expected in property maps.
+  out
+}
+
+///|
+fn merge_properties_into_map(target : Map, src : Map) -> Unit {
+  for prop in src.fields {
+    match target.get_field(prop.name) {
+      Some(existing) => {
+        let primary = if prop.primary is Some(_) {
+          prop.primary
+        } else {
+          existing.primary
+        }
+        let composite = match prop.composite {
+          Some(Composite::Map(src_map)) =>
+            match existing.composite {
+              Some(Composite::Map(dst_map)) => {
+                merge_properties_into_map(dst_map, src_map)
+                existing.composite
+              }
+              _ => Some(Composite::Map(clone_map_for_properties(src_map)))
+            }
+          Some(other) => Some(clone_composite_for_properties(other))
+          None => existing.composite
+        }
+        let updated = Field::new(
+          existing.name,
+          primary,
+          composite,
+          existing.references,
+        )
+        target.set_field(updated)
+      }
+      None => target.add_field(clone_field_for_properties(prop))
     }
   }
 }
 
 ///|
 /// Apply properties from a source map to a field
-fn apply_properties_to_field(field : Field, properties : Map) -> Unit {
+fn apply_properties_to_field(field : Field, properties : Map) -> Field {
   // Ensure field has a composite map
-  let field_map = match field.composite {
-    Some(Composite::Map(m)) => m
+  let (field, field_map) = match field.composite {
+    Some(Composite::Map(m)) => (field, m)
     None => {
       let m = Map::new()
-      field.composite = Some(Composite::Map(m))
-      m
+      let field = Field::new(
+        field.name,
+        field.primary,
+        Some(Composite::Map(m)),
+        field.references,
+      )
+      (field, m)
     }
-    Some(_) => return // Can't apply to arrays
+    Some(_) => return field // Can't apply to arrays
   }
   // Copy properties
-  for prop in properties.fields {
-    match field_map.get_field(prop.name) {
-      Some(existing) => {
-        // Update existing property
-        if prop.primary is Some(_) {
-          existing.primary = prop.primary
-        }
-        if prop.composite is Some(_) {
-          existing.composite = prop.composite
-        }
-      }
-      None =>
-        // Add new property
-        field_map.add_field(
-          Field::new(prop.name, prop.primary, prop.composite, []),
-        )
-    }
-  }
+  merge_properties_into_map(field_map, properties)
+  field
 }

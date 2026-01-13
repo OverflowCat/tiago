@@ -22,24 +22,24 @@
 
 ///|
 /// A point in 2D space
-pub(all) struct ElkPoint {
+struct ElkPoint {
   x : Double
   y : Double
 } derive(Show, Eq)
 
 ///|
-pub fn ElkPoint::new(x : Double, y : Double) -> ElkPoint {
+fn ElkPoint::new(x : Double, y : Double) -> ElkPoint {
   { x, y }
 }
 
 ///|
-pub fn ElkPoint::zero() -> ElkPoint {
+fn ElkPoint::zero() -> ElkPoint {
   { x: 0.0, y: 0.0 }
 }
 
 ///|
 /// A padding/margin specification
-pub(all) struct ElkPadding {
+struct ElkPadding {
   top : Double
   right : Double
   bottom : Double
@@ -47,7 +47,7 @@ pub(all) struct ElkPadding {
 } derive(Show, Eq)
 
 ///|
-pub fn ElkPadding::new(
+fn ElkPadding::new(
   top : Double,
   right : Double,
   bottom : Double,
@@ -57,12 +57,12 @@ pub fn ElkPadding::new(
 }
 
 ///|
-pub fn ElkPadding::uniform(value : Double) -> ElkPadding {
+fn ElkPadding::uniform(value : Double) -> ElkPadding {
   { top: value, right: value, bottom: value, left: value }
 }
 
 ///|
-pub fn ElkPadding::zero() -> ElkPadding {
+fn ElkPadding::zero() -> ElkPadding {
   { top: 0.0, right: 0.0, bottom: 0.0, left: 0.0 }
 }
 
@@ -72,7 +72,7 @@ pub fn ElkPadding::zero() -> ElkPadding {
 
 ///|
 /// The side of a node where a port is located
-pub(all) enum PortSide {
+enum ElkPortSide {
   Undefined
   North
   East
@@ -81,7 +81,7 @@ pub(all) enum PortSide {
 } derive(Show, Eq)
 
 ///|
-pub fn PortSide::opposite(self : PortSide) -> PortSide {
+fn ElkPortSide::opposite(self : ElkPortSide) -> ElkPortSide {
   match self {
     Undefined => Undefined
     North => South
@@ -92,7 +92,7 @@ pub fn PortSide::opposite(self : PortSide) -> PortSide {
 }
 
 ///|
-pub fn PortSide::is_vertical(self : PortSide) -> Bool {
+fn ElkPortSide::is_vertical(self : ElkPortSide) -> Bool {
   match self {
     North | South => true
     _ => false
@@ -100,7 +100,7 @@ pub fn PortSide::is_vertical(self : PortSide) -> Bool {
 }
 
 ///|
-pub fn PortSide::is_horizontal(self : PortSide) -> Bool {
+fn ElkPortSide::is_horizontal(self : ElkPortSide) -> Bool {
   match self {
     East | West => true
     _ => false
@@ -113,7 +113,7 @@ pub fn PortSide::is_horizontal(self : PortSide) -> Bool {
 
 ///|
 /// Type-safe property values for ELK configuration
-pub(all) enum PropertyValue {
+enum PropertyValue {
   Bool(Bool)
   Int(Int)
   Double(Double)
@@ -127,17 +127,17 @@ pub(all) enum PropertyValue {
 
 ///|
 /// Container for layout properties
-pub(all) struct ElkProperties {
+struct ElkProperties {
   values : Map[String, PropertyValue]
 } derive(Show, Eq)
 
 ///|
-pub fn ElkProperties::new() -> ElkProperties {
+fn ElkProperties::new() -> ElkProperties {
   { values: {} }
 }
 
 ///|
-pub fn ElkProperties::set(
+fn ElkProperties::set(
   self : ElkProperties,
   key : String,
   value : PropertyValue,
@@ -146,12 +146,12 @@ pub fn ElkProperties::set(
 }
 
 ///|
-pub fn ElkProperties::get(self : ElkProperties, key : String) -> PropertyValue? {
+fn ElkProperties::get(self : ElkProperties, key : String) -> PropertyValue? {
   self.values.get(key)
 }
 
 ///|
-pub fn ElkProperties::get_bool(self : ElkProperties, key : String) -> Bool? {
+fn ElkProperties::get_bool(self : ElkProperties, key : String) -> Bool? {
   match self.values.get(key) {
     Some(Bool(v)) => Some(v)
     _ => None
@@ -159,7 +159,7 @@ pub fn ElkProperties::get_bool(self : ElkProperties, key : String) -> Bool? {
 }
 
 ///|
-pub fn ElkProperties::get_int(self : ElkProperties, key : String) -> Int? {
+fn ElkProperties::get_int(self : ElkProperties, key : String) -> Int? {
   match self.values.get(key) {
     Some(Int(v)) => Some(v)
     _ => None
@@ -167,7 +167,7 @@ pub fn ElkProperties::get_int(self : ElkProperties, key : String) -> Int? {
 }
 
 ///|
-pub fn ElkProperties::get_double(self : ElkProperties, key : String) -> Double? {
+fn ElkProperties::get_double(self : ElkProperties, key : String) -> Double? {
   match self.values.get(key) {
     Some(Double(v)) => Some(v)
     _ => None
@@ -175,7 +175,7 @@ pub fn ElkProperties::get_double(self : ElkProperties, key : String) -> Double? 
 }
 
 ///|
-pub fn ElkProperties::get_string(self : ElkProperties, key : String) -> String? {
+fn ElkProperties::get_string(self : ElkProperties, key : String) -> String? {
   match self.values.get(key) {
     Some(String(v)) => Some(v)
     Some(Enum(v)) => Some(v)
@@ -184,7 +184,7 @@ pub fn ElkProperties::get_string(self : ElkProperties, key : String) -> String? 
 }
 
 ///|
-pub fn ElkProperties::get_enum(self : ElkProperties, key : String) -> String? {
+fn ElkProperties::get_enum(self : ElkProperties, key : String) -> String? {
   match self.values.get(key) {
     Some(Enum(v)) => Some(v)
     _ => None
@@ -192,10 +192,7 @@ pub fn ElkProperties::get_enum(self : ElkProperties, key : String) -> String? {
 }
 
 ///|
-pub fn ElkProperties::get_point(
-  self : ElkProperties,
-  key : String,
-) -> ElkPoint? {
+fn ElkProperties::get_point(self : ElkProperties, key : String) -> ElkPoint? {
   match self.values.get(key) {
     Some(Point(v)) => Some(v)
     _ => None
@@ -203,7 +200,7 @@ pub fn ElkProperties::get_point(
 }
 
 ///|
-pub fn ElkProperties::get_padding(
+fn ElkProperties::get_padding(
   self : ElkProperties,
   key : String,
 ) -> ElkPadding? {
@@ -214,7 +211,7 @@ pub fn ElkProperties::get_padding(
 }
 
 ///|
-pub fn ElkProperties::get_array(
+fn ElkProperties::get_array(
   self : ElkProperties,
   key : String,
 ) -> Array[PropertyValue]? {
@@ -225,7 +222,7 @@ pub fn ElkProperties::get_array(
 }
 
 ///|
-pub fn ElkProperties::get_map(
+fn ElkProperties::get_map(
   self : ElkProperties,
   key : String,
 ) -> Map[String, PropertyValue]? {
@@ -236,7 +233,7 @@ pub fn ElkProperties::get_map(
 }
 
 ///|
-pub fn ElkProperties::get_bool_or(
+fn ElkProperties::get_bool_or(
   self : ElkProperties,
   key : String,
   default : Bool,
@@ -245,7 +242,7 @@ pub fn ElkProperties::get_bool_or(
 }
 
 ///|
-pub fn ElkProperties::get_int_or(
+fn ElkProperties::get_int_or(
   self : ElkProperties,
   key : String,
   default : Int,
@@ -254,7 +251,7 @@ pub fn ElkProperties::get_int_or(
 }
 
 ///|
-pub fn ElkProperties::get_double_or(
+fn ElkProperties::get_double_or(
   self : ElkProperties,
   key : String,
   default : Double,
@@ -263,7 +260,7 @@ pub fn ElkProperties::get_double_or(
 }
 
 ///|
-pub fn ElkProperties::get_string_or(
+fn ElkProperties::get_string_or(
   self : ElkProperties,
   key : String,
   default : String,
@@ -272,7 +269,7 @@ pub fn ElkProperties::get_string_or(
 }
 
 ///|
-pub fn ElkProperties::copy_from(
+fn ElkProperties::copy_from(
   self : ElkProperties,
   other : ElkProperties,
 ) -> Unit {
@@ -287,7 +284,7 @@ pub fn ElkProperties::copy_from(
 
 ///|
 /// A text label that can be attached to nodes, edges, or ports
-pub(all) struct ElkLabel {
+struct ElkLabel {
   id : String
   text : String
   mut x : Double
@@ -298,7 +295,7 @@ pub(all) struct ElkLabel {
 } derive(Show, Eq)
 
 ///|
-pub fn ElkLabel::new(id : String, text : String) -> ElkLabel {
+fn ElkLabel::new(id : String, text : String) -> ElkLabel {
   {
     id,
     text,
@@ -316,19 +313,19 @@ pub fn ElkLabel::new(id : String, text : String) -> ElkLabel {
 
 ///|
 /// A connection point on a node
-pub(all) struct ElkPort {
+struct ElkPort {
   id : String
-  mut x : Double
-  mut y : Double
-  mut width : Double
-  mut height : Double
-  side : PortSide
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  side : ElkPortSide
   labels : Array[ElkLabel]
   properties : ElkProperties
 } derive(Show, Eq)
 
 ///|
-pub fn ElkPort::new(id : String) -> ElkPort {
+fn ElkPort::new(id : String) -> ElkPort {
   {
     id,
     x: 0.0,
@@ -342,7 +339,7 @@ pub fn ElkPort::new(id : String) -> ElkPort {
 }
 
 ///|
-pub fn ElkPort::with_side(id : String, side : PortSide) -> ElkPort {
+fn ElkPort::with_side(id : String, side : ElkPortSide) -> ElkPort {
   {
     id,
     x: 0.0,
@@ -361,7 +358,7 @@ pub fn ElkPort::with_side(id : String, side : PortSide) -> ElkPort {
 
 ///|
 /// A section of an edge route (used for hierarchical edges)
-pub(all) struct ElkEdgeSection {
+struct ElkEdgeSection {
   id : String
   mut start_point : ElkPoint
   mut end_point : ElkPoint
@@ -374,7 +371,7 @@ pub(all) struct ElkEdgeSection {
 } derive(Show, Eq)
 
 ///|
-pub fn ElkEdgeSection::new(id : String) -> ElkEdgeSection {
+fn ElkEdgeSection::new(id : String) -> ElkEdgeSection {
   {
     id,
     start_point: ElkPoint::zero(),
@@ -394,13 +391,13 @@ pub fn ElkEdgeSection::new(id : String) -> ElkEdgeSection {
 
 ///|
 /// An edge connecting nodes (supports hyperedges with multiple sources/targets)
-pub(all) struct ElkEdge {
+struct ElkEdge {
   id : String
   sources : Array[String]
   targets : Array[String]
   // Optional port IDs for simple edges (one source, one target)
-  mut source_port : String?
-  mut target_port : String?
+  source_port : String?
+  target_port : String?
   labels : Array[ElkLabel]
   sections : Array[ElkEdgeSection]
   container_id : String?
@@ -408,7 +405,7 @@ pub(all) struct ElkEdge {
 } derive(Show, Eq)
 
 ///|
-pub fn ElkEdge::new(id : String, source : String, target : String) -> ElkEdge {
+fn ElkEdge::new(id : String, source : String, target : String) -> ElkEdge {
   {
     id,
     sources: [source],
@@ -423,7 +420,7 @@ pub fn ElkEdge::new(id : String, source : String, target : String) -> ElkEdge {
 }
 
 ///|
-pub fn ElkEdge::hyperedge(
+fn ElkEdge::hyperedge(
   id : String,
   sources : Array[String],
   targets : Array[String],
@@ -443,13 +440,13 @@ pub fn ElkEdge::hyperedge(
 
 ///|
 /// Check if this is a simple edge (one source, one target)
-pub fn ElkEdge::is_simple(self : ElkEdge) -> Bool {
+fn ElkEdge::is_simple(self : ElkEdge) -> Bool {
   self.sources.length() == 1 && self.targets.length() == 1
 }
 
 ///|
 /// Get single source (for simple edges)
-pub fn ElkEdge::source(self : ElkEdge) -> String? {
+fn ElkEdge::source(self : ElkEdge) -> String? {
   if self.sources.length() == 1 {
     Some(self.sources[0])
   } else {
@@ -459,7 +456,7 @@ pub fn ElkEdge::source(self : ElkEdge) -> String? {
 
 ///|
 /// Get single target (for simple edges)
-pub fn ElkEdge::target(self : ElkEdge) -> String? {
+fn ElkEdge::target(self : ElkEdge) -> String? {
   if self.targets.length() == 1 {
     Some(self.targets[0])
   } else {
@@ -469,7 +466,7 @@ pub fn ElkEdge::target(self : ElkEdge) -> String? {
 
 ///|
 /// Get single source port ID (for simple edges)
-pub fn ElkEdge::source_port_id(self : ElkEdge) -> String? {
+fn ElkEdge::source_port_id(self : ElkEdge) -> String? {
   match self.source_port {
     Some(id) => Some(id)
     None => self.properties.get_string("elk.sourcePort")
@@ -478,7 +475,7 @@ pub fn ElkEdge::source_port_id(self : ElkEdge) -> String? {
 
 ///|
 /// Get single target port ID (for simple edges)
-pub fn ElkEdge::target_port_id(self : ElkEdge) -> String? {
+fn ElkEdge::target_port_id(self : ElkEdge) -> String? {
   match self.target_port {
     Some(id) => Some(id)
     None => self.properties.get_string("elk.targetPort")
@@ -491,7 +488,7 @@ pub fn ElkEdge::target_port_id(self : ElkEdge) -> String? {
 
 ///|
 /// A node in the ELK graph (can be hierarchical with children)
-pub(all) struct ElkNode {
+struct ElkNode {
   id : String
   mut x : Double
   mut y : Double
@@ -505,7 +502,7 @@ pub(all) struct ElkNode {
 } derive(Show, Eq)
 
 ///|
-pub fn ElkNode::new(id : String) -> ElkNode {
+fn ElkNode::new(id : String) -> ElkNode {
   {
     id,
     x: 0.0,
@@ -521,11 +518,7 @@ pub fn ElkNode::new(id : String) -> ElkNode {
 }
 
 ///|
-pub fn ElkNode::with_size(
-  id : String,
-  width : Double,
-  height : Double,
-) -> ElkNode {
+fn ElkNode::with_size(id : String, width : Double, height : Double) -> ElkNode {
   {
     id,
     x: 0.0,
@@ -542,43 +535,43 @@ pub fn ElkNode::with_size(
 
 ///|
 /// Check if this node is a leaf (no children)
-pub fn ElkNode::is_leaf(self : ElkNode) -> Bool {
+fn ElkNode::is_leaf(self : ElkNode) -> Bool {
   self.children.is_empty()
 }
 
 ///|
 /// Check if this node is a compound node (has children)
-pub fn ElkNode::is_compound(self : ElkNode) -> Bool {
+fn ElkNode::is_compound(self : ElkNode) -> Bool {
   !self.children.is_empty()
 }
 
 ///|
 /// Add a child node
-pub fn ElkNode::add_child(self : ElkNode, child : ElkNode) -> Unit {
+fn ElkNode::add_child(self : ElkNode, child : ElkNode) -> Unit {
   self.children.push(child)
 }
 
 ///|
 /// Add an edge contained in this node
-pub fn ElkNode::add_edge(self : ElkNode, edge : ElkEdge) -> Unit {
+fn ElkNode::add_edge(self : ElkNode, edge : ElkEdge) -> Unit {
   self.edges.push(edge)
 }
 
 ///|
 /// Add a port to this node
-pub fn ElkNode::add_port(self : ElkNode, port : ElkPort) -> Unit {
+fn ElkNode::add_port(self : ElkNode, port : ElkPort) -> Unit {
   self.ports.push(port)
 }
 
 ///|
 /// Add a label to this node
-pub fn ElkNode::add_label(self : ElkNode, label : ElkLabel) -> Unit {
+fn ElkNode::add_label(self : ElkNode, label : ElkLabel) -> Unit {
   self.labels.push(label)
 }
 
 ///|
 /// Find a child node by ID (non-recursive)
-pub fn ElkNode::find_child(self : ElkNode, id : String) -> ElkNode? {
+fn ElkNode::find_child(self : ElkNode, id : String) -> ElkNode? {
   for child in self.children {
     if child.id == id {
       return Some(child)
@@ -589,7 +582,7 @@ pub fn ElkNode::find_child(self : ElkNode, id : String) -> ElkNode? {
 
 ///|
 /// Find a node by ID (recursive search through hierarchy)
-pub fn ElkNode::find_node(self : ElkNode, id : String) -> ElkNode? {
+fn ElkNode::find_node(self : ElkNode, id : String) -> ElkNode? {
   if self.id == id {
     return Some(self)
   }
@@ -604,7 +597,7 @@ pub fn ElkNode::find_node(self : ElkNode, id : String) -> ElkNode? {
 
 ///|
 /// Find a port by ID (recursive search)
-pub fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
+fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
   for port in self.ports {
     if port.id == id {
       return Some(port)
@@ -621,7 +614,7 @@ pub fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
 
 ///|
 /// Get all nodes in the graph (flattened)
-pub fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
+fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
   let result : Array[ElkNode] = [self]
   for child in self.children {
     result.append(child.all_nodes())
@@ -631,7 +624,7 @@ pub fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
 
 ///|
 /// Get all edges in the graph (recursive)
-pub fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
+fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
   let result : Array[ElkEdge] = []
   result.append(self.edges)
   for child in self.children {
@@ -642,7 +635,7 @@ pub fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
 
 ///|
 /// Calculate bounding box considering all children
-pub fn ElkNode::calculate_bounds(self : ElkNode) -> (Double, Double) {
+fn ElkNode::calculate_bounds(self : ElkNode) -> (Double, Double) {
   let mut max_x = self.width
   let mut max_y = self.height
   for child in self.children {
@@ -664,19 +657,19 @@ pub fn ElkNode::calculate_bounds(self : ElkNode) -> (Double, Double) {
 
 ///|
 /// Create a root node (representing the entire graph)
-pub fn create_graph(id : String) -> ElkNode {
+fn _create_graph(id : String) -> ElkNode {
   ElkNode::new(id)
 }
 
 ///|
 /// Create a simple edge between two nodes
-pub fn create_edge(id : String, source : String, target : String) -> ElkEdge {
+fn _create_edge(id : String, source : String, target : String) -> ElkEdge {
   ElkEdge::new(id, source, target)
 }
 
 ///|
 /// Create a node with a label
-pub fn create_labeled_node(id : String, label : String) -> ElkNode {
+fn _create_labeled_node(id : String, label : String) -> ElkNode {
   let node = ElkNode::new(id)
   node.add_label(ElkLabel::new(id + "_label", label))
   node

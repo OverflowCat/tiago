@@ -16,20 +16,16 @@
 test "resolve simple variable" {
   let ir = Map::new()
   // Create vars map
-  let vars = Field::simple("vars")
   let vars_map = Map::new()
-  let color = Field::simple("color")
-  color.primary = Some(Scalar::string("red"))
+  let color = Field::new("color", Some(Scalar::string("red")), None, [])
   vars_map.add_field(color)
-  vars.composite = Some(Composite::Map(vars_map))
+  let vars = Field::new("vars", None, Some(Composite::Map(vars_map)), [])
   ir.add_field(vars)
   // Create field with substitution
-  let server = Field::simple("server")
   let server_map = Map::new()
-  let fill = Field::simple("fill")
-  fill.primary = Some(Scalar::string("${color}"))
+  let fill = Field::new("fill", Some(Scalar::string("${color}")), None, [])
   server_map.add_field(fill)
-  server.composite = Some(Composite::Map(server_map))
+  let server = Field::new("server", None, Some(Composite::Map(server_map)), [])
   ir.add_field(server)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -46,24 +42,24 @@ test "resolve simple variable" {
 test "resolve nested variable" {
   let ir = Map::new()
   // Create vars map with nested structure
-  let vars = Field::simple("vars")
   let vars_map = Map::new()
-  let colors = Field::simple("colors")
   let colors_map = Map::new()
-  let primary = Field::simple("primary")
-  primary.primary = Some(Scalar::string("blue"))
+  let primary = Field::new("primary", Some(Scalar::string("blue")), None, [])
   colors_map.add_field(primary)
-  colors.composite = Some(Composite::Map(colors_map))
+  let colors = Field::new("colors", None, Some(Composite::Map(colors_map)), [])
   vars_map.add_field(colors)
-  vars.composite = Some(Composite::Map(vars_map))
+  let vars = Field::new("vars", None, Some(Composite::Map(vars_map)), [])
   ir.add_field(vars)
   // Create field with nested substitution
-  let box = Field::simple("box")
   let box_map = Map::new()
-  let fill = Field::simple("fill")
-  fill.primary = Some(Scalar::string("${colors.primary}"))
+  let fill = Field::new(
+    "fill",
+    Some(Scalar::string("${colors.primary}")),
+    None,
+    [],
+  )
   box_map.add_field(fill)
-  box.composite = Some(Composite::Map(box_map))
+  let box = Field::new("box", None, Some(Composite::Map(box_map)), [])
   ir.add_field(box)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -80,16 +76,13 @@ test "resolve nested variable" {
 test "resolve simple dollar variable" {
   let ir = Map::new()
   // Create vars map
-  let vars = Field::simple("vars")
   let vars_map = Map::new()
-  let name = Field::simple("name")
-  name.primary = Some(Scalar::string("Server"))
+  let name = Field::new("name", Some(Scalar::string("Server")), None, [])
   vars_map.add_field(name)
-  vars.composite = Some(Composite::Map(vars_map))
+  let vars = Field::new("vars", None, Some(Composite::Map(vars_map)), [])
   ir.add_field(vars)
   // Create field with $name substitution
-  let node = Field::simple("node")
-  node.primary = Some(Scalar::string("$name"))
+  let node = Field::new("node", Some(Scalar::string("$name")), None, [])
   ir.add_field(node)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -102,8 +95,7 @@ test "resolve simple dollar variable" {
 test "unresolved variable stays unchanged" {
   let ir = Map::new()
   // Create field with unknown variable
-  let node = Field::simple("node")
-  node.primary = Some(Scalar::string("${unknown}"))
+  let node = Field::new("node", Some(Scalar::string("${unknown}")), None, [])
   ir.add_field(node)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -140,24 +132,19 @@ test "deeply nested variable substitution (3+ levels)" {
   // Test: vars: { a: { b: { c: "deep" } } }, x: ${a.b.c}
   let ir = Map::new()
   // Build deeply nested vars structure
-  let vars = Field::simple("vars")
   let vars_map = Map::new()
-  let a = Field::simple("a")
   let a_map = Map::new()
-  let b = Field::simple("b")
   let b_map = Map::new()
-  let c = Field::simple("c")
-  c.primary = Some(Scalar::string("deep"))
+  let c = Field::new("c", Some(Scalar::string("deep")), None, [])
   b_map.add_field(c)
-  b.composite = Some(Composite::Map(b_map))
+  let b = Field::new("b", None, Some(Composite::Map(b_map)), [])
   a_map.add_field(b)
-  a.composite = Some(Composite::Map(a_map))
+  let a = Field::new("a", None, Some(Composite::Map(a_map)), [])
   vars_map.add_field(a)
-  vars.composite = Some(Composite::Map(vars_map))
+  let vars = Field::new("vars", None, Some(Composite::Map(vars_map)), [])
   ir.add_field(vars)
   // Create field using deeply nested path
-  let x = Field::simple("x")
-  x.primary = Some(Scalar::string("${a.b.c}"))
+  let x = Field::new("x", Some(Scalar::string("${a.b.c}")), None, [])
   ir.add_field(x)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -172,28 +159,37 @@ test "variable shadowing in nested scopes" {
   // The inner ${x} should resolve to "inner" (local scope first)
   let ir = Map::new()
   // Create outer vars
-  let outer_vars = Field::simple("vars")
   let outer_vars_map = Map::new()
-  let outer_x = Field::simple("x")
-  outer_x.primary = Some(Scalar::string("outer"))
+  let outer_x = Field::new("x", Some(Scalar::string("outer")), None, [])
   outer_vars_map.add_field(outer_x)
-  outer_vars.composite = Some(Composite::Map(outer_vars_map))
+  let outer_vars = Field::new(
+    "vars",
+    None,
+    Some(Composite::Map(outer_vars_map)),
+    [],
+  )
   ir.add_field(outer_vars)
   // Create container with inner vars
-  let container = Field::simple("container")
   let container_map = Map::new()
-  let inner_vars = Field::simple("vars")
   let inner_vars_map = Map::new()
-  let inner_x = Field::simple("x")
-  inner_x.primary = Some(Scalar::string("inner"))
+  let inner_x = Field::new("x", Some(Scalar::string("inner")), None, [])
   inner_vars_map.add_field(inner_x)
-  inner_vars.composite = Some(Composite::Map(inner_vars_map))
+  let inner_vars = Field::new(
+    "vars",
+    None,
+    Some(Composite::Map(inner_vars_map)),
+    [],
+  )
   container_map.add_field(inner_vars)
   // Add field that uses ${x}
-  let label = Field::simple("label")
-  label.primary = Some(Scalar::string("${x}"))
+  let label = Field::new("label", Some(Scalar::string("${x}")), None, [])
   container_map.add_field(label)
-  container.composite = Some(Composite::Map(container_map))
+  let container = Field::new(
+    "container",
+    None,
+    Some(Composite::Map(container_map)),
+    [],
+  )
   ir.add_field(container)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -212,28 +208,37 @@ test "outer variable accessible when not shadowed" {
   // ${y} should resolve to "outer" from outer scope
   let ir = Map::new()
   // Create outer vars with y
-  let outer_vars = Field::simple("vars")
   let outer_vars_map = Map::new()
-  let outer_y = Field::simple("y")
-  outer_y.primary = Some(Scalar::string("outer"))
+  let outer_y = Field::new("y", Some(Scalar::string("outer")), None, [])
   outer_vars_map.add_field(outer_y)
-  outer_vars.composite = Some(Composite::Map(outer_vars_map))
+  let outer_vars = Field::new(
+    "vars",
+    None,
+    Some(Composite::Map(outer_vars_map)),
+    [],
+  )
   ir.add_field(outer_vars)
   // Create container with inner vars (different variable)
-  let container = Field::simple("container")
   let container_map = Map::new()
-  let inner_vars = Field::simple("vars")
   let inner_vars_map = Map::new()
-  let inner_x = Field::simple("x")
-  inner_x.primary = Some(Scalar::string("inner"))
+  let inner_x = Field::new("x", Some(Scalar::string("inner")), None, [])
   inner_vars_map.add_field(inner_x)
-  inner_vars.composite = Some(Composite::Map(inner_vars_map))
+  let inner_vars = Field::new(
+    "vars",
+    None,
+    Some(Composite::Map(inner_vars_map)),
+    [],
+  )
   container_map.add_field(inner_vars)
   // Add field that uses ${y} from outer scope
-  let label = Field::simple("label")
-  label.primary = Some(Scalar::string("${y}"))
+  let label = Field::new("label", Some(Scalar::string("${y}")), None, [])
   container_map.add_field(label)
-  container.composite = Some(Composite::Map(container_map))
+  let container = Field::new(
+    "container",
+    None,
+    Some(Composite::Map(container_map)),
+    [],
+  )
   ir.add_field(container)
   // Resolve substitutions
   ir.resolve_substitutions()
@@ -251,13 +256,9 @@ test "edge label substitution" {
   // Test: vars: { msg: "hello" }, a -> b: ${msg}
   let ir = Map::new()
   // Create vars
-  let vars = Field::simple("vars")
   let vars_map = Map::new()
-  let msg = Field::simple("msg")
-  msg.primary = Some(Scalar::string("hello"))
-  vars_map.add_field(msg)
-  vars.composite = Some(Composite::Map(vars_map))
-  ir.add_field(vars)
+  vars_map.add_field(Field::new("msg", Some(Scalar::string("hello")), None, []))
+  ir.add_field(Field::new("vars", None, Some(Composite::Map(vars_map)), []))
   // Create source and destination nodes
   let a = Field::simple("a")
   ir.add_field(a)

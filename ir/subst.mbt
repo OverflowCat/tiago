@@ -49,7 +49,8 @@ fn Map::resolve_substitutions_with_stack(
     None => vars_stack
   }
   // Resolve substitutions in each field
-  for field in self.fields {
+  for i, field in self.fields {
+    let mut field = field
     // Skip the vars field itself
     if field.name.to_lower() == "vars" {
       // But still process nested vars for nested scopes
@@ -62,9 +63,11 @@ fn Map::resolve_substitutions_with_stack(
     }
     // Resolve primary value substitutions
     if field.primary is Some(_) {
-      field.primary = resolve_scalar_substitutions(
-        field.primary,
-        local_vars_stack,
+      field = Field::new(
+        field.name,
+        resolve_scalar_substitutions(field.primary, local_vars_stack),
+        field.composite,
+        field.references,
       )
     }
     // Recurse into composite
@@ -75,19 +78,24 @@ fn Map::resolve_substitutions_with_stack(
         a.resolve_substitutions_with_stack(local_vars_stack)
       None => ()
     }
+    self.fields[i] = field
   }
   // Resolve substitutions in edges
-  for edge in self.edges {
+  for i, edge in self.edges {
+    let mut edge = edge
     if edge.primary is Some(_) {
-      edge.primary = resolve_scalar_substitutions(
-        edge.primary,
-        local_vars_stack,
+      edge = Edge::new(
+        edge.id,
+        resolve_scalar_substitutions(edge.primary, local_vars_stack),
+        edge.map,
+        edge.references,
       )
     }
     match edge.map {
       Some(m) => m.resolve_substitutions_with_stack(local_vars_stack)
       None => ()
     }
+    self.edges[i] = edge
   }
 }
 

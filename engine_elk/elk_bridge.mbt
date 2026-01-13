@@ -65,8 +65,8 @@ fn is_sql_table_child(obj : Object, graph : Graph) -> Bool {
 
 ///|
 /// Convert a diago Graph to an ELK ElkNode for layout
-fn graph_to_elk(graph : Graph, config : LayoutConfig) -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
+fn graph_to_elk(graph : Graph, config : LayoutConfig) -> ElkNode {
+  let root = ElkNode::new("root")
 
   // Convert all objects to ELK nodes
   for obj in graph.objects {
@@ -97,15 +97,12 @@ fn graph_to_elk(graph : Graph, config : LayoutConfig) -> @elk.ElkNode {
     } else {
       edge.dst_id
     }
-    let elk_edge = @elk.ElkEdge::new("e" + i.to_string(), src_id, dst_id)
+    let elk_edge = ElkEdge::new("e" + i.to_string(), src_id, dst_id)
     // Add label if present
     if edge.label.length() > 0 {
       match edge.label_box {
         Some(b) => {
-          let label = @elk.ElkLabel::new(
-            "e" + i.to_string() + "_label",
-            edge.label,
-          )
+          let label = ElkLabel::new("e" + i.to_string() + "_label", edge.label)
           label.width = b.width
           label.height = b.height
           elk_edge.labels.push(label)
@@ -123,8 +120,8 @@ fn graph_to_elk(graph : Graph, config : LayoutConfig) -> @elk.ElkNode {
 
 ///|
 /// Convert a diago Object to an ELK node
-fn object_to_elk_node(obj : Object, config : LayoutConfig) -> @elk.ElkNode {
-  let elk_node = @elk.ElkNode::new(obj.id)
+fn object_to_elk_node(obj : Object, config : LayoutConfig) -> ElkNode {
+  let elk_node = ElkNode::new(obj.id)
 
   // Set size from existing box
   match obj.box {
@@ -147,7 +144,7 @@ fn object_to_elk_node(obj : Object, config : LayoutConfig) -> @elk.ElkNode {
   if obj.label.length() > 0 {
     match obj.label_box {
       Some(b) => {
-        let label = @elk.ElkLabel::new(obj.id + "_label", obj.label)
+        let label = ElkLabel::new(obj.id + "_label", obj.label)
         label.width = b.width
         label.height = b.height
         elk_node.add_label(label)
@@ -171,13 +168,13 @@ fn object_to_elk_node(obj : Object, config : LayoutConfig) -> @elk.ElkNode {
 ///|
 /// Apply ELK layout results back to a diago Graph
 fn elk_to_graph(
-  elk_root : @elk.ElkNode,
+  elk_root : ElkNode,
   graph : Graph,
   _config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
   // Create map of ELK nodes by ID
-  let elk_map : Map[String, @elk.ElkNode] = {}
+  let elk_map : Map[String, ElkNode] = {}
   collect_elk_nodes(elk_root, elk_map)
 
   // Apply positions to graph objects
@@ -205,10 +202,7 @@ fn elk_to_graph(
 
 ///|
 /// Collect all ELK nodes into a map
-fn collect_elk_nodes(
-  node : @elk.ElkNode,
-  map : Map[String, @elk.ElkNode],
-) -> Unit {
+fn collect_elk_nodes(node : ElkNode, map : Map[String, ElkNode]) -> Unit {
   map[node.id] = node
   for child in node.children {
     collect_elk_nodes(child, map)
@@ -217,7 +211,7 @@ fn collect_elk_nodes(
 
 ///|
 /// Apply positions from ELK children to Graph object children
-fn apply_children_positions(obj : Object, elk_node : @elk.ElkNode) -> Unit {
+fn apply_children_positions(obj : Object, elk_node : ElkNode) -> Unit {
   for child in obj.children {
     for elk_child in elk_node.children {
       if elk_child.id == child.id {
@@ -241,9 +235,9 @@ fn apply_children_positions(obj : Object, elk_node : @elk.ElkNode) -> Unit {
 ///|
 /// Apply edge routes from ELK to Graph with perpendicularity adjustment
 fn apply_edge_routes(
-  elk_root : @elk.ElkNode,
+  elk_root : ElkNode,
   graph : Graph,
-  elk_map : Map[String, @elk.ElkNode],
+  elk_map : Map[String, ElkNode],
   direction : Direction,
 ) -> Unit {
   // Match ELK edges to graph edges by index (order is preserved)
@@ -342,8 +336,8 @@ fn apply_edge_routes(
 fn adjust_start_point_perpendicular(
   elk_start_x : Double,
   elk_start_y : Double,
-  src : @elk.ElkNode,
-  bend_points : Array[@elk.ElkPoint],
+  src : ElkNode,
+  bend_points : Array[ElkPoint],
   end_x : Double,
   end_y : Double,
   direction : Direction,
@@ -434,8 +428,8 @@ fn adjust_start_point_perpendicular(
 fn adjust_end_point_perpendicular(
   elk_end_x : Double,
   elk_end_y : Double,
-  tgt : @elk.ElkNode,
-  bend_points : Array[@elk.ElkPoint],
+  tgt : ElkNode,
+  bend_points : Array[ElkPoint],
   start_x : Double,
   start_y : Double,
   direction : Direction,
@@ -533,29 +527,29 @@ fn run_elk_layout(
 
   // Create layout options using builder pattern
   let elk_direction = match direction {
-    Down => @elk.LayoutDirection::Down
-    Up => @elk.LayoutDirection::Up
-    Right => @elk.LayoutDirection::Right
-    Left => @elk.LayoutDirection::Left
+    Down => LayoutDirection::Down
+    Up => LayoutDirection::Up
+    Right => LayoutDirection::Right
+    Left => LayoutDirection::Left
   }
-  let options = @elk.LayoutOptions::layered()
+  let options = LayoutOptions::layered()
     .with_direction(elk_direction)
     .with_node_spacing(config.horizontal_spacing)
     .with_layer_spacing(config.vertical_spacing)
     .with_padding(
-      @elk.ElkPadding::new(
+      ElkPadding::new(
         config.container_padding,
         config.container_padding,
         config.container_padding,
         config.container_padding,
       ),
     )
-    .with_edge_routing(@elk.EdgeRouting::Orthogonal)
+    .with_edge_routing(EdgeRouting::Orthogonal)
   // Keep options also attached as ELK properties for future property-driven resolution.
   elk_root.properties.copy_from(options.to_properties())
 
   // Run ELK layered layout (using the proper implementation)
-  @layered.layout(elk_root, options)
+  elk_layered_layout(elk_root, options)
 
   // Convert back to Graph format
   elk_to_graph(elk_root, graph, config, direction)

@@ -18,12 +18,211 @@ type AStarEntry
 pub impl Eq for AStarEntry
 pub impl Show for AStarEntry
 
+type BKNodePlacementMode
+pub impl Eq for BKNodePlacementMode
+pub impl Show for BKNodePlacementMode
+
+type BlockInfo
+pub impl Show for BlockInfo
+
+type CompactionStrategy
+pub impl Eq for CompactionStrategy
+pub impl Show for CompactionStrategy
+
+type ContentAlignment
+pub impl Eq for ContentAlignment
+pub impl Show for ContentAlignment
+
+type CrossingMinimizationStrategy
+pub impl Eq for CrossingMinimizationStrategy
+pub impl Show for CrossingMinimizationStrategy
+
+type CycleBreakingStrategy
+pub impl Eq for CycleBreakingStrategy
+pub impl Show for CycleBreakingStrategy
+
+type EdgeLabelPlacement
+pub impl Eq for EdgeLabelPlacement
+pub impl Show for EdgeLabelPlacement
+
+type EdgeLabelSideSelection
+pub impl Eq for EdgeLabelSideSelection
+pub impl Show for EdgeLabelSideSelection
+
+type EdgeRouting
+pub impl Eq for EdgeRouting
+pub impl Show for EdgeRouting
+
+type EdgeStraighteningStrategy
+pub impl Eq for EdgeStraighteningStrategy
+pub impl Show for EdgeStraighteningStrategy
+
+type EdgeType
+pub impl Eq for EdgeType
+pub impl Show for EdgeType
+
+type ElkEdge
+pub impl Eq for ElkEdge
+pub impl Show for ElkEdge
+
+type ElkEdgeSection
+pub impl Eq for ElkEdgeSection
+pub impl Show for ElkEdgeSection
+
 pub struct ElkEngine {
   _marker : Unit
 }
 pub fn ElkEngine::new() -> Self
 pub impl @engine_api.LayoutEngine for ElkEngine
 pub impl Show for ElkEngine
+
+type ElkLabel
+pub impl Eq for ElkLabel
+pub impl Show for ElkLabel
+
+type ElkNode
+pub impl Eq for ElkNode
+pub impl Show for ElkNode
+
+type ElkPadding
+pub impl Eq for ElkPadding
+pub impl Show for ElkPadding
+
+type ElkPoint
+pub impl Eq for ElkPoint
+pub impl Show for ElkPoint
+
+type ElkPort
+pub impl Eq for ElkPort
+pub impl Show for ElkPort
+
+type ElkPortSide
+pub impl Eq for ElkPortSide
+pub impl Show for ElkPortSide
+
+type ElkProperties
+pub impl Eq for ElkProperties
+pub impl Show for ElkProperties
+
+type ForceModelType
+pub impl Eq for ForceModelType
+pub impl Show for ForceModelType
+
+type GraphCompactionStrategy
+pub impl Eq for GraphCompactionStrategy
+pub impl Show for GraphCompactionStrategy
+
+type GreedySwitchType
+pub impl Eq for GreedySwitchType
+pub impl Show for GreedySwitchType
+
+type HDirection
+pub impl Eq for HDirection
+pub impl Show for HDirection
+
+type HierarchyHandling
+pub impl Eq for HierarchyHandling
+pub impl Show for HierarchyHandling
+
+type LEdge
+pub impl Show for LEdge
+
+type LGraph
+pub impl Show for LGraph
+
+type LLabel
+pub impl Show for LLabel
+
+type LLayer
+pub impl Show for LLayer
+
+type LNode
+pub impl Show for LNode
+
+type LNodeType
+pub impl Eq for LNodeType
+pub impl Show for LNodeType
+
+type LPort
+pub impl Show for LPort
+
+type LayeringStrategy
+pub impl Eq for LayeringStrategy
+pub impl Show for LayeringStrategy
+
+type LayoutAlgorithm
+pub impl Eq for LayoutAlgorithm
+pub impl Show for LayoutAlgorithm
+
+type LayoutDirection
+pub impl Eq for LayoutDirection
+pub impl Show for LayoutDirection
+
+type LayoutOptions
+pub impl Eq for LayoutOptions
+pub impl Show for LayoutOptions
+
+type NSEdge
+pub impl Show for NSEdge
+
+type NSNode
+pub impl Show for NSNode
+
+type NodeFlexibility
+pub impl Eq for NodeFlexibility
+pub impl Show for NodeFlexibility
+
+type NodeLabelPlacement
+pub impl Eq for NodeLabelPlacement
+pub impl Show for NodeLabelPlacement
+
+type NodePlacementStrategy
+pub impl Eq for NodePlacementStrategy
+pub impl Show for NodePlacementStrategy
+
+type NodeSizeConstraints
+pub impl Eq for NodeSizeConstraints
+pub impl Show for NodeSizeConstraints
+
+type NodeSizeOptions
+pub impl Eq for NodeSizeOptions
+pub impl Show for NodeSizeOptions
+
+type PortAlignment
+pub impl Eq for PortAlignment
+pub impl Show for PortAlignment
+
+type PortConstraints
+pub impl Eq for PortConstraints
+pub impl Show for PortConstraints
+
+type PortLabelPlacement
+pub impl Eq for PortLabelPlacement
+pub impl Show for PortLabelPlacement
+
+type PortSortingStrategy
+pub impl Eq for PortSortingStrategy
+pub impl Show for PortSortingStrategy
+
+type PropertyValue
+pub impl Eq for PropertyValue
+pub impl Show for PropertyValue
+
+type SelfLoopDistribution
+pub impl Eq for SelfLoopDistribution
+pub impl Show for SelfLoopDistribution
+
+type SelfLoopOrdering
+pub impl Eq for SelfLoopOrdering
+pub impl Show for SelfLoopOrdering
+
+type SpacingOptions
+pub impl Eq for SpacingOptions
+pub impl Show for SpacingOptions
+
+type VDirection
+pub impl Eq for VDirection
+pub impl Show for VDirection
 
 type VirtualNodeResult
 pub impl Show for VirtualNodeResult

@@ -43,8 +43,8 @@ pub impl Show for Composite
 
 pub struct Edge {
   id : EdgeID
-  mut primary : Scalar?
-  mut map : Map?
+  primary : Scalar?
+  map : Map?
   references : Array[EdgeReference]
 }
 pub fn Edge::new(EdgeID, Scalar?, Map?, Array[EdgeReference]) -> Self
@@ -79,8 +79,8 @@ pub impl Show for EdgeReference
 
 pub struct Field {
   name : String
-  mut primary : Scalar?
-  mut composite : Composite?
+  primary : Scalar?
+  composite : Composite?
   references : Array[FieldReference]
 }
 pub fn Field::array(Self) -> IRArray?

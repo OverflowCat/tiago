@@ -17,7 +17,7 @@
 
 ///|
 fn collect_nodes(
-  node : @elk.ElkNode,
+  node : ElkNode,
   prefix : String,
 ) -> Array[(String, Double, Double, Double, Double)] {
   let result : Array[(String, Double, Double, Double, Double)] = []
@@ -34,12 +34,12 @@ fn collect_nodes(
 }
 
 ///|
-fn edge_points(edge : @elk.ElkEdge) -> Array[@elk.ElkPoint] {
+fn edge_points(edge : ElkEdge) -> Array[ElkPoint] {
   if edge.sections.length() == 0 {
     []
   } else {
     let sec = edge.sections[0]
-    let points : Array[@elk.ElkPoint] = []
+    let points : Array[ElkPoint] = []
     points.push(sec.start_point)
     points.append(sec.bend_points)
     points.push(sec.end_point)
@@ -49,10 +49,10 @@ fn edge_points(edge : @elk.ElkEdge) -> Array[@elk.ElkPoint] {
 
 ///|
 fn collect_edges(
-  node : @elk.ElkNode,
+  node : ElkNode,
   prefix : String,
-) -> Array[(String, String, String, String, Array[@elk.ElkPoint])] {
-  let result : Array[(String, String, String, String, Array[@elk.ElkPoint])] = []
+) -> Array[(String, String, String, String, Array[ElkPoint])] {
+  let result : Array[(String, String, String, String, Array[ElkPoint])] = []
   for edge in node.edges {
     let src = edge.source().unwrap_or("")
     let tgt = edge.target().unwrap_or("")
@@ -70,7 +70,7 @@ fn collect_edges(
 }
 
 ///|
-fn snapshot_layered(root : @elk.ElkNode) -> String {
+fn snapshot_layered(root : ElkNode) -> String {
   let (bx, by) = root.calculate_bounds()
   let nodes = collect_nodes(root, "")
   nodes.sort_by(fn(a, b) {
@@ -124,100 +124,100 @@ fn snapshot_layered(root : @elk.ElkNode) -> String {
 }
 
 ///|
-fn fixture_chain() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  root.add_child(@elk.ElkNode::with_size("a", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("b", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("c", 60.0, 40.0))
-  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
-  root.add_edge(@elk.ElkEdge::new("e2", "b", "c"))
+fn fixture_chain() -> ElkNode {
+  let root = ElkNode::new("root")
+  root.add_child(ElkNode::with_size("a", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("b", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("c", 60.0, 40.0))
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.add_edge(ElkEdge::new("e2", "b", "c"))
   root
 }
 
 ///|
-fn fixture_diamond() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  root.add_child(@elk.ElkNode::with_size("a", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("b", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("c", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("d", 60.0, 40.0))
-  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
-  root.add_edge(@elk.ElkEdge::new("e2", "a", "c"))
-  root.add_edge(@elk.ElkEdge::new("e3", "b", "d"))
-  root.add_edge(@elk.ElkEdge::new("e4", "c", "d"))
+fn fixture_diamond() -> ElkNode {
+  let root = ElkNode::new("root")
+  root.add_child(ElkNode::with_size("a", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("b", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("c", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("d", 60.0, 40.0))
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.add_edge(ElkEdge::new("e2", "a", "c"))
+  root.add_edge(ElkEdge::new("e3", "b", "d"))
+  root.add_edge(ElkEdge::new("e4", "c", "d"))
   root
 }
 
 ///|
-fn fixture_parallel_edges() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  root.add_child(@elk.ElkNode::with_size("a", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("b", 60.0, 40.0))
-  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
-  root.add_edge(@elk.ElkEdge::new("e2", "a", "b"))
+fn fixture_parallel_edges() -> ElkNode {
+  let root = ElkNode::new("root")
+  root.add_child(ElkNode::with_size("a", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("b", 60.0, 40.0))
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.add_edge(ElkEdge::new("e2", "a", "b"))
   root
 }
 
 ///|
-fn fixture_long_edge() -> @elk.ElkNode {
+fn fixture_long_edge() -> ElkNode {
   // Long edge A -> D spans multiple layers due to A->B->C->D chain
-  let root = @elk.ElkNode::new("root")
-  root.add_child(@elk.ElkNode::with_size("a", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("b", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("c", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("d", 60.0, 40.0))
-  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
-  root.add_edge(@elk.ElkEdge::new("e2", "b", "c"))
-  root.add_edge(@elk.ElkEdge::new("e3", "c", "d"))
-  root.add_edge(@elk.ElkEdge::new("e4", "a", "d"))
+  let root = ElkNode::new("root")
+  root.add_child(ElkNode::with_size("a", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("b", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("c", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("d", 60.0, 40.0))
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.add_edge(ElkEdge::new("e2", "b", "c"))
+  root.add_edge(ElkEdge::new("e3", "c", "d"))
+  root.add_edge(ElkEdge::new("e4", "a", "d"))
   root
 }
 
 ///|
-fn fixture_cycle() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  root.add_child(@elk.ElkNode::with_size("a", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("b", 60.0, 40.0))
-  root.add_child(@elk.ElkNode::with_size("c", 60.0, 40.0))
-  root.add_edge(@elk.ElkEdge::new("e1", "a", "b"))
-  root.add_edge(@elk.ElkEdge::new("e2", "b", "c"))
-  root.add_edge(@elk.ElkEdge::new("e3", "c", "a"))
+fn fixture_cycle() -> ElkNode {
+  let root = ElkNode::new("root")
+  root.add_child(ElkNode::with_size("a", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("b", 60.0, 40.0))
+  root.add_child(ElkNode::with_size("c", 60.0, 40.0))
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  root.add_edge(ElkEdge::new("e2", "b", "c"))
+  root.add_edge(ElkEdge::new("e3", "c", "a"))
   root
 }
 
 ///|
-fn fixture_compound() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  let group = @elk.ElkNode::with_size("group", 0.0, 0.0)
-  group.add_child(@elk.ElkNode::with_size("g1", 60.0, 40.0))
-  group.add_child(@elk.ElkNode::with_size("g2", 60.0, 40.0))
-  group.add_edge(@elk.ElkEdge::new("ge1", "g1", "g2"))
-  let outside = @elk.ElkNode::with_size("outside", 60.0, 40.0)
+fn fixture_compound() -> ElkNode {
+  let root = ElkNode::new("root")
+  let group = ElkNode::with_size("group", 0.0, 0.0)
+  group.add_child(ElkNode::with_size("g1", 60.0, 40.0))
+  group.add_child(ElkNode::with_size("g2", 60.0, 40.0))
+  group.add_edge(ElkEdge::new("ge1", "g1", "g2"))
+  let outside = ElkNode::with_size("outside", 60.0, 40.0)
   root.add_child(group)
   root.add_child(outside)
-  root.add_edge(@elk.ElkEdge::new("e1", "group", "outside"))
+  root.add_edge(ElkEdge::new("e1", "group", "outside"))
   root
 }
 
 ///|
-fn fixture_cross_hierarchy_edge() -> @elk.ElkNode {
-  let root = @elk.ElkNode::new("root")
-  let group = @elk.ElkNode::with_size("group", 0.0, 0.0)
-  group.add_child(@elk.ElkNode::with_size("g1", 60.0, 40.0))
+fn fixture_cross_hierarchy_edge() -> ElkNode {
+  let root = ElkNode::new("root")
+  let group = ElkNode::with_size("group", 0.0, 0.0)
+  group.add_child(ElkNode::with_size("g1", 60.0, 40.0))
   root.add_child(group)
-  let outside = @elk.ElkNode::with_size("outside", 60.0, 40.0)
+  let outside = ElkNode::with_size("outside", 60.0, 40.0)
   root.add_child(outside)
 
   // Cross-hierarchy edge: root-level edge to a nested node
-  root.add_edge(@elk.ElkEdge::new("e1", "g1", "outside"))
+  root.add_edge(ElkEdge::new("e1", "g1", "outside"))
   root
 }
 
 ///|
 test "layered regression: chain" {
   let root = fixture_chain()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -237,8 +237,8 @@ test "layered regression: chain" {
 ///|
 test "layered regression: diamond" {
   let root = fixture_diamond()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -261,8 +261,8 @@ test "layered regression: diamond" {
 ///|
 test "layered regression: parallel edges" {
   let root = fixture_parallel_edges()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -281,8 +281,8 @@ test "layered regression: parallel edges" {
 ///|
 test "layered regression: long edge" {
   let root = fixture_long_edge()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -305,8 +305,8 @@ test "layered regression: long edge" {
 ///|
 test "layered regression: cycle breaking" {
   let root = fixture_cycle()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -327,8 +327,8 @@ test "layered regression: cycle breaking" {
 ///|
 test "layered regression: compound" {
   let root = fixture_compound()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(
@@ -349,8 +349,8 @@ test "layered regression: compound" {
 ///|
 test "layered regression: cross-hierarchy edge mapping" {
   let root = fixture_cross_hierarchy_edge()
-  let options = @elk.LayoutOptions::layered()
-  layout(root, options)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
   inspect(
     snapshot_layered(root),
     content=(

@@ -57,6 +57,6 @@ test "options: resolve inheritance graph/node/edge" {
     graph_options, node_inherit,
   )
   assert_eq(node_inherit_options.priority, Some(2))
-  let edge_options = resolve_options_for_edge(graph_options, edge_override)
+  let edge_options = _resolve_options_for_edge(graph_options, edge_override)
   assert_eq(edge_options.priority, Some(4))
 }

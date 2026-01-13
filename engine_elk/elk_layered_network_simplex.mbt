@@ -513,7 +513,7 @@ fn NetworkSimplex::apply_to_lgraph(
 
 ///|
 /// Run network simplex layer assignment on an LGraph
-pub fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
+fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
   if graph.nodes.length() == 0 {
     return
   }

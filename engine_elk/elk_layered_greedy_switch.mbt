@@ -169,7 +169,7 @@ fn greedy_switch_layer(
 
 ///|
 /// Run greedy switch crossing minimization on the entire graph
-pub fn greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
+fn _greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
@@ -247,7 +247,7 @@ fn crossing_difference_for_swap(
 
 ///|
 /// Two-sided greedy switch with more aggressive optimization
-pub fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
+fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }

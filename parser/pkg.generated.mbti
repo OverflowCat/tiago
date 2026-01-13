@@ -29,12 +29,7 @@ pub fn ParseErrors::to_string(Self) -> String
 pub impl Eq for ParseErrors
 pub impl Show for ParseErrors
 
-pub struct Parser {
-  source : String
-  tokens : Array[@lexer.Token]
-  mut pos : Int
-  errors : ParseErrors
-}
+type Parser
 pub fn Parser::new(String, Array[@lexer.Token]) -> Self
 pub impl Show for Parser
 

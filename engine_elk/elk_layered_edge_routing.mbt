@@ -28,9 +28,9 @@
 
 ///|
 /// Route edges orthogonally with proper slot assignment
-pub fn route_edges_orthogonal(
+fn route_edges_orthogonal(
   graph : LGraph,
-  direction : @elk.LayoutDirection,
+  direction : LayoutDirection,
   edge_spacing : Double,
 ) -> Unit {
   let is_vertical = direction.is_vertical()
@@ -47,42 +47,22 @@ pub fn route_edges_orthogonal(
 /// Route edges for vertical (top-to-bottom) layouts
 fn route_vertical_layout(
   graph : LGraph,
-  direction : @elk.LayoutDirection,
+  direction : LayoutDirection,
   edge_spacing : Double,
 ) -> Unit {
   fn default_anchor(
     node : LNode,
-    direction : @elk.LayoutDirection,
+    direction : LayoutDirection,
     is_source : Bool,
   ) -> (Double, Double) {
     let cx = node.x + node.width / 2.0
     let cy = node.y + node.height / 2.0
     match direction {
-      @elk.Down =>
-        if is_source {
-          (cx, node.y + node.height)
-        } else {
-          (cx, node.y)
-        }
-      @elk.Up =>
-        if is_source {
-          (cx, node.y)
-        } else {
-          (cx, node.y + node.height)
-        }
-      @elk.Right =>
-        if is_source {
-          (node.x + node.width, cy)
-        } else {
-          (node.x, cy)
-        }
-      @elk.Left =>
-        if is_source {
-          (node.x, cy)
-        } else {
-          (node.x + node.width, cy)
-        }
-      @elk.Undefined =>
+      Down => if is_source { (cx, node.y + node.height) } else { (cx, node.y) }
+      Up => if is_source { (cx, node.y) } else { (cx, node.y + node.height) }
+      Right => if is_source { (node.x + node.width, cy) } else { (node.x, cy) }
+      Left => if is_source { (node.x, cy) } else { (node.x + node.width, cy) }
+      Undefined =>
         if is_source {
           (cx, node.y + node.height)
         } else {
@@ -94,7 +74,7 @@ fn route_vertical_layout(
   fn anchor_with_port(
     node : LNode,
     port_id : String?,
-    direction : @elk.LayoutDirection,
+    direction : LayoutDirection,
     is_source : Bool,
   ) -> (Double, Double) {
     match port_id {
@@ -110,25 +90,25 @@ fn route_vertical_layout(
             }
             let has_pos = port.x != 0.0 || port.y != 0.0
             let anchor = match port.side {
-              @elk.North =>
+              North =>
                 if has_pos {
                   (node.x + port.x, node.y)
                 } else {
                   (node.x + node.width / 2.0, node.y)
                 }
-              @elk.South =>
+              South =>
                 if has_pos {
                   (node.x + port.x, node.y + node.height)
                 } else {
                   (node.x + node.width / 2.0, node.y + node.height)
                 }
-              @elk.West =>
+              West =>
                 if has_pos {
                   (node.x, node.y + port.y)
                 } else {
                   (node.x, node.y + node.height / 2.0)
                 }
-              @elk.East =>
+              East =>
                 if has_pos {
                   (node.x + node.width, node.y + port.y)
                 } else {
@@ -235,21 +215,17 @@ fn route_vertical_layout(
         // Parallel edge on aligned nodes - route with horizontal offset
         // Create a route that doesn't share start/end with other parallel edges
         // Start vertical segment offset from center
-        edge.bend_points.push(
-          @elk.ElkPoint::new(src_x + parallel_offset, src_y),
-        )
-        edge.bend_points.push(
-          @elk.ElkPoint::new(src_x + parallel_offset, tgt_y),
-        )
+        edge.bend_points.push(ElkPoint::new(src_x + parallel_offset, src_y))
+        edge.bend_points.push(ElkPoint::new(src_x + parallel_offset, tgt_y))
       } else {
         // Non-aligned nodes - Z-shape routing
         // Apply offset to the horizontal segment's Y position for parallel edges
         let offset_mid_y = mid_y + parallel_offset
         edge.bend_points.push(
-          @elk.ElkPoint::new(src_x + parallel_offset, offset_mid_y),
+          ElkPoint::new(src_x + parallel_offset, offset_mid_y),
         )
         edge.bend_points.push(
-          @elk.ElkPoint::new(tgt_x + parallel_offset, offset_mid_y),
+          ElkPoint::new(tgt_x + parallel_offset, offset_mid_y),
         )
       }
     }
@@ -263,42 +239,22 @@ fn route_vertical_layout(
 /// Route edges for horizontal (left-to-right) layouts
 fn route_horizontal_layout(
   graph : LGraph,
-  direction : @elk.LayoutDirection,
+  direction : LayoutDirection,
   edge_spacing : Double,
 ) -> Unit {
   fn default_anchor(
     node : LNode,
-    direction : @elk.LayoutDirection,
+    direction : LayoutDirection,
     is_source : Bool,
   ) -> (Double, Double) {
     let cx = node.x + node.width / 2.0
     let cy = node.y + node.height / 2.0
     match direction {
-      @elk.Down =>
-        if is_source {
-          (cx, node.y + node.height)
-        } else {
-          (cx, node.y)
-        }
-      @elk.Up =>
-        if is_source {
-          (cx, node.y)
-        } else {
-          (cx, node.y + node.height)
-        }
-      @elk.Right =>
-        if is_source {
-          (node.x + node.width, cy)
-        } else {
-          (node.x, cy)
-        }
-      @elk.Left =>
-        if is_source {
-          (node.x, cy)
-        } else {
-          (node.x + node.width, cy)
-        }
-      @elk.Undefined =>
+      Down => if is_source { (cx, node.y + node.height) } else { (cx, node.y) }
+      Up => if is_source { (cx, node.y) } else { (cx, node.y + node.height) }
+      Right => if is_source { (node.x + node.width, cy) } else { (node.x, cy) }
+      Left => if is_source { (node.x, cy) } else { (node.x + node.width, cy) }
+      Undefined =>
         if is_source {
           (node.x + node.width, cy)
         } else {
@@ -310,7 +266,7 @@ fn route_horizontal_layout(
   fn anchor_with_port(
     node : LNode,
     port_id : String?,
-    direction : @elk.LayoutDirection,
+    direction : LayoutDirection,
     is_source : Bool,
   ) -> (Double, Double) {
     match port_id {
@@ -326,25 +282,25 @@ fn route_horizontal_layout(
             }
             let has_pos = port.x != 0.0 || port.y != 0.0
             let anchor = match port.side {
-              @elk.North =>
+              North =>
                 if has_pos {
                   (node.x + port.x, node.y)
                 } else {
                   (node.x + node.width / 2.0, node.y)
                 }
-              @elk.South =>
+              South =>
                 if has_pos {
                   (node.x + port.x, node.y + node.height)
                 } else {
                   (node.x + node.width / 2.0, node.y + node.height)
                 }
-              @elk.West =>
+              West =>
                 if has_pos {
                   (node.x, node.y + port.y)
                 } else {
                   (node.x, node.y + node.height / 2.0)
                 }
-              @elk.East =>
+              East =>
                 if has_pos {
                   (node.x + node.width, node.y + port.y)
                 } else {
@@ -397,8 +353,8 @@ fn route_horizontal_layout(
     } else {
       // Need orthogonal routing
       let mid_x = (src_x + tgt_x) / 2.0
-      edge.bend_points.push(@elk.ElkPoint::new(mid_x, src_y))
-      edge.bend_points.push(@elk.ElkPoint::new(mid_x, tgt_y))
+      edge.bend_points.push(ElkPoint::new(mid_x, src_y))
+      edge.bend_points.push(ElkPoint::new(mid_x, tgt_y))
     }
   }
   assign_routing_slots(graph, edge_spacing, false)
@@ -481,14 +437,14 @@ fn assign_routing_slots(
           slot_index.to_double() * edge_spacing * 0.5
         }
         // Create new bend points with adjusted coordinates
-        let new_bends : Array[@elk.ElkPoint] = []
+        let new_bends : Array[ElkPoint] = []
         for bp in edge.bend_points {
           if is_vertical {
             // Shift horizontal segment vertically
-            new_bends.push(@elk.ElkPoint::new(bp.x, bp.y + offset))
+            new_bends.push(ElkPoint::new(bp.x, bp.y + offset))
           } else {
             // Shift vertical segment horizontally
-            new_bends.push(@elk.ElkPoint::new(bp.x + offset, bp.y))
+            new_bends.push(ElkPoint::new(bp.x + offset, bp.y))
           }
         }
         // Replace bend points
@@ -507,10 +463,7 @@ fn assign_routing_slots(
 
 ///|
 /// Route self-loop edges
-pub fn route_self_loops(
-  graph : LGraph,
-  _direction : @elk.LayoutDirection,
-) -> Unit {
+fn route_self_loops(graph : LGraph, _direction : LayoutDirection) -> Unit {
   for edge in graph.edges {
     if edge.source_id == edge.target_id {
       // This is a self-loop
@@ -524,12 +477,10 @@ pub fn route_self_loops(
           let bottom_y = node.y + node.height
 
           // Create loop path: bottom-right, top-right, back to top
-          edge.bend_points.push(
-            @elk.ElkPoint::new(node.x + node.width, bottom_y),
-          )
-          edge.bend_points.push(@elk.ElkPoint::new(right_x, bottom_y))
-          edge.bend_points.push(@elk.ElkPoint::new(right_x, top_y))
-          edge.bend_points.push(@elk.ElkPoint::new(node.x + node.width, top_y))
+          edge.bend_points.push(ElkPoint::new(node.x + node.width, bottom_y))
+          edge.bend_points.push(ElkPoint::new(right_x, bottom_y))
+          edge.bend_points.push(ElkPoint::new(right_x, top_y))
+          edge.bend_points.push(ElkPoint::new(node.x + node.width, top_y))
         }
         None => ()
       }
@@ -543,15 +494,15 @@ pub fn route_self_loops(
 
 ///|
 /// Straighten edges by removing unnecessary bend points
-pub fn straighten_edges(graph : LGraph) -> Unit {
+fn straighten_edges(graph : LGraph) -> Unit {
   for edge in graph.edges {
     if edge.bend_points.length() < 2 {
       continue
     }
 
     // Remove collinear bend points
-    let new_bends : Array[@elk.ElkPoint] = []
-    let mut prev : @elk.ElkPoint? = None
+    let new_bends : Array[ElkPoint] = []
+    let mut prev : ElkPoint? = None
     for bp in edge.bend_points {
       match prev {
         Some(p) =>
@@ -586,11 +537,7 @@ pub fn straighten_edges(graph : LGraph) -> Unit {
 
 ///|
 /// Check if three points are collinear
-fn is_collinear(
-  p1 : @elk.ElkPoint,
-  p2 : @elk.ElkPoint,
-  p3 : @elk.ElkPoint,
-) -> Bool {
+fn is_collinear(p1 : ElkPoint, p2 : ElkPoint, p3 : ElkPoint) -> Bool {
   let dx1 = p2.x - p1.x
   let dy1 = p2.y - p1.y
   let dx2 = p3.x - p2.x

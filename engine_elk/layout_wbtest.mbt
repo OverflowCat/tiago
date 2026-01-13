@@ -608,7 +608,18 @@ test "sequence layout activation boxes" {
   for ab in result.activation_boxes {
     activation_boxes.push(ab.get_box())
   }
-  inspect(activation_boxes)
+  assert_eq(activation_boxes.length(), 2)
+  let b0 = activation_boxes[0]
+  let b1 = activation_boxes[1]
+  let (left, right) = if b0.get_x() <= b1.get_x() { (b0, b1) } else { (b1, b0) }
+  assert_eq(left.get_x(), 62.0)
+  assert_eq(left.get_y(), 130.0)
+  assert_eq(left.get_width(), 16.0)
+  assert_eq(left.get_height(), 40.0)
+  assert_eq(right.get_x(), 312.0)
+  assert_eq(right.get_y(), 90.0)
+  assert_eq(right.get_width(), 16.0)
+  assert_eq(right.get_height(), 80.0)
 }
 
 ///|

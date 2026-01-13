@@ -16,7 +16,7 @@
 /// Token-based recursive descent parser for diago
 
 ///|
-pub struct Parser {
+struct Parser {
   source : String
   tokens : Array[@lexer.Token]
   mut pos : Int

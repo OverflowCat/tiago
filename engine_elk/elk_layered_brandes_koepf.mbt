@@ -27,14 +27,14 @@
 
 ///|
 /// Direction for vertical alignment
-pub(all) enum VDirection {
+enum VDirection {
   Up
   Down
 } derive(Show, Eq)
 
 ///|
 /// Direction for horizontal alignment
-pub(all) enum HDirection {
+enum HDirection {
   Left
   Right
 } derive(Show, Eq)
@@ -55,17 +55,17 @@ struct BlockInfo {
 
 ///|
 /// Run Brandes-Koepf node placement
-pub fn run_brandes_koepf(
+fn run_brandes_koepf(
   graph : LGraph,
-  options : @elk.LayoutOptions,
-  direction : @elk.LayoutDirection,
+  options : LayoutOptions,
+  direction : LayoutDirection,
 ) -> Unit {
   if graph.nodes.length() == 0 {
     return
   }
   let node_spacing = options.node_node_spacing.unwrap_or(20.0)
   let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
-  let padding = options.padding.unwrap_or(@elk.ElkPadding::uniform(12.0))
+  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
   let is_horizontal = direction.is_horizontal()
 
   // For each of 4 directions, compute a layout
@@ -390,16 +390,16 @@ fn apply_layout(
   graph : LGraph,
   positions : Map[String, Double],
   layer_spacing : Double,
-  padding : @elk.ElkPadding,
+  padding : ElkPadding,
   is_horizontal : Bool,
-  direction : @elk.LayoutDirection,
+  direction : LayoutDirection,
 ) -> Unit {
   // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let default_node_spacing = 20.0
   let reverse_layers = match direction {
-    @elk.Up => !is_horizontal
-    @elk.Left => is_horizontal
+    Up => !is_horizontal
+    Left => is_horizontal
     _ => false
   }
   let layers : Array[LLayer] = []

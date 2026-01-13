@@ -24,7 +24,7 @@
 /// own `properties` (if any). Element-local properties override inherited ones.
 
 ///|
-pub fn resolve_options_for_graph(
+fn resolve_options_for_graph(
   inherited : LayoutOptions,
   graph : ElkNode,
 ) -> LayoutOptions {
@@ -35,7 +35,7 @@ pub fn resolve_options_for_graph(
 }
 
 ///|
-pub fn resolve_options_for_node(
+fn resolve_options_for_node(
   inherited : LayoutOptions,
   node : ElkNode,
 ) -> LayoutOptions {
@@ -43,7 +43,7 @@ pub fn resolve_options_for_node(
 }
 
 ///|
-pub fn resolve_options_for_edge(
+fn _resolve_options_for_edge(
   inherited : LayoutOptions,
   edge : ElkEdge,
 ) -> LayoutOptions {
@@ -54,7 +54,7 @@ pub fn resolve_options_for_edge(
 }
 
 ///|
-pub fn resolve_options_for_port(
+fn _resolve_options_for_port(
   inherited : LayoutOptions,
   port : ElkPort,
 ) -> LayoutOptions {
@@ -65,7 +65,7 @@ pub fn resolve_options_for_port(
 }
 
 ///|
-pub fn resolve_options_for_label(
+fn _resolve_options_for_label(
   inherited : LayoutOptions,
   label : ElkLabel,
 ) -> LayoutOptions {

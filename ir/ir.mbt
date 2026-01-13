@@ -44,8 +44,8 @@ pub struct Map {
 /// A field in the IR map
 pub struct Field {
   name : String
-  mut primary : Scalar?
-  mut composite : Composite?
+  primary : Scalar?
+  composite : Composite?
   references : Array[FieldReference]
 } derive(Eq, Show)
 
@@ -74,8 +74,8 @@ pub(all) enum Value {
 /// An edge in the IR
 pub struct Edge {
   id : EdgeID
-  mut primary : Scalar?
-  mut map : Map?
+  primary : Scalar?
+  map : Map?
   references : Array[EdgeReference]
 } derive(Eq, Show)
 
@@ -253,8 +253,31 @@ pub fn Map::add_field(self : Map, field : Field) -> Unit {
 }
 
 ///|
+fn Map::set_field(self : Map, field : Field) -> Unit {
+  let lower = field.name.to_lower()
+  for i, f in self.fields {
+    if f.name.to_lower() == lower {
+      self.fields[i] = field
+      return
+    }
+  }
+  self.fields.push(field)
+}
+
+///|
 /// Add an edge to the map
 pub fn Map::add_edge(self : Map, edge : Edge) -> Unit {
+  self.edges.push(edge)
+}
+
+///|
+fn Map::set_edge(self : Map, edge : Edge) -> Unit {
+  for i, e in self.edges {
+    if e.id == edge.id {
+      self.edges[i] = edge
+      return
+    }
+  }
   self.edges.push(edge)
 }
 

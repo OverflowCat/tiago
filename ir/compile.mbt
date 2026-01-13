@@ -90,7 +90,13 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
       Some(Composite::Map(m)) => current_map = m
       None => {
         let new_map = Map::new()
-        field.composite = Some(Composite::Map(new_map))
+        let field = Field::new(
+          field.name,
+          field.primary,
+          Some(Composite::Map(new_map)),
+          field.references,
+        )
+        current_map.set_field(field)
         current_map = new_map
       }
       Some(_) =>
@@ -101,15 +107,22 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
   let final_name = path[path.length() - 1]
   let field = current_map.ensure_field(final_name)
   // Set primary value
-  match key.primary {
-    Some(scalar) => field.primary = Some(compile_scalar(scalar))
-    None => ()
+  let field = match key.primary {
+    Some(scalar) =>
+      Field::new(
+        field.name,
+        Some(compile_scalar(scalar)),
+        field.composite,
+        field.references,
+      )
+    None => field
   }
   // Set value
-  match key.value {
+  let field = match key.value {
     Some(value) => compile_value(field, value)
-    None => ()
+    None => field
   }
+  current_map.set_field(field)
 }
 
 ///|
@@ -181,10 +194,15 @@ fn build_nested_properties(
                     let prop_names = pk.to_strings()
                     if prop_names.length() > 0 {
                       let prop_field = Field::simple(prop_names[0])
-                      match prop_key.value {
+                      let prop_field = match prop_key.value {
                         Some(@ast.Value::Scalar(sv)) =>
-                          prop_field.primary = Some(compile_scalar(sv))
-                        _ => ()
+                          Field::new(
+                            prop_field.name,
+                            Some(compile_scalar(sv)),
+                            prop_field.composite,
+                            prop_field.references,
+                          )
+                        _ => prop_field
                       }
                       props.add_field(prop_field)
                     }
@@ -204,7 +222,12 @@ fn build_nested_properties(
       let name = remaining_path[i]
       let field = Field::simple(name)
       let inner = Map::new()
-      field.composite = Some(Composite::Map(inner))
+      let field = Field::new(
+        field.name,
+        field.primary,
+        Some(Composite::Map(inner)),
+        field.references,
+      )
       current.add_field(field)
       current = inner
     }
@@ -212,14 +235,25 @@ fn build_nested_properties(
     let final_name = remaining_path[remaining_path.length() - 1]
     let final_field = Field::simple(final_name)
     // Try key.primary first, then key.value for scalar
-    match key.primary {
-      Some(scalar) => final_field.primary = Some(compile_scalar(scalar))
+    let final_field = match key.primary {
+      Some(scalar) =>
+        Field::new(
+          final_field.name,
+          Some(compile_scalar(scalar)),
+          final_field.composite,
+          final_field.references,
+        )
       None =>
         // Check if value is a scalar
         match key.value {
           Some(@ast.Value::Scalar(sv)) =>
-            final_field.primary = Some(compile_scalar(sv))
-          _ => ()
+            Field::new(
+              final_field.name,
+              Some(compile_scalar(sv)),
+              final_field.composite,
+              final_field.references,
+            )
+          _ => final_field
         }
     }
     current.add_field(final_field)
@@ -275,28 +309,30 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
       let e = existing[0]
       e.references.push(EdgeReference::new(0, true))
       // Update value if provided
-      match key.value {
+      let (primary, edge_map) = match key.value {
         Some(value) =>
           match value {
-            @ast.Value::Scalar(s) => e.primary = Some(compile_scalar(s))
+            @ast.Value::Scalar(s) => (Some(compile_scalar(s)), e.map)
             @ast.Value::Map(m) => {
               let ir_map = Map::new()
               compile_map_nodes(ir_map, m.nodes)
-              e.map = Some(ir_map)
+              (e.primary, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
-              match label {
-                @ast.Value::Scalar(s) => e.primary = Some(compile_scalar(s))
-                _ => ()
+              let updated_primary = match label {
+                @ast.Value::Scalar(s) => Some(compile_scalar(s))
+                _ => e.primary
               }
               let ir_map = Map::new()
               compile_map_nodes(ir_map, m.nodes)
-              e.map = Some(ir_map)
+              (updated_primary, Some(ir_map))
             }
-            _ => ()
+            _ => (e.primary, e.map)
           }
-        None => ()
+        None => (e.primary, e.map)
       }
+      let e = Edge::new(e.id, primary, edge_map, e.references)
+      ir.set_edge(e)
     } else {
       // Create new edge
       let mut primary : Scalar? = None
@@ -343,7 +379,13 @@ fn ensure_field_path(ir : Map, path : Array[String]) -> Unit {
       Some(Composite::Map(m)) => current = m
       None => {
         let new_map = Map::new()
-        field.composite = Some(Composite::Map(new_map))
+        let field = Field::new(
+          field.name,
+          field.primary,
+          Some(Composite::Map(new_map)),
+          field.references,
+        )
+        current.set_field(field)
         current = new_map
       }
       Some(_) => break // Field has non-map composite, stop
@@ -352,28 +394,55 @@ fn ensure_field_path(ir : Map, path : Array[String]) -> Unit {
 }
 
 ///|
-fn compile_value(field : Field, value : @ast.Value) -> Unit raise CompileError {
+fn compile_value(field : Field, value : @ast.Value) -> Field raise CompileError {
   match value {
-    @ast.Value::Scalar(s) => field.primary = Some(compile_scalar(s))
+    @ast.Value::Scalar(s) =>
+      Field::new(
+        field.name,
+        Some(compile_scalar(s)),
+        field.composite,
+        field.references,
+      )
     @ast.Value::Map(m) => {
       let ir_map = Map::new()
       compile_map_nodes(ir_map, m.nodes)
-      field.composite = Some(Composite::Map(ir_map))
+      Field::new(
+        field.name,
+        field.primary,
+        Some(Composite::Map(ir_map)),
+        field.references,
+      )
     }
     @ast.Value::Array(a) => {
       let ir_array = compile_array(a)
-      field.composite = Some(Composite::Array(ir_array))
+      Field::new(
+        field.name,
+        field.primary,
+        Some(Composite::Array(ir_array)),
+        field.references,
+      )
     }
-    @ast.Value::Import(_) => () // TODO: handle imports
+    @ast.Value::Import(_) => field // TODO: handle imports
     @ast.Value::BlockScalar(label, m) => {
       // "name: Label { props }" - Label is primary, props is composite
-      match label {
-        @ast.Value::Scalar(s) => field.primary = Some(compile_scalar(s))
-        _ => ()
+      let field = match label {
+        @ast.Value::Scalar(s) =>
+          Field::new(
+            field.name,
+            Some(compile_scalar(s)),
+            field.composite,
+            field.references,
+          )
+        _ => field
       }
       let ir_map = Map::new()
       compile_map_nodes(ir_map, m.nodes)
-      field.composite = Some(Composite::Map(ir_map))
+      Field::new(
+        field.name,
+        field.primary,
+        Some(Composite::Map(ir_map)),
+        field.references,
+      )
     }
   }
 }
