@@ -145,7 +145,7 @@ pub fn Legend::new() -> Legend {
 /// Create a legend with a specific position
 pub fn Legend::with_position(position : LegendPosition) -> Legend {
   let legend = Legend::new()
-  { ..legend, position }
+  { ..legend, position, }
 }
 
 ///|
@@ -188,7 +188,7 @@ pub fn Legend::set_title(self : Legend, title : String) -> Legend {
 
 ///|
 pub fn Legend::set_position(self : Legend, position : LegendPosition) -> Legend {
-  { ..self, position }
+  { ..self, position, }
 }
 
 ///|
@@ -203,17 +203,17 @@ pub fn Legend::set_stroke(self : Legend, stroke : String) -> Legend {
 
 ///|
 pub fn Legend::set_padding(self : Legend, padding : Double) -> Legend {
-  { ..self, padding }
+  { ..self, padding, }
 }
 
 ///|
 pub fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Legend {
-  { ..self, entry_gap }
+  { ..self, entry_gap, }
 }
 
 ///|
 pub fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Legend {
-  { ..self, icon_size }
+  { ..self, icon_size, }
 }
 
 ///|

@@ -19,7 +19,7 @@
 /// layout and rendering.
 
 ///|
-struct Style {
+priv struct Style {
   mut opacity : Double?
   mut stroke : String?
   mut fill : String?
@@ -43,10 +43,10 @@ struct Style {
   mut fill_pattern : String?
   mut sketch : Bool?
   mut curved : Bool?
-} derive(Eq, Show)
+} derive(Show)
 
 ///|
-pub fn Style::new() -> Style {
+fn Style::new() -> Style {
   {
     opacity: None,
     stroke: None,
@@ -75,7 +75,7 @@ pub fn Style::new() -> Style {
 }
 
 ///|
-struct Object {
+priv struct Object {
   id : String
   mut label : String
   mut shape_type : ShapeType
@@ -97,7 +97,7 @@ struct Object {
 } derive(Show)
 
 ///|
-pub fn Object::new(id : String) -> Object {
+fn Object::new(id : String) -> Object {
   {
     id,
     label: id,
@@ -121,19 +121,12 @@ pub fn Object::new(id : String) -> Object {
 }
 
 ///|
-pub fn Object::with_label(id : String, label : String) -> Object {
-  let obj = Object::new(id)
-  obj.label = label
-  obj
-}
-
-///|
-pub fn Object::add_child(self : Object, child : Object) -> Unit {
+fn Object::add_child(self : Object, child : Object) -> Unit {
   self.children.push(child)
 }
 
 ///|
-struct Edge {
+priv struct Edge {
   index : Int
   src_id : String
   dst_id : String
@@ -154,7 +147,7 @@ struct Edge {
 } derive(Show)
 
 ///|
-pub fn Edge::new(
+fn Edge::new(
   index : Int,
   src_id : String,
   dst_id : String,
@@ -191,7 +184,7 @@ pub fn Edge::new(
 }
 
 ///|
-enum LegendEntry {
+priv enum LegendEntry {
   ShapeEntry(shape~ : ShapeType, label~ : String, style~ : Style?)
   ConnectionEntry(
     src_arrow~ : ArrowheadType,
@@ -204,7 +197,7 @@ enum LegendEntry {
 } derive(Show)
 
 ///|
-pub fn LegendEntry::shape(
+fn LegendEntry::shape(
   shape : ShapeType,
   label : String,
   style : Style?,
@@ -213,7 +206,7 @@ pub fn LegendEntry::shape(
 }
 
 ///|
-pub fn LegendEntry::connection(
+fn LegendEntry::connection(
   src_arrow : ArrowheadType,
   dst_arrow : ArrowheadType,
   label : String,
@@ -223,17 +216,17 @@ pub fn LegendEntry::connection(
 }
 
 ///|
-pub fn LegendEntry::custom(icon : String, label : String) -> LegendEntry {
+fn LegendEntry::custom(icon : String, label : String) -> LegendEntry {
   CustomEntry(icon~, label~)
 }
 
 ///|
-pub fn LegendEntry::separator() -> LegendEntry {
+fn LegendEntry::separator() -> LegendEntry {
   Separator
 }
 
 ///|
-struct Legend {
+priv struct Legend {
   mut title : String?
   mut position : LegendPosition
   entries : Array[LegendEntry]
@@ -245,7 +238,7 @@ struct Legend {
 } derive(Show)
 
 ///|
-pub fn Legend::new() -> Legend {
+fn Legend::new() -> Legend {
   {
     title: None,
     position: BottomRight,
@@ -259,78 +252,49 @@ pub fn Legend::new() -> Legend {
 }
 
 ///|
-pub fn Legend::with_position(position : LegendPosition) -> Legend {
+fn Legend::with_position(position : LegendPosition) -> Legend {
   let legend = Legend::new()
   legend.position = position
   legend
 }
 
 ///|
-pub fn Legend::add_entry(self : Legend, entry : LegendEntry) -> Unit {
+fn Legend::add_entry(self : Legend, entry : LegendEntry) -> Unit {
   self.entries.push(entry)
 }
 
 ///|
-pub fn Legend::add_shape(
-  self : Legend,
-  shape : ShapeType,
-  label : String,
-) -> Unit {
-  self.entries.push(LegendEntry::shape(shape, label, None))
-}
-
-///|
-pub fn Legend::add_connection(
-  self : Legend,
-  src_arrow : ArrowheadType,
-  dst_arrow : ArrowheadType,
-  label : String,
-) -> Unit {
-  self.entries.push(LegendEntry::connection(src_arrow, dst_arrow, label, None))
-}
-
-///|
-pub fn Legend::add_separator(self : Legend) -> Unit {
-  self.entries.push(LegendEntry::separator())
-}
-
-///|
-pub fn Legend::set_title(self : Legend, title : String) -> Unit {
+fn Legend::set_title(self : Legend, title : String) -> Unit {
   self.title = Some(title)
 }
 
 ///|
-pub fn Legend::set_position(self : Legend, position : LegendPosition) -> Unit {
-  self.position = position
-}
-
-///|
-pub fn Legend::set_fill(self : Legend, fill : String) -> Unit {
+fn Legend::set_fill(self : Legend, fill : String) -> Unit {
   self.fill = Some(fill)
 }
 
 ///|
-pub fn Legend::set_stroke(self : Legend, stroke : String) -> Unit {
+fn Legend::set_stroke(self : Legend, stroke : String) -> Unit {
   self.stroke = Some(stroke)
 }
 
 ///|
-pub fn Legend::set_padding(self : Legend, padding : Double) -> Unit {
+fn Legend::set_padding(self : Legend, padding : Double) -> Unit {
   self.padding = padding
 }
 
 ///|
-pub fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Unit {
+fn Legend::set_entry_gap(self : Legend, entry_gap : Double) -> Unit {
   self.entry_gap = entry_gap
 }
 
 ///|
-pub fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Unit {
+fn Legend::set_icon_size(self : Legend, icon_size : Double) -> Unit {
   self.icon_size = icon_size
 }
 
 ///|
-struct Graph {
+priv struct Graph {
   name : String
   root : Object
   objects : Array[Object]
@@ -342,40 +306,40 @@ struct Graph {
 } derive(Show)
 
 ///|
-struct Layer {
+priv struct Layer {
   name : String
   graph : Graph
 } derive(Show)
 
 ///|
-struct Scenario {
+priv struct Scenario {
   name : String
   graph : Graph
 } derive(Show)
 
 ///|
-struct Step {
+priv struct Step {
   name : String
   graph : Graph
 } derive(Show)
 
 ///|
-pub fn Layer::new(name : String, graph : Graph) -> Layer {
+fn Layer::new(name : String, graph : Graph) -> Layer {
   { name, graph }
 }
 
 ///|
-pub fn Scenario::new(name : String, graph : Graph) -> Scenario {
+fn Scenario::new(name : String, graph : Graph) -> Scenario {
   { name, graph }
 }
 
 ///|
-pub fn Step::new(name : String, graph : Graph) -> Step {
+fn Step::new(name : String, graph : Graph) -> Step {
   { name, graph }
 }
 
 ///|
-pub fn Graph::new(name : String) -> Graph {
+fn Graph::new(name : String) -> Graph {
   let root = Object::new("root")
   {
     name,
@@ -390,37 +354,37 @@ pub fn Graph::new(name : String) -> Graph {
 }
 
 ///|
-pub fn Graph::add_object(self : Graph, obj : Object) -> Unit {
+fn Graph::add_object(self : Graph, obj : Object) -> Unit {
   self.objects.push(obj)
 }
 
 ///|
-pub fn Graph::add_edge(self : Graph, edge : Edge) -> Unit {
+fn Graph::add_edge(self : Graph, edge : Edge) -> Unit {
   self.edges.push(edge)
 }
 
 ///|
-pub fn Graph::add_layer(self : Graph, layer : Layer) -> Unit {
+fn Graph::add_layer(self : Graph, layer : Layer) -> Unit {
   self.layers.push(layer)
 }
 
 ///|
-pub fn Graph::add_scenario(self : Graph, scenario : Scenario) -> Unit {
+fn Graph::add_scenario(self : Graph, scenario : Scenario) -> Unit {
   self.scenarios.push(scenario)
 }
 
 ///|
-pub fn Graph::add_step(self : Graph, step : Step) -> Unit {
+fn Graph::add_step(self : Graph, step : Step) -> Unit {
   self.steps.push(step)
 }
 
 ///|
-pub fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
+fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
   self.legend = Some(legend)
 }
 
 ///|
-pub fn Graph::find_object(self : Graph, id : String) -> Object? {
+fn Graph::find_object(self : Graph, id : String) -> Object? {
   for obj in self.objects {
     if obj.id == id {
       return Some(obj)

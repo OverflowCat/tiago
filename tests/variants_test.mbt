@@ -16,7 +16,9 @@
 /// Exporter regression tests for variants + stable IDs
 
 ///|
-fn compile_graph_no_layout(source : String) -> Result[@graph.GraphInput, String] {
+fn compile_graph_no_layout(
+  source : String,
+) -> Result[@graph.GraphInput, String] {
   let (ast, errors) = @parser.parse(source)
   if not(errors.is_empty()) {
     return Err("Parse errors: \{errors}")
@@ -60,15 +62,9 @@ test "exporter compiles layers/scenarios/steps" {
   assert_eq(layer_names, ["L1"])
   assert_eq(scenario_names, ["S1"])
   assert_eq(step_names, ["step1"])
-  assert_true(
-    graph.layers[0].graph.find_object("b") is Some(_),
-  )
-  assert_true(
-    graph.scenarios[0].graph.find_object("c") is Some(_),
-  )
-  assert_true(
-    graph.steps[0].graph.find_object("d") is Some(_),
-  )
+  assert_true(graph.layers[0].graph.find_object("b") is Some(_))
+  assert_true(graph.scenarios[0].graph.find_object("c") is Some(_))
+  assert_true(graph.steps[0].graph.find_object("d") is Some(_))
 }
 
 ///|

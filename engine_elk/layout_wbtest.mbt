@@ -117,7 +117,9 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
 }
 
 ///|
-fn fragment_to_input(fragment : SequenceFragment) -> @graph.SequenceFragmentInput {
+fn fragment_to_input(
+  fragment : SequenceFragment,
+) -> @graph.SequenceFragmentInput {
   let operands : Array[@graph.FragmentOperandInput] = []
   for op in fragment.operands {
     operands.push(@graph.FragmentOperandInput::new(op.condition))
@@ -187,7 +189,6 @@ fn new_graph_with_root_shape(name : String, shape : String) -> Graph {
     None,
     None,
   )
-
   let input = @graph.GraphInput::from_parts(
     name,
     root,
@@ -354,15 +355,9 @@ test "layout container with children" {
   let parent = laid_out.find_object("parent").unwrap()
   let child1 = laid_out.find_object("child1").unwrap()
   let child2 = laid_out.find_object("child2").unwrap()
-  guard parent.box is Some(parent_box) else {
-    fail("expected parent box")
-  }
-  guard child1.box is Some(child1_box) else {
-    fail("expected child1 box")
-  }
-  guard child2.box is Some(childiago_box) else {
-    fail("expected child2 box")
-  }
+  guard parent.box is Some(parent_box) else { fail("expected parent box") }
+  guard child1.box is Some(child1_box) else { fail("expected child1 box") }
+  guard child2.box is Some(childiago_box) else { fail("expected child2 box") }
   // Children should be positioned inside parent
   assert_true(child1_box.x >= parent_box.x)
   assert_true(child1_box.y >= parent_box.y)
@@ -454,10 +449,7 @@ test "grid dimensions calculation" {
   assert_eq(cols2, 3)
   assert_true(!dir2) // column directed
   // Test both rows and columns
-  let obj3 = with_grid_columns(
-    with_grid_rows(Object::new("test3"), 2),
-    3,
-  )
+  let obj3 = with_grid_columns(with_grid_rows(Object::new("test3"), 2), 3)
   let (rows3, cols3, dir3) = compute_grid_dimensions(obj3, 6)
   assert_eq(rows3, 2)
   assert_eq(cols3, 3)
@@ -617,7 +609,6 @@ test "sequence layout activation boxes" {
     activation_boxes.push(ab.get_box())
   }
   inspect(activation_boxes)
-
 }
 
 ///|
@@ -710,7 +701,10 @@ test "sequence layout with opt group creates fragment" {
   graph.add_object(opt_group)
   graph.add_object(dummy)
   // Add edges - including one "inside" the opt group
-  let edge1 = { ..Edge::new(0, "seq.alice", "seq.bob", false, true), label: "Hello" }
+  let edge1 = {
+    ..Edge::new(0, "seq.alice", "seq.bob", false, true),
+    label: "Hello",
+  }
   let edge2 = {
     ..Edge::new(1, "seq.opt.alice", "seq.opt.bob", false, true),
     label: "optional message",

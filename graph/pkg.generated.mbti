@@ -171,14 +171,14 @@ pub struct LayerModel {
 pub impl Show for LayerModel
 
 pub struct Legend {
-  mut title : String?
-  mut position : LegendPosition
+  title : String?
+  position : LegendPosition
   entries : Array[LegendEntry]
-  mut fill : String?
-  mut stroke : String?
-  mut padding : Double
-  mut entry_gap : Double
-  mut icon_size : Double
+  fill : String?
+  stroke : String?
+  padding : Double
+  entry_gap : Double
+  icon_size : Double
 }
 pub fn Legend::add_connection(Self, ArrowheadType, ArrowheadType, String) -> Unit
 pub fn Legend::add_entry(Self, LegendEntry) -> Unit
@@ -188,13 +188,13 @@ pub fn Legend::calculate_size(Self, Int) -> (Double, Double)
 pub fn Legend::entry_count(Self) -> Int
 pub fn Legend::is_empty(Self) -> Bool
 pub fn Legend::new() -> Self
-pub fn Legend::set_entry_gap(Self, Double) -> Unit
-pub fn Legend::set_fill(Self, String) -> Unit
-pub fn Legend::set_icon_size(Self, Double) -> Unit
-pub fn Legend::set_padding(Self, Double) -> Unit
-pub fn Legend::set_position(Self, LegendPosition) -> Unit
-pub fn Legend::set_stroke(Self, String) -> Unit
-pub fn Legend::set_title(Self, String) -> Unit
+pub fn Legend::set_entry_gap(Self, Double) -> Self
+pub fn Legend::set_fill(Self, String) -> Self
+pub fn Legend::set_icon_size(Self, Double) -> Self
+pub fn Legend::set_padding(Self, Double) -> Self
+pub fn Legend::set_position(Self, LegendPosition) -> Self
+pub fn Legend::set_stroke(Self, String) -> Self
+pub fn Legend::set_title(Self, String) -> Self
 pub fn Legend::with_position(LegendPosition) -> Self
 pub impl Show for Legend
 

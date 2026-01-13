@@ -231,7 +231,9 @@ fn place_sequence_actors(
       max_height = height
     }
     // Set actor position
-    actor.box = Some(@graph.Box::new(x, config.container_padding, width, height))
+    actor.box = Some(
+      @graph.Box::new(x, config.container_padding, width, height),
+    )
     x = x + width + min_actor_distance
   }
   max_height
@@ -324,11 +326,7 @@ fn route_messages_with_positions(
           if dst_stack is Some(stack) {
             if stack.length() == 0 {
               // Start a new activation
-              let new_box = ActivationBox::new(
-                dst.id,
-                center_x,
-                current_y,
-              )
+              let new_box = ActivationBox::new(dst.id, center_x, current_y)
               stack.push(new_box)
             }
           }
@@ -674,10 +672,7 @@ fn add_lifeline_edges(
          false, // No destination arrow
       )
       // Set dashed stroke style
-      let edge = {
-        ..edge,
-        style: { ..edge.style, stroke_dash: Some(6.0) },
-      }
+      let edge = { ..edge, style: { ..edge.style, stroke_dash: Some(6.0) } }
       // Add route points (vertical line from actor bottom to diagram end)
       edge.add_route_point(@graph.Point::new(center_x, lifeline_start_y))
       edge.add_route_point(@graph.Point::new(center_x, end_y))

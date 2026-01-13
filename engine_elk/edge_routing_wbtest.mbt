@@ -461,14 +461,8 @@ test "edge routing: parallel edges" {
   }
 
   // Check that boxes are assigned
-  inspect(
-    laid_out.find_object("A").unwrap().box is Some(_),
-    content="true",
-  )
-  inspect(
-    laid_out.find_object("B").unwrap().box is Some(_),
-    content="true",
-  )
+  inspect(laid_out.find_object("A").unwrap().box is Some(_), content="true")
+  inspect(laid_out.find_object("B").unwrap().box is Some(_), content="true")
   // Check that routes are assigned
   inspect(laid_out.edges[0].route.length() >= 2, content="true")
   inspect(laid_out.edges[1].route.length() >= 2, content="true")
@@ -490,14 +484,8 @@ test "edge routing: bidirectional edges" {
   }
 
   // Check that boxes are assigned
-  inspect(
-    laid_out.find_object("A").unwrap().box is Some(_),
-    content="true",
-  )
-  inspect(
-    laid_out.find_object("B").unwrap().box is Some(_),
-    content="true",
-  )
+  inspect(laid_out.find_object("A").unwrap().box is Some(_), content="true")
+  inspect(laid_out.find_object("B").unwrap().box is Some(_), content="true")
 }
 
 ///|

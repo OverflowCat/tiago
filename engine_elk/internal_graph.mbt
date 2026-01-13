@@ -384,6 +384,7 @@ fn touch_style_fields(style : Style) -> Unit {
   let _ = style.fill_pattern
   let _ = style.sketch
   let _ = style.curved
+
 }
 
 ///|
@@ -412,18 +413,21 @@ fn touch_edge_fields(edge : Edge) -> Unit {
 fn touch_layer_fields(layer : Layer) -> Unit {
   let _ = layer.name
   let _ = layer.graph
+
 }
 
 ///|
 fn touch_scenario_fields(scenario : Scenario) -> Unit {
   let _ = scenario.name
   let _ = scenario.graph
+
 }
 
 ///|
 fn touch_step_fields(step : Step) -> Unit {
   let _ = step.name
   let _ = step.graph
+
 }
 
 ///|
@@ -669,8 +673,6 @@ fn Graph::add_object(self : Graph, obj : Object) -> Unit {
   self.objects.push(obj)
 }
 
-
-
 ///|
 /// Add an edge to the graph
 fn Graph::add_edge(self : Graph, edge : Edge) -> Unit {
@@ -692,7 +694,6 @@ fn Graph::find_object(self : Graph, id : String) -> Object? {
 // Object operations
 // ============================================================================
 
-
 ///|
 /// Check if this object is a grid diagram (has grid-rows or grid-columns)
 fn Object::is_grid_diagram(self : Object) -> Bool {
@@ -704,7 +705,6 @@ fn Object::is_grid_diagram(self : Object) -> Bool {
 fn Object::is_container(self : Object) -> Bool {
   not(self.children.is_empty())
 }
-
 
 // ============================================================================
 // Edge operations
@@ -736,4 +736,3 @@ fn Edge::midpoint(self : Edge) -> Point? {
     Some(self.route[mid])
   }
 }
-
