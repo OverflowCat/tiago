@@ -618,7 +618,7 @@ fn compile_to_diagram(
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let diagram = @diagram.layout_with_engine(
+  let laid_out_graph = @engine_api.layout_with_engine(
     @engine_elk.ElkEngine::new(),
     graph_input,
     config,
@@ -626,7 +626,7 @@ fn compile_to_diagram(
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(diagram)
+  Ok(@diagram.from_graph(laid_out_graph, None))
 }
 
 ///|

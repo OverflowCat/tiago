@@ -832,14 +832,6 @@ fn LayoutOptions::with_port_constraints(
 }
 
 ///|
-fn LayoutOptions::with_hierarchy_handling(
-  self : LayoutOptions,
-  handling : HierarchyHandling,
-) -> LayoutOptions {
-  { ..self, hierarchy_handling: Some(handling) }
-}
-
-///|
 fn LayoutOptions::with_thoroughness(
   self : LayoutOptions,
   value : Int,

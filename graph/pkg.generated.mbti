@@ -1,7 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/graph"
 
+import(
+  "Milky2018/diago/lexer"
+)
+
 // Values
+pub fn apply_layout(GraphInput, LayoutPatch) -> GraphInput
 
 // Errors
 
@@ -63,6 +68,7 @@ pub struct EdgeInput {
   dst_anchor : String?
   label : String
   style : StyleInput
+  route : Array[Point]
   bend_points : Array[Point]?
   is_curve : Bool
   z_index : Int
@@ -72,7 +78,7 @@ pub struct EdgeInput {
   dst_column_index : Int?
 }
 pub fn EdgeInput::from_model(EdgeModel) -> Self
-pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String, StyleInput, Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
+pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
 pub fn EdgeInput::get_dst_id(Self) -> String
 pub fn EdgeInput::get_label_box(Self) -> Box?
 pub fn EdgeInput::get_src_id(Self) -> String
@@ -112,6 +118,13 @@ pub struct FragmentOperandInput {
 pub fn FragmentOperandInput::new(String?) -> Self
 pub impl Show for FragmentOperandInput
 
+pub struct FragmentOperandLayout {
+  condition : String?
+  separator_y : Double
+}
+pub fn FragmentOperandLayout::new(String?, Double) -> Self
+pub impl Show for FragmentOperandLayout
+
 pub struct FragmentOperandModel {
   condition : String?
   separator_y : Double
@@ -124,6 +137,9 @@ pub struct GraphInput {
   objects : Array[ObjectInput]
   edges : Array[EdgeInput]
   sequence_fragments : Array[SequenceFragmentInput]
+  activation_boxes : Array[(String, Box)]
+  sequence_notes : Array[(String, String, Box)]
+  sequence_fragments_layout : Array[SequenceFragmentLayout]
   layers : Array[LayerInput]
   scenarios : Array[ScenarioInput]
   steps : Array[StepInput]
@@ -132,7 +148,7 @@ pub struct GraphInput {
 pub fn GraphInput::children_of(Self, ObjectInput) -> Array[ObjectInput]
 pub fn GraphInput::find_object(Self, String) -> ObjectInput?
 pub fn GraphInput::from_model(GraphModel) -> Self
-pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?) -> Self
+pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[(String, Box)], Array[(String, String, Box)], Array[SequenceFragmentLayout], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?) -> Self
 pub fn GraphInput::get_edges(Self) -> Array[EdgeInput]
 pub fn GraphInput::get_objects(Self) -> Array[ObjectInput]
 pub fn GraphInput::new(String) -> Self
@@ -169,6 +185,17 @@ pub struct LayerModel {
   graph : GraphModel
 }
 pub impl Show for LayerModel
+
+pub struct LayoutPatch {
+  nodes : Map[String, Box]
+  edges : Map[Int, Array[Point]]
+  edge_labels : Map[Int, Box]
+  activation_boxes : Array[(String, Box)]
+  sequence_notes : Array[(String, String, Box)]
+  sequence_fragments : Array[SequenceFragmentLayout]
+}
+pub fn LayoutPatch::new() -> Self
+pub impl Show for LayoutPatch
 
 pub struct Legend {
   title : String?
@@ -392,6 +419,17 @@ pub fn SequenceFragmentInput::from_model(SequenceFragmentModel) -> Self
 pub fn SequenceFragmentInput::new(String, String?, Int, Int, Array[FragmentOperandInput]) -> Self
 pub impl Show for SequenceFragmentInput
 
+pub struct SequenceFragmentLayout {
+  fragment_type : String
+  condition : String?
+  bbox : Box?
+  start_index : Int
+  end_index : Int
+  operands : Array[FragmentOperandLayout]
+}
+pub fn SequenceFragmentLayout::new(String, String?, Box?, Int, Int, Array[FragmentOperandLayout]) -> Self
+pub impl Show for SequenceFragmentLayout
+
 pub struct SequenceFragmentModel {
   fragment_type : String
   condition : String?
@@ -455,64 +493,86 @@ pub struct StepModel {
 pub impl Show for StepModel
 
 pub struct StyleInput {
-  opacity : Double?
-  stroke : String?
-  fill : String?
-  stroke_width : Double?
-  stroke_dash : Double?
-  border_radius : Double?
-  shadow : Bool?
-  three_d : Bool?
-  multiple : Bool?
-  font : String?
-  font_size : Int?
-  font_color : String?
-  bold : Bool?
-  italic : Bool?
-  underline : Bool?
-  animated : Bool?
-  filled : Bool?
-  double_border : Bool?
-  text_transform : String?
-  font_family : String?
-  fill_pattern : String?
-  sketch : Bool?
-  curved : Bool?
+  opacity : StyleValue?
+  stroke : StyleValue?
+  fill : StyleValue?
+  stroke_width : StyleValue?
+  stroke_dash : StyleValue?
+  border_radius : StyleValue?
+  shadow : StyleValue?
+  three_d : StyleValue?
+  multiple : StyleValue?
+  font : StyleValue?
+  font_size : StyleValue?
+  font_color : StyleValue?
+  bold : StyleValue?
+  italic : StyleValue?
+  underline : StyleValue?
+  animated : StyleValue?
+  filled : StyleValue?
+  double_border : StyleValue?
+  text_transform : StyleValue?
+  font_family : StyleValue?
+  fill_pattern : StyleValue?
+  sketch : StyleValue?
+  curved : StyleValue?
 }
 pub fn StyleInput::from_model(StyleModel) -> Self
-pub fn StyleInput::from_parts(Double?, String?, String?, Double?, Double?, Double?, Bool?, Bool?, Bool?, String?, Int?, String?, Bool?, Bool?, Bool?, Bool?, Bool?, Bool?, String?, String?, String?, Bool?, Bool?) -> Self
+pub fn StyleInput::from_parts(StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?, StyleValue?) -> Self
 pub fn StyleInput::new() -> Self
 pub impl Eq for StyleInput
 pub impl Show for StyleInput
 
 pub struct StyleModel {
-  opacity : Double?
-  stroke : String?
-  fill : String?
-  stroke_width : Double?
-  stroke_dash : Double?
-  border_radius : Double?
-  shadow : Bool?
-  three_d : Bool?
-  multiple : Bool?
-  font : String?
-  font_size : Int?
-  font_color : String?
-  bold : Bool?
-  italic : Bool?
-  underline : Bool?
-  animated : Bool?
-  filled : Bool?
-  double_border : Bool?
-  text_transform : String?
-  font_family : String?
-  fill_pattern : String?
-  sketch : Bool?
-  curved : Bool?
+  opacity : StyleValue?
+  stroke : StyleValue?
+  fill : StyleValue?
+  stroke_width : StyleValue?
+  stroke_dash : StyleValue?
+  border_radius : StyleValue?
+  shadow : StyleValue?
+  three_d : StyleValue?
+  multiple : StyleValue?
+  font : StyleValue?
+  font_size : StyleValue?
+  font_color : StyleValue?
+  bold : StyleValue?
+  italic : StyleValue?
+  underline : StyleValue?
+  animated : StyleValue?
+  filled : StyleValue?
+  double_border : StyleValue?
+  text_transform : StyleValue?
+  font_family : StyleValue?
+  fill_pattern : StyleValue?
+  sketch : StyleValue?
+  curved : StyleValue?
 }
 pub fn StyleModel::new() -> Self
 pub impl Eq for StyleModel
 pub impl Show for StyleModel
+
+pub struct StyleValue {
+  value : String
+  range : @lexer.Range
+}
+pub fn StyleValue::as_bool(Self) -> Bool?
+pub fn StyleValue::as_double(Self) -> Double?
+pub fn StyleValue::as_int(Self) -> Int?
+pub fn StyleValue::from_bool(Bool) -> Self
+pub fn StyleValue::from_bool_opt(Bool?) -> Self?
+pub fn StyleValue::from_double(Double) -> Self
+pub fn StyleValue::from_double_opt(Double?) -> Self?
+pub fn StyleValue::from_int(Int) -> Self
+pub fn StyleValue::from_int_opt(Int?) -> Self?
+pub fn StyleValue::from_string(String) -> Self
+pub fn StyleValue::from_string_opt(String?) -> Self?
+pub fn StyleValue::get_range(Self) -> @lexer.Range
+pub fn StyleValue::get_value(Self) -> String
+pub fn StyleValue::new(String, @lexer.Range) -> Self
+pub fn StyleValue::synthetic(String) -> Self
+pub impl Eq for StyleValue
+pub impl Show for StyleValue
 
 pub struct Waypoint {
   x : Double

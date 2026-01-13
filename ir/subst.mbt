@@ -139,11 +139,11 @@ fn resolve_scalar_substitutions(
             Some(value) =>
               if is_complete {
                 // Entire string is a substitution, replace with resolved value
-                Some(Scalar::string(value))
+                Some(Scalar::at(s.range, ScalarValue::String(value)))
               } else {
                 // Partial substitution, replace in string
                 let resolved = replace_substitution(str, var_path, value)
-                Some(Scalar::string(resolved))
+                Some(Scalar::at(s.range, ScalarValue::String(resolved)))
               }
             None =>
               // Variable not found, keep original

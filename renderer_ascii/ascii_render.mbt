@@ -91,6 +91,29 @@ fn get_short_id(id : String) -> String {
 }
 
 ///|
+fn is_container(obj : RenderObject) -> Bool {
+  obj.shape_type != SqlTable && obj.child_ids.length() > 0
+}
+
+///|
+fn object_children(
+  obj : RenderObject,
+  all_objects : Array[RenderObject],
+) -> Array[RenderObject] {
+  let children : Array[RenderObject] = []
+  for child_id in obj.child_ids {
+    let mut found = false
+    for candidate in all_objects {
+      if not(found) && candidate.id == child_id {
+        children.push(candidate)
+        found = true
+      }
+    }
+  }
+  children
+}
+
+///|
 /// ASCII box position and size in character coordinates
 struct AsciiBox {
   id : String
@@ -154,7 +177,7 @@ pub fn render_ascii(graph : RenderGraph, config : AsciiConfig) -> String {
     render_ascii_box(grid, box, config)
   }
   // Render edge lines (will overwrite container borders where they pass through)
-  for edge in graph.edges {
+  for edge in graph.connections {
     for ref_idx = 0; ref_idx < edge.reference_count; ref_idx = ref_idx + 1 {
       render_ascii_edge_new(grid, graph, edge, ref_idx, boxes, config)
     }
@@ -166,11 +189,11 @@ pub fn render_ascii(graph : RenderGraph, config : AsciiConfig) -> String {
     grid.text(label_x, label_y, box.label)
   }
   // Render edge labels
-  for edge in graph.edges {
+  for edge in graph.connections {
     render_ascii_label_new(grid, graph, edge, 0, boxes, config)
   }
   // Render edge arrows LAST (on top of everything)
-  for edge in graph.edges {
+  for edge in graph.connections {
     for ref_idx = 0; ref_idx < edge.reference_count; ref_idx = ref_idx + 1 {
       render_ascii_arrows_new(grid, graph, edge, ref_idx, boxes, config)
     }
@@ -262,7 +285,7 @@ fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
   // Separate actors from activation boxes
   // Actors have labels, activation boxes don't
   let actors : Array[RenderObject] = []
-  for obj in graph.objects {
+  for obj in graph.shapes {
     // Skip activation box objects (no label, internal ID pattern)
     if obj.label.length() > 0 && not(obj.id.contains("__activation_")) {
       actors.push(obj)
@@ -280,9 +303,13 @@ fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
   // Separate edges into lifelines and messages
   // Lifelines have dashed stroke, messages don't
   let messages : Array[RenderEdge] = []
-  for edge in graph.edges {
+  for edge in graph.connections {
     // Skip lifeline edges (dashed stroke)
-    if edge.style.stroke_dash is None || edge.style.stroke_dash == Some(0.0) {
+    let dash = match edge.style.stroke_dash {
+      Some(v) => v.as_double().unwrap_or(0.0)
+      None => 0.0
+    }
+    if dash == 0.0 {
       messages.push(edge)
     }
     // Lifelines will be rendered automatically via the edge routes
@@ -373,9 +400,13 @@ fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
     }
   }
   // Render lifelines (from edges with dashed stroke)
-  for edge in graph.edges {
+  for edge in graph.connections {
     // Lifelines have dashed stroke
-    if edge.style.stroke_dash is Some(d) && d > 0.0 && edge.route.length() >= 2 {
+    let dash = match edge.style.stroke_dash {
+      Some(v) => v.as_double().unwrap_or(0.0)
+      None => 0.0
+    }
+    if dash > 0.0 && edge.route.length() >= 2 {
       // This is a lifeline edge - render as vertical line
       // Get x from the route (lifelines are vertical)
       let route_x = edge.route[0].x
@@ -534,14 +565,14 @@ fn compute_ascii_layout(
 ) -> Array[AsciiBox] {
   // Track which object IDs are children (nested inside containers)
   let child_ids : Map[String, Bool] = {}
-  for obj in graph.objects {
-    for child in obj.children {
-      child_ids[child.id] = true
+  for obj in graph.shapes {
+    for child_id in obj.child_ids {
+      child_ids[child_id] = true
     }
   }
   // Find root objects (not children of any container)
   let roots : Array[RenderObject] = []
-  for obj in graph.objects {
+  for obj in graph.shapes {
     if not(child_ids.contains(obj.id)) {
       roots.push(obj)
     }
@@ -551,8 +582,8 @@ fn compute_ascii_layout(
   sort_objects_by_y(roots)
   // First pass: compute sizes for all objects (bottom-up)
   let sizes : Map[String, (Int, Int)] = {} // id -> (width, height)
-  for obj in graph.objects {
-    compute_object_size(obj, config, sizes) |> ignore
+  for obj in graph.shapes {
+    compute_object_size(obj, graph.shapes, config, sizes) |> ignore
   }
   // Group objects by layer (same y-coordinate = same layer)
   let layers = group_by_layer(roots)
@@ -600,7 +631,14 @@ fn compute_ascii_layout(
       match sizes.get(obj.id) {
         Some((w, h)) => {
           let box = create_positioned_box(
-            obj, x, current_y, w, h, config, sizes,
+            obj,
+            graph.shapes,
+            x,
+            current_y,
+            w,
+            h,
+            config,
+            sizes,
           )
           boxes.push(box)
           placed[obj.id] = box
@@ -620,6 +658,7 @@ fn compute_ascii_layout(
 /// Compute the size of an object (recursively for containers)
 fn compute_object_size(
   obj : RenderObject,
+  all_objects : Array[RenderObject],
   config : AsciiConfig,
   sizes : Map[String, (Int, Int)],
 ) -> (Int, Int) {
@@ -630,13 +669,14 @@ fn compute_object_size(
   }
   // Special handling for sql_table: size based on header + column rows
   if obj.shape_type == SqlTable {
+    let children = object_children(obj, all_objects)
     let header_height = 3 // top border + label + separator
-    let num_columns = obj.children.length()
+    let num_columns = children.length()
     let footer_height = 1 // bottom border
     let total_height = header_height + num_columns + footer_height
     // Width = max of label width and column widths
     let mut max_width = obj.label.length() + config.h_padding * 2 + 2
-    for child in obj.children {
+    for child in children {
       // Column format: "name: type"
       let col_name = get_short_id(child.id)
       let col_label = if child.label.length() > 0 {
@@ -651,18 +691,19 @@ fn compute_object_size(
     sizes[obj.id] = (max_width, total_height)
     return (max_width, total_height)
   }
-  if obj.is_container() {
+  if is_container(obj) {
+    let children = object_children(obj, all_objects)
     // Container: stack children vertically
     let title_height = 2 // Title row + gap
     let padding = 2
     let mut children_height = 0
     let mut max_child_width = 0
-    for child in obj.children {
-      let (cw, ch) = compute_object_size(child, config, sizes)
+    for child in children {
+      let (cw, ch) = compute_object_size(child, all_objects, config, sizes)
       max_child_width = max_i(max_child_width, cw)
       children_height = children_height + ch + 1 // +1 for spacing between children
     }
-    if obj.children.length() > 0 {
+    if children.length() > 0 {
       children_height = children_height - 1 // Remove last spacing
     }
     let content_width = max_i(
@@ -688,6 +729,7 @@ fn compute_object_size(
 /// Create a positioned box with pre-computed size
 fn create_positioned_box(
   obj : RenderObject,
+  all_objects : Array[RenderObject],
   x : Int,
   y : Int,
   width : Int,
@@ -697,8 +739,9 @@ fn create_positioned_box(
 ) -> AsciiBox {
   // Special handling for sql_table: store column info but not as nested boxes
   if obj.shape_type == SqlTable {
+    let child_objects = object_children(obj, all_objects)
     let columns : Array[AsciiBox] = []
-    for child in obj.children {
+    for child in child_objects {
       // Column format: "name: type"
       let col_name = get_short_id(child.id)
       let col_label = if child.label.length() > 0 {
@@ -731,18 +774,19 @@ fn create_positioned_box(
       children: columns,
     }
   }
-  if obj.is_container() {
+  if is_container(obj) {
+    let child_objects = object_children(obj, all_objects)
     // Container with vertically stacked, centered children
     let children : Array[AsciiBox] = []
     let title_height = 2
     let mut child_y = y + title_height
-    for child in obj.children {
+    for child in child_objects {
       match sizes.get(child.id) {
         Some((cw, ch)) => {
           // Center child horizontally within container
           let child_x = x + (width - cw) / 2
           let child_box = create_positioned_box(
-            child, child_x, child_y, cw, ch, config, sizes,
+            child, all_objects, child_x, child_y, cw, ch, config, sizes,
           )
           children.push(child_box)
           child_y = child_y + ch + 1
@@ -1285,7 +1329,7 @@ fn compute_edge_offset(
   let mut total_lines = 0
   let mut line_index = 0
   let mut max_label_len = 0
-  for e in graph.edges {
+  for e in graph.connections {
     let e_src = e.src_id
     let e_dst = e.dst_id
     // Check if same node pair (considering both directions)
@@ -1346,7 +1390,7 @@ fn compute_destination_offset(
   // Count edges going to the same destination from different sources
   let mut total_incoming = 0
   let mut edge_index = 0
-  for e in graph.edges {
+  for e in graph.connections {
     if e.dst_id == dst_id {
       if e.src_id == edge.src_id && e.dst_id == edge.dst_id {
         edge_index = total_incoming

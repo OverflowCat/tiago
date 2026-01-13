@@ -26,7 +26,15 @@ struct Parser {
 ///|
 /// Parse a diago source string into an AST
 pub fn parse(source : String) -> (@ast.Map, ParseErrors) {
-  let (tokens, lex_errors) = @lexer.tokenize(source)
+  parse_with_path("", source)
+}
+
+///|
+pub fn parse_with_path(
+  path : String,
+  source : String,
+) -> (@ast.Map, ParseErrors) {
+  let (tokens, lex_errors) = @lexer.tokenize_with_path(path, source)
   let parser = Parser::new(source, tokens)
 
   // Add lexer errors to parse errors

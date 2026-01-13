@@ -291,6 +291,29 @@ pub fn Import::new(
   { range, spread, pre, path }
 }
 
+///|
+/// Boxed AST node for generic traversal.
+///
+/// This is intentionally a closed set of variants over the public AST structs/enums.
+pub(all) enum Node {
+  Map(Map)
+  MapNode(MapNode)
+  Key(Key)
+  KeyPath(KeyPath)
+  Edge(Edge)
+  EdgeIndex(EdgeIndex)
+  Value(Value)
+  ArrayValue(ArrayValue)
+  ArrayNode(ArrayNode)
+  Scalar(Scalar)
+  StringValue(StringValue)
+  UnquotedString(UnquotedString)
+  DoubleQuotedString(DoubleQuotedString)
+  BlockString(BlockString)
+  Substitution(Substitution)
+  Import(Import)
+} derive(Eq, Show)
+
 // ============================================================================
 // Helper methods
 // ============================================================================
@@ -307,13 +330,178 @@ pub fn MapNode::range(self : MapNode) -> @lexer.Range {
 }
 
 ///|
+pub fn ArrayNode::range(self : ArrayNode) -> @lexer.Range {
+  match self {
+    Comment(r, _) => r
+    BlockComment(r, _) => r
+    Substitution(s) => s.range
+    Import(i) => i.range
+    Value(v) => v.range()
+  }
+}
+
+///|
+pub fn Node::range(self : Node) -> @lexer.Range {
+  match self {
+    Map(m) => m.range
+    MapNode(n) => n.range()
+    Key(k) => k.range
+    KeyPath(kp) => kp.range
+    Edge(e) => e.range
+    EdgeIndex(ei) => ei.range
+    Value(v) => v.range()
+    ArrayValue(a) => a.range
+    ArrayNode(n) => n.range()
+    Scalar(s) => s.range()
+    StringValue(s) => s.range()
+    UnquotedString(s) => s.range
+    DoubleQuotedString(s) => s.range
+    BlockString(s) => s.range
+    Substitution(s) => s.range
+    Import(i) => i.range
+  }
+}
+
+///|
+pub fn Node::node_type(self : Node) -> String {
+  match self {
+    Map(_) => "Map"
+    MapNode(_) => "MapNode"
+    Key(_) => "Key"
+    KeyPath(_) => "KeyPath"
+    Edge(_) => "Edge"
+    EdgeIndex(_) => "EdgeIndex"
+    Value(_) => "Value"
+    ArrayValue(_) => "ArrayValue"
+    ArrayNode(_) => "ArrayNode"
+    Scalar(_) => "Scalar"
+    StringValue(_) => "StringValue"
+    UnquotedString(_) => "UnquotedString"
+    DoubleQuotedString(_) => "DoubleQuotedString"
+    BlockString(_) => "BlockString"
+    Substitution(_) => "Substitution"
+    Import(_) => "Import"
+  }
+}
+
+///|
+pub fn Node::children(self : Node) -> Array[Node] {
+  let out : Array[Node] = []
+  match self {
+    Map(m) =>
+      for n in m.nodes {
+        out.push(MapNode(n))
+      }
+    MapNode(n) =>
+      match n {
+        Comment(_, _) | BlockComment(_, _) => ()
+        Substitution(s) => out.push(Substitution(s))
+        Import(i) => out.push(Import(i))
+        Key(k) => out.push(Key(k))
+      }
+    Key(k) => {
+      match k.key {
+        Some(kp) => out.push(KeyPath(kp))
+        None => ()
+      }
+      for e in k.edges {
+        out.push(Edge(e))
+      }
+      match k.edge_index {
+        Some(ei) => out.push(EdgeIndex(ei))
+        None => ()
+      }
+      match k.edge_key {
+        Some(kp) => out.push(KeyPath(kp))
+        None => ()
+      }
+      match k.primary {
+        Some(s) => out.push(Scalar(s))
+        None => ()
+      }
+      match k.value {
+        Some(v) => out.push(Value(v))
+        None => ()
+      }
+    }
+    KeyPath(kp) =>
+      for s in kp.path {
+        out.push(StringValue(s))
+      }
+    Edge(e) => {
+      out.push(KeyPath(e.src))
+      out.push(KeyPath(e.dst))
+    }
+    EdgeIndex(_) => ()
+    Value(v) =>
+      match v {
+        Scalar(s) => out.push(Scalar(s))
+        Array(a) => out.push(ArrayValue(a))
+        Map(m) => out.push(Map(m))
+        Import(i) => out.push(Import(i))
+        BlockScalar(v2, m2) => {
+          out.push(Value(v2))
+          out.push(Map(m2))
+        }
+      }
+    ArrayValue(a) =>
+      for n in a.nodes {
+        out.push(ArrayNode(n))
+      }
+    ArrayNode(n) =>
+      match n {
+        Comment(_, _) | BlockComment(_, _) => ()
+        Substitution(s) => out.push(Substitution(s))
+        Import(i) => out.push(Import(i))
+        Value(v) => out.push(Value(v))
+      }
+    Scalar(s) =>
+      match s {
+        String(str) => out.push(StringValue(str))
+        _ => ()
+      }
+    StringValue(s) =>
+      match s {
+        Unquoted(u) => out.push(UnquotedString(u))
+        DoubleQuoted(dq) => out.push(DoubleQuotedString(dq))
+        Block(b) => out.push(BlockString(b))
+        _ => ()
+      }
+    UnquotedString(u) =>
+      for seg in u.value {
+        match seg {
+          Sub(sub) => out.push(Substitution(sub))
+          _ => ()
+        }
+      }
+    DoubleQuotedString(dq) =>
+      for seg in dq.value {
+        match seg {
+          Sub(sub) => out.push(Substitution(sub))
+          _ => ()
+        }
+      }
+    BlockString(_) => ()
+    Substitution(s) =>
+      for p in s.path {
+        out.push(StringValue(p))
+      }
+    Import(i) =>
+      for p in i.path {
+        out.push(StringValue(p))
+      }
+  }
+  out
+}
+
+///|
 pub fn Value::range(self : Value) -> @lexer.Range {
   match self {
     Scalar(s) => s.range()
     Array(a) => a.range
     Map(m) => m.range
     Import(i) => i.range
-    BlockScalar(v, m) => @lexer.Range::new(v.range().start, m.range.end)
+    BlockScalar(v, m) => @lexer.Range::between(v.range(), m.range)
   }
 }
 

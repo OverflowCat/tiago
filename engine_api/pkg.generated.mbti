@@ -10,7 +10,7 @@ pub fn cycle_detected(String) -> LayoutError
 
 pub fn invalid_graph(String) -> LayoutError
 
-pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, LayoutConfig, Direction) -> LayoutOutputs raise LayoutError
+pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, LayoutConfig, Direction) -> @graph.GraphInput raise LayoutError
 
 pub fn unsupported(String) -> LayoutError
 
@@ -33,19 +33,6 @@ pub(all) enum Direction {
 pub impl Eq for Direction
 pub impl Show for Direction
 
-pub struct EdgeLayout {
-  points : Array[@graph.Point]
-}
-pub fn EdgeLayout::new(Array[@graph.Point]) -> Self
-pub impl Show for EdgeLayout
-
-pub struct FragmentOperandLayout {
-  condition : String?
-  separator_y : Double
-}
-pub fn FragmentOperandLayout::new(String?, Double) -> Self
-pub impl Show for FragmentOperandLayout
-
 pub struct LayoutConfig {
   horizontal_spacing : Double
   vertical_spacing : Double
@@ -58,50 +45,10 @@ pub fn LayoutConfig::new() -> Self
 pub fn LayoutConfig::with_spacing(Double, Double) -> Self
 pub impl Show for LayoutConfig
 
-pub struct LayoutOutputs {
-  layout : LayoutResult
-  layers : Array[(String, LayoutOutputs)]
-  scenarios : Array[(String, LayoutOutputs)]
-  steps : Array[(String, LayoutOutputs)]
-}
-pub impl Show for LayoutOutputs
-
-pub struct LayoutResult {
-  nodes : Map[String, NodeLayout]
-  edges : Map[Int, EdgeLayout]
-  edge_labels : Map[Int, NodeLayout]
-  activation_boxes : Array[(String, NodeLayout)]
-  sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[SequenceFragmentLayout]
-}
-pub fn LayoutResult::new() -> Self
-pub impl Show for LayoutResult
-
-pub struct NodeLayout {
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-}
-pub fn NodeLayout::from_box(@graph.Box) -> Self
-pub fn NodeLayout::to_box(Self) -> @graph.Box
-pub impl Show for NodeLayout
-
-pub struct SequenceFragmentLayout {
-  fragment_type : String
-  condition : String?
-  bbox : @graph.Box?
-  start_index : Int
-  end_index : Int
-  operands : Array[FragmentOperandLayout]
-}
-pub fn SequenceFragmentLayout::new(String, String?, @graph.Box?, Int, Int, Array[FragmentOperandLayout]) -> Self
-pub impl Show for SequenceFragmentLayout
-
 // Type aliases
 
 // Traits
 pub(open) trait LayoutEngine {
-  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
+  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> @graph.LayoutPatch raise LayoutError
 }
 

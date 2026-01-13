@@ -31,7 +31,7 @@ pub fn render_legend_svg(@svg.Svg, @graph.LegendInput, (Double, Double, Double, 
 
 pub fn render_shape_svg(@graph.ShapeType, SvgShapeContext) -> Unit
 
-pub fn render_svg(@diagram.RenderGraph, SvgConfig) -> String
+pub fn render_svg(@diagram.Diagram, SvgConfig) -> String
 
 // Errors
 
@@ -76,6 +76,11 @@ pub struct SvgShapeContext {
 pub fn SvgShapeContext::new(@svg.Svg, @graph.Box, String, String, Double, String, SvgConfig) -> Self
 
 // Type aliases
+pub using @diagram {type Connection as RenderEdge}
+
+pub using @diagram {type Diagram as RenderGraph}
+
+pub using @diagram {type Shape as RenderObject}
 
 // Traits
 

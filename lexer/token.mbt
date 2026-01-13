@@ -13,16 +13,20 @@
 // limitations under the License.
 
 ///|
-/// Position in source code with line, column, and byte offset
+/// Position in source code (0-based)
+///
+/// `offset` is a 0-based codepoint offset within the source string.
 pub struct Position {
-  line : Int // 1-indexed line number
-  column : Int // 1-indexed column number (in characters)
-  offset : Int // 0-indexed byte offset
+  line : Int // 0-based line
+  column : Int // 0-based column (in characters)
+  offset : Int // 0-based codepoint offset
 } derive(Eq, Show)
 
 ///|
-/// A range in source code from start to end position
+/// A range in source code from start to end position.
+/// `path` may be empty for in-memory sources.
 pub struct Range {
+  path : String
   start : Position
   end : Position
 } derive(Eq, Show)
@@ -102,7 +106,23 @@ pub fn Position::new(line : Int, column : Int, offset : Int) -> Position {
 
 ///|
 pub fn Range::new(start : Position, end : Position) -> Range {
-  { start, end }
+  { path: "", start, end }
+}
+
+///|
+pub fn Range::with_path(
+  path : String,
+  start : Position,
+  end : Position,
+) -> Range {
+  { path, start, end }
+}
+
+///|
+/// Create a range from the start of `a` to the end of `b`.
+pub fn Range::between(a : Range, b : Range) -> Range {
+  let path = if a.path != "" { a.path } else { b.path }
+  { path, start: a.start, end: b.end }
 }
 
 ///|
@@ -113,7 +133,7 @@ pub fn Token::new(kind : TokenKind, range : Range, raw : String) -> Token {
 ///|
 /// Create a simple position at the origin
 pub fn Position::zero() -> Position {
-  { line: 1, column: 1, offset: 0 }
+  { line: 0, column: 0, offset: 0 }
 }
 
 ///|

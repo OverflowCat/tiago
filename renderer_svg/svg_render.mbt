@@ -97,6 +97,38 @@ pub fn list_themes() -> Array[String] {
 }
 
 ///|
+fn style_string(value : @graph.StyleValue?, default : String) -> String {
+  match value {
+    Some(v) => v.get_value()
+    None => default
+  }
+}
+
+///|
+fn style_string_opt(value : @graph.StyleValue?) -> String? {
+  match value {
+    Some(v) => Some(v.get_value())
+    None => None
+  }
+}
+
+///|
+fn style_double(value : @graph.StyleValue?, default : Double) -> Double {
+  match value {
+    Some(v) => v.as_double().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
+fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
+  match value {
+    Some(v) => v.as_bool().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
 /// Render a graph to SVG string
 pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
   // Check if we have layers, scenarios, or steps
@@ -118,7 +150,7 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
   let mut max_x = base_max_x
   let mut max_y = base_max_y
   for layer in graph.layers {
-    let (lmin_x, lmin_y, lmax_x, lmax_y) = compute_graph_bounds(layer.graph)
+    let (lmin_x, lmin_y, lmax_x, lmax_y) = compute_graph_bounds(layer)
     if lmin_x < min_x {
       min_x = lmin_x
     }
@@ -133,7 +165,7 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
     }
   }
   for scenario in graph.scenarios {
-    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(scenario.graph)
+    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(scenario)
     if smin_x < min_x {
       min_x = smin_x
     }
@@ -148,7 +180,7 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
     }
   }
   for step in graph.steps {
-    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(step.graph)
+    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(step)
     if smin_x < min_x {
       min_x = smin_x
     }
@@ -195,18 +227,18 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
   svg.open_group_with_id("base-layer", "translate(\{offset_x},\{offset_y})")
   // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
   // Lifelines are rendered as dashed edges, activation boxes as regular objects
-  let sorted_objects = sort_objects_by_depth(graph.objects)
+  let sorted_objects = sort_objects_by_depth(graph.shapes)
   // Pass 1: Render object backgrounds (shapes, fills, borders)
   for obj in sorted_objects {
-    render_svg_object(svg, obj, graph.objects, config, theme, pass=Background)
+    render_svg_object(svg, obj, graph.shapes, config, theme, pass=Background)
   }
   // Pass 2: Render edges (on top of backgrounds, behind text)
-  for edge in graph.edges {
+  for edge in graph.connections {
     render_svg_edge(svg, edge, config, theme)
   }
   // Pass 3: Render object foregrounds (text, labels, content)
   for obj in sorted_objects {
-    render_svg_object(svg, obj, graph.objects, config, theme, pass=Foreground)
+    render_svg_object(svg, obj, graph.shapes, config, theme, pass=Foreground)
   }
   // Render sequence diagram notes (using page shape)
   for note in graph.sequence_notes {
@@ -227,13 +259,13 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
       "display: none",
     )
     // Render layer edges
-    for edge in layer.graph.edges {
+    for edge in layer.connections {
       render_svg_edge(svg, edge, config, theme)
     }
     // Render layer objects sorted by depth
-    let sorted_layer_objects = sort_objects_by_depth(layer.graph.objects)
+    let sorted_layer_objects = sort_objects_by_depth(layer.shapes)
     for obj in sorted_layer_objects {
-      render_svg_object(svg, obj, layer.graph.objects, config, theme)
+      render_svg_object(svg, obj, layer.shapes, config, theme)
     }
     svg.close_group()
   }
@@ -245,13 +277,13 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
       "translate(\{offset_x},\{offset_y})",
       "display: none",
     )
-    for edge in scenario.graph.edges {
+    for edge in scenario.connections {
       render_svg_edge(svg, edge, config, theme)
     }
     // Render scenario objects sorted by depth
-    let sorted_scenario_objects = sort_objects_by_depth(scenario.graph.objects)
+    let sorted_scenario_objects = sort_objects_by_depth(scenario.shapes)
     for obj in sorted_scenario_objects {
-      render_svg_object(svg, obj, scenario.graph.objects, config, theme)
+      render_svg_object(svg, obj, scenario.shapes, config, theme)
     }
     svg.close_group()
   }
@@ -263,13 +295,13 @@ pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
       "translate(\{offset_x},\{offset_y})",
       "display: none",
     )
-    for edge in step.graph.edges {
+    for edge in step.connections {
       render_svg_edge(svg, edge, config, theme)
     }
     // Render step objects sorted by depth
-    let sorted_step_objects = sort_objects_by_depth(step.graph.objects)
+    let sorted_step_objects = sort_objects_by_depth(step.shapes)
     for obj in sorted_step_objects {
-      render_svg_object(svg, obj, step.graph.objects, config, theme)
+      render_svg_object(svg, obj, step.shapes, config, theme)
     }
     svg.close_group()
   }
@@ -758,9 +790,9 @@ fn add_fill_patterns(
 ) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
-  for obj in graph.objects {
+  for obj in graph.shapes {
     if obj.style.fill_pattern is Some(p) {
-      patterns_used.add(p)
+      patterns_used.add(p.get_value())
     }
   }
   // Add pattern definitions for each used pattern
@@ -788,16 +820,16 @@ fn add_fill_patterns(
 fn add_sketch_filter(svg : @svg.Svg, graph : RenderGraph) -> Unit {
   // Check if any object uses sketch mode
   let mut needs_sketch = false
-  for obj in graph.objects {
-    if obj.style.sketch is Some(true) {
+  for obj in graph.shapes {
+    if style_bool(obj.style.sketch, false) {
       needs_sketch = true
       break
     }
   }
   // Also check edges
   if not(needs_sketch) {
-    for edge in graph.edges {
-      if edge.style.sketch is Some(true) {
+    for edge in graph.connections {
+      if style_bool(edge.style.sketch, false) {
         needs_sketch = true
         break
       }
@@ -823,7 +855,7 @@ fn compute_graph_bounds(
   let mut max_x = 0.0
   let mut max_y = 0.0
   let mut first = true
-  for obj in graph.objects {
+  for obj in graph.shapes {
     match obj.box {
       Some(b) => {
         let left = b.x
@@ -883,7 +915,7 @@ fn compute_graph_bounds(
     }
   }
   // Include edge routes
-  for edge in graph.edges {
+  for edge in graph.connections {
     for point in edge.route {
       if first {
         min_x = point.x
@@ -921,6 +953,29 @@ fn get_object_depth(id : String) -> Int {
     }
   }
   depth
+}
+
+///|
+fn is_container(obj : RenderObject) -> Bool {
+  obj.child_ids.length() > 0
+}
+
+///|
+fn object_children(
+  obj : RenderObject,
+  all_objects : Array[RenderObject],
+) -> Array[RenderObject] {
+  let children : Array[RenderObject] = []
+  for child_id in obj.child_ids {
+    let mut found = false
+    for candidate in all_objects {
+      if not(found) && candidate.id == child_id {
+        children.push(candidate)
+        found = true
+      }
+    }
+  }
+  children
 }
 
 ///|
@@ -1035,17 +1090,14 @@ fn render_svg_object(
     svg.open_group_with_tooltip(obj.tooltip.unwrap())
   }
   // Apply sketch filter if enabled (only in foreground pass)
-  let use_sketch = obj.style.sketch is Some(true) && is_foreground
+  let use_sketch = style_bool(obj.style.sketch, false) && is_foreground
   if use_sketch {
     svg.open_group_with_filter("sketch-filter")
   }
   // Get style values
-  let base_fill = match obj.style.fill {
-    Some(f) => f
-    None => config.default_fill
-  }
+  let base_fill = style_string(obj.style.fill, config.default_fill)
   // Apply fill pattern if specified
-  let fill = match obj.style.fill_pattern {
+  let fill = match style_string_opt(obj.style.fill_pattern) {
     Some(p) =>
       match p.to_lower() {
         "dots" => "url(#pattern-dots)"
@@ -1056,22 +1108,16 @@ fn render_svg_object(
       }
     None => base_fill
   }
-  let stroke = match obj.style.stroke {
-    Some(s) => s
-    None => config.default_stroke
-  }
-  let stroke_width = match obj.style.stroke_width {
-    Some(w) => w
-    None => config.default_stroke_width
-  }
+  let stroke = style_string(obj.style.stroke, config.default_stroke)
+  let stroke_width = style_double(
+    obj.style.stroke_width,
+    config.default_stroke_width,
+  )
   // Apply no_corner_radius special rule
   let border_radius = if theme.rules.no_corner_radius {
     0.0
   } else {
-    match obj.style.border_radius {
-      Some(r) => r
-      None => 0.0
-    }
+    style_double(obj.style.border_radius, 0.0)
   }
   // Render shape based on type
   match shape_type_name(obj.shape_type) {
@@ -1145,7 +1191,7 @@ fn render_svg_object(
         svg,
         box,
         obj.label,
-        obj.children,
+        object_children(obj, all_objects),
         fill,
         stroke,
         stroke_width,
@@ -1307,8 +1353,8 @@ fn render_svg_object(
   // Background pass: render decorations (double border, dots)
   if not(is_foreground) {
     // Add double border if specified by style or theme rule for outer containers
-    let is_outer_container = obj.is_container() && not(obj.id.contains("."))
-    let needs_double_border = obj.style.double_border is Some(true) ||
+    let is_outer_container = is_container(obj) && not(obj.id.contains("."))
+    let needs_double_border = style_bool(obj.style.double_border, false) ||
       (theme.rules.outer_container_double_border && is_outer_container)
     if needs_double_border {
       let inset = 4.0 // Gap between inner and outer border
@@ -1327,7 +1373,7 @@ fn render_svg_object(
       )
     }
     // Add container dots if theme rule is enabled
-    if theme.rules.container_dots && obj.is_container() {
+    if theme.rules.container_dots && is_container(obj) {
       let dot_r = 2.5
       let dot_offset = 8.0
       // Dots at each corner
@@ -1389,18 +1435,12 @@ fn render_svg_object(
     // Render label
     if obj.label != "" {
       // Use custom font-family if specified in style, otherwise use config
-      let font_family = match obj.style.font_family {
-        Some(f) => f
-        None => config.font_family
-      }
+      let font_family = style_string(obj.style.font_family, config.font_family)
       // Get text-transform if specified, or apply caps_lock rule
       let text_transform = if theme.rules.caps_lock {
         "uppercase"
       } else {
-        match obj.style.text_transform {
-          Some(t) => t
-          None => ""
-        }
+        style_string(obj.style.text_transform, "")
       }
       // Adjust label position if icon is present
       let label_y = if has_icon {
@@ -2343,26 +2383,20 @@ fn render_svg_edge(
     return
   }
   // Apply sketch filter if enabled
-  let use_sketch = edge.style.sketch is Some(true)
+  let use_sketch = style_bool(edge.style.sketch, false)
   if use_sketch {
     svg.open_group_with_filter("sketch-filter")
   }
   // Get style values
-  let stroke = match edge.style.stroke {
-    Some(s) => s
-    None => config.default_stroke
-  }
-  let stroke_width = match edge.style.stroke_width {
-    Some(w) => w
-    None => config.default_stroke_width
-  }
-  let stroke_dash = match edge.style.stroke_dash {
-    Some(d) => d
-    None => 0.0
-  }
+  let stroke = style_string(edge.style.stroke, config.default_stroke)
+  let stroke_width = style_double(
+    edge.style.stroke_width,
+    config.default_stroke_width,
+  )
+  let stroke_dash = style_double(edge.style.stroke_dash, 0.0)
   // Build path - use railroad style (orthogonal with rounded corners) by default
   // Curved style overrides to smooth bezier curves when explicitly requested
-  let use_curved = edge.style.curved is Some(true)
+  let use_curved = style_bool(edge.style.curved, false)
   let pb = @svg.PathBuilder::new()
   if use_curved && edge.route.length() >= 2 {
     // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
@@ -2377,7 +2411,7 @@ fn render_svg_edge(
   let marker_start = get_marker_url(edge.src_arrowhead, true)
   let marker_end = get_marker_url(edge.dst_arrowhead, false)
   // Use animated path if animated style is enabled
-  if edge.style.animated is Some(true) {
+  if style_bool(edge.style.animated, false) {
     svg.add(
       @svg.animated_path(
         pb.build(),

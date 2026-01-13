@@ -11,7 +11,7 @@ import(
 // Values
 pub fn render(@diagram.Diagram, AsciiConfig) -> String
 
-pub fn render_ascii(@diagram.RenderGraph, AsciiConfig) -> String
+pub fn render_ascii(@diagram.Diagram, AsciiConfig) -> String
 
 pub fn render_legend_ascii(@ascii.Grid, @graph.LegendInput, Int, Int, @ascii.CharSet) -> Unit
 
@@ -43,6 +43,11 @@ pub impl @render_api.Renderer for AsciiRenderer
 pub impl Show for AsciiRenderer
 
 // Type aliases
+pub using @diagram {type Connection as RenderEdge}
+
+pub using @diagram {type Diagram as RenderGraph}
+
+pub using @diagram {type Shape as RenderObject}
 
 // Traits
 

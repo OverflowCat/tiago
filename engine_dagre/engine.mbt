@@ -31,6 +31,6 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   _graph,
   _config,
   _direction,
-) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
+) -> @graph.LayoutPatch raise @engine_api.LayoutError {
   raise @engine_api.unsupported("engine_dagre is not implemented")
 }

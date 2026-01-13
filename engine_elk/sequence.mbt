@@ -672,7 +672,13 @@ fn add_lifeline_edges(
          false, // No destination arrow
       )
       // Set dashed stroke style
-      let edge = { ..edge, style: { ..edge.style, stroke_dash: Some(6.0) } }
+      let edge = {
+        ..edge,
+        style: {
+          ..edge.style,
+          stroke_dash: Some(@graph.StyleValue::from_double(6.0)),
+        },
+      }
       // Add route points (vertical line from actor bottom to diagram end)
       edge.add_route_point(@graph.Point::new(center_x, lifeline_start_y))
       edge.add_route_point(@graph.Point::new(center_x, end_y))

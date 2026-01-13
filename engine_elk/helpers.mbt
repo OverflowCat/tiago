@@ -38,12 +38,24 @@ fn ensure_text_dimensions(graph : Graph) -> Unit {
 ///|
 fn ensure_object_text_dimensions(obj : Object) -> Unit {
   if obj.label.length() > 0 && obj.label_box is None {
+    let font_size = match obj.style.font_size {
+      Some(v) => v.as_int().unwrap_or(16)
+      None => 16
+    }
+    let bold = match obj.style.bold {
+      Some(v) => v.as_bool().unwrap_or(false)
+      None => false
+    }
+    let italic = match obj.style.italic {
+      Some(v) => v.as_bool().unwrap_or(false)
+      None => false
+    }
     let label_dims = @text_metrics.measure_label(
       obj.label,
-      obj.style.font_size.unwrap_or(16),
+      font_size,
       false,
-      obj.style.bold.unwrap_or(false),
-      obj.style.italic.unwrap_or(false),
+      bold,
+      italic,
     )
     obj.label_box = Some(
       @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
@@ -53,12 +65,24 @@ fn ensure_object_text_dimensions(obj : Object) -> Unit {
     Some(_) => ()
     None =>
       if obj.label.length() > 0 {
+        let font_size = match obj.style.font_size {
+          Some(v) => v.as_int().unwrap_or(16)
+          None => 16
+        }
+        let bold = match obj.style.bold {
+          Some(v) => v.as_bool().unwrap_or(false)
+          None => false
+        }
+        let italic = match obj.style.italic {
+          Some(v) => v.as_bool().unwrap_or(false)
+          None => false
+        }
         let label_dims = @text_metrics.measure_label(
           obj.label,
-          obj.style.font_size.unwrap_or(16),
+          font_size,
           false,
-          obj.style.bold.unwrap_or(false),
-          obj.style.italic.unwrap_or(false),
+          bold,
+          italic,
         )
         let min_width = 100.0
         let min_height = 60.0
@@ -85,10 +109,11 @@ fn ensure_object_text_dimensions(obj : Object) -> Unit {
 ///|
 fn ensure_edge_text_dimensions(edge : Edge) -> Unit {
   if edge.label.length() > 0 && edge.label_box is None {
-    let label_dims = @text_metrics.measure_edge_label(
-      edge.label,
-      edge.style.font_size.unwrap_or(14),
-    )
+    let font_size = match edge.style.font_size {
+      Some(v) => v.as_int().unwrap_or(14)
+      None => 14
+    }
+    let label_dims = @text_metrics.measure_edge_label(edge.label, font_size)
     edge.label_box = Some(
       @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
     )

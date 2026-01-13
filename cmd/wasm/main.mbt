@@ -200,8 +200,8 @@ fn compile_to_diagram(
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let diagram = if engine == 1 {
-    @diagram.layout_with_engine(
+  let laid_out_graph = if engine == 1 {
+    @engine_api.layout_with_engine(
       @engine_dagre.DagreEngine::new(),
       graph_input,
       config,
@@ -210,7 +210,7 @@ fn compile_to_diagram(
       e => return Err("Layout error: \{e}")
     }
   } else if engine == 2 {
-    @diagram.layout_with_engine(
+    @engine_api.layout_with_engine(
       @engine_railway.RailwayEngine::new(),
       graph_input,
       config,
@@ -219,7 +219,7 @@ fn compile_to_diagram(
       e => return Err("Layout error: \{e}")
     }
   } else {
-    @diagram.layout_with_engine(
+    @engine_api.layout_with_engine(
       @engine_elk.ElkEngine::new(),
       graph_input,
       config,
@@ -228,5 +228,5 @@ fn compile_to_diagram(
       e => return Err("Layout error: \{e}")
     }
   }
-  Ok(diagram)
+  Ok(@diagram.from_graph(laid_out_graph, None))
 }

@@ -13,7 +13,16 @@
 // limitations under the License.
 
 ///|
-using @diagram {type RenderEdge, type RenderGraph, type RenderObject}
+using @diagram {type Connection, type Diagram, type Shape}
+
+///|
+pub type RenderGraph = Diagram
+
+///|
+pub type RenderObject = Shape
+
+///|
+pub type RenderEdge = Connection
 
 ///|
 using @graph {
@@ -21,9 +30,7 @@ using @graph {
   type Box,
   type LegendInput,
   type Point,
+  type SequenceFragmentLayout,
   type ShapeType,
   type StyleInput,
 }
-
-///|
-using @engine_api {type SequenceFragmentLayout}

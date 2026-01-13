@@ -4,6 +4,8 @@ package "Milky2018/diago/lexer"
 // Values
 pub fn tokenize(String) -> (Array[Token], Array[LexError])
 
+pub fn tokenize_with_path(String, String) -> (Array[Token], Array[LexError])
+
 // Errors
 
 // Types and methods
@@ -17,6 +19,7 @@ pub impl Show for LexError
 type Lexer
 pub fn Lexer::new(String) -> Self
 pub fn Lexer::tokenize(Self) -> (Array[Token], Array[LexError])
+pub fn Lexer::with_path(String, String) -> Self
 
 pub struct Position {
   line : Int
@@ -29,10 +32,13 @@ pub impl Eq for Position
 pub impl Show for Position
 
 pub struct Range {
+  path : String
   start : Position
   end : Position
 }
+pub fn Range::between(Self, Self) -> Self
 pub fn Range::new(Position, Position) -> Self
+pub fn Range::with_path(String, Position, Position) -> Self
 pub impl Eq for Range
 pub impl Show for Range
 

@@ -80,29 +80,29 @@ pub fn SequenceFragmentModel::new(
 ///|
 /// Immutable style model
 pub struct StyleModel {
-  opacity : Double?
-  stroke : String?
-  fill : String?
-  stroke_width : Double?
-  stroke_dash : Double?
-  border_radius : Double?
-  shadow : Bool?
-  three_d : Bool?
-  multiple : Bool?
-  font : String?
-  font_size : Int?
-  font_color : String?
-  bold : Bool?
-  italic : Bool?
-  underline : Bool?
-  animated : Bool?
-  filled : Bool?
-  double_border : Bool?
-  text_transform : String?
-  font_family : String?
-  fill_pattern : String?
-  sketch : Bool?
-  curved : Bool?
+  opacity : StyleValue?
+  stroke : StyleValue?
+  fill : StyleValue?
+  stroke_width : StyleValue?
+  stroke_dash : StyleValue?
+  border_radius : StyleValue?
+  shadow : StyleValue?
+  three_d : StyleValue?
+  multiple : StyleValue?
+  font : StyleValue?
+  font_size : StyleValue?
+  font_color : StyleValue?
+  bold : StyleValue?
+  italic : StyleValue?
+  underline : StyleValue?
+  animated : StyleValue?
+  filled : StyleValue?
+  double_border : StyleValue?
+  text_transform : StyleValue?
+  font_family : StyleValue?
+  fill_pattern : StyleValue?
+  sketch : StyleValue?
+  curved : StyleValue?
 } derive(Eq, Show)
 
 ///|

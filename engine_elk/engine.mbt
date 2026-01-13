@@ -31,19 +31,19 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   graph,
   config,
   direction,
-) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
+) -> @graph.LayoutPatch raise @engine_api.LayoutError {
   // Layout engines must treat the input graph as read-only.
   let materialized = Graph::from_input(graph)
   layout_graph(materialized, config, direction)
-  layout_result_from_graph(materialized)
+  layout_patch_from_graph(materialized)
 }
 
 ///|
-fn layout_result_from_graph(graph : Graph) -> @engine_api.LayoutResult {
-  let result = @engine_api.LayoutResult::new()
+fn layout_patch_from_graph(graph : Graph) -> @graph.LayoutPatch {
+  let patch = @graph.LayoutPatch::new()
   for obj in graph.objects {
     match obj.box {
-      Some(b) => result.nodes[obj.id] = @engine_api.NodeLayout::from_box(b)
+      Some(b) => patch.nodes[obj.id] = b
       None => ()
     }
   }
@@ -52,38 +52,35 @@ fn layout_result_from_graph(graph : Graph) -> @engine_api.LayoutResult {
     for p in edge.route {
       points.push(@graph.Point::new(p.x, p.y))
     }
-    result.edges[edge.index] = @engine_api.EdgeLayout::new(points)
+    patch.edges[edge.index] = points
     match edge.label_box {
-      Some(b) =>
-        result.edge_labels[edge.index] = @engine_api.NodeLayout::from_box(b)
+      Some(b) => patch.edge_labels[edge.index] = b
       None => ()
     }
   }
   for ab in graph.activation_boxes {
-    result.activation_boxes.push((ab.0, @engine_api.NodeLayout::from_box(ab.1)))
+    patch.activation_boxes.push(ab)
   }
   for note in graph.sequence_notes {
-    result.sequence_notes.push(
-      (note.0, note.1, @engine_api.NodeLayout::from_box(note.2)),
-    )
+    patch.sequence_notes.push(note)
   }
   for fragment in graph.sequence_fragments {
-    result.sequence_fragments.push(fragment_layout_from_fragment(fragment))
+    patch.sequence_fragments.push(fragment_layout_from_fragment(fragment))
   }
-  result
+  patch
 }
 
 ///|
 fn fragment_layout_from_fragment(
   fragment : SequenceFragment,
-) -> @engine_api.SequenceFragmentLayout {
-  let operands : Array[@engine_api.FragmentOperandLayout] = []
+) -> @graph.SequenceFragmentLayout {
+  let operands : Array[@graph.FragmentOperandLayout] = []
   for op in fragment.operands {
     operands.push(
-      @engine_api.FragmentOperandLayout::new(op.condition, op.separator_y),
+      @graph.FragmentOperandLayout::new(op.condition, op.separator_y),
     )
   }
-  @engine_api.SequenceFragmentLayout::new(
+  @graph.SequenceFragmentLayout::new(
     fragment.fragment_type,
     fragment.condition,
     fragment.bbox,

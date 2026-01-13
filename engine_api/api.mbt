@@ -13,7 +13,12 @@
 // limitations under the License.
 
 ///|
-/// Engine API: layout contract shared between Diago engines and renderers.
+/// Engine API: layout contract shared between layout engines and exporters.
+///
+/// The layout pipeline is intentionally functional:
+/// - engines take an immutable graph
+/// - engines return a `@graph.LayoutPatch`
+/// - callers apply the patch to obtain a new graph
 
 ///|
 /// Layout configuration
@@ -88,161 +93,64 @@ pub fn LayoutConfig::with_spacing(
 
 ///|
 /// Layout engine interface.
+///
+/// Engines must not mutate their input graph. They return a patch that can be
+/// applied by the caller.
 pub(open) trait LayoutEngine {
-  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> LayoutResult raise LayoutError
-}
-
-///|
-/// Layout result for a single graph.
-///
-/// This is the "contract" between layout engines and renderers: engines compute
-/// geometry without requiring callers to understand how graph internals store
-/// boxes/routes.
-pub struct NodeLayout {
-  x : Double
-  y : Double
-  width : Double
-  height : Double
-} derive(Show)
-
-///|
-pub struct EdgeLayout {
-  points : Array[@graph.Point]
-} derive(Show)
-
-///|
-pub fn EdgeLayout::new(points : Array[@graph.Point]) -> EdgeLayout {
-  { points, }
-}
-
-///|
-/// Sequence diagram fragment layout operand.
-pub struct FragmentOperandLayout {
-  condition : String?
-  separator_y : Double
-} derive(Show)
-
-///|
-pub fn FragmentOperandLayout::new(
-  condition : String?,
-  separator_y : Double,
-) -> FragmentOperandLayout {
-  { condition, separator_y }
-}
-
-///|
-/// Sequence diagram fragment layout information.
-pub struct SequenceFragmentLayout {
-  fragment_type : String
-  condition : String?
-  bbox : @graph.Box?
-  start_index : Int
-  end_index : Int
-  operands : Array[FragmentOperandLayout]
-} derive(Show)
-
-///|
-pub fn SequenceFragmentLayout::new(
-  fragment_type : String,
-  condition : String?,
-  bbox : @graph.Box?,
-  start_index : Int,
-  end_index : Int,
-  operands : Array[FragmentOperandLayout],
-) -> SequenceFragmentLayout {
-  { fragment_type, condition, bbox, start_index, end_index, operands }
-}
-
-///|
-/// Complete layout information for a rendered diagram graph.
-///
-/// This structure contains all the geometric information needed by renderers to
-/// draw a graph, including node positions, edge routing, labels, and special
-/// sequence diagram elements. It serves as the contract between layout engines
-/// and renderers.
-///
-/// Fields:
-///
-/// * `nodes` : Position and size information for each graph node, keyed by node
-///   ID.
-/// * `edges` : Routing points for each graph edge, keyed by edge index.
-/// * `edge_labels` : Position and size information for edge labels, keyed by
-///   edge index.
-/// * `activation_boxes` : Sequence diagram activation boxes with their
-///   associated node IDs and layout information.
-/// * `sequence_notes` : Sequence diagram notes with source ID, target ID, and
-///   layout information.
-/// * `sequence_fragments` : Sequence diagram fragment elements.
-///
-pub struct LayoutResult {
-  nodes : Map[String, NodeLayout]
-  edges : Map[Int, EdgeLayout]
-  edge_labels : Map[Int, NodeLayout]
-  activation_boxes : Array[(String, NodeLayout)]
-  sequence_notes : Array[(String, String, NodeLayout)]
-  sequence_fragments : Array[SequenceFragmentLayout]
-} derive(Show)
-
-///|
-/// Layout outputs for a graph and all of its variants.
-pub struct LayoutOutputs {
-  layout : LayoutResult
-  layers : Array[(String, LayoutOutputs)]
-  scenarios : Array[(String, LayoutOutputs)]
-  steps : Array[(String, LayoutOutputs)]
-} derive(Show)
-
-///|
-pub fn NodeLayout::from_box(box : @graph.Box) -> NodeLayout {
-  { x: box.x, y: box.y, width: box.width, height: box.height }
-}
-
-///|
-pub fn NodeLayout::to_box(self : NodeLayout) -> @graph.Box {
-  @graph.Box::new(self.x, self.y, self.width, self.height)
-}
-
-///|
-pub fn LayoutResult::new() -> LayoutResult {
-  {
-    nodes: {},
-    edges: {},
-    edge_labels: {},
-    activation_boxes: [],
-    sequence_notes: [],
-    sequence_fragments: [],
-  }
+  layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> @graph.LayoutPatch raise LayoutError
 }
 
 ///|
 /// Perform layout on a graph (including variants) with a specific engine.
+///
+/// Returns a new graph with layout applied.
 pub fn[Engine : LayoutEngine] layout_with_engine(
   engine : Engine,
   graph : @graph.GraphInput,
   config : LayoutConfig,
   direction : Direction,
-) -> LayoutOutputs raise LayoutError {
-  let layout = engine.layout(graph, config, direction)
-  let layers : Array[(String, LayoutOutputs)] = []
-  for layer in graph.layers {
+) -> @graph.GraphInput raise LayoutError {
+  let patch = engine.layout(graph, config, direction)
+  let laid_out = @graph.apply_layout(graph, patch)
+  let layers : Array[@graph.LayerInput] = []
+  for layer in laid_out.layers {
     layers.push(
-      (layer.name, layout_with_engine(engine, layer.graph, config, direction)),
+      @graph.LayerInput::new(
+        layer.name,
+        layout_with_engine(engine, layer.graph, config, direction),
+      ),
     )
   }
-  let scenarios : Array[(String, LayoutOutputs)] = []
-  for scenario in graph.scenarios {
+  let scenarios : Array[@graph.ScenarioInput] = []
+  for scenario in laid_out.scenarios {
     scenarios.push(
-      (
+      @graph.ScenarioInput::new(
         scenario.name,
         layout_with_engine(engine, scenario.graph, config, direction),
       ),
     )
   }
-  let steps : Array[(String, LayoutOutputs)] = []
-  for step in graph.steps {
+  let steps : Array[@graph.StepInput] = []
+  for step in laid_out.steps {
     steps.push(
-      (step.name, layout_with_engine(engine, step.graph, config, direction)),
+      @graph.StepInput::new(
+        step.name,
+        layout_with_engine(engine, step.graph, config, direction),
+      ),
     )
   }
-  { layout, layers, scenarios, steps }
+  @graph.GraphInput::from_parts(
+    laid_out.name,
+    laid_out.root,
+    laid_out.objects,
+    laid_out.edges,
+    laid_out.sequence_fragments,
+    laid_out.activation_boxes,
+    laid_out.sequence_notes,
+    laid_out.sequence_fragments_layout,
+    layers,
+    scenarios,
+    steps,
+    laid_out.legend,
+  )
 }

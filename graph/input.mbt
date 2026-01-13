@@ -26,6 +26,9 @@ pub struct GraphInput {
   objects : Array[ObjectInput]
   edges : Array[EdgeInput]
   sequence_fragments : Array[SequenceFragmentInput]
+  activation_boxes : Array[(String, Box)]
+  sequence_notes : Array[(String, String, Box)]
+  sequence_fragments_layout : Array[SequenceFragmentLayout]
   layers : Array[LayerInput]
   scenarios : Array[ScenarioInput]
   steps : Array[StepInput]
@@ -41,6 +44,9 @@ pub fn GraphInput::new(name : String) -> GraphInput {
     objects: [],
     edges: [],
     sequence_fragments: [],
+    activation_boxes: [],
+    sequence_notes: [],
+    sequence_fragments_layout: [],
     layers: [],
     scenarios: [],
     steps: [],
@@ -55,6 +61,9 @@ pub fn GraphInput::from_parts(
   objects : Array[ObjectInput],
   edges : Array[EdgeInput],
   sequence_fragments : Array[SequenceFragmentInput],
+  activation_boxes : Array[(String, Box)],
+  sequence_notes : Array[(String, String, Box)],
+  sequence_fragments_layout : Array[SequenceFragmentLayout],
   layers : Array[LayerInput],
   scenarios : Array[ScenarioInput],
   steps : Array[StepInput],
@@ -66,6 +75,9 @@ pub fn GraphInput::from_parts(
     objects,
     edges,
     sequence_fragments,
+    activation_boxes,
+    sequence_notes,
+    sequence_fragments_layout,
     layers,
     scenarios,
     steps,
@@ -319,6 +331,7 @@ pub struct EdgeInput {
   dst_anchor : String?
   label : String
   style : StyleInput
+  route : Array[Point]
   bend_points : Array[Point]?
   is_curve : Bool
   z_index : Int
@@ -356,6 +369,7 @@ pub fn EdgeInput::new(
     dst_anchor: None,
     label: "",
     style: StyleInput::new(),
+    route: [],
     bend_points: None,
     is_curve: false,
     z_index: 0,
@@ -379,6 +393,7 @@ pub fn EdgeInput::from_parts(
   dst_anchor : String?,
   label : String,
   style : StyleInput,
+  route : Array[Point],
   bend_points : Array[Point]?,
   is_curve : Bool,
   z_index : Int,
@@ -399,6 +414,7 @@ pub fn EdgeInput::from_parts(
     dst_anchor,
     label,
     style,
+    route,
     bend_points,
     is_curve,
     z_index,
@@ -425,30 +441,137 @@ pub fn EdgeInput::get_label_box(self : EdgeInput) -> Box? {
 }
 
 ///|
+/// A style value with its source range.
+///
+/// The value is preserved as a string. Consumers may parse it as needed.
+pub struct StyleValue {
+  value : String
+  range : @lexer.Range
+} derive(Eq, Show)
+
+///|
+pub fn StyleValue::new(value : String, range : @lexer.Range) -> StyleValue {
+  { value, range }
+}
+
+///|
+/// Create a style value without a concrete source location.
+pub fn StyleValue::synthetic(value : String) -> StyleValue {
+  let p = @lexer.Position::zero()
+  { value, range: @lexer.Range::new(p, p) }
+}
+
+///|
+pub fn StyleValue::as_bool(self : StyleValue) -> Bool? {
+  match self.value.to_lower() {
+    "true" => Some(true)
+    "false" => Some(false)
+    _ => None
+  }
+}
+
+///|
+pub fn StyleValue::as_int(self : StyleValue) -> Int? {
+  Some(@strconv.parse_int(self.value)) catch {
+    _ => None
+  }
+}
+
+///|
+pub fn StyleValue::as_double(self : StyleValue) -> Double? {
+  Some(@strconv.parse_double(self.value)) catch {
+    _ => None
+  }
+}
+
+///|
+pub fn StyleValue::get_value(self : StyleValue) -> String {
+  self.value
+}
+
+///|
+pub fn StyleValue::get_range(self : StyleValue) -> @lexer.Range {
+  self.range
+}
+
+///|
+pub fn StyleValue::from_string(value : String) -> StyleValue {
+  StyleValue::synthetic(value)
+}
+
+///|
+pub fn StyleValue::from_bool(value : Bool) -> StyleValue {
+  let s = if value { "true" } else { "false" }
+  StyleValue::synthetic(s)
+}
+
+///|
+pub fn StyleValue::from_int(value : Int) -> StyleValue {
+  StyleValue::synthetic("\{value}")
+}
+
+///|
+pub fn StyleValue::from_double(value : Double) -> StyleValue {
+  StyleValue::synthetic("\{value}")
+}
+
+///|
+pub fn StyleValue::from_string_opt(value : String?) -> StyleValue? {
+  match value {
+    Some(v) => Some(StyleValue::from_string(v))
+    None => None
+  }
+}
+
+///|
+pub fn StyleValue::from_bool_opt(value : Bool?) -> StyleValue? {
+  match value {
+    Some(v) => Some(StyleValue::from_bool(v))
+    None => None
+  }
+}
+
+///|
+pub fn StyleValue::from_int_opt(value : Int?) -> StyleValue? {
+  match value {
+    Some(v) => Some(StyleValue::from_int(v))
+    None => None
+  }
+}
+
+///|
+pub fn StyleValue::from_double_opt(value : Double?) -> StyleValue? {
+  match value {
+    Some(v) => Some(StyleValue::from_double(v))
+    None => None
+  }
+}
+
+///|
 pub struct StyleInput {
-  opacity : Double?
-  stroke : String?
-  fill : String?
-  stroke_width : Double?
-  stroke_dash : Double?
-  border_radius : Double?
-  shadow : Bool?
-  three_d : Bool?
-  multiple : Bool?
-  font : String?
-  font_size : Int?
-  font_color : String?
-  bold : Bool?
-  italic : Bool?
-  underline : Bool?
-  animated : Bool?
-  filled : Bool?
-  double_border : Bool?
-  text_transform : String?
-  font_family : String?
-  fill_pattern : String?
-  sketch : Bool?
-  curved : Bool?
+  opacity : StyleValue?
+  stroke : StyleValue?
+  fill : StyleValue?
+  stroke_width : StyleValue?
+  stroke_dash : StyleValue?
+  border_radius : StyleValue?
+  shadow : StyleValue?
+  three_d : StyleValue?
+  multiple : StyleValue?
+  font : StyleValue?
+  font_size : StyleValue?
+  font_color : StyleValue?
+  bold : StyleValue?
+  italic : StyleValue?
+  underline : StyleValue?
+  animated : StyleValue?
+  filled : StyleValue?
+  double_border : StyleValue?
+  text_transform : StyleValue?
+  font_family : StyleValue?
+  fill_pattern : StyleValue?
+  sketch : StyleValue?
+  curved : StyleValue?
 } derive(Eq, Show)
 
 ///|
@@ -482,29 +605,29 @@ pub fn StyleInput::new() -> StyleInput {
 
 ///|
 pub fn StyleInput::from_parts(
-  opacity : Double?,
-  stroke : String?,
-  fill : String?,
-  stroke_width : Double?,
-  stroke_dash : Double?,
-  border_radius : Double?,
-  shadow : Bool?,
-  three_d : Bool?,
-  multiple : Bool?,
-  font : String?,
-  font_size : Int?,
-  font_color : String?,
-  bold : Bool?,
-  italic : Bool?,
-  underline : Bool?,
-  animated : Bool?,
-  filled : Bool?,
-  double_border : Bool?,
-  text_transform : String?,
-  font_family : String?,
-  fill_pattern : String?,
-  sketch : Bool?,
-  curved : Bool?,
+  opacity : StyleValue?,
+  stroke : StyleValue?,
+  fill : StyleValue?,
+  stroke_width : StyleValue?,
+  stroke_dash : StyleValue?,
+  border_radius : StyleValue?,
+  shadow : StyleValue?,
+  three_d : StyleValue?,
+  multiple : StyleValue?,
+  font : StyleValue?,
+  font_size : StyleValue?,
+  font_color : StyleValue?,
+  bold : StyleValue?,
+  italic : StyleValue?,
+  underline : StyleValue?,
+  animated : StyleValue?,
+  filled : StyleValue?,
+  double_border : StyleValue?,
+  text_transform : StyleValue?,
+  font_family : StyleValue?,
+  fill_pattern : StyleValue?,
+  sketch : StyleValue?,
+  curved : StyleValue?,
 ) -> StyleInput {
   {
     opacity,
@@ -699,6 +822,9 @@ pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
     objects,
     edges,
     sequence_fragments: fragments,
+    activation_boxes: [],
+    sequence_notes: [],
+    sequence_fragments_layout: [],
     layers,
     scenarios,
     steps,
@@ -767,6 +893,7 @@ pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
     edge.dst_anchor,
     edge.label,
     StyleInput::from_model(edge.style),
+    [],
     bend_points,
     edge.is_curve,
     edge.z_index,

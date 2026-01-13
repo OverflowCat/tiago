@@ -2,7 +2,6 @@
   "import": [
     "Milky2018/diago/diagram",
     "Milky2018/diago/graph",
-    "Milky2018/diago/engine_api",
     "Milky2018/diago/svg",
     "Milky2018/diago/themes",
     "Milky2018/diago/render_api"

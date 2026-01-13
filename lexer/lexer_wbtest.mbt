@@ -221,16 +221,16 @@ test "tokenize newlines" {
 ///|
 test "tokenize position tracking" {
   let (tokens, _) = tokenize("a\nb")
-  // 'a' at line 1, col 1
-  assert_eq(tokens[0].range.start.line, 1)
-  assert_eq(tokens[0].range.start.column, 1)
+  // 'a' at line 0, col 0
+  assert_eq(tokens[0].range.start.line, 0)
+  assert_eq(tokens[0].range.start.column, 0)
   assert_eq(tokens[0].range.start.offset, 0)
-  // newline at line 1, col 2
-  assert_eq(tokens[1].range.start.line, 1)
-  assert_eq(tokens[1].range.start.column, 2)
-  // 'b' at line 2, col 1
-  assert_eq(tokens[2].range.start.line, 2)
-  assert_eq(tokens[2].range.start.column, 1)
+  // newline at line 0, col 1
+  assert_eq(tokens[1].range.start.line, 0)
+  assert_eq(tokens[1].range.start.column, 1)
+  // 'b' at line 1, col 0
+  assert_eq(tokens[2].range.start.line, 1)
+  assert_eq(tokens[2].range.start.column, 0)
 }
 
 ///|
@@ -325,8 +325,8 @@ test "token is_trivia helper" {
 ///|
 test "Position::zero" {
   let pos = Position::zero()
-  assert_eq(pos.line, 1)
-  assert_eq(pos.column, 1)
+  assert_eq(pos.line, 0)
+  assert_eq(pos.column, 0)
   assert_eq(pos.offset, 0)
 }
 

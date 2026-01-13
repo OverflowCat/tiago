@@ -29,6 +29,7 @@ using @graph {
   type SequenceFragmentInput,
   type ShapeType,
   type StyleInput,
+  type StyleValue,
 }
 
 ///|
@@ -241,34 +242,34 @@ priv struct Port {
 /// Visual styling properties
 #warnings("-unused_field")
 priv struct Style {
-  opacity : Double?
-  stroke : String?
-  fill : String?
-  stroke_width : Double?
-  stroke_dash : Double?
-  border_radius : Double?
-  shadow : Bool?
-  three_d : Bool?
-  multiple : Bool?
-  font : String?
-  font_size : Int?
-  font_color : String?
-  bold : Bool?
-  italic : Bool?
-  underline : Bool?
-  animated : Bool?
-  filled : Bool?
-  double_border : Bool?
+  opacity : StyleValue?
+  stroke : StyleValue?
+  fill : StyleValue?
+  stroke_width : StyleValue?
+  stroke_dash : StyleValue?
+  border_radius : StyleValue?
+  shadow : StyleValue?
+  three_d : StyleValue?
+  multiple : StyleValue?
+  font : StyleValue?
+  font_size : StyleValue?
+  font_color : StyleValue?
+  bold : StyleValue?
+  italic : StyleValue?
+  underline : StyleValue?
+  animated : StyleValue?
+  filled : StyleValue?
+  double_border : StyleValue?
   /// Text transformation: uppercase, lowercase, capitalize, none
-  text_transform : String?
+  text_transform : StyleValue?
   /// Custom font family
-  font_family : String?
+  font_family : StyleValue?
   /// Fill pattern: dots, lines, cross-hatch, grain
-  fill_pattern : String?
+  fill_pattern : StyleValue?
   /// Sketch mode: hand-drawn appearance
-  sketch : Bool?
+  sketch : StyleValue?
   /// Curved edges: use smooth bezier curves instead of straight lines
-  curved : Bool?
+  curved : StyleValue?
 }
 
 // ============================================================================

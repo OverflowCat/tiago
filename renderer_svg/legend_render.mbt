@@ -138,7 +138,7 @@ fn render_legend_shape_entry(
   let fill = match style {
     Some(s) =>
       match s.fill {
-        Some(f) => f
+        Some(f) => f.get_value()
         None => config.default_fill
       }
     None => config.default_fill
@@ -146,7 +146,7 @@ fn render_legend_shape_entry(
   let stroke = match style {
     Some(s) =>
       match s.stroke {
-        Some(f) => f
+        Some(f) => f.get_value()
         None => config.default_stroke
       }
     None => config.default_stroke

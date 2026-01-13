@@ -84,11 +84,11 @@ fn layout_graph(
 }
 
 ///|
-/// Convenience wrapper matching the legacy `layout.layout` API.
+/// Convenience wrapper: layout a graph and return a new graph.
 pub fn layout(
   graph : GraphInput,
   config : LayoutConfig,
   direction : Direction,
-) -> @engine_api.LayoutOutputs raise LayoutError {
+) -> GraphInput raise LayoutError {
   @engine_api.layout_with_engine(ElkEngine::new(), graph, config, direction)
 }

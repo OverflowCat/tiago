@@ -31,18 +31,16 @@ impl @engine_api.LayoutEngine for FakeEngine with layout(
   graph,
   _config,
   _direction,
-) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  let result = @engine_api.LayoutResult::new()
+) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  let patch = @graph.LayoutPatch::new()
   let mut i = 0
   for obj in graph.objects {
     let x = (i * 10).to_double()
     let y = (i * 7).to_double()
-    result.nodes[obj.id] = @engine_api.NodeLayout::from_box(
-      @graph.Box::new(x, y, 10.0, 6.0),
-    )
+    patch.nodes[obj.id] = @graph.Box::new(x, y, 10.0, 6.0)
     i = i + 1
   }
-  result
+  patch
 }
 
 ///|
@@ -113,6 +111,9 @@ fn graph_input(
     objects,
     edges,
     [],
+    [],
+    [],
+    [],
     layers,
     scenarios,
     steps,
@@ -136,32 +137,15 @@ impl @engine_api.LayoutEngine for RoundtripEngine with layout(
   _graph,
   _config,
   _direction,
-) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  let result = @engine_api.LayoutResult::new()
-  result.nodes["a"] = @engine_api.NodeLayout::from_box(
-    @graph.Box::new(1.0, 2.0, 3.0, 4.0),
-  )
-  result.nodes["b"] = @engine_api.NodeLayout::from_box(
-    @graph.Box::new(10.0, 20.0, 30.0, 40.0),
-  )
-  result.edges[7] = @engine_api.EdgeLayout::new([
-    @graph.Point::new(1.0, 1.0),
-    @graph.Point::new(2.0, 2.0),
-  ])
-  result.edge_labels[7] = @engine_api.NodeLayout::from_box(
-    @graph.Box::new(5.0, 6.0, 7.0, 8.0),
-  )
-  result.activation_boxes.push(
-    ("a", @engine_api.NodeLayout::from_box(@graph.Box::new(9.0, 9.0, 1.0, 2.0))),
-  )
-  result.sequence_notes.push(
-    (
-      "a",
-      "note",
-      @engine_api.NodeLayout::from_box(@graph.Box::new(3.0, 4.0, 5.0, 6.0)),
-    ),
-  )
-  result
+) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  let patch = @graph.LayoutPatch::new()
+  patch.nodes["a"] = @graph.Box::new(1.0, 2.0, 3.0, 4.0)
+  patch.nodes["b"] = @graph.Box::new(10.0, 20.0, 30.0, 40.0)
+  patch.edges[7] = [@graph.Point::new(1.0, 1.0), @graph.Point::new(2.0, 2.0)]
+  patch.edge_labels[7] = @graph.Box::new(5.0, 6.0, 7.0, 8.0)
+  patch.activation_boxes.push(("a", @graph.Box::new(9.0, 9.0, 1.0, 2.0)))
+  patch.sequence_notes.push(("a", "note", @graph.Box::new(3.0, 4.0, 5.0, 6.0)))
+  patch
 }
 
 ///|
@@ -205,16 +189,18 @@ test "layout_with_engine applies to variants" {
   )
   let engine = FakeEngine::new()
   let config = @engine_api.LayoutConfig::new()
-  let outputs = @engine_api.layout_with_engine(
+  let laid_out = @engine_api.layout_with_engine(
     engine,
     graph,
     config,
     @engine_api.Direction::Down,
   )
-  assert_true(outputs.layout.nodes.get("a") is Some(_))
-  assert_true(outputs.layers[0].1.layout.nodes.get("b") is Some(_))
-  assert_true(outputs.scenarios[0].1.layout.nodes.get("c") is Some(_))
-  assert_true(outputs.steps[0].1.layout.nodes.get("d") is Some(_))
+  assert_true(laid_out.find_object("a").unwrap().box is Some(_))
+  assert_true(laid_out.layers[0].graph.find_object("b").unwrap().box is Some(_))
+  assert_true(
+    laid_out.scenarios[0].graph.find_object("c").unwrap().box is Some(_),
+  )
+  assert_true(laid_out.steps[0].graph.find_object("d").unwrap().box is Some(_))
 }
 
 ///|
@@ -223,13 +209,15 @@ test "layout result roundtrips via graph" {
   let edges = [@graph.EdgeInput::new(7, "a", "b", false, true)]
   let graph = graph_input("roundtrip", ["a", "b"], objects, edges, [], [], [])
   let engine = RoundtripEngine::new()
-  let outputs = @engine_api.layout_with_engine(
+  let laid_out_graph = @engine_api.layout_with_engine(
     engine,
     graph,
     @engine_api.LayoutConfig::new(),
     @engine_api.Direction::Down,
   )
-  let materialized = @diagram.materialize(@diagram.build(graph, outputs))
+  let materialized = @diagram.materialize(
+    @diagram.from_graph(laid_out_graph, None),
+  )
   match materialized.find_object("a").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(1.0, 2.0, 3.0, 4.0))
     None => fail("a should have a box")

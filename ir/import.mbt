@@ -174,7 +174,14 @@ fn compile_key_with_imports(
   let mut current_map = ir
   for i = 0; i < path.length() - 1; i = i + 1 {
     let name = path[i]
-    let field = current_map.ensure_field(name)
+    let elem = key_path.path[i]
+    let field = record_field_reference(
+      current_map,
+      current_map.ensure_field(name),
+      elem,
+      i,
+      false,
+    )
     match field.composite {
       Some(Composite::Map(m)) => current_map = m
       None => {
@@ -193,8 +200,20 @@ fn compile_key_with_imports(
     }
   }
   // Set the final field
-  let final_name = path[path.length() - 1]
-  let field = current_map.ensure_field(final_name)
+  let last_index = path.length() - 1
+  let final_name = path[last_index]
+  let last_elem = key_path.path[last_index]
+  let field0 = current_map.ensure_field(final_name)
+  let field1 = if key.primary is Some(_) {
+    record_field_reference(current_map, field0, last_elem, last_index, true)
+  } else {
+    field0
+  }
+  let field = if key.value is Some(_) {
+    record_field_reference(current_map, field1, last_elem, last_index, false)
+  } else {
+    field1
+  }
   // Set primary value
   let field = match key.primary {
     Some(scalar) =>
@@ -389,7 +408,7 @@ fn compile_edges_with_imports(
     let existing = ir.find_edges(edge_id)
     if existing.length() > 0 {
       let e = existing[0]
-      e.references.push(EdgeReference::new(0, true))
+      e.references.push(EdgeReference::new(edge.range, 0, true))
       let (primary, edge_map) = match key.value {
         Some(value) =>
           match value {
@@ -440,7 +459,7 @@ fn compile_edges_with_imports(
         None => ()
       }
       let new_edge = Edge::new(edge_id, primary, edge_map, [
-        EdgeReference::new(0, true),
+        EdgeReference::new(edge.range, 0, true),
       ])
       ir.add_edge(new_edge)
       ensure_field_path(ir, src_path)

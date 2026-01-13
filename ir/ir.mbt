@@ -19,16 +19,19 @@
 /// of diago keys after processing variable substitutions, imports, and globs.
 
 ///|
-/// A scalar value in the IR
+/// A scalar value in the IR.
+///
+/// Scalars carry a source `range` for error reporting and reference tracking.
 pub struct Scalar {
   value : ScalarValue
+  range : @lexer.Range
 } derive(Eq, Show)
 
 ///|
 /// Types of scalar values
 pub(all) enum ScalarValue {
   Null
-  Bool(Bool)
+  Bool(String)
   Number(String)
   String(String)
 } derive(Eq, Show)
@@ -93,6 +96,7 @@ pub struct EdgeID {
 ///|
 /// Reference to a field from the AST
 pub struct FieldReference {
+  range : @lexer.Range
   string : String
   key_path_index : Int
   primary : Bool
@@ -103,39 +107,129 @@ pub struct FieldReference {
 ///|
 /// Reference to an edge from the AST
 pub struct EdgeReference {
+  range : @lexer.Range
   edge_index : Int
   primary : Bool
   due_to_glob : Bool
   due_to_lazy_glob : Bool
 } derive(Eq, Show)
 
+///|
+/// Boxed IR node for generic traversal.
+pub(all) enum Node {
+  Scalar(Scalar)
+  Field(Field)
+  Edge(Edge)
+  IRArray(IRArray)
+  Map(Map)
+  Composite(Composite)
+  Value(Value)
+} derive(Eq, Show)
+
+///|
+pub fn Node::node_type(self : Node) -> String {
+  match self {
+    Scalar(_) => "Scalar"
+    Field(_) => "Field"
+    Edge(_) => "Edge"
+    IRArray(_) => "IRArray"
+    Map(_) => "Map"
+    Composite(_) => "Composite"
+    Value(_) => "Value"
+  }
+}
+
+///|
+pub fn Node::children(self : Node) -> Array[Node] {
+  let out : Array[Node] = []
+  match self {
+    Scalar(_) => ()
+    Field(f) => {
+      match f.primary {
+        Some(s) => out.push(Scalar(s))
+        None => ()
+      }
+      match f.composite {
+        Some(c) => out.push(Composite(c))
+        None => ()
+      }
+    }
+    Edge(e) => {
+      match e.primary {
+        Some(s) => out.push(Scalar(s))
+        None => ()
+      }
+      match e.map {
+        Some(m) => out.push(Map(m))
+        None => ()
+      }
+    }
+    IRArray(a) =>
+      for v in a.values {
+        out.push(Value(v))
+      }
+    Map(m) => {
+      for f in m.fields {
+        out.push(Field(f))
+      }
+      for e in m.edges {
+        out.push(Edge(e))
+      }
+    }
+    Composite(c) =>
+      match c {
+        Array(a) => out.push(IRArray(a))
+        Map(m) => out.push(Map(m))
+      }
+    Value(v) =>
+      match v {
+        Scalar(s) => out.push(Scalar(s))
+        Array(a) => out.push(IRArray(a))
+        Map(m) => out.push(Map(m))
+      }
+  }
+  out
+}
+
 // ============================================================================
 // Constructors
 // ============================================================================
 
 ///|
+fn default_range() -> @lexer.Range {
+  let p = @lexer.Position::zero()
+  @lexer.Range::new(p, p)
+}
+
+///|
+pub fn Scalar::at(range : @lexer.Range, value : ScalarValue) -> Scalar {
+  { value, range }
+}
+
+///|
 pub fn Scalar::new(value : ScalarValue) -> Scalar {
-  { value, }
+  Scalar::at(default_range(), value)
 }
 
 ///|
 pub fn Scalar::null() -> Scalar {
-  { value: ScalarValue::Null }
+  Scalar::at(default_range(), ScalarValue::Null)
 }
 
 ///|
 pub fn Scalar::bool(b : Bool) -> Scalar {
-  { value: ScalarValue::Bool(b) }
+  let s = if b { "true" } else { "false" }
+  Scalar::at(default_range(), ScalarValue::Bool(s))
 }
 
 ///|
 pub fn Scalar::number(n : String) -> Scalar {
-  { value: ScalarValue::Number(n) }
+  Scalar::at(default_range(), ScalarValue::Number(n))
 }
 
 ///|
 pub fn Scalar::string(s : String) -> Scalar {
-  { value: ScalarValue::String(s) }
+  Scalar::at(default_range(), ScalarValue::String(s))
 }
 
 ///|
@@ -206,11 +300,13 @@ pub fn EdgeID::with_glob(
 
 ///|
 pub fn FieldReference::new(
+  range : @lexer.Range,
   string : String,
   key_path_index : Int,
   primary : Bool,
 ) -> FieldReference {
   {
+    range,
     string,
     key_path_index,
     primary,
@@ -220,8 +316,12 @@ pub fn FieldReference::new(
 }
 
 ///|
-pub fn EdgeReference::new(edge_index : Int, primary : Bool) -> EdgeReference {
-  { edge_index, primary, due_to_glob: false, due_to_lazy_glob: false }
+pub fn EdgeReference::new(
+  range : @lexer.Range,
+  edge_index : Int,
+  primary : Bool,
+) -> EdgeReference {
+  { range, edge_index, primary, due_to_glob: false, due_to_lazy_glob: false }
 }
 
 // ============================================================================
@@ -412,8 +512,7 @@ pub fn Value::as_array(self : Value) -> IRArray? {
 pub fn Scalar::to_string(self : Scalar) -> String {
   match self.value {
     Null => "null"
-    Bool(true) => "true"
-    Bool(false) => "false"
+    Bool(s) => s
     Number(n) => n
     String(s) => s
   }
@@ -435,9 +534,35 @@ pub fn Scalar::is_bool(self : Scalar) -> Bool {
 /// Get boolean value if this is a boolean
 pub fn Scalar::as_bool(self : Scalar) -> Bool? {
   match self.value {
-    Bool(b) => Some(b)
+    Bool(s) =>
+      match s.to_lower() {
+        "true" => Some(true)
+        "false" => Some(false)
+        _ => None
+      }
     _ => None
   }
+}
+
+///|
+pub fn Scalar::as_int(self : Scalar) -> Int? {
+  match self.value {
+    Number(n) | String(n) => Some(@strconv.parse_int(n)) catch { _ => None }
+    _ => None
+  }
+}
+
+///|
+pub fn Scalar::as_double(self : Scalar) -> Double? {
+  match self.value {
+    Number(n) | String(n) => Some(@strconv.parse_double(n)) catch { _ => None }
+    _ => None
+  }
+}
+
+///|
+pub fn Scalar::get_range(self : Scalar) -> @lexer.Range {
+  self.range
 }
 
 ///|

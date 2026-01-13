@@ -15,10 +15,11 @@
 ///|
 /// Lexer for the diago diagram language
 struct Lexer {
+  path : String
   chars : Array[Char] // pre-converted characters for easy indexing
   mut pos : Int // current character position
-  mut line : Int // current line (1-indexed)
-  mut column : Int // current column (1-indexed)
+  mut line : Int // current line (0-based)
+  mut column : Int // current column (0-based)
   tokens : Array[Token]
   errors : Array[LexError]
 }
@@ -31,10 +32,15 @@ pub struct LexError {
 } derive(Eq, Show)
 
 ///|
-/// Create a new lexer for the given source
+/// Create a new lexer for the given source (in-memory, no path)
 pub fn Lexer::new(source : String) -> Lexer {
+  Lexer::with_path("", source)
+}
+
+///|
+pub fn Lexer::with_path(path : String, source : String) -> Lexer {
   let chars = source.to_array()
-  { chars, pos: 0, line: 1, column: 1, tokens: [], errors: [] }
+  { path, chars, pos: 0, line: 0, column: 0, tokens: [], errors: [] }
 }
 
 ///|
@@ -45,7 +51,9 @@ pub fn Lexer::tokenize(self : Lexer) -> (Array[Token], Array[LexError]) {
   }
   // Add EOF token
   let eof_pos = self.current_position()
-  self.tokens.push(Token::new(Eof, Range::new(eof_pos, eof_pos), ""))
+  self.tokens.push(
+    Token::new(Eof, Range::with_path(self.path, eof_pos, eof_pos), ""),
+  )
   (self.tokens, self.errors)
 }
 
@@ -83,7 +91,7 @@ fn Lexer::advance(self : Lexer) -> Char {
   self.pos += 1
   if c == '\n' {
     self.line += 1
-    self.column = 1
+    self.column = 0
   } else {
     self.column += 1
   }
@@ -105,13 +113,15 @@ fn Lexer::slice_source(self : Lexer, start : Int, end : Int) -> String {
 fn Lexer::add_token(self : Lexer, kind : TokenKind, start : Position) -> Unit {
   let end = self.current_position()
   let raw = self.slice_source(start.offset, end.offset)
-  self.tokens.push(Token::new(kind, Range::new(start, end), raw))
+  self.tokens.push(
+    Token::new(kind, Range::with_path(self.path, start, end), raw),
+  )
 }
 
 ///|
 fn Lexer::add_error(self : Lexer, message : String, start : Position) -> Unit {
   let end = self.current_position()
-  self.errors.push({ message, range: Range::new(start, end) })
+  self.errors.push({ message, range: Range::with_path(self.path, start, end) })
 }
 
 ///|
@@ -405,5 +415,14 @@ fn is_ident_continue(c : Char) -> Bool {
 /// Convenience function to tokenize a string
 pub fn tokenize(source : String) -> (Array[Token], Array[LexError]) {
   let lexer = Lexer::new(source)
+  lexer.tokenize()
+}
+
+///|
+pub fn tokenize_with_path(
+  path : String,
+  source : String,
+) -> (Array[Token], Array[LexError]) {
+  let lexer = Lexer::with_path(path, source)
   lexer.tokenize()
 }

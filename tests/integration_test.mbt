@@ -49,7 +49,7 @@ fn compile_to_diagram(
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let diagram = @diagram.layout_with_engine(
+  let laid_out_graph = @engine_api.layout_with_engine(
     @engine_elk.ElkEngine::new(),
     graph_input,
     config,
@@ -57,7 +57,7 @@ fn compile_to_diagram(
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  Ok(diagram)
+  Ok(@diagram.from_graph(laid_out_graph, None))
 }
 
 ///|
@@ -489,7 +489,7 @@ fn compile_with_theme(
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
-  let layout = @engine_api.layout_with_engine(
+  let laid_out_graph = @engine_api.layout_with_engine(
     @engine_elk.ElkEngine::new(),
     graph_input,
     config,
@@ -497,7 +497,7 @@ fn compile_with_theme(
   ) catch {
     e => return Err("Layout error: \{e}")
   }
-  let diagram = @diagram.build(graph_input, layout)
+  let diagram = @diagram.from_graph(laid_out_graph, None)
   let render_config = @renderer_svg.SvgConfig::with_theme(theme_id)
   Ok(@renderer_svg.render(diagram, render_config))
 }

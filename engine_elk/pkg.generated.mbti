@@ -9,7 +9,7 @@ import(
 // Values
 pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
 
-pub fn layout(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> @engine_api.LayoutOutputs raise @engine_api.LayoutError
+pub fn layout(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> @graph.GraphInput raise @engine_api.LayoutError
 
 // Errors
 
@@ -234,7 +234,7 @@ pub using @engine_api {type LayoutConfig}
 
 pub using @engine_api {type LayoutError}
 
-pub using @engine_api {type LayoutResult}
+pub using @graph {type LayoutPatch}
 
 // Traits
 

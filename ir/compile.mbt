@@ -57,6 +57,23 @@ fn compile_map_nodes(
 }
 
 ///|
+fn record_field_reference(
+  m : Map,
+  f : Field,
+  elem : @ast.StringValue,
+  key_path_index : Int,
+  primary : Bool,
+) -> Field {
+  let refs = f.references.copy()
+  refs.push(
+    FieldReference::new(elem.range(), elem.content(), key_path_index, primary),
+  )
+  let updated = Field::new(f.name, f.primary, f.composite, refs)
+  m.set_field(updated)
+  updated
+}
+
+///|
 fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
   // Handle ampersand filters (they are evaluated during glob expansion)
   if key.ampersand || key.not_ampersand {
@@ -84,7 +101,14 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
   let mut current_map = ir
   for i = 0; i < path.length() - 1; i = i + 1 {
     let name = path[i]
-    let field = current_map.ensure_field(name)
+    let elem = key_path.path[i]
+    let field = record_field_reference(
+      current_map,
+      current_map.ensure_field(name),
+      elem,
+      i,
+      false,
+    )
     // Ensure field has a map composite
     match field.composite {
       Some(Composite::Map(m)) => current_map = m
@@ -104,8 +128,20 @@ fn compile_key(ir : Map, key : @ast.Key) -> Unit raise CompileError {
     }
   }
   // Set the final field
-  let final_name = path[path.length() - 1]
-  let field = current_map.ensure_field(final_name)
+  let last_index = path.length() - 1
+  let final_name = path[last_index]
+  let last_elem = key_path.path[last_index]
+  let field0 = current_map.ensure_field(final_name)
+  let field1 = if key.primary is Some(_) {
+    record_field_reference(current_map, field0, last_elem, last_index, true)
+  } else {
+    field0
+  }
+  let field = if key.value is Some(_) {
+    record_field_reference(current_map, field1, last_elem, last_index, false)
+  } else {
+    field1
+  }
   // Set primary value
   let field = match key.primary {
     Some(scalar) =>
@@ -307,7 +343,7 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
     if existing.length() > 0 {
       // Add reference to existing edge
       let e = existing[0]
-      e.references.push(EdgeReference::new(0, true))
+      e.references.push(EdgeReference::new(edge.range, 0, true))
       // Update value if provided
       let (primary, edge_map) = match key.value {
         Some(value) =>
@@ -360,7 +396,7 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
         None => ()
       }
       let new_edge = Edge::new(edge_id, primary, edge_map, [
-        EdgeReference::new(0, true),
+        EdgeReference::new(edge.range, 0, true),
       ])
       ir.add_edge(new_edge)
       // Ensure source and destination fields exist
@@ -485,9 +521,11 @@ fn compile_ast_value(value : @ast.Value) -> Value raise CompileError {
 ///|
 fn compile_scalar(scalar : @ast.Scalar) -> Scalar {
   match scalar {
-    @ast.Scalar::Null(_) => Scalar::null()
-    @ast.Scalar::Boolean(_, b) => Scalar::bool(b)
-    @ast.Scalar::Number(_, n) => Scalar::number(n)
-    @ast.Scalar::String(s) => Scalar::string(s.content())
+    @ast.Scalar::Null(r) => Scalar::at(r, ScalarValue::Null)
+    @ast.Scalar::Boolean(r, b) =>
+      Scalar::at(r, ScalarValue::Bool(if b { "true" } else { "false" }))
+    @ast.Scalar::Number(r, n) => Scalar::at(r, ScalarValue::Number(n))
+    @ast.Scalar::String(s) =>
+      Scalar::at(s.range(), ScalarValue::String(s.content()))
   }
 }

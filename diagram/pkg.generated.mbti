@@ -2,29 +2,31 @@
 package "Milky2018/diago/diagram"
 
 import(
-  "Milky2018/diago/engine_api"
   "Milky2018/diago/graph"
 )
 
 // Values
-pub fn build(@graph.GraphInput, @engine_api.LayoutOutputs) -> Diagram
+pub fn from_graph(@graph.GraphInput, Config?) -> Diagram
 
-pub fn build_render_graph(@graph.GraphInput, @engine_api.LayoutOutputs) -> RenderGraph
-
-pub fn[Engine : @engine_api.LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Diagram raise @engine_api.LayoutError
-
-pub fn materialize(Diagram) -> RenderGraph
+pub fn materialize(Diagram) -> Diagram
 
 // Errors
 
 // Types and methods
-pub struct Diagram {
-  graph : @graph.GraphInput
-  layout : @engine_api.LayoutOutputs
+pub struct Config {
+  sketch : Bool?
+  theme_id : Int?
+  dark_theme_id : Int?
+  pad : Double?
+  center : Bool?
+  layout_engine : String?
+  data : Map[String, String]
 }
-pub impl Show for Diagram
+pub fn Config::new() -> Self
+pub impl Show for Config
 
-pub struct RenderEdge {
+#alias(RenderEdge)
+pub struct Connection {
   index : Int
   src_id : String
   dst_id : String
@@ -45,50 +47,41 @@ pub struct RenderEdge {
   src_column_index : Int?
   dst_column_index : Int?
 }
-pub impl Show for RenderEdge
+pub impl Show for Connection
 
-pub struct RenderGraph {
+#alias(RenderGraph)
+pub struct Diagram {
   name : String
-  root : RenderObject
-  objects : Array[RenderObject]
-  edges : Array[RenderEdge]
+  config : Config?
+  root : Shape
+  shapes : Array[Shape]
+  connections : Array[Connection]
   activation_boxes : Array[(String, @graph.Box)]
   sequence_notes : Array[(String, String, @graph.Box)]
-  sequence_fragments : Array[@engine_api.SequenceFragmentLayout]
-  layers : Array[RenderLayer]
-  scenarios : Array[RenderScenario]
-  steps : Array[RenderStep]
+  sequence_fragments : Array[@graph.SequenceFragmentLayout]
+  layers : Array[Diagram]
+  scenarios : Array[Diagram]
+  steps : Array[Diagram]
   legend : @graph.LegendInput?
 }
-pub fn RenderGraph::find_object(Self, String) -> RenderObject?
-pub fn RenderGraph::get_edges(Self) -> Array[RenderEdge]
-pub fn RenderGraph::get_layer(Self, String) -> Self?
-pub fn RenderGraph::get_objects(Self) -> Array[RenderObject]
-pub fn RenderGraph::get_scenario(Self, String) -> Self?
-pub fn RenderGraph::get_step_by_name(Self, String) -> Self?
-pub fn RenderGraph::has_layers(Self) -> Bool
-pub fn RenderGraph::has_legend(Self) -> Bool
-pub fn RenderGraph::has_scenarios(Self) -> Bool
-pub fn RenderGraph::has_steps(Self) -> Bool
-pub fn RenderGraph::layer_names(Self) -> Array[String]
-pub fn RenderGraph::scenario_names(Self) -> Array[String]
-pub fn RenderGraph::step_names(Self) -> Array[String]
-pub impl Show for RenderGraph
+pub fn Diagram::find_object(Self, String) -> Shape?
+pub fn Diagram::get_edges(Self) -> Array[Connection]
+pub fn Diagram::get_objects(Self) -> Array[Shape]
+pub fn Diagram::has_layers(Self) -> Bool
+pub fn Diagram::has_legend(Self) -> Bool
+pub fn Diagram::has_scenarios(Self) -> Bool
+pub fn Diagram::has_steps(Self) -> Bool
+pub impl Show for Diagram
 
-pub struct RenderLayer {
-  name : String
-  graph : RenderGraph
-}
-pub impl Show for RenderLayer
-
-pub struct RenderObject {
+#alias(RenderObject)
+pub struct Shape {
   id : String
   label : String
   shape_type : @graph.ShapeType
   style : @graph.StyleInput
   box : @graph.Box?
   label_box : @graph.Box?
-  children : Array[RenderObject]
+  child_ids : Array[String]
   z_index : Int
   icon : String?
   tooltip : String?
@@ -103,24 +96,10 @@ pub struct RenderObject {
   grid_row_span : Int?
   near : String?
 }
-pub fn RenderObject::center(Self) -> @graph.Point?
-pub fn RenderObject::get_box(Self) -> @graph.Box?
-pub fn RenderObject::get_id(Self) -> String
-pub fn RenderObject::get_label_box(Self) -> @graph.Box?
-pub fn RenderObject::is_container(Self) -> Bool
-pub impl Show for RenderObject
-
-pub struct RenderScenario {
-  name : String
-  graph : RenderGraph
-}
-pub impl Show for RenderScenario
-
-pub struct RenderStep {
-  name : String
-  graph : RenderGraph
-}
-pub impl Show for RenderStep
+pub fn Shape::center(Self) -> @graph.Point?
+pub fn Shape::get_box(Self) -> @graph.Box?
+pub fn Shape::get_id(Self) -> String
+pub impl Show for Shape
 
 // Type aliases
 

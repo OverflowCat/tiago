@@ -38,6 +38,7 @@ pub(all) enum ArrayNode {
   Import(Import)
   Value(Value)
 }
+pub fn ArrayNode::range(Self) -> @lexer.Range
 pub impl Eq for ArrayNode
 pub impl Show for ArrayNode
 
@@ -149,6 +150,30 @@ pub(all) enum MapNode {
 pub fn MapNode::range(Self) -> @lexer.Range
 pub impl Eq for MapNode
 pub impl Show for MapNode
+
+pub(all) enum Node {
+  Map(Map)
+  MapNode(MapNode)
+  Key(Key)
+  KeyPath(KeyPath)
+  Edge(Edge)
+  EdgeIndex(EdgeIndex)
+  Value(Value)
+  ArrayValue(ArrayValue)
+  ArrayNode(ArrayNode)
+  Scalar(Scalar)
+  StringValue(StringValue)
+  UnquotedString(UnquotedString)
+  DoubleQuotedString(DoubleQuotedString)
+  BlockString(BlockString)
+  Substitution(Substitution)
+  Import(Import)
+}
+pub fn Node::children(Self) -> Array[Self]
+pub fn Node::node_type(Self) -> String
+pub fn Node::range(Self) -> @lexer.Range
+pub impl Eq for Node
+pub impl Show for Node
 
 pub(all) enum Scalar {
   Null(@lexer.Range)

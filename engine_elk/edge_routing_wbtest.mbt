@@ -92,6 +92,7 @@ fn edge_to_input_for_routing(edge : Edge) -> @graph.EdgeInput {
     edge.dst_anchor,
     edge.label,
     style_to_input_for_routing(edge.style),
+    [],
     edge.bend_points,
     edge.is_curve,
     edge.z_index,
@@ -142,6 +143,9 @@ fn graph_to_input_for_routing(graph : Graph) -> @graph.GraphInput {
     [],
     [],
     [],
+    [],
+    [],
+    [],
     graph.legend,
   )
 }
@@ -165,46 +169,17 @@ fn layout_to_graph_for_routing(
   direction : Direction,
 ) -> Graph raise LayoutError {
   let input = graph_to_input_for_routing(graph)
-  let outputs = layout(input, config, direction)
-  let materialized = Graph::from_input(input)
-  apply_layout_result_for_routing(outputs.layout, materialized)
-  materialized
+  let patch = ElkEngine::new().layout(input, config, direction)
+  let laid_out_input = @graph.apply_layout(input, patch)
+  Graph::from_input(laid_out_input)
 }
 
 ///|
 fn apply_layout_result_for_routing(
-  layout : @engine_api.LayoutResult,
-  graph : Graph,
+  _patch : @graph.LayoutPatch,
+  _graph : Graph,
 ) -> Unit {
-  for obj in graph.objects {
-    match layout.nodes.get(obj.id) {
-      Some(node_layout) => obj.box = Some(node_layout.to_box())
-      None => ()
-    }
-  }
-  for edge in graph.edges {
-    match layout.edges.get(edge.index) {
-      Some(edge_layout) => {
-        edge.route.clear()
-        for p in edge_layout.points {
-          edge.route.push(p)
-        }
-      }
-      None => ()
-    }
-    match layout.edge_labels.get(edge.index) {
-      Some(label_layout) => edge.label_box = Some(label_layout.to_box())
-      None => ()
-    }
-  }
-  graph.activation_boxes.clear()
-  for box in layout.activation_boxes {
-    graph.activation_boxes.push((box.0, box.1.to_box()))
-  }
-  graph.sequence_notes.clear()
-  for note in layout.sequence_notes {
-    graph.sequence_notes.push((note.0, note.1, note.2.to_box()))
-  }
+  ()
 }
 
 ///|

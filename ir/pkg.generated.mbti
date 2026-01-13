@@ -3,6 +3,7 @@ package "Milky2018/diago/ir"
 
 import(
   "Milky2018/diago/ast"
+  "Milky2018/diago/lexer"
 )
 
 // Values
@@ -68,12 +69,13 @@ pub impl Eq for EdgeID
 pub impl Show for EdgeID
 
 pub struct EdgeReference {
+  range : @lexer.Range
   edge_index : Int
   primary : Bool
   due_to_glob : Bool
   due_to_lazy_glob : Bool
 }
-pub fn EdgeReference::new(Int, Bool) -> Self
+pub fn EdgeReference::new(@lexer.Range, Int, Bool) -> Self
 pub impl Eq for EdgeReference
 pub impl Show for EdgeReference
 
@@ -93,13 +95,14 @@ pub impl Eq for Field
 pub impl Show for Field
 
 pub struct FieldReference {
+  range : @lexer.Range
   string : String
   key_path_index : Int
   primary : Bool
   due_to_glob : Bool
   due_to_lazy_glob : Bool
 }
-pub fn FieldReference::new(String, Int, Bool) -> Self
+pub fn FieldReference::new(@lexer.Range, String, Int, Bool) -> Self
 pub impl Eq for FieldReference
 pub impl Show for FieldReference
 
@@ -141,11 +144,30 @@ pub fn Map::triple_glob(Self) -> Array[Field]
 pub impl Eq for Map
 pub impl Show for Map
 
+pub(all) enum Node {
+  Scalar(Scalar)
+  Field(Field)
+  Edge(Edge)
+  IRArray(IRArray)
+  Map(Map)
+  Composite(Composite)
+  Value(Value)
+}
+pub fn Node::children(Self) -> Array[Self]
+pub fn Node::node_type(Self) -> String
+pub impl Eq for Node
+pub impl Show for Node
+
 pub struct Scalar {
   value : ScalarValue
+  range : @lexer.Range
 }
 pub fn Scalar::as_bool(Self) -> Bool?
+pub fn Scalar::as_double(Self) -> Double?
+pub fn Scalar::as_int(Self) -> Int?
+pub fn Scalar::at(@lexer.Range, ScalarValue) -> Self
 pub fn Scalar::bool(Bool) -> Self
+pub fn Scalar::get_range(Self) -> @lexer.Range
 pub fn Scalar::is_bool(Self) -> Bool
 pub fn Scalar::is_null(Self) -> Bool
 pub fn Scalar::is_number(Self) -> Bool
@@ -160,7 +182,7 @@ pub impl Show for Scalar
 
 pub(all) enum ScalarValue {
   Null
-  Bool(Bool)
+  Bool(String)
   Number(String)
   String(String)
 }

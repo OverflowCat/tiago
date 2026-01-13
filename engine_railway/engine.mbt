@@ -32,12 +32,10 @@ pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   graph,
   _config,
   _direction,
-) -> @engine_api.LayoutResult raise @engine_api.LayoutError {
-  let res = @engine_api.LayoutResult::new()
+) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  let patch = @graph.LayoutPatch::new()
   for i, node in graph.objects {
-    res.nodes[node.label] = @engine_api.NodeLayout::from_box(
-      @graph.Box::new(i.to_double() * 50, 50, 50, 50),
-    )
+    patch.nodes[node.id] = @graph.Box::new(i.to_double() * 50, 50, 50, 50)
   }
-  res
+  patch
 }

@@ -26,4 +26,4 @@ pub type Direction = @engine_api.Direction
 pub type LayoutError = @engine_api.LayoutError
 
 ///|
-pub type LayoutResult = @engine_api.LayoutResult
+pub type LayoutPatch = @graph.LayoutPatch
