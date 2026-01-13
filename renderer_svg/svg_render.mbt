@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// SVG Renderer for RenderGraph
+/// SVG Renderer for Diagram
 ///
-/// Renders a laid-out RenderGraph to SVG using the pure svg library.
+/// Renders a laid-out Diagram to SVG using the pure svg library.
 
 ///|
 /// Render pass for two-layer rendering
@@ -130,7 +130,7 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
 
 ///|
 /// Render a graph to SVG string
-pub fn render_svg(graph : RenderGraph, config : SvgConfig) -> String {
+pub fn render_svg(graph : Diagram, config : SvgConfig) -> String {
   // Check if we have layers, scenarios, or steps
   let has_layers = graph.has_layers()
   let has_scenarios = graph.has_scenarios()
@@ -334,7 +334,7 @@ fn estimate_text_width(text : String, font_size : Int) -> Double {
 /// Render layer tabs at the top of the SVG
 fn render_layer_tabs(
   svg : @svg.Svg,
-  graph : RenderGraph,
+  graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
   let tab_height = 30.0
@@ -434,7 +434,7 @@ fn add_layer_switch_script(svg : @svg.Svg, layer_count : Int) -> Unit {
 /// Render scenario dropdown selector at the top of the SVG
 fn render_scenario_selector(
   svg : @svg.Svg,
-  graph : RenderGraph,
+  graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
   let selector_height = 30.0
@@ -544,7 +544,7 @@ fn add_scenario_switch_script(svg : @svg.Svg, scenario_count : Int) -> Unit {
 /// Render step timeline controls at the top of the SVG
 fn render_step_controls(
   svg : @svg.Svg,
-  graph : RenderGraph,
+  graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
   let control_height = 30.0
@@ -785,7 +785,7 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
 /// Add fill pattern definitions based on patterns used in the graph
 fn add_fill_patterns(
   svg : @svg.Svg,
-  graph : RenderGraph,
+  graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
   // Collect unique patterns used
@@ -817,7 +817,7 @@ fn add_fill_patterns(
 
 ///|
 /// Add sketch filter if any object uses sketch mode
-fn add_sketch_filter(svg : @svg.Svg, graph : RenderGraph) -> Unit {
+fn add_sketch_filter(svg : @svg.Svg, graph : Diagram) -> Unit {
   // Check if any object uses sketch mode
   let mut needs_sketch = false
   for obj in graph.shapes {
@@ -847,9 +847,7 @@ fn get_marker_url(arrowhead : ArrowheadType, reverse : Bool) -> String {
 }
 
 ///|
-fn compute_graph_bounds(
-  graph : RenderGraph,
-) -> (Double, Double, Double, Double) {
+fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
   let mut min_x = 0.0
   let mut min_y = 0.0
   let mut max_x = 0.0
@@ -956,16 +954,13 @@ fn get_object_depth(id : String) -> Int {
 }
 
 ///|
-fn is_container(obj : RenderObject) -> Bool {
+fn is_container(obj : Shape) -> Bool {
   obj.child_ids.length() > 0
 }
 
 ///|
-fn object_children(
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
-) -> Array[RenderObject] {
-  let children : Array[RenderObject] = []
+fn object_children(obj : Shape, all_objects : Array[Shape]) -> Array[Shape] {
+  let children : Array[Shape] = []
   for child_id in obj.child_ids {
     let mut found = false
     for candidate in all_objects {
@@ -1012,7 +1007,7 @@ fn shape_type_name(shape : ShapeType) -> String {
 
 ///|
 /// Sort objects by depth (parents before children) for proper SVG layering
-fn sort_objects_by_depth(objects : Array[RenderObject]) -> Array[RenderObject] {
+fn sort_objects_by_depth(objects : Array[Shape]) -> Array[Shape] {
   let sorted = objects.copy()
   // Simple bubble sort by depth (shallow objects first)
   for i = 0; i < sorted.length(); i = i + 1 {
@@ -1031,10 +1026,7 @@ fn sort_objects_by_depth(objects : Array[RenderObject]) -> Array[RenderObject] {
 
 ///|
 /// Check if an object is a child of an sql_table (should not be rendered separately)
-fn is_sql_table_child(
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
-) -> Bool {
+fn is_sql_table_child(obj : Shape, all_objects : Array[Shape]) -> Bool {
   // Check if object has a parent that is an sql_table
   // Parent ID is everything before the last dot
   let id = obj.id
@@ -1068,8 +1060,8 @@ fn is_sql_table_child(
 ///|
 fn render_svg_object(
   svg : @svg.Svg,
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
+  obj : Shape,
+  all_objects : Array[Shape],
   config : SvgConfig,
   theme : @themes.Theme,
   pass? : RenderPass = Foreground,
@@ -1475,7 +1467,7 @@ fn render_svg_sql_table(
   svg : @svg.Svg,
   box : Box,
   label : String,
-  children : Array[RenderObject],
+  children : Array[Shape],
   fill : String,
   stroke : String,
   stroke_width : Double,
@@ -2373,7 +2365,7 @@ fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
 ///|
 fn render_svg_edge(
   svg : @svg.Svg,
-  edge : RenderEdge,
+  edge : Connection,
   config : SvgConfig,
   theme : @themes.Theme,
 ) -> Unit {
@@ -2466,7 +2458,7 @@ fn render_svg_edge(
       }
       None =>
         abort(
-          "RenderEdge '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
+          "Connection '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
         )
     }
   }
@@ -2612,7 +2604,7 @@ fn render_svg_sequence_note(
 /// Render sequence diagram fragments (combined fragments like alt, opt, loop)
 fn render_svg_sequence_fragments(
   svg : @svg.Svg,
-  graph : RenderGraph,
+  graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
   for fragment in graph.sequence_fragments {

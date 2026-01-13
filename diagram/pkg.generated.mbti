@@ -8,8 +8,6 @@ import(
 // Values
 pub fn from_graph(@graph.GraphInput, Config?) -> Diagram
 
-pub fn materialize(Diagram) -> Diagram
-
 // Errors
 
 // Types and methods
@@ -25,7 +23,6 @@ pub struct Config {
 pub fn Config::new() -> Self
 pub impl Show for Config
 
-#alias(RenderEdge)
 pub struct Connection {
   index : Int
   src_id : String
@@ -49,7 +46,6 @@ pub struct Connection {
 }
 pub impl Show for Connection
 
-#alias(RenderGraph)
 pub struct Diagram {
   name : String
   config : Config?
@@ -73,7 +69,6 @@ pub fn Diagram::has_scenarios(Self) -> Bool
 pub fn Diagram::has_steps(Self) -> Bool
 pub impl Show for Diagram
 
-#alias(RenderObject)
 pub struct Shape {
   id : String
   label : String

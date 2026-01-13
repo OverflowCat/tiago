@@ -133,6 +133,55 @@ pub fn Diagram::has_steps(self : Diagram) -> Bool {
 }
 
 ///|
+pub fn Diagram::has_legend(self : Diagram) -> Bool {
+  match self.legend {
+    Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
+    None => false
+  }
+}
+
+///|
+pub fn Diagram::get_objects(self : Diagram) -> Array[Shape] {
+  self.shapes
+}
+
+///|
+pub fn Diagram::get_edges(self : Diagram) -> Array[Connection] {
+  self.connections
+}
+
+///|
+pub fn Diagram::find_object(self : Diagram, id : String) -> Shape? {
+  if self.root.id == id {
+    return Some(self.root)
+  }
+  for obj in self.shapes {
+    if obj.id == id {
+      return Some(obj)
+    }
+  }
+  None
+}
+
+///|
+pub fn Shape::get_id(self : Shape) -> String {
+  self.id
+}
+
+///|
+pub fn Shape::get_box(self : Shape) -> @graph.Box? {
+  self.box
+}
+
+///|
+pub fn Shape::center(self : Shape) -> @graph.Point? {
+  match self.box {
+    Some(b) => Some(b.center())
+    None => None
+  }
+}
+
+///|
 fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
   {
     id: obj.id,

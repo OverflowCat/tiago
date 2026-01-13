@@ -13,9 +13,9 @@
 // limitations under the License.
 
 ///|
-/// ASCII Renderer for RenderGraph
+/// ASCII Renderer for Diagram
 ///
-/// Renders a laid-out RenderGraph to ASCII art using the pure ascii library.
+/// Renders a laid-out Diagram to ASCII art using the pure ascii library.
 
 ///|
 /// ASCII rendering configuration
@@ -91,16 +91,13 @@ fn get_short_id(id : String) -> String {
 }
 
 ///|
-fn is_container(obj : RenderObject) -> Bool {
+fn is_container(obj : Shape) -> Bool {
   obj.shape_type != SqlTable && obj.child_ids.length() > 0
 }
 
 ///|
-fn object_children(
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
-) -> Array[RenderObject] {
-  let children : Array[RenderObject] = []
+fn object_children(obj : Shape, all_objects : Array[Shape]) -> Array[Shape] {
+  let children : Array[Shape] = []
   for child_id in obj.child_ids {
     let mut found = false
     for candidate in all_objects {
@@ -131,7 +128,7 @@ struct AsciiBox {
 
 ///|
 /// Render a graph to ASCII string
-pub fn render_ascii(graph : RenderGraph, config : AsciiConfig) -> String {
+pub fn render_ascii(graph : Diagram, config : AsciiConfig) -> String {
   // Check if this is a sequence diagram - use special renderer
   if graph.root.shape_type == @graph.SequenceDiagram {
     return render_ascii_sequence(graph, config)
@@ -280,11 +277,11 @@ fn shift_ascii_box(box : AsciiBox, dx : Int, dy : Int) -> AsciiBox {
 /// - Lifelines are edges with vertical routes (dashed style)
 /// - Messages are edges with horizontal routes
 /// - Activation boxes are objects (rectangles with no labels)
-fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
+fn render_ascii_sequence(graph : Diagram, config : AsciiConfig) -> String {
   let cs = config.charset
   // Separate actors from activation boxes
   // Actors have labels, activation boxes don't
-  let actors : Array[RenderObject] = []
+  let actors : Array[Shape] = []
   for obj in graph.shapes {
     // Skip activation box objects (no label, internal ID pattern)
     if obj.label.length() > 0 && not(obj.id.contains("__activation_")) {
@@ -295,14 +292,14 @@ fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
     return ""
   }
   // Sort actors by x-coordinate
-  let sorted_actors : Array[RenderObject] = []
+  let sorted_actors : Array[Shape] = []
   for actor in actors {
     sorted_actors.push(actor)
   }
   sort_objects_by_x(sorted_actors)
   // Separate edges into lifelines and messages
   // Lifelines have dashed stroke, messages don't
-  let messages : Array[RenderEdge] = []
+  let messages : Array[Connection] = []
   for edge in graph.connections {
     // Skip lifeline edges (dashed stroke)
     let dash = match edge.style.stroke_dash {
@@ -344,7 +341,7 @@ fn render_ascii_sequence(graph : RenderGraph, config : AsciiConfig) -> String {
   // Each message gets a unique y-level
   let message_start_y = config.box_height + 1
   let mut max_message_y = message_start_y
-  let message_y_positions : Array[(Int, RenderEdge)] = [] // (y, edge)
+  let message_y_positions : Array[(Int, Connection)] = [] // (y, edge)
   for edge in messages {
     // Get y from route points if available, otherwise use sequential
     let y = if edge.route.length() >= 2 {
@@ -560,7 +557,7 @@ fn find_actor_position(
 /// Compute ASCII layout positions for all objects
 /// Uses the y-coordinates from the layout phase for ordering
 fn compute_ascii_layout(
-  graph : RenderGraph,
+  graph : Diagram,
   config : AsciiConfig,
 ) -> Array[AsciiBox] {
   // Track which object IDs are children (nested inside containers)
@@ -571,7 +568,7 @@ fn compute_ascii_layout(
     }
   }
   // Find root objects (not children of any container)
-  let roots : Array[RenderObject] = []
+  let roots : Array[Shape] = []
   for obj in graph.shapes {
     if not(child_ids.contains(obj.id)) {
       roots.push(obj)
@@ -657,8 +654,8 @@ fn compute_ascii_layout(
 ///|
 /// Compute the size of an object (recursively for containers)
 fn compute_object_size(
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
+  obj : Shape,
+  all_objects : Array[Shape],
   config : AsciiConfig,
   sizes : Map[String, (Int, Int)],
 ) -> (Int, Int) {
@@ -728,8 +725,8 @@ fn compute_object_size(
 ///|
 /// Create a positioned box with pre-computed size
 fn create_positioned_box(
-  obj : RenderObject,
-  all_objects : Array[RenderObject],
+  obj : Shape,
+  all_objects : Array[Shape],
   x : Int,
   y : Int,
   width : Int,
@@ -917,7 +914,7 @@ fn max_i(a : Int, b : Int) -> Int {
 
 ///|
 /// Sort objects by their y-coordinate (layout position)
-fn sort_objects_by_y(objects : Array[RenderObject]) -> Unit {
+fn sort_objects_by_y(objects : Array[Shape]) -> Unit {
   // Insertion sort by y-coordinate
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
@@ -945,7 +942,7 @@ fn sort_objects_by_y(objects : Array[RenderObject]) -> Unit {
 
 ///|
 /// Sort objects by their x-coordinate (layout position)
-fn sort_objects_by_x(objects : Array[RenderObject]) -> Unit {
+fn sort_objects_by_x(objects : Array[Shape]) -> Unit {
   let n = objects.length()
   for i = 1; i < n; i = i + 1 {
     let key = objects[i]
@@ -972,13 +969,13 @@ fn sort_objects_by_x(objects : Array[RenderObject]) -> Unit {
 
 ///|
 /// Group objects by their y-coordinate (layer)
-/// RenderObjects are already sorted by y, so consecutive objects with same y are in same layer
-fn group_by_layer(objects : Array[RenderObject]) -> Array[Array[RenderObject]] {
-  let layers : Array[Array[RenderObject]] = []
+/// Shapes are already sorted by y, so consecutive objects with same y are in same layer
+fn group_by_layer(objects : Array[Shape]) -> Array[Array[Shape]] {
+  let layers : Array[Array[Shape]] = []
   if objects.length() == 0 {
     return layers
   }
-  let mut current_layer : Array[RenderObject] = []
+  let mut current_layer : Array[Shape] = []
   let mut current_y = match objects[0].box {
     Some(b) => b.y
     None => 0.0
@@ -1318,8 +1315,8 @@ fn render_ascii_box(
 /// Compute horizontal offset for parallel edges between same node pair
 /// ref_idx: which reference of this edge (0..reference_count-1)
 fn compute_edge_offset(
-  graph : RenderGraph,
-  edge : RenderEdge,
+  graph : Diagram,
+  edge : Connection,
   ref_idx : Int,
   boxes : Array[AsciiBox],
 ) -> Int {
@@ -1382,8 +1379,8 @@ fn compute_edge_offset(
 /// Compute horizontal offset for edges from different sources to same destination
 /// This ensures multiple incoming edges don't overlap at the destination
 fn compute_destination_offset(
-  graph : RenderGraph,
-  edge : RenderEdge,
+  graph : Diagram,
+  edge : Connection,
   boxes : Array[AsciiBox],
 ) -> Int {
   let dst_id = edge.dst_id
@@ -1444,8 +1441,8 @@ fn find_ascii_box(boxes : Array[AsciiBox], id : String) -> AsciiBox? {
 /// Render edge lines with L-shaped routing when needed
 fn render_ascii_edge_new(
   grid : @ascii.Grid,
-  graph : RenderGraph,
-  edge : RenderEdge,
+  graph : Diagram,
+  edge : Connection,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   config : AsciiConfig,
@@ -1546,8 +1543,8 @@ fn render_ascii_edge_new(
 /// Render edge arrows
 fn render_ascii_arrows_new(
   grid : @ascii.Grid,
-  graph : RenderGraph,
-  edge : RenderEdge,
+  graph : Diagram,
+  edge : Connection,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   config : AsciiConfig,
@@ -1647,8 +1644,8 @@ fn render_ascii_arrows_new(
 /// Render edge labels
 fn render_ascii_label_new(
   grid : @ascii.Grid,
-  graph : RenderGraph,
-  edge : RenderEdge,
+  graph : Diagram,
+  edge : Connection,
   ref_idx : Int,
   boxes : Array[AsciiBox],
   _config : AsciiConfig,

@@ -76,11 +76,6 @@ pub struct SvgShapeContext {
 pub fn SvgShapeContext::new(@svg.Svg, @graph.Box, String, String, Double, String, SvgConfig) -> Self
 
 // Type aliases
-pub using @diagram {type Connection as RenderEdge}
-
-pub using @diagram {type Diagram as RenderGraph}
-
-pub using @diagram {type Shape as RenderObject}
 
 // Traits
 

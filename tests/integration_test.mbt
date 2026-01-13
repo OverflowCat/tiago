@@ -65,11 +65,8 @@ fn compile_to_diagram(
 fn compile_to_graph(
   source : String,
   direction : @engine_api.Direction,
-) -> Result[@diagram.RenderGraph, String] {
-  match compile_to_diagram(source, direction) {
-    Ok(diagram) => Ok(@diagram.materialize(diagram))
-    Err(e) => Err(e)
-  }
+) -> Result[@diagram.Diagram, String] {
+  compile_to_diagram(source, direction)
 }
 
 ///|

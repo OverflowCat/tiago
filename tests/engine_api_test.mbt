@@ -215,26 +215,24 @@ test "layout result roundtrips via graph" {
     @engine_api.LayoutConfig::new(),
     @engine_api.Direction::Down,
   )
-  let materialized = @diagram.materialize(
-    @diagram.from_graph(laid_out_graph, None),
-  )
-  match materialized.find_object("a").unwrap().get_box() {
+  let diagram = @diagram.from_graph(laid_out_graph, None)
+  match diagram.find_object("a").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(1.0, 2.0, 3.0, 4.0))
     None => fail("a should have a box")
   }
-  match materialized.find_object("b").unwrap().get_box() {
+  match diagram.find_object("b").unwrap().get_box() {
     Some(box) => assert_eq(box, @graph.Box::new(10.0, 20.0, 30.0, 40.0))
     None => fail("b should have a box")
   }
-  let e = materialized.get_edges()[0]
+  let e = diagram.get_edges()[0]
   assert_eq(e.index, 7)
   assert_eq(e.route.length(), 2)
   match e.label_box {
     Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
     None => fail("edge should have label box")
   }
-  assert_eq(materialized.activation_boxes.length(), 1)
-  assert_eq(materialized.sequence_notes.length(), 1)
+  assert_eq(diagram.activation_boxes.length(), 1)
+  assert_eq(diagram.sequence_notes.length(), 1)
 }
 
 ///|

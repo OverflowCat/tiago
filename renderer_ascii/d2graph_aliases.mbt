@@ -16,15 +16,6 @@
 using @diagram {type Connection, type Diagram, type Shape}
 
 ///|
-pub type RenderGraph = Diagram
-
-///|
-pub type RenderObject = Shape
-
-///|
-pub type RenderEdge = Connection
-
-///|
 using @graph {
   type ArrowheadType,
   type LegendInput,

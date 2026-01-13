@@ -43,11 +43,6 @@ pub impl @render_api.Renderer for AsciiRenderer
 pub impl Show for AsciiRenderer
 
 // Type aliases
-pub using @diagram {type Connection as RenderEdge}
-
-pub using @diagram {type Diagram as RenderGraph}
-
-pub using @diagram {type Shape as RenderObject}
 
 // Traits
 
