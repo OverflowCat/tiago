@@ -206,6 +206,38 @@ test "edge end label placement: Head" {
 }
 
 ///|
+test "end labels: label_label_spacing adds extra gap" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge1 = ElkEdge::new("e1", "a", "b")
+  let l1 = ElkLabel::new("l1", "H1")
+  l1.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  let l2 = ElkLabel::new("l2", "H2")
+  l2.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge1.labels.push(l1)
+  edge1.labels.push(l2)
+  root.add_edge(edge1)
+  let options1 = { ..LayoutOptions::layered(), label_label_spacing: Some(10.0) }
+  elk_layered_layout(root, options1)
+  let dy_with = (l2.y - l1.y).abs()
+  let edge2 = ElkEdge::new("e2", "a", "b")
+  let m1 = ElkLabel::new("m1", "H1")
+  m1.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  let m2 = ElkLabel::new("m2", "H2")
+  m2.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge2.labels.push(m1)
+  edge2.labels.push(m2)
+  root.edges.clear()
+  root.add_edge(edge2)
+  elk_layered_layout(root, LayoutOptions::layered())
+  let dy_default = (m2.y - m1.y).abs()
+  assert_true(dy_with > dy_default + 9.0)
+}
+
+///|
 test "mixed edge labels: head + center" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 60.0, 40.0)

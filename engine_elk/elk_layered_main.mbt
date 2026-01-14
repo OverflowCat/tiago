@@ -1204,6 +1204,7 @@ fn place_end_labels(
   let default_side_sign = side_selection_sign(default_selection, direction).to_double()
   let along = along_sign(direction).to_double()
   let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
+  let label_label_spacing = options.label_label_spacing.unwrap_or(0.0)
   let label_offset = options.label_node_spacing.unwrap_or(5.0)
   let edge_offset = options.edge_label_spacing.unwrap_or(2.0)
   for edge in graph.edges {
@@ -1251,7 +1252,7 @@ fn place_end_labels(
         }
         label.x = lx - label.width / 2.0
         label.y = ly
-        cursor = cursor + label.height + label_spacing
+        cursor = cursor + label.height + label_spacing + label_label_spacing
       }
     }
     if !tail_labels.is_empty() {
@@ -1275,7 +1276,7 @@ fn place_end_labels(
         }
         label.x = lx - label.width / 2.0
         label.y = ly
-        cursor = cursor + label.height + label_spacing
+        cursor = cursor + label.height + label_spacing + label_label_spacing
       }
     }
   }
