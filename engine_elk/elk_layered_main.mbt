@@ -1417,27 +1417,16 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
 }
 
 ///|
-/// Layer sweep crossing minimization with barycenter heuristic and greedy switch
+/// Layer sweep crossing minimization (barycenter ordering only)
 fn layer_sweep_crossing_min(
   graph : LGraph,
-  options : LayoutOptions,
+  _options : LayoutOptions,
   thoroughness : Int,
 ) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
   layer_sweep_barycenter_best(graph, thoroughness)
-
-  // Phase 2: Greedy switch for further optimization
-  let greedy = match options.greedy_switch {
-    Some(v) => v
-    None => TwoSided
-  }
-  match greedy {
-    Off => ()
-    OneSided => _greedy_switch(graph, thoroughness)
-    TwoSided => greedy_switch_two_sided(graph, thoroughness)
-  }
 }
 
 ///|

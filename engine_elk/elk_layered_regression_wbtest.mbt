@@ -330,7 +330,6 @@ test "layered regression: parallel edges" {
       #|  - [root] e1 a->b: (39.5, 52) (39.5, 92)
       #|  - [root] e2 a->b: (44.5, 52) (44.5, 47) (44.5, 92)
       #|
-
     ),
   )
 }

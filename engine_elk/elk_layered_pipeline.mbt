@@ -313,12 +313,30 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.ONE_SIDED_GREEDY_SWITCH",
     BeforePhase4,
-    fn(_, _) { () },
+    fn(graph, ctx) {
+      let greedy = match ctx.options.greedy_switch {
+        Some(v) => v
+        None => TwoSided
+      }
+      match greedy {
+        OneSided => _greedy_switch(graph, ctx.thoroughness)
+        _ => ()
+      }
+    },
   )
   builder.add(
     "elk.layered.intermediate.TWO_SIDED_GREEDY_SWITCH",
     BeforePhase4,
-    fn(_, _) { () },
+    fn(graph, ctx) {
+      let greedy = match ctx.options.greedy_switch {
+        Some(v) => v
+        None => TwoSided
+      }
+      match greedy {
+        TwoSided => greedy_switch_two_sided(graph, ctx.thoroughness)
+        _ => ()
+      }
+    },
   )
   builder.add(
     "elk.layered.intermediate.SELF_LOOP_PORT_RESTORER",
