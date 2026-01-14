@@ -254,7 +254,6 @@ test "layered regression: diamond" {
       #|  - [root] e3 b->d: (42, 132) (42, 172)
       #|  - [root] e4 c->d: (122, 132) (122, 147) (42, 147) (42, 172)
       #|
-
     ),
   )
 }
@@ -275,7 +274,6 @@ test "layered regression: parallel edges" {
       #|  - [root] e1 a->b: (39.5, 52) (39.5, 52) (39.5, 92) (39.5, 92)
       #|  - [root] e2 a->b: (44.5, 52) (44.5, 47) (44.5, 87) (44.5, 92)
       #|
-
     ),
   )
 }
@@ -300,7 +298,6 @@ test "layered regression: long edge" {
       #|  - [root] e3 c->d: (122, 132) (122, 147) (42, 147) (42, 172)
       #|  - [root] e4 a->d: (42, 132) (42, 172)
       #|
-
     ),
   )
 }
@@ -323,7 +320,6 @@ test "layered regression: cycle breaking" {
       #|  - [root] e2 b->c: (122, 52) (122, 67) (42, 67) (42, 92)
       #|  - [root] e3 c->a: (42, 132) (42, 12)
       #|
-
     ),
   )
 }

@@ -1326,17 +1326,60 @@ fn minimize_crossings(
 }
 
 ///|
-/// Layer sweep crossing minimization with barycenter heuristic and greedy switch
-fn layer_sweep_crossing_min(
-  graph : LGraph,
-  options : LayoutOptions,
-  thoroughness : Int,
-) -> Unit {
-  if graph.layers.length() <= 1 {
+/// Layer sweep barycenter ordering
+///
+/// Runs multiple sweeps and keeps the best (lowest crossings) intermediate
+/// ordering. Greedy switching is intentionally not run here.
+fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
+  if graph.layers.length() <= 1 || thoroughness <= 0 {
     return
   }
+  fn total_crossings() -> Int {
+    let mut total = 0
+    for i = 0; i < graph.layers.length() - 1; i = i + 1 {
+      total = total +
+        count_crossings_between_layers(graph.layers[i], graph.layers[i + 1])
+    }
+    total
+  }
 
-  // Phase 1: Barycenter ordering
+  fn snapshot_positions() -> Array[Map[String, Int]] {
+    let snapshot : Array[Map[String, Int]] = []
+    for layer in graph.layers {
+      let m : Map[String, Int] = {}
+      for i, node in layer.nodes {
+        m[node.id] = i
+      }
+      snapshot.push(m)
+    }
+    snapshot
+  }
+
+  fn restore_positions(snapshot : Array[Map[String, Int]]) -> Unit {
+    for li = 0; li < graph.layers.length(); li = li + 1 {
+      let layer = graph.layers[li]
+      let m = snapshot[li]
+      for node in layer.nodes {
+        match m.get(node.id) {
+          Some(pos) => node.position = pos
+          None => ()
+        }
+      }
+      layer.nodes.sort_by(fn(a, b) {
+        if a.position != b.position {
+          a.position - b.position
+        } else {
+          a.id.compare(b.id)
+        }
+      })
+      for i, node in layer.nodes {
+        node.position = i
+      }
+    }
+  }
+
+  let mut best_crossings = total_crossings()
+  let mut best_snapshot = snapshot_positions()
   for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
     // Forward sweep (top to bottom for Down direction)
     for i = 1; i < graph.layers.length(); i = i + 1 {
@@ -1357,7 +1400,13 @@ fn layer_sweep_crossing_min(
         false,
       )
     }
+    let crossings = total_crossings()
+    if crossings < best_crossings {
+      best_crossings = crossings
+      best_snapshot = snapshot_positions()
+    }
   }
+  restore_positions(best_snapshot)
 
   // Update node positions after barycenter ordering
   for layer in graph.layers {
@@ -1365,6 +1414,19 @@ fn layer_sweep_crossing_min(
       node.position = i
     }
   }
+}
+
+///|
+/// Layer sweep crossing minimization with barycenter heuristic and greedy switch
+fn layer_sweep_crossing_min(
+  graph : LGraph,
+  options : LayoutOptions,
+  thoroughness : Int,
+) -> Unit {
+  if graph.layers.length() <= 1 {
+    return
+  }
+  layer_sweep_barycenter_best(graph, thoroughness)
 
   // Phase 2: Greedy switch for further optimization
   let greedy = match options.greedy_switch {

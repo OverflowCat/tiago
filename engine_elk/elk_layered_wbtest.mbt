@@ -65,6 +65,99 @@ test "barycenter ordering updates node positions" {
 }
 
 ///|
+test "layer sweep: keep best intermediate ordering" {
+  fn total_crossings(graph : LGraph) -> Int {
+    let mut total = 0
+    for i = 0; i < graph.layers.length() - 1; i = i + 1 {
+      total = total +
+        count_crossings_between_layers(graph.layers[i], graph.layers[i + 1])
+    }
+    total
+  }
+
+  fn build_graph(mask : Int) -> LGraph {
+    let root = ElkNode::new("root")
+    let a0 = ElkNode::with_size("a0", 10.0, 10.0)
+    let a1 = ElkNode::with_size("a1", 10.0, 10.0)
+    let b0 = ElkNode::with_size("b0", 10.0, 10.0)
+    let b1 = ElkNode::with_size("b1", 10.0, 10.0)
+    let c0 = ElkNode::with_size("c0", 10.0, 10.0)
+    let c1 = ElkNode::with_size("c1", 10.0, 10.0)
+    root.add_child(a0)
+    root.add_child(a1)
+    root.add_child(b0)
+    root.add_child(b1)
+    root.add_child(c0)
+    root.add_child(c1)
+    let bits : Array[Int] = [1, 2, 4, 8, 16, 32, 64, 128]
+    // a{0,1} -> b{0,1}
+    for i = 0; i < 4; i = i + 1 {
+      if mask / bits[i] % 2 == 1 {
+        let src = if i / 2 == 0 { "a0" } else { "a1" }
+        let dst = if i % 2 == 0 { "b0" } else { "b1" }
+        root.add_edge(ElkEdge::new("ab" + i.to_string(), src, dst))
+      }
+    }
+    // b{0,1} -> c{0,1}
+    for i = 0; i < 4; i = i + 1 {
+      if mask / bits[i + 4] % 2 == 1 {
+        let src = if i / 2 == 0 { "b0" } else { "b1" }
+        let dst = if i % 2 == 0 { "c0" } else { "c1" }
+        root.add_edge(ElkEdge::new("bc" + i.to_string(), src, dst))
+      }
+    }
+    let graph = LGraph::from_elk_node(root)
+    graph.get_node("a0").unwrap().layer = 0
+    graph.get_node("a1").unwrap().layer = 0
+    graph.get_node("b0").unwrap().layer = 1
+    graph.get_node("b1").unwrap().layer = 1
+    graph.get_node("c0").unwrap().layer = 2
+    graph.get_node("c1").unwrap().layer = 2
+    graph.initialize_layers()
+    graph
+  }
+
+  fn run_old(graph : LGraph, thoroughness : Int) -> Int {
+    // Old behavior: run all sweeps, keep the last ordering.
+    for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
+      for i = 1; i < graph.layers.length(); i = i + 1 {
+        order_layer_by_barycenter(
+          graph,
+          graph.layers[i],
+          graph.layers[i - 1],
+          true,
+        )
+      }
+      for i = graph.layers.length() - 2; i >= 0; i = i - 1 {
+        order_layer_by_barycenter(
+          graph,
+          graph.layers[i],
+          graph.layers[i + 1],
+          false,
+        )
+      }
+    }
+    for layer in graph.layers {
+      for i, node in layer.nodes {
+        node.position = i
+      }
+    }
+    total_crossings(graph)
+  }
+
+  fn run_new(graph : LGraph, thoroughness : Int) -> Int {
+    layer_sweep_barycenter_best(graph, thoroughness)
+    total_crossings(graph)
+  }
+
+  for mask = 0; mask < 256; mask = mask + 1 {
+    let old_crossings = run_old(build_graph(mask), 2)
+    let new_crossings = run_new(build_graph(mask), 2)
+    assert_true(new_crossings <= old_crossings)
+  }
+}
+
+///|
 test "cycle breaking - simple cycle" {
   // Create a graph with a cycle: A -> B -> C -> A
   let root = ElkNode::new("root")
