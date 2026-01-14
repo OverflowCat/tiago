@@ -141,6 +141,48 @@ test "horizontal layout direction: Left" {
 }
 
 ///|
+test "routing slots: first edge keeps midpoint" {
+  let graph = LGraph::new("g")
+  let s0 = LNode::new("s0", Normal)
+  s0.layer = 0
+  s0.x = 0.0
+  s0.y = 0.0
+  s0.width = 10.0
+  s0.height = 10.0
+  let s1 = LNode::new("s1", Normal)
+  s1.layer = 0
+  s1.x = 100.0
+  s1.y = 0.0
+  s1.width = 10.0
+  s1.height = 10.0
+  let t0 = LNode::new("t0", Normal)
+  t0.layer = 1
+  t0.x = 0.0
+  t0.y = 100.0
+  t0.width = 10.0
+  t0.height = 10.0
+  graph.add_node(s0)
+  graph.add_node(s1)
+  graph.add_node(t0)
+  let e0 = LEdge::new("e0", "s0", "t0")
+  s0.outgoing_edges.push(e0)
+  t0.incoming_edges.push(e0)
+  e0.bend_points.push(ElkPoint::new(0.0, 50.0))
+  e0.bend_points.push(ElkPoint::new(0.0, 60.0))
+  graph.edges.push(e0)
+  let e1 = LEdge::new("e1", "s1", "t0")
+  s1.outgoing_edges.push(e1)
+  t0.incoming_edges.push(e1)
+  e1.bend_points.push(ElkPoint::new(0.0, 50.0))
+  e1.bend_points.push(ElkPoint::new(0.0, 60.0))
+  graph.edges.push(e1)
+  graph.initialize_layers()
+  assign_routing_slots(graph, 10.0, true)
+  assert_true((e0.bend_points[0].y - 50.0).abs() < 0.001)
+  assert_true((e1.bend_points[0].y - 45.0).abs() < 0.001)
+}
+
+///|
 test "vertical layout direction: Up" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 60.0, 40.0)

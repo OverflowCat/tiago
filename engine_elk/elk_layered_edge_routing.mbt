@@ -507,15 +507,15 @@ fn assign_routing_slots(
     })
 
     // Adjust bend points to use different routing slots
-    // Use alternating offsets (0, -1, +1, -2, +2, ...) to spread edges around midpoint
+    // Use alternating offsets (0, -0.5, +0.5, -1.0, +1.0, ...) * edge_spacing.
     for i, edge in edges {
       if edge.bend_points.length() >= 2 {
-        // Calculate alternating offset: 0, -spacing, +spacing, -2*spacing, +2*spacing, ...
-        let slot_index = (i + 1) / 2
-        let offset = if i % 2 == 0 {
-          -slot_index.to_double() * edge_spacing * 0.5
+        let offset = if i == 0 {
+          0.0
         } else {
-          slot_index.to_double() * edge_spacing * 0.5
+          let slot = ((i + 1) / 2).to_double() * edge_spacing * 0.5
+          let sign = if i % 2 == 1 { -1.0 } else { 1.0 }
+          sign * slot
         }
         // Create new bend points with adjusted coordinates
         let new_bends : Array[ElkPoint] = []
