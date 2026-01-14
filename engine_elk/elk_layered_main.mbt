@@ -813,11 +813,24 @@ fn remove_label_dummy_nodes(
                   let spacing = dummy.properties.get_double_or(
                     "diago.layered.edgeLabelSpacing", 2.0,
                   )
-                  let side_selection = match options.edge_label_side_selection {
+                  let default_selection = match
+                    options.edge_label_side_selection {
                     Some(s) => s
                     None => DirectionDown
                   }
-                  let side_sign = side_selection_sign(side_selection, direction).to_double()
+                  let mut side_sign = side_selection_sign(
+                    default_selection, direction,
+                  )
+                  if !edge.labels.is_empty() {
+                    match
+                      edge.labels[0].properties.get_int(
+                        "diago.layered.labelSideSign",
+                      ) {
+                      Some(v) => side_sign = v
+                      None => ()
+                    }
+                  }
+                  let side_sign = side_sign.to_double()
                   let offset = options.label_node_spacing.unwrap_or(5.0)
                   let base_x = if direction.is_vertical() {
                     dummy.x + side_sign * offset
@@ -991,6 +1004,24 @@ fn sort_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
 }
 
 ///|
+fn apply_label_side_selection(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
+  let selection = match options.edge_label_side_selection {
+    Some(s) => s
+    None => DirectionDown
+  }
+  let sign = side_selection_sign(selection, direction)
+  for edge in graph.edges {
+    for label in edge.labels {
+      label.properties.set("diago.layered.labelSideSign", Int(sign))
+    }
+  }
+}
+
+///|
 fn side_selection_sign(
   selection : EdgeLabelSideSelection,
   direction : LayoutDirection,
@@ -1133,11 +1164,11 @@ fn place_end_labels(
     Head | Tail => ()
     _ => return
   }
-  let side_selection = match options.edge_label_side_selection {
+  let default_selection = match options.edge_label_side_selection {
     Some(s) => s
     None => DirectionDown
   }
-  let side_sign = side_selection_sign(side_selection, direction).to_double()
+  let default_side_sign = side_selection_sign(default_selection, direction).to_double()
   let along = along_sign(direction).to_double()
   let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let label_offset = options.label_node_spacing.unwrap_or(5.0)
@@ -1171,6 +1202,11 @@ fn place_end_labels(
       let total_h = stack_total(head_labels, label_spacing)
       let mut cursor = -total_h / 2.0
       for label in head_labels {
+        let side_sign = match
+          label.properties.get_int("diago.layered.labelSideSign") {
+          Some(v) => v.to_double()
+          None => default_side_sign
+        }
         let mut lx = anchor.x
         let mut ly = anchor.y
         if direction.is_vertical() {
@@ -1190,6 +1226,11 @@ fn place_end_labels(
       let total_h = stack_total(tail_labels, label_spacing)
       let mut cursor = -total_h / 2.0
       for label in tail_labels {
+        let side_sign = match
+          label.properties.get_int("diago.layered.labelSideSign") {
+          Some(v) => v.to_double()
+          None => default_side_sign
+        }
         let mut lx = anchor.x
         let mut ly = anchor.y
         if direction.is_vertical() {

@@ -384,10 +384,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     fn(_, _) { () },
   )
   builder.add("elk.layered.intermediate.LABEL_SIDE_SELECTOR", BeforePhase4, fn(
-    _,
-    _,
+    graph,
+    ctx,
   ) {
-    ()
+    apply_label_side_selection(graph, ctx.options, ctx.direction)
   })
   builder.add("elk.layered.intermediate.HYPEREDGE_DUMMY_MERGER", BeforePhase4, fn(
     _,
