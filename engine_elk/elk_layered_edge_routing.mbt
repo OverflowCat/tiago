@@ -89,30 +89,33 @@ fn route_vertical_layout(
               )
             }
             let has_pos = port.x != 0.0 || port.y != 0.0
+            let border = port.properties.get_double_or(
+              "diago.layered.portBorderOffset", 0.0,
+            )
             let anchor = match port.side {
               North =>
                 if has_pos {
-                  (node.x + port.x, node.y)
+                  (node.x + port.x, node.y + border)
                 } else {
-                  (node.x + node.width / 2.0, node.y)
+                  (node.x + node.width / 2.0, node.y + border)
                 }
               South =>
                 if has_pos {
-                  (node.x + port.x, node.y + node.height)
+                  (node.x + port.x, node.y + node.height - border)
                 } else {
-                  (node.x + node.width / 2.0, node.y + node.height)
+                  (node.x + node.width / 2.0, node.y + node.height - border)
                 }
               West =>
                 if has_pos {
-                  (node.x, node.y + port.y)
+                  (node.x + border, node.y + port.y)
                 } else {
-                  (node.x, node.y + node.height / 2.0)
+                  (node.x + border, node.y + node.height / 2.0)
                 }
               East =>
                 if has_pos {
-                  (node.x + node.width, node.y + port.y)
+                  (node.x + node.width - border, node.y + port.y)
                 } else {
-                  (node.x + node.width, node.y + node.height / 2.0)
+                  (node.x + node.width - border, node.y + node.height / 2.0)
                 }
               _ => (node.x + port.x, node.y + port.y)
             }
@@ -298,30 +301,33 @@ fn route_horizontal_layout(
               )
             }
             let has_pos = port.x != 0.0 || port.y != 0.0
+            let border = port.properties.get_double_or(
+              "diago.layered.portBorderOffset", 0.0,
+            )
             let anchor = match port.side {
               North =>
                 if has_pos {
-                  (node.x + port.x, node.y)
+                  (node.x + port.x, node.y + border)
                 } else {
-                  (node.x + node.width / 2.0, node.y)
+                  (node.x + node.width / 2.0, node.y + border)
                 }
               South =>
                 if has_pos {
-                  (node.x + port.x, node.y + node.height)
+                  (node.x + port.x, node.y + node.height - border)
                 } else {
-                  (node.x + node.width / 2.0, node.y + node.height)
+                  (node.x + node.width / 2.0, node.y + node.height - border)
                 }
               West =>
                 if has_pos {
-                  (node.x, node.y + port.y)
+                  (node.x + border, node.y + port.y)
                 } else {
-                  (node.x, node.y + node.height / 2.0)
+                  (node.x + border, node.y + node.height / 2.0)
                 }
               East =>
                 if has_pos {
-                  (node.x + node.width, node.y + port.y)
+                  (node.x + node.width - border, node.y + port.y)
                 } else {
-                  (node.x + node.width, node.y + node.height / 2.0)
+                  (node.x + node.width - border, node.y + node.height / 2.0)
                 }
               _ => (node.x + port.x, node.y + port.y)
             }

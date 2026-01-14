@@ -397,6 +397,16 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     if constraints is FixedPos {
       continue
     }
+    let effective_border = min_double(
+      border,
+      min_double(node.width, node.height) / 2.0,
+    )
+    for port in node.ports {
+      port.properties.set(
+        "diago.layered.portBorderOffset",
+        Double(effective_border),
+      )
+    }
 
     // Group by side; optionally skip ports that already have explicit geometry.
     let north : Array[LPort] = []
@@ -423,13 +433,13 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     }
 
     // Normalize usable lengths.
-    let usable_w = max_double(0.0, node.width - 2.0 * border)
-    let usable_h = max_double(0.0, node.height - 2.0 * border)
+    let usable_w = max_double(0.0, node.width - 2.0 * effective_border)
+    let usable_h = max_double(0.0, node.height - 2.0 * effective_border)
     place_along(north, usable_w, alignment_for_side(options, North), spacing, fn(
       pos,
       port,
     ) {
-      port.x = border + pos
+      port.x = effective_border + pos
       port.y = 0.0
       port.width = 0.0
       port.height = 0.0
@@ -438,7 +448,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       pos,
       port,
     ) {
-      port.x = border + pos
+      port.x = effective_border + pos
       port.y = node.height
       port.width = 0.0
       port.height = 0.0
@@ -448,7 +458,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       port,
     ) {
       port.x = 0.0
-      port.y = border + pos
+      port.y = effective_border + pos
       port.width = 0.0
       port.height = 0.0
     })
@@ -457,7 +467,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       port,
     ) {
       port.x = node.width
-      port.y = border + pos
+      port.y = effective_border + pos
       port.width = 0.0
       port.height = 0.0
     })

@@ -269,6 +269,48 @@ test "port constraints: FixedPos keeps port anchors" {
 }
 
 ///|
+test "port border offset: inferred port anchors are inset" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 80.0, 60.0)
+  let node_b = ElkNode::with_size("b", 80.0, 60.0)
+  let port_a : ElkPort = {
+    id: "pa",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: Undefined,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  let port_b : ElkPort = {
+    id: "pb",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: Undefined,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  node_a.add_port(port_a)
+  node_b.add_port(port_b)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e_ab", "a", "b")
+  edge.properties.set("elk.sourcePort", String("pa"))
+  edge.properties.set("elk.targetPort", String("pb"))
+  root.add_edge(edge)
+  let options = { ..LayoutOptions::layered(), port_border_offset: Some(7.0) }
+  elk_layered_layout(root, options)
+  let section = edge.sections[0]
+  assert_true(
+    (section.start_point.y - (node_a.y + node_a.height - 7.0)).abs() < 0.001,
+  )
+  assert_true((section.end_point.y - (node_b.y + 7.0)).abs() < 0.001)
+}
+
+///|
 test "ports: inferred side is inverted for Up direction" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 80.0, 60.0)
