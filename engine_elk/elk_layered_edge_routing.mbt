@@ -125,22 +125,40 @@ fn route_vertical_layout(
     }
   }
 
-  // First, count parallel edges between same source-target pairs
-  // Use normalized keys so (A->B) and (B->A) are counted together
-  let edge_counts : Map[String, Int] = {}
-  let edge_indices : Map[String, Int] = {}
+  // First, group parallel edges deterministically.
+  // Use normalized keys so (A->B) and (B->A) are counted together.
+  let edge_groups : Map[String, Array[LEdge]] = {}
   for edge in graph.edges {
     if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
       continue
     }
-    // Normalize key so parallel edges in both directions are counted together
+    let source = graph.get_node(edge.source_id)
+    let target = graph.get_node(edge.target_id)
+    guard source is Some(src) && target is Some(tgt) else { continue }
+    if src.layer == tgt.layer {
+      continue
+    }
     let key = if edge.source_id < edge.target_id {
       edge.source_id + "->" + edge.target_id
     } else {
       edge.target_id + "->" + edge.source_id
     }
-    let count = edge_counts.get(key).unwrap_or(0)
-    edge_counts[key] = count + 1
+    if !edge_groups.contains(key) {
+      edge_groups[key] = []
+    }
+    match edge_groups.get(key) {
+      Some(arr) => arr.push(edge)
+      None => ()
+    }
+  }
+  let parallel_count_by_key : Map[String, Int] = {}
+  let parallel_index_by_edge : Map[String, Int] = {}
+  for key, edges in edge_groups {
+    edges.sort_by(fn(a, b) { a.id.compare(b.id) })
+    parallel_count_by_key[key] = edges.length()
+    for i, e in edges {
+      parallel_index_by_edge[e.id] = i
+    }
   }
   for edge in graph.edges {
     if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
@@ -172,15 +190,14 @@ fn route_vertical_layout(
       false,
     )
 
-    // Track parallel edge index using normalized key
+    // Deterministic parallel edge index using normalized key.
     let key = if edge.source_id < edge.target_id {
       edge.source_id + "->" + edge.target_id
     } else {
       edge.target_id + "->" + edge.source_id
     }
-    let parallel_count = edge_counts.get(key).unwrap_or(1)
-    let parallel_index = edge_indices.get(key).unwrap_or(0)
-    edge_indices[key] = parallel_index + 1
+    let parallel_count = parallel_count_by_key.get(key).unwrap_or(1)
+    let parallel_index = parallel_index_by_edge.get(edge.id).unwrap_or(0)
 
     // Calculate offset for parallel edges - ALWAYS non-zero for parallel edges
     // This ensures all parallel edges have distinct routes from start to end
@@ -317,6 +334,41 @@ fn route_horizontal_layout(
     }
   }
 
+  // Deterministic parallel edge grouping.
+  // Use normalized keys so (A->B) and (B->A) are counted together.
+  let edge_groups : Map[String, Array[LEdge]] = {}
+  for edge in graph.edges {
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
+    let source = graph.get_node(edge.source_id)
+    let target = graph.get_node(edge.target_id)
+    guard source is Some(src) && target is Some(tgt) else { continue }
+    if src.layer == tgt.layer {
+      continue
+    }
+    let key = if edge.source_id < edge.target_id {
+      edge.source_id + "->" + edge.target_id
+    } else {
+      edge.target_id + "->" + edge.source_id
+    }
+    if !edge_groups.contains(key) {
+      edge_groups[key] = []
+    }
+    match edge_groups.get(key) {
+      Some(arr) => arr.push(edge)
+      None => ()
+    }
+  }
+  let parallel_count_by_key : Map[String, Int] = {}
+  let parallel_index_by_edge : Map[String, Int] = {}
+  for key, edges in edge_groups {
+    edges.sort_by(fn(a, b) { a.id.compare(b.id) })
+    parallel_count_by_key[key] = edges.length()
+    for i, e in edges {
+      parallel_index_by_edge[e.id] = i
+    }
+  }
   for edge in graph.edges {
     if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
       continue
@@ -346,15 +398,38 @@ fn route_horizontal_layout(
       direction,
       false,
     )
+    let key = if edge.source_id < edge.target_id {
+      edge.source_id + "->" + edge.target_id
+    } else {
+      edge.target_id + "->" + edge.source_id
+    }
+    let parallel_count = parallel_count_by_key.get(key).unwrap_or(1)
+    let parallel_index = parallel_index_by_edge.get(edge.id).unwrap_or(0)
+    let parallel_offset = if parallel_count > 1 {
+      let half_spacing = edge_spacing / 2.0
+      let slot = (parallel_index / 2).to_double() + 0.5
+      if parallel_index % 2 == 0 {
+        -slot * half_spacing
+      } else {
+        slot * half_spacing
+      }
+    } else {
+      0.0
+    }
+    edge.parallel_offset = parallel_offset
 
     // Calculate routing
-    if (src_y - tgt_y).abs() < 1.0 {
-      // Nodes are aligned - straight edge
+    if (src_y - tgt_y).abs() < 1.0 && parallel_count == 1 {
+      // Nodes are aligned and single edge - straight edge.
+    } else if (src_y - tgt_y).abs() < 1.0 {
+      // Aligned nodes with parallel edges: detour with Y offset.
+      edge.bend_points.push(ElkPoint::new(src_x, src_y + parallel_offset))
+      edge.bend_points.push(ElkPoint::new(tgt_x, tgt_y + parallel_offset))
     } else {
-      // Need orthogonal routing
+      // Need orthogonal routing.
       let mid_x = (src_x + tgt_x) / 2.0
-      edge.bend_points.push(ElkPoint::new(mid_x, src_y))
-      edge.bend_points.push(ElkPoint::new(mid_x, tgt_y))
+      edge.bend_points.push(ElkPoint::new(mid_x, src_y + parallel_offset))
+      edge.bend_points.push(ElkPoint::new(mid_x, tgt_y + parallel_offset))
     }
   }
   assign_routing_slots(graph, edge_spacing, false)
@@ -421,7 +496,7 @@ fn assign_routing_slots(
       } else if a_key > b_key {
         1
       } else {
-        0
+        a.id.compare(b.id)
       }
     })
 

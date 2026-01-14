@@ -310,3 +310,21 @@ test "ports: inferred side is inverted for Up direction" {
   assert_true((section.start_point.y - node_a.y).abs() < 0.001)
   assert_true((section.end_point.y - (node_b.y + node_b.height)).abs() < 0.001)
 }
+
+///|
+test "parallel edges: distinct routed endpoints" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 80.0, 60.0)
+  let node_b = ElkNode::with_size("b", 80.0, 60.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let e1 = ElkEdge::new("e1", "a", "b")
+  let e2 = ElkEdge::new("e2", "a", "b")
+  root.add_edge(e1)
+  root.add_edge(e2)
+  elk_layered_layout(root, LayoutOptions::layered())
+  let s1 = e1.sections[0]
+  let s2 = e2.sections[0]
+  assert_true((s1.start_point.x - s2.start_point.x).abs() > 0.01)
+  assert_true((s1.end_point.x - s2.end_point.x).abs() > 0.01)
+}
