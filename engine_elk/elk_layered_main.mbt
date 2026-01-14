@@ -839,14 +839,25 @@ fn remove_label_dummy_nodes(
                     None => ()
                   }
                   let side_sign = side_sign.to_double()
-                  let offset = options.label_node_spacing.unwrap_or(5.0)
+                  let edge_label_spacing = options.edge_label_spacing.unwrap_or(
+                    2.0,
+                  )
+                  let label_port_horizontal_spacing = options.label_port_horizontal_spacing.unwrap_or(
+                    1.0,
+                  )
+                  let label_port_vertical_spacing = options.label_port_vertical_spacing.unwrap_or(
+                    1.0,
+                  )
+                  let perp_x = edge_label_spacing +
+                    label_port_horizontal_spacing
+                  let perp_y = edge_label_spacing + label_port_vertical_spacing
                   let base_x = if direction.is_vertical() {
-                    dummy.x + side_sign * offset
+                    dummy.x + side_sign * perp_x
                   } else {
                     dummy.x
                   }
                   let mut y = if direction.is_horizontal() {
-                    dummy.y + side_sign * offset
+                    dummy.y + side_sign * perp_y
                   } else {
                     dummy.y
                   }
