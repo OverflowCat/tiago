@@ -171,21 +171,67 @@ fn process_port_sides(graph : LGraph, direction : LayoutDirection) -> Unit {
 
 ///|
 /// Sort ports in each node for determinism.
-fn sort_ports(graph : LGraph) -> Unit {
+fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
+  let sorting_strategy = match options.port_constraints {
+    Some(FixedOrder) => InputOrder
+    _ =>
+      match options.port_sorting_strategy {
+        Some(s) => s
+        None => InputOrder
+      }
+  }
   for node in graph.nodes {
+    // Precompute port degrees for this node.
+    let degree_by_port : Map[String, Int] = {}
+    for edge in graph.edges {
+      if edge.source_id == node.id {
+        match edge.source_port_id {
+          Some(pid) =>
+            degree_by_port[pid] = degree_by_port.get(pid).unwrap_or(0) + 1
+          None => ()
+        }
+      }
+      if edge.target_id == node.id {
+        match edge.target_port_id {
+          Some(pid) =>
+            degree_by_port[pid] = degree_by_port.get(pid).unwrap_or(0) + 1
+          None => ()
+        }
+      }
+    }
     node.ports.sort_by(fn(a, b) {
       let sa = port_side_order(a.side)
       let sb = port_side_order(b.side)
       if sa != sb {
         sa - sb
       } else {
-        let ia = port_index(a)
-        let ib = port_index(b)
-        match (ia, ib) {
-          (Some(x), Some(y)) => x - y
-          (Some(_), None) => -1
-          (None, Some(_)) => 1
-          (None, None) => a.id.compare(b.id)
+        match sorting_strategy {
+          PortDegree => {
+            let da = degree_by_port.get(a.id).unwrap_or(0)
+            let db = degree_by_port.get(b.id).unwrap_or(0)
+            if da != db {
+              db - da
+            } else {
+              let ia = port_index(a)
+              let ib = port_index(b)
+              match (ia, ib) {
+                (Some(x), Some(y)) => x - y
+                (Some(_), None) => -1
+                (None, Some(_)) => 1
+                (None, None) => a.id.compare(b.id)
+              }
+            }
+          }
+          InputOrder => {
+            let ia = port_index(a)
+            let ib = port_index(b)
+            match (ia, ib) {
+              (Some(x), Some(y)) => x - y
+              (Some(_), None) => -1
+              (None, Some(_)) => 1
+              (None, None) => a.id.compare(b.id)
+            }
+          }
         }
       }
     })

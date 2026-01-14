@@ -322,6 +322,7 @@ struct LGraph {
   id : String
   nodes : Array[LNode]
   edges : Array[LEdge]
+  self_loop_edges : Array[LEdge]
   layers : Array[LLayer]
   // Node lookup map for O(1) access by ID
   node_map : Map[String, LNode]
@@ -337,6 +338,7 @@ fn LGraph::new(id : String) -> LGraph {
     id,
     nodes: [],
     edges: [],
+    self_loop_edges: [],
     layers: [],
     node_map: {},
     width: 0.0,

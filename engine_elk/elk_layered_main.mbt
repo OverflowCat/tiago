@@ -527,14 +527,129 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
 }
 
 ///|
-/// Remove dummy nodes and reconstruct edge routes
-fn remove_dummy_nodes(graph : LGraph) -> Unit {
-  // Group dummy nodes by their origin edge
+/// Extract self-loop edges so they don't affect layering/crossing/placement.
+fn extract_self_loop_edges(graph : LGraph) -> Unit {
+  graph.self_loop_edges.clear()
+  fn remove_edge_by_id(edges : Array[LEdge], id : String) -> Unit {
+    while true {
+      let idx = find_edge_index(edges, id)
+      if idx < 0 {
+        break
+      }
+      edges.remove(idx) |> ignore
+    }
+  }
+
+  let edges : Array[LEdge] = []
+  for edge in graph.edges {
+    if edge.source_id == edge.target_id {
+      graph.self_loop_edges.push(edge)
+      match graph.get_node(edge.source_id) {
+        Some(node) => {
+          remove_edge_by_id(node.incoming_edges, edge.id)
+          remove_edge_by_id(node.outgoing_edges, edge.id)
+        }
+        None => ()
+      }
+    } else {
+      edges.push(edge)
+    }
+  }
+  graph.edges.clear()
+  graph.edges.append(edges)
+}
+
+///|
+/// Assign per-edge offsets for self-loop routing.
+fn assign_self_loop_offsets(graph : LGraph) -> Unit {
+  let mut i = 0
+  for edge in graph.self_loop_edges {
+    edge.parallel_offset = (i.to_double() + 1.0) * 10.0
+    i = i + 1
+  }
+}
+
+///|
+/// Ensure self-loop edges have usable port IDs when possible.
+fn assign_self_loop_ports(graph : LGraph, _direction : LayoutDirection) -> Unit {
+  for edge in graph.self_loop_edges {
+    if edge.source_port_id is Some(_) && edge.target_port_id is Some(_) {
+      continue
+    }
+    match graph.get_node(edge.source_id) {
+      Some(node) => {
+        // Prefer an east-side port to match our routing around the right edge.
+        let mut selected : String? = None
+        for port in node.ports {
+          if port.side is East {
+            selected = match port.original_id {
+              Some(id) => Some(id)
+              None => Some(port.id)
+            }
+            break
+          }
+        }
+        if selected is None && node.ports.length() > 0 {
+          let p = node.ports[0]
+          selected = match p.original_id {
+            Some(id) => Some(id)
+            None => Some(p.id)
+          }
+        }
+        match selected {
+          Some(pid) => {
+            if edge.source_port_id is None {
+              edge.source_port_id = Some(pid)
+            }
+            if edge.target_port_id is None {
+              edge.target_port_id = Some(pid)
+            }
+          }
+          None => ()
+        }
+      }
+      None => ()
+    }
+  }
+}
+
+///|
+/// Route extracted self-loops, then restore them into the graph.
+fn route_and_restore_self_loops(
+  graph : LGraph,
+  direction : LayoutDirection,
+) -> Unit {
+  if graph.self_loop_edges.is_empty() {
+    return
+  }
+
+  // Route self-loop edges using final node positions.
+  route_self_loop_edges(graph, graph.self_loop_edges, direction)
+
+  // Restore into graph and node adjacency lists.
+  let loops : Array[LEdge] = []
+  loops.append(graph.self_loop_edges)
+  graph.self_loop_edges.clear()
+  for edge in loops {
+    graph.edges.push(edge)
+    match graph.get_node(edge.source_id) {
+      Some(node) => {
+        node.incoming_edges.push(edge)
+        node.outgoing_edges.push(edge)
+      }
+      None => ()
+    }
+  }
+}
+
+///|
+/// Remove long-edge dummy nodes and reconstruct bend points.
+fn remove_long_edge_dummy_nodes(graph : LGraph) -> Unit {
   let dummy_chains : Map[String, Array[LNode]] = {}
-  let dummy_node_ids : Array[String] = []
+  let dummy_ids : Map[String, Bool] = {}
   for node in graph.nodes {
-    if node.is_dummy() {
-      dummy_node_ids.push(node.id)
+    if node.is_dummy() && node.node_type is LongEdgeDummy {
+      dummy_ids[node.id] = true
       match node.origin_edge {
         Some(edge_id) => {
           if !dummy_chains.contains(edge_id) {
@@ -550,16 +665,13 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
     }
   }
 
-  // Sort dummy nodes in each chain by layer and create bend points
-  // Only add bend points to original edges (not dummy edges)
+  // Only add bend points to original edges.
   for edge in graph.edges {
     match edge.original_id {
       Some(orig_id) =>
-        // Only process edges that start from a real (non-dummy) source
-        if !edge.source_id.has_prefix("dummy_") {
+        if edge.id == orig_id {
           match dummy_chains.get(orig_id) {
             Some(dummies) => {
-              // Sort by traversal direction
               let source_layer = match graph.get_node(edge.source_id) {
                 Some(n) => n.layer
                 None => 0
@@ -573,14 +685,118 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
               } else {
                 dummies.sort_by(fn(a, b) { b.layer - a.layer })
               }
-              // Add bend points from dummy positions
               edge.bend_points.clear()
               for dummy in dummies {
                 let bend_x = dummy.x + dummy.width / 2.0
                 let bend_y = dummy.y + dummy.height / 2.0
                 edge.bend_points.push(ElkPoint::new(bend_x, bend_y))
-                if dummy.node_type is LabelDummy && !edge.labels.is_empty() {
-                  // Place edge labels at the label dummy position (absolute coords).
+              }
+            }
+            None => ()
+          }
+        }
+      None => ()
+    }
+  }
+  if dummy_ids.is_empty() {
+    return
+  }
+
+  // Remove long-edge dummies from nodes.
+  let nodes : Array[LNode] = []
+  for node in graph.nodes {
+    if !dummy_ids.contains(node.id) {
+      nodes.push(node)
+    }
+  }
+  graph.nodes.clear()
+  graph.nodes.append(nodes)
+
+  // Remove from node_map.
+  for id, _ in dummy_ids {
+    graph.node_map.remove(id) |> ignore
+  }
+
+  // Remove edges incident to long-edge dummies.
+  let edges : Array[LEdge] = []
+  for edge in graph.edges {
+    if !dummy_ids.contains(edge.source_id) &&
+      !dummy_ids.contains(edge.target_id) {
+      edges.push(edge)
+    }
+  }
+  graph.edges.clear()
+  graph.edges.append(edges)
+
+  // Clean incoming/outgoing references.
+  for node in graph.nodes {
+    let incoming : Array[LEdge] = []
+    for e in node.incoming_edges {
+      if !dummy_ids.contains(e.source_id) && !dummy_ids.contains(e.target_id) {
+        incoming.push(e)
+      }
+    }
+    node.incoming_edges.clear()
+    node.incoming_edges.append(incoming)
+    let outgoing : Array[LEdge] = []
+    for e in node.outgoing_edges {
+      if !dummy_ids.contains(e.source_id) && !dummy_ids.contains(e.target_id) {
+        outgoing.push(e)
+      }
+    }
+    node.outgoing_edges.clear()
+    node.outgoing_edges.append(outgoing)
+  }
+  graph.layers.clear()
+}
+
+///|
+/// Remove label dummy nodes and write back label positions.
+fn remove_label_dummy_nodes(graph : LGraph) -> Unit {
+  let dummy_chains : Map[String, Array[LNode]] = {}
+  let dummy_ids : Map[String, Bool] = {}
+  for node in graph.nodes {
+    if node.is_dummy() && node.node_type is LabelDummy {
+      dummy_ids[node.id] = true
+      match node.origin_edge {
+        Some(edge_id) => {
+          if !dummy_chains.contains(edge_id) {
+            dummy_chains[edge_id] = []
+          }
+          match dummy_chains.get(edge_id) {
+            Some(arr) => arr.push(node)
+            None => ()
+          }
+        }
+        None => ()
+      }
+    }
+  }
+  for edge in graph.edges {
+    match edge.original_id {
+      Some(orig_id) =>
+        if edge.id == orig_id {
+          match dummy_chains.get(orig_id) {
+            Some(dummies) => {
+              let source_layer = match graph.get_node(edge.source_id) {
+                Some(n) => n.layer
+                None => 0
+              }
+              let target_layer = match graph.get_node(edge.target_id) {
+                Some(n) => n.layer
+                None => 0
+              }
+              if source_layer <= target_layer {
+                dummies.sort_by(fn(a, b) { a.layer - b.layer })
+              } else {
+                dummies.sort_by(fn(a, b) { b.layer - a.layer })
+              }
+              // Keep any bend points generated earlier (e.g. long-edge joiner) and append.
+              for dummy in dummies {
+                let bend_x = dummy.x + dummy.width / 2.0
+                let bend_y = dummy.y + dummy.height / 2.0
+                edge.bend_points.push(ElkPoint::new(bend_x, bend_y))
+                if !edge.labels.is_empty() {
                   let spacing = dummy.properties.get_double_or(
                     "diago.layered.edgeLabelSpacing", 2.0,
                   )
@@ -602,66 +818,55 @@ fn remove_dummy_nodes(graph : LGraph) -> Unit {
       None => ()
     }
   }
-
-  // Remove dummy nodes from graph.nodes and graph.node_map
-  let non_dummy_nodes : Array[LNode] = []
+  if dummy_ids.is_empty() {
+    return
+  }
+  let nodes : Array[LNode] = []
   for node in graph.nodes {
-    if !node.is_dummy() {
-      non_dummy_nodes.push(node)
+    if !dummy_ids.contains(node.id) {
+      nodes.push(node)
     }
   }
   graph.nodes.clear()
-  for node in non_dummy_nodes {
-    graph.nodes.push(node)
+  graph.nodes.append(nodes)
+  for id, _ in dummy_ids {
+    graph.node_map.remove(id) |> ignore
   }
-
-  // Remove dummy nodes from node_map
-  for dummy_id in dummy_node_ids {
-    graph.node_map.remove(dummy_id) |> ignore
-  }
-
-  // Remove dummy edges from graph.edges
-  let non_dummy_edges : Array[LEdge] = []
+  let edges : Array[LEdge] = []
   for edge in graph.edges {
-    // Keep edges that don't involve dummy nodes
-    let source_is_dummy = edge.source_id.has_prefix("dummy_")
-    let target_is_dummy = edge.target_id.has_prefix("dummy_")
-    if !source_is_dummy && !target_is_dummy {
-      non_dummy_edges.push(edge)
+    if !dummy_ids.contains(edge.source_id) &&
+      !dummy_ids.contains(edge.target_id) {
+      edges.push(edge)
     }
   }
   graph.edges.clear()
-  for edge in non_dummy_edges {
-    graph.edges.push(edge)
-  }
-
-  // Clear and rebuild layers without dummy nodes
-  graph.layers.clear()
-
-  // Clear incoming/outgoing edge references to dummy edges from real nodes
+  graph.edges.append(edges)
   for node in graph.nodes {
-    // Filter out edges that reference dummy nodes
-    let real_incoming : Array[LEdge] = []
+    let incoming : Array[LEdge] = []
     for e in node.incoming_edges {
-      if !e.source_id.has_prefix("dummy_") && !e.target_id.has_prefix("dummy_") {
-        real_incoming.push(e)
+      if !dummy_ids.contains(e.source_id) && !dummy_ids.contains(e.target_id) {
+        incoming.push(e)
       }
     }
     node.incoming_edges.clear()
-    for e in real_incoming {
-      node.incoming_edges.push(e)
-    }
-    let real_outgoing : Array[LEdge] = []
+    node.incoming_edges.append(incoming)
+    let outgoing : Array[LEdge] = []
     for e in node.outgoing_edges {
-      if !e.source_id.has_prefix("dummy_") && !e.target_id.has_prefix("dummy_") {
-        real_outgoing.push(e)
+      if !dummy_ids.contains(e.source_id) && !dummy_ids.contains(e.target_id) {
+        outgoing.push(e)
       }
     }
     node.outgoing_edges.clear()
-    for e in real_outgoing {
-      node.outgoing_edges.push(e)
-    }
+    node.outgoing_edges.append(outgoing)
   }
+  graph.layers.clear()
+}
+
+///|
+/// Backwards-compatible helper: remove all dummies.
+fn remove_dummy_nodes(graph : LGraph) -> Unit {
+  remove_long_edge_dummy_nodes(graph)
+  remove_label_dummy_nodes(graph)
 }
 
 // ============================================================================

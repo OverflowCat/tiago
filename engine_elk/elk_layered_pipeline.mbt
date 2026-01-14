@@ -214,10 +214,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     insert_label_dummy_nodes(graph, ctx.options)
   })
   builder.add("elk.layered.intermediate.SELF_LOOP_PREPROCESSOR", BeforePhase2, fn(
-    _,
+    graph,
     _,
   ) {
-    ()
+    extract_self_loop_edges(graph)
   })
   builder.add(
     "elk.layered.intermediate.LAYER_CONSTRAINT_PREPROCESSOR",
@@ -289,9 +289,9 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   )
   builder.add("elk.layered.intermediate.PORT_LIST_SORTER", BeforePhase3, fn(
     graph,
-    _,
+    ctx,
   ) {
-    sort_ports(graph)
+    sort_ports(graph, ctx.options)
   })
   builder.add(
     "elk.layered.intermediate.SORT_BY_INPUT_ORDER_OF_MODEL",
@@ -323,7 +323,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.SELF_LOOP_PORT_RESTORER",
     BeforePhase4,
-    fn(_, _) { () },
+    fn(graph, ctx) { assign_self_loop_ports(graph, ctx.direction) },
   )
   builder.add(
     "elk.layered.intermediate.ALTERNATING_LAYER_UNZIPPER",
@@ -356,10 +356,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     fn(_, _) { () },
   )
   builder.add("elk.layered.intermediate.SELF_LOOP_ROUTER", BeforePhase4, fn(
-    _,
+    graph,
     _,
   ) {
-    ()
+    assign_self_loop_offsets(graph)
   })
   builder.add(
     "elk.layered.intermediate.COMMENT_NODE_MARGIN_CALCULATOR",
@@ -437,12 +437,12 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     fn(_, _) { () },
   )
 
-  // Our current implementation joins/merges dummies here.
+  // Our current implementation joins/merges long-edge dummies here.
   builder.add("elk.layered.intermediate.LONG_EDGE_JOINER", AfterPhase5, fn(
     graph,
     _,
   ) {
-    remove_dummy_nodes(graph)
+    remove_long_edge_dummy_nodes(graph)
   })
   builder.add_when(
     "elk.layered.intermediate.SELF_LOOP_POSTPROCESSOR",
@@ -459,7 +459,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
         Splines => false
       }
     },
-    fn(graph, ctx) { route_self_loops(graph, ctx.direction) },
+    fn(graph, ctx) { route_and_restore_self_loops(graph, ctx.direction) },
   )
   builder.add("elk.layered.intermediate.BREAKING_POINT_REMOVER", AfterPhase5, fn(
     _,
@@ -479,10 +479,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     ()
   })
   builder.add("elk.layered.intermediate.LABEL_DUMMY_REMOVER", AfterPhase5, fn(
-    _,
+    graph,
     _,
   ) {
-    ()
+    remove_label_dummy_nodes(graph)
   })
   builder.add(
     "elk.layered.intermediate.FINAL_SPLINE_BENDPOINTS_CALCULATOR",

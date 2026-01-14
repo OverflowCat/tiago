@@ -462,30 +462,41 @@ fn assign_routing_slots(
 // ============================================================================
 
 ///|
-/// Route self-loop edges
-fn route_self_loops(graph : LGraph, _direction : LayoutDirection) -> Unit {
-  for edge in graph.edges {
-    if edge.source_id == edge.target_id {
-      // This is a self-loop
-      match graph.get_node(edge.source_id) {
-        Some(node) => {
-          edge.bend_points.clear()
+/// Route self-loop edges on the given edge list.
+fn route_self_loop_edges(
+  graph : LGraph,
+  edges : Array[LEdge],
+  _direction : LayoutDirection,
+) -> Unit {
+  for edge in edges {
+    if edge.source_id != edge.target_id {
+      continue
+    }
+    match graph.get_node(edge.source_id) {
+      Some(node) => {
+        edge.bend_points.clear()
 
-          // Route around the right side of the node
-          let right_x = node.x + node.width + 20.0
-          let top_y = node.y
-          let bottom_y = node.y + node.height
+        // Route around the right side of the node.
+        // Use parallel_offset (assigned by SELF_LOOP_ROUTER) to avoid overlap.
+        let right_x = node.x + node.width + 20.0 + edge.parallel_offset
+        let top_y = node.y
+        let bottom_y = node.y + node.height
 
-          // Create loop path: bottom-right, top-right, back to top
-          edge.bend_points.push(ElkPoint::new(node.x + node.width, bottom_y))
-          edge.bend_points.push(ElkPoint::new(right_x, bottom_y))
-          edge.bend_points.push(ElkPoint::new(right_x, top_y))
-          edge.bend_points.push(ElkPoint::new(node.x + node.width, top_y))
-        }
-        None => ()
+        // Create loop path: bottom-right, bottom-out, top-out, top-right.
+        edge.bend_points.push(ElkPoint::new(node.x + node.width, bottom_y))
+        edge.bend_points.push(ElkPoint::new(right_x, bottom_y))
+        edge.bend_points.push(ElkPoint::new(right_x, top_y))
+        edge.bend_points.push(ElkPoint::new(node.x + node.width, top_y))
       }
+      None => ()
     }
   }
+}
+
+///|
+/// Route self-loop edges present in the graph.
+fn route_self_loops(graph : LGraph, direction : LayoutDirection) -> Unit {
+  route_self_loop_edges(graph, graph.edges, direction)
 }
 
 // ============================================================================

@@ -174,3 +174,17 @@ test "edge label placement on long edge (label dummy)" {
   assert_true(label.x >= 0.0)
   assert_true(label.y >= 0.0)
 }
+
+///|
+test "self-loop edge routing" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  root.add_child(node_a)
+  let edge_loop = ElkEdge::new("e_loop", "a", "a")
+  root.add_edge(edge_loop)
+  let options = LayoutOptions::layered()
+  elk_layered_layout(root, options)
+  assert_true(edge_loop.sections.length() == 1)
+  let section = edge_loop.sections[0]
+  assert_true(section.bend_points.length() >= 4)
+}
