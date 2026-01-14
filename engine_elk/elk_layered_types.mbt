@@ -713,3 +713,12 @@ fn LGraph::initialize_layers(self : LGraph) -> Unit {
     }
   }
 }
+
+///|
+/// Allocate a unique dummy node ID within this graph.
+fn LGraph::alloc_dummy_id(self : LGraph) -> String {
+  let key = "diago.layered.nextDummyId"
+  let next = self.properties.get_int_or(key, 0)
+  self.properties.set(key, Int(next + 1))
+  "dummy_" + next.to_string()
+}

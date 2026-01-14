@@ -745,48 +745,6 @@ pub fn LegendInput::entry_count(self : LegendInput) -> Int {
 }
 
 ///|
-pub fn LegendInput::calculate_size(
-  self : LegendInput,
-  font_size : Int,
-) -> (Double, Double) {
-  if self.is_empty() {
-    return (0.0, 0.0)
-  }
-  let mut max_label_width = 0.0
-  let mut total_height = self.padding * 2.0
-  match self.title {
-    Some(t) => {
-      max_label_width = t.length().to_double() * font_size.to_double() * 0.6
-      total_height = total_height + font_size.to_double() + self.entry_gap
-    }
-    None => ()
-  }
-  for entry in self.entries {
-    match entry {
-      ShapeEntry(label~, ..)
-      | ConnectionEntry(label~, ..)
-      | CustomEntry(label~, ..) => {
-        let label_width = label.length().to_double() *
-          font_size.to_double() *
-          0.6
-        max_label_width = if label_width > max_label_width {
-          label_width
-        } else {
-          max_label_width
-        }
-        total_height = total_height + self.icon_size + self.entry_gap
-      }
-      Separator => total_height = total_height + 4.0 + self.entry_gap
-    }
-  }
-  let width = self.padding * 2.0 +
-    self.icon_size +
-    self.entry_gap +
-    max_label_width
-  (width, total_height)
-}
-
-///|
 pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
   let objects : Array[ObjectInput] = []
   for obj in graph.objects {

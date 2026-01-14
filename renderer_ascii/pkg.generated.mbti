@@ -4,7 +4,6 @@ package "Milky2018/diago/renderer_ascii"
 import(
   "Milky2018/diago/ascii"
   "Milky2018/diago/diagram"
-  "Milky2018/diago/graph"
   "Milky2018/diago/render_api"
 )
 
@@ -13,14 +12,9 @@ pub fn render(@diagram.Diagram, AsciiConfig) -> String
 
 pub fn render_ascii(@diagram.Diagram, AsciiConfig) -> String
 
-pub fn render_legend_ascii(@ascii.Grid, @graph.LegendInput, Int, Int, @ascii.CharSet) -> Unit
-
 // Errors
 
 // Types and methods
-type AsciiBox
-pub impl Show for AsciiBox
-
 pub struct AsciiConfig {
   min_box_width : Int
   box_height : Int

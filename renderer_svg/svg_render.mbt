@@ -308,7 +308,16 @@ pub fn render_svg(graph : Diagram, config : SvgConfig) -> String {
 
   // Render legend (always visible across layer/scenario/step switching)
   match graph.legend {
-    Some(legend) => render_legend_svg(svg, legend, bounds, config)
+    Some(legend) =>
+      match
+        @layout_svg.compute_legend_layout(
+          legend,
+          bounds,
+          @layout_svg.LegendLayoutConfig::new(config.font_size),
+        ) {
+        Some(layout) => render_legend_svg(svg, layout, config)
+        None => ()
+      }
     None => ()
   }
 
@@ -1479,16 +1488,8 @@ fn render_svg_sql_table(
   let header_bg = "#4a5568" // Darker header
   let header_fg = "#ffffff"
   let table_name = label
-  // Calculate height: header + column rows
+  // Layout is responsible for sizing the table box.
   let header_height = line_height + padding
-  let columns_height = children.length().to_double() * line_height + padding
-  let total_height = header_height + columns_height
-  // Use calculated height if larger than box
-  let actual_height = if total_height > box.height {
-    total_height
-  } else {
-    box.height
-  }
   match pass {
     Background => {
       // Background pass: render shapes (rectangles, lines)
@@ -1498,7 +1499,7 @@ fn render_svg_sql_table(
           box.x,
           box.y,
           box.width,
-          actual_height,
+          box.height,
           fill~,
           stroke~,
           stroke_width~,
@@ -2252,7 +2253,7 @@ fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
 }
 
 ///|
-/// Build a railroad-style path with orthogonal lines and rounded corners
+/// Build a polyline path with rounded corners.
 fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
   if points.length() < 2 {
     return
@@ -2262,43 +2263,8 @@ fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
   // Move to first point
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
-    // Two points - create orthogonal path with a bend
-    let p0 = points[0]
-    let p1 = points[1]
-    let dx = (p1.x - p0.x).abs()
-    let dy = (p1.y - p0.y).abs()
-    // If already aligned, just draw straight
-    if dx < 1.0 || dy < 1.0 {
-      let _ = pb.line_to(p1.x, p1.y)
-      return
-    }
-    // Create orthogonal path: go vertical first, then horizontal (or vice versa)
-    // Choose based on which dimension is larger
-    let mid_y = (p0.y + p1.y) / 2.0
-    let r = @cmp.minimum(radius, @cmp.minimum(dx, dy) / 2.0)
-    if r < 1.0 {
-      // Too small for arcs, just use straight lines
-      let _ = pb.line_to(p0.x, mid_y)
-      let _ = pb.line_to(p1.x, mid_y)
-      let _ = pb.line_to(p1.x, p1.y)
-      return
-    }
-    // First vertical segment (stop before corner)
-    let stop1_y = if mid_y > p0.y { mid_y - r } else { mid_y + r }
-    let _ = pb.line_to(p0.x, stop1_y)
-    // First arc
-    let sweep1 = (p1.x > p0.x) != (mid_y > p0.y)
-    let resume1_x = if p1.x > p0.x { p0.x + r } else { p0.x - r }
-    let _ = pb.arc_to(r, r, resume1_x, mid_y, large_arc=false, sweep=sweep1)
-    // Horizontal segment (stop before second corner)
-    let stop2_x = if p1.x > p0.x { p1.x - r } else { p1.x + r }
-    let _ = pb.line_to(stop2_x, mid_y)
-    // Second arc
-    let sweep2 = (p1.x > p0.x) == (p1.y > mid_y)
-    let resume2_y = if p1.y > mid_y { mid_y + r } else { mid_y - r }
-    let _ = pb.arc_to(r, r, p1.x, resume2_y, large_arc=false, sweep=sweep2)
-    // Final vertical segment
-    let _ = pb.line_to(p1.x, p1.y)
+    // Two points: routing is decided by the layout pipeline.
+    let _ = pb.line_to(points[1].x, points[1].y)
     return
   }
   // For each intermediate point, draw line segments with rounded corners
@@ -2427,8 +2393,7 @@ fn render_svg_edge(
   }
   // Render edge label
   if edge.label != "" {
-    // Use computed label_box if available (from automatic positioning)
-    // Otherwise fall back to midpoint
+    // Use precomputed label_box from the layout pipeline.
     match edge.label_box {
       Some(label_box) => {
         // Use pre-computed label position

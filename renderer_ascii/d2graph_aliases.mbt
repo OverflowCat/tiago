@@ -22,3 +22,17 @@ using @graph {
   type LegendPosition,
   type ShapeType,
 }
+
+///|
+#warnings("-unused_value")
+fn _use_alias_types(
+  _c : Connection,
+  _d : Diagram,
+  _s : Shape,
+  _a : ArrowheadType,
+  _l : LegendInput,
+  _p : LegendPosition,
+  _t : ShapeType,
+) -> Unit {
+  ()
+}

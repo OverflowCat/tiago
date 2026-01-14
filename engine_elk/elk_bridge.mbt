@@ -547,9 +547,18 @@ fn run_elk_layout(
     .with_edge_routing(EdgeRouting::Orthogonal)
   // Keep options also attached as ELK properties for future property-driven resolution.
   elk_root.properties.copy_from(options.to_properties())
+  let algorithm = match options.algorithm {
+    Some(a) => a
+    None => Layered
+  }
 
-  // Run ELK layered layout (using the proper implementation)
-  elk_layered_layout(elk_root, options)
+  // Dispatch to the selected algorithm implementation.
+  match algorithm {
+    Layered => elk_layered_layout(elk_root, options)
+    MrTree => elk_mrtree_layout(elk_root, options)
+    // TODO: implement and wire the remaining ELK algorithms.
+    _ => elk_layered_layout(elk_root, options)
+  }
 
   // Convert back to Graph format
   elk_to_graph(elk_root, graph, config, direction)

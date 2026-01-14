@@ -45,15 +45,6 @@ fn find_edge_index(edges : Array[LEdge], id : String) -> Int {
   -1
 }
 
-///|
-fn max_double(a : Double, b : Double) -> Double {
-  if a > b {
-    a
-  } else {
-    b
-  }
-}
-
 // ============================================================================
 // Main Entry Point
 // ============================================================================
@@ -62,58 +53,6 @@ fn max_double(a : Double, b : Double) -> Double {
 /// Execute the layered layout algorithm
 fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   let resolved_options = resolve_options_for_graph(options, graph)
-  fn ensure_label_size(label : ElkLabel) -> Unit {
-    if label.width <= 0.0 {
-      label.width = label.text.length().to_double() * 8.0
-    }
-    if label.height <= 0.0 {
-      label.height = 14.0
-    }
-  }
-
-  fn ensure_sizes(node : ElkNode, options : LayoutOptions) -> Unit {
-    let node_options = resolve_options_for_node(options, node)
-    for label in node.labels {
-      ensure_label_size(label)
-    }
-    for port in node.ports {
-      for label in port.labels {
-        ensure_label_size(label)
-      }
-    }
-    for edge in node.edges {
-      for label in edge.labels {
-        ensure_label_size(label)
-      }
-    }
-    for child in node.children {
-      ensure_sizes(child, node_options)
-    }
-
-    // Auto-size nodes when missing width/height.
-    if node.width <= 0.0 || node.height <= 0.0 {
-      let (min_w, min_h) = match node_options.node_size_minimum {
-        Some((w, h)) => (w, h)
-        None => (60.0, 40.0)
-      }
-      let mut label_w = 0.0
-      let mut label_h = 0.0
-      for label in node.labels {
-        if label.width > label_w {
-          label_w = label.width
-        }
-        label_h = label_h + label.height
-      }
-      let padding = 20.0
-      if node.width <= 0.0 {
-        node.width = max_double(min_w, label_w + padding)
-      }
-      if node.height <= 0.0 {
-        node.height = max_double(min_h, label_h + padding)
-      }
-    }
-  }
-
   ensure_sizes(graph, resolved_options)
   // First, recursively layout compound nodes (children with their own children)
   for child in graph.children {
@@ -140,53 +79,9 @@ fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
     Some(t) => t
     None => 7
   }
-
-  // Phase 1: Cycle Breaking
-  let cycle_strategy = match resolved_options.cycle_breaking_strategy {
-    Some(s) => s
-    None => GreedyModelOrder
-  }
-  break_cycles(lgraph, cycle_strategy)
-
-  // Phase 2: Layer Assignment
-  let layer_strategy = match resolved_options.layering_strategy {
-    Some(s) => s
-    None => LongestPath
-  }
-  assign_layers(lgraph, layer_strategy)
-
-  // Initialize layer structure
-  lgraph.initialize_layers()
-
-  // Insert dummy nodes for long edges
-  insert_dummy_nodes(lgraph, resolved_options)
-
-  // Phase 3: Crossing Minimization
-  let crossing_strategy = match resolved_options.crossing_min_strategy {
-    Some(s) => s
-    None => LayerSweep
-  }
-  minimize_crossings(lgraph, crossing_strategy, thoroughness)
-
-  // Phase 4: Node Placement
-  let placement_strategy = match resolved_options.node_placement_strategy {
-    Some(s) => s
-    None => BrandesKoepf
-  } // Default to Brandes-Koepf like ELK
-  place_nodes(lgraph, resolved_options, placement_strategy, direction)
-
-  // Phase 5: Edge Routing
-  let routing = match resolved_options.edge_routing {
-    Some(r) => r
-    None => Orthogonal
-  }
-  route_edges(lgraph, routing, direction)
-
-  // Restore reversed edges
-  restore_reversed_edges(lgraph)
-
-  // Remove dummy nodes and create final edge routes
-  remove_dummy_nodes(lgraph)
+  run_layered_internal_pipeline(
+    lgraph, resolved_options, direction, thoroughness,
+  )
 
   // Apply results back to ElkNode
   lgraph.to_elk_node(graph, direction)
@@ -449,12 +344,113 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 // ============================================================================
 
 ///|
-/// Insert dummy nodes for edges spanning multiple layers
-fn insert_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
+/// Insert label dummy nodes for edges with labels.
+///
+/// This follows the ELK layered approach of turning edge labels into nodes so
+/// later phases can account for label sizes.
+fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
+  let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
+  let original_edge_count = graph.edges.length()
+  for i = 0; i < original_edge_count; i = i + 1 {
+    let edge = graph.edges[i]
+
+    // Skip already-split carrier edges.
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
+
+    // Ignore unlabeled edges.
+    if edge.labels.is_empty() {
+      continue
+    }
+
+    // Self-loops are handled by dedicated processors.
+    if edge.source_id == edge.target_id {
+      continue
+    }
+    let source_node = graph.get_node(edge.source_id)
+    let target_node = graph.get_node(edge.target_id)
+    guard source_node is Some(src) && target_node is Some(tgt) else { continue }
+
+    // Mark the original edge so later phases (routing) skip it.
+    edge.properties.set("diago.layered.longEdgeSplit", Bool(true))
+    let origin = match edge.original_id {
+      Some(id) => id
+      None => edge.id
+    }
+
+    // Create the label dummy node.
+    let dummy_id = graph.alloc_dummy_id()
+    let dummy = LNode::new(dummy_id, LabelDummy)
+    dummy.origin_edge = Some(origin)
+    let mut max_w = 1.0
+    let mut sum_h = 0.0
+    for label in edge.labels {
+      if label.width > max_w {
+        max_w = label.width
+      }
+      sum_h = sum_h + label.height
+    }
+    let gaps = (edge.labels.length() - 1).to_double()
+    dummy.width = max_w
+    dummy.height = sum_h + gaps * label_spacing
+    dummy.properties.set(
+      "diago.layered.edgeLabelSpacing",
+      Double(label_spacing),
+    )
+    graph.add_node(dummy)
+
+    // Create edge from source to label dummy.
+    let edge_to_dummy = LEdge::new(
+      "e_" + edge.source_id + "_" + dummy_id,
+      edge.source_id,
+      dummy_id,
+    )
+    edge_to_dummy.original_id = Some(origin)
+    edge_to_dummy.priority = edge.priority
+    edge_to_dummy.source_port_id = edge.source_port_id
+    match graph.get_node(edge.source_id) {
+      Some(source) => source.outgoing_edges.push(edge_to_dummy)
+      None => ()
+    }
+    dummy.incoming_edges.push(edge_to_dummy)
+    graph.edges.push(edge_to_dummy)
+
+    // Create edge from label dummy to target.
+    let edge_from_dummy = LEdge::new(
+      "e_" + dummy_id + "_" + edge.target_id,
+      dummy_id,
+      edge.target_id,
+    )
+    edge_from_dummy.original_id = Some(origin)
+    edge_from_dummy.priority = edge.priority
+    edge_from_dummy.target_port_id = edge.target_port_id
+    dummy.outgoing_edges.push(edge_from_dummy)
+    tgt.incoming_edges.push(edge_from_dummy)
+    graph.edges.push(edge_from_dummy)
+
+    // Remove the original edge from adjacency lists (carrier edge only).
+    let src_idx = find_edge_index(src.outgoing_edges, edge.id)
+    if src_idx >= 0 {
+      src.outgoing_edges.remove(src_idx) |> ignore
+    }
+    let tgt_idx = find_edge_index(tgt.incoming_edges, edge.id)
+    if tgt_idx >= 0 {
+      tgt.incoming_edges.remove(tgt_idx) |> ignore
+    }
+  }
+}
+
+///|
+/// Insert dummy nodes for edges spanning multiple layers.
+fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
   // Collect long edges
   let long_edges = graph.get_long_edges()
-  let mut dummy_count = 0
   for edge in long_edges {
+    // Skip already-split carrier edges.
+    if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     let source_node = graph.get_node(edge.source_id)
     let target_node = graph.get_node(edge.target_id)
     guard source_node is Some(src) && target_node is Some(tgt) else { continue }
@@ -466,63 +462,33 @@ fn insert_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       continue
     }
 
-    // Create dummy nodes for each intermediate layer
-    // Mark the original long edge so later phases can skip routing it directly.
+    // Mark the edge so later phases can skip routing it directly.
     edge.properties.set("diago.layered.longEdgeSplit", Bool(true))
+    let origin = match edge.original_id {
+      Some(id) => id
+      None => edge.id
+    }
     let mut prev_node_id = edge.source_id
     let direction = if target_layer > source_layer { 1 } else { -1 }
-    let layer_distance = (target_layer - source_layer).abs()
-    let label_layer : Int? = if edge.labels.is_empty() {
-      None
-    } else {
-      Some(source_layer + direction * (layer_distance / 2))
-    }
-    let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
     let mut layer_idx = source_layer + direction
     while layer_idx != target_layer {
-      // Create dummy node
-      let dummy_id = "dummy_" + dummy_count.to_string()
-      dummy_count += 1
-      let is_label_dummy = label_layer == Some(layer_idx)
-      let dummy = if is_label_dummy {
-        LNode::new(dummy_id, LabelDummy)
-      } else {
-        LNode::new(dummy_id, LongEdgeDummy)
-      }
+      let dummy_id = graph.alloc_dummy_id()
+      let dummy = LNode::new(dummy_id, LongEdgeDummy)
       dummy.layer = layer_idx
-      dummy.origin_edge = Some(edge.id)
-      if is_label_dummy {
-        let mut max_w = 1.0
-        let mut sum_h = 0.0
-        for label in edge.labels {
-          if label.width > max_w {
-            max_w = label.width
-          }
-          sum_h = sum_h + label.height
-        }
-        let gaps = (edge.labels.length() - 1).to_double()
-        dummy.width = max_w
-        dummy.height = sum_h + gaps * label_spacing
-        dummy.properties.set(
-          "diago.layered.edgeLabelSpacing",
-          Double(label_spacing),
-        )
-      } else {
-        dummy.width = 1.0 // Minimal width for dummy
-        dummy.height = 1.0
-      }
-
-      // Add to graph
+      dummy.origin_edge = Some(origin)
+      dummy.width = 1.0
+      dummy.height = 1.0
       graph.add_node(dummy)
-
-      // Create edge from prev_node to dummy
       let edge_to_dummy = LEdge::new(
         "e_" + prev_node_id + "_" + dummy_id,
         prev_node_id,
         dummy_id,
       )
-      edge_to_dummy.original_id = edge.original_id
-      // Link edge to nodes
+      edge_to_dummy.original_id = Some(origin)
+      edge_to_dummy.priority = edge.priority
+      if prev_node_id == edge.source_id {
+        edge_to_dummy.source_port_id = edge.source_port_id
+      }
       match graph.get_node(prev_node_id) {
         Some(prev) => prev.outgoing_edges.push(edge_to_dummy)
         None => ()
@@ -532,35 +498,31 @@ fn insert_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       prev_node_id = dummy_id
       layer_idx = layer_idx + direction
     }
-
-    // Create final edge from last dummy to target
     let final_edge = LEdge::new(
       "e_" + prev_node_id + "_" + edge.target_id,
       prev_node_id,
       edge.target_id,
     )
-    final_edge.original_id = edge.original_id
+    final_edge.original_id = Some(origin)
+    final_edge.priority = edge.priority
+    final_edge.target_port_id = edge.target_port_id
     match graph.get_node(prev_node_id) {
       Some(prev) => prev.outgoing_edges.push(final_edge)
       None => ()
     }
     tgt.incoming_edges.push(final_edge)
     graph.edges.push(final_edge)
-
-    // Remove original edge from source's outgoing
     let src_idx = find_edge_index(src.outgoing_edges, edge.id)
     if src_idx >= 0 {
       src.outgoing_edges.remove(src_idx) |> ignore
     }
-
-    // Remove original edge from target's incoming
     let tgt_idx = find_edge_index(tgt.incoming_edges, edge.id)
     if tgt_idx >= 0 {
       tgt.incoming_edges.remove(tgt_idx) |> ignore
     }
   }
 
-  // Reinitialize layers with dummy nodes
+  // Reinitialize layers with dummy nodes.
   graph.initialize_layers()
 }
 
@@ -945,9 +907,6 @@ fn orthogonal_routing(graph : LGraph, direction : LayoutDirection) -> Unit {
 
   // Use improved routing with slot assignment
   route_edges_orthogonal(graph, direction, edge_spacing)
-
-  // Route any self-loops
-  route_self_loops(graph, direction)
 
   // Clean up unnecessary bend points
   straighten_edges(graph)

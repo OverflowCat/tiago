@@ -13,128 +13,107 @@
 // limitations under the License.
 
 ///|
-/// LegendInput rendering for SVG and ASCII output
+/// Legend rendering for SVG output.
 ///
-/// This module provides rendering functions for legends in both
-/// SVG and ASCII formats.
+/// Legend geometry (size/position/alignment) is computed in `layout_svg`.
+/// This module only draws the pre-laid-out legend.
 
 ///|
-/// Render a legend to SVG
+using @layout_svg {type LegendLayout}
+
+///|
+
+///|
+/// Render a pre-laid-out legend to SVG.
 pub fn render_legend_svg(
   svg : @svg.Svg,
-  legend : LegendInput,
-  graph_bounds : (Double, Double, Double, Double),
+  layout : LegendLayout,
   config : SvgConfig,
 ) -> Unit {
-  if legend.is_empty() || legend.position == @graph.Hidden {
-    return
-  }
-  let (min_x, min_y, max_x, max_y) = graph_bounds
-  let (width, height) = legend.calculate_size(config.font_size)
-  // Calculate position based on legend.position
-  let margin = 20.0
-  let (x, y) = match legend.position {
-    @graph.TopLeft => (min_x + margin, min_y + margin)
-    @graph.TopRight => (max_x - width - margin, min_y + margin)
-    @graph.BottomLeft => (min_x + margin, max_y - height - margin)
-    @graph.BottomRight | @graph.Hidden =>
-      (max_x - width - margin, max_y - height - margin)
-  }
   // Render legend background
-  let fill = legend.fill.unwrap_or("#ffffff")
-  let stroke = legend.stroke.unwrap_or("#cccccc")
   svg.add(
     @svg.rect(
-      x,
-      y,
-      width,
-      height,
-      fill~,
-      stroke~,
+      layout.x,
+      layout.y,
+      layout.width,
+      layout.height,
+      fill=layout.fill,
+      stroke=layout.stroke,
       stroke_width=1.0,
       rx=Some(4.0),
       ry=Some(4.0),
     ),
   )
+
   // Render title if present
-  let mut current_y = y + legend.padding
-  match legend.title {
-    Some(title) => {
-      let title_x = x + legend.padding
-      let title_y = current_y + config.font_size.to_double() * 0.8
+  match layout.title {
+    Some(title) =>
       svg.add(
-        "<text x=\"\{title_x}\" y=\"\{title_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(title)}</text>",
+        "<text x=\"\{title.x}\" y=\"\{title.y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(title.text)}</text>",
       )
-      current_y = current_y + config.font_size.to_double() + legend.entry_gap
-    }
     None => ()
   }
+
   // Render each entry
-  for entry in legend.entries {
+  for entry in layout.entries {
     match entry {
-      ShapeEntry(shape~, label~, style~) =>
-        render_legend_shape_entry(
-          svg,
-          x + legend.padding,
-          current_y,
-          shape,
-          label,
-          style,
-          legend,
-          config,
+      @layout_svg.LegendEntryLayout::Shape(
+        icon_box~,
+        shape~,
+        label~,
+        style~,
+        label_x~,
+        label_y~
+      ) =>
+        render_shape_entry(
+          svg, icon_box, shape, label, style, label_x, label_y, config,
         )
-      ConnectionEntry(src_arrow~, dst_arrow~, label~, style~) =>
-        render_legend_connection_entry(
-          svg,
-          x + legend.padding,
-          current_y,
-          src_arrow,
-          dst_arrow,
-          label,
-          style,
-          legend,
-          config,
+      @layout_svg.LegendEntryLayout::Connection(
+        line_start_x~,
+        line_end_x~,
+        line_y~,
+        src_arrow~,
+        dst_arrow~,
+        label~,
+        style~,
+        label_x~,
+        label_y~
+      ) =>
+        render_connection_entry(
+          svg, line_start_x, line_end_x, line_y, src_arrow, dst_arrow, label, style,
+          label_x, label_y, config,
         )
-      CustomEntry(icon~, label~) =>
-        render_legend_custom_entry(
-          svg,
-          x + legend.padding,
-          current_y,
-          icon,
-          label,
-          legend,
-          config,
+      @layout_svg.LegendEntryLayout::Custom(
+        icon_x~,
+        icon_y~,
+        icon_size~,
+        icon~,
+        label~,
+        label_x~,
+        label_y~
+      ) =>
+        render_custom_entry(
+          svg, icon_x, icon_y, icon_size, icon, label, label_x, label_y, config,
         )
-      Separator => {
-        // Draw a horizontal line
-        let line_y = current_y + 2.0
+      @layout_svg.LegendEntryLayout::Separator(x1~, x2~, y~) =>
         svg.add(
-          "<line x1=\"\{x + legend.padding}\" y1=\"\{line_y}\" x2=\"\{x + width - legend.padding}\" y2=\"\{line_y}\" stroke=\"#cccccc\" stroke-width=\"1\"/>",
+          "<line x1=\"\{x1}\" y1=\"\{y}\" x2=\"\{x2}\" y2=\"\{y}\" stroke=\"#cccccc\" stroke-width=\"1\"/>",
         )
-      }
     }
-    // Update y position for next entry
-    current_y = current_y +
-      (match entry {
-        Separator => 4.0
-        _ => legend.icon_size
-      }) +
-      legend.entry_gap
   }
 }
 
 ///|
-fn render_legend_shape_entry(
+fn render_shape_entry(
   svg : @svg.Svg,
-  x : Double,
-  y : Double,
-  shape : ShapeType,
+  icon_box : @graph.Box,
+  shape : @graph.ShapeType,
   label : String,
-  style : StyleInput?,
-  legend : LegendInput,
+  style : @graph.StyleInput?,
+  label_x : Double,
+  label_y : Double,
   config : SvgConfig,
 ) -> Unit {
-  let icon_size = legend.icon_size
   let fill = match style {
     Some(s) =>
       match s.fill {
@@ -151,41 +130,31 @@ fn render_legend_shape_entry(
       }
     None => config.default_stroke
   }
-  // Create a mini shape icon
-  let icon_box = Box::new(x, y, icon_size, icon_size)
   let ctx = SvgShapeContext::new(svg, icon_box, fill, stroke, 1.0, "", config)
   render_shape_svg(shape, ctx)
-  // Render label
-  let label_x = x + icon_size + legend.entry_gap
-  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
   svg.add(
     "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
   )
 }
 
 ///|
-fn render_legend_connection_entry(
+fn render_connection_entry(
   svg : @svg.Svg,
-  x : Double,
-  y : Double,
-  src_arrow : ArrowheadType,
-  dst_arrow : ArrowheadType,
+  line_start_x : Double,
+  line_end_x : Double,
+  line_y : Double,
+  src_arrow : @graph.ArrowheadType,
+  dst_arrow : @graph.ArrowheadType,
   label : String,
-  _style : StyleInput?,
-  legend : LegendInput,
+  _style : @graph.StyleInput?,
+  label_x : Double,
+  label_y : Double,
   config : SvgConfig,
 ) -> Unit {
-  let icon_size = legend.icon_size
   let stroke = config.default_stroke
-  // Draw a line with arrowheads
-  let line_y = y + icon_size / 2.0
-  let line_start = x
-  let line_end = x + icon_size
-  // Get marker URLs
   let marker_start = src_arrow.marker_url(true)
   let marker_end = dst_arrow.marker_url(false)
-  // Build line with markers
-  let mut line = "<line x1=\"\{line_start}\" y1=\"\{line_y}\" x2=\"\{line_end}\" y2=\"\{line_y}\" stroke=\"\{stroke}\" stroke-width=\"2\""
+  let mut line = "<line x1=\"\{line_start_x}\" y1=\"\{line_y}\" x2=\"\{line_end_x}\" y2=\"\{line_y}\" stroke=\"\{stroke}\" stroke-width=\"2\""
   if not(marker_start.is_empty()) {
     line = line + " marker-start=\"\{marker_start}\""
   }
@@ -194,42 +163,35 @@ fn render_legend_connection_entry(
   }
   line = line + "/>"
   svg.add(line)
-  // Render label
-  let label_x = x + icon_size + legend.entry_gap
-  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
   svg.add(
     "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
   )
 }
 
 ///|
-fn render_legend_custom_entry(
+fn render_custom_entry(
   svg : @svg.Svg,
-  x : Double,
-  y : Double,
+  icon_x : Double,
+  icon_y : Double,
+  icon_size : Double,
   icon : String,
   label : String,
-  legend : LegendInput,
+  label_x : Double,
+  label_y : Double,
   config : SvgConfig,
 ) -> Unit {
-  let icon_size = legend.icon_size
-  // Render icon (could be URL or text symbol)
   if icon.has_prefix("http") || icon.contains(".") {
-    // URL - render as image
     svg.add(
-      "<image href=\"\{@svg.escape_xml(icon)}\" x=\"\{x}\" y=\"\{y}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+      "<image href=\"\{@svg.escape_xml(icon)}\" x=\"\{icon_x}\" y=\"\{icon_y}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
     )
   } else {
-    // Text symbol - render as text
-    let icon_x = x + icon_size / 2.0
-    let icon_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
+    let cx = icon_x + icon_size / 2.0
+    // Note: text y-position is provided by layout via label_y, so reuse the same baseline offset style.
+    let cy = icon_y + icon_size / 2.0 + config.font_size.to_double() * 0.35
     svg.add(
-      "<text x=\"\{icon_x}\" y=\"\{icon_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size + 4}\" fill=\"\{config.default_stroke}\" text-anchor=\"middle\">\{@svg.escape_xml(icon)}</text>",
+      "<text x=\"\{cx}\" y=\"\{cy}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size + 4}\" fill=\"\{config.default_stroke}\" text-anchor=\"middle\">\{@svg.escape_xml(icon)}</text>",
     )
   }
-  // Render label
-  let label_x = x + icon_size + legend.entry_gap
-  let label_y = y + icon_size / 2.0 + config.font_size.to_double() * 0.35
   svg.add(
     "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
   )

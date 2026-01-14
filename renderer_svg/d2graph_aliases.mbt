@@ -25,3 +25,20 @@ using @graph {
   type ShapeType,
   type StyleInput,
 }
+
+///|
+#warnings("-unused_value")
+fn _use_alias_types(
+  _c : Connection,
+  _d : Diagram,
+  _s : Shape,
+  _a : ArrowheadType,
+  _b : Box,
+  _l : LegendInput,
+  _p : Point,
+  _sf : SequenceFragmentLayout,
+  _t : ShapeType,
+  _st : StyleInput,
+) -> Unit {
+  ()
+}

@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/layout_ascii"
+
+import(
+  "Milky2018/diago/diagram"
+  "Milky2018/diago/graph"
+)
+
+// Values
+pub fn plan(@diagram.Diagram, AsciiLayoutConfig) -> AsciiPlan
+
+// Errors
+
+// Types and methods
+pub enum ArrowDir {
+  Up
+  Down
+  Left
+  Right
+}
+pub impl Eq for ArrowDir
+pub impl Show for ArrowDir
+
+pub struct AsciiBox {
+  id : String
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+  label : String
+  shape : String
+  is_container : Bool
+  children : Array[AsciiBox]
+}
+pub impl Show for AsciiBox
+
+pub struct AsciiLayoutConfig {
+  min_box_width : Int
+  box_height : Int
+  h_padding : Int
+  v_spacing : Int
+  h_spacing : Int
+  min_width : Int
+  min_height : Int
+}
+pub fn AsciiLayoutConfig::from_parts(Int, Int, Int, Int, Int, Int, Int) -> Self
+pub fn AsciiLayoutConfig::new() -> Self
+pub impl Show for AsciiLayoutConfig
+
+pub struct AsciiPlan {
+  canvas_width : Int
+  canvas_height : Int
+  boxes : Array[AsciiBox]
+  edges : Array[EdgePlan]
+  legend : (@graph.LegendInput, LegendPlan)?
+}
+pub impl Show for AsciiPlan
+
+pub struct EdgePlan {
+  index : Int
+  ref_idx : Int
+  points : Array[GridPoint]
+  arrow : (GridPoint, ArrowDir)?
+  label : String
+  label_pos : GridPoint?
+}
+pub impl Show for EdgePlan
+
+pub struct GridPoint {
+  x : Int
+  y : Int
+}
+pub impl Show for GridPoint
+
+pub struct LegendPlan {
+  x : Int
+  y : Int
+  width : Int
+  height : Int
+  title : String?
+  rows : Array[(Int, Int, String)]
+  separators : Array[(Int, Int, Int)]
+}
+pub impl Show for LegendPlan
+
+// Type aliases
+
+// Traits
+

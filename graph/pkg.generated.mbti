@@ -211,7 +211,6 @@ pub fn Legend::add_connection(Self, ArrowheadType, ArrowheadType, String) -> Uni
 pub fn Legend::add_entry(Self, LegendEntry) -> Unit
 pub fn Legend::add_separator(Self) -> Unit
 pub fn Legend::add_shape(Self, ShapeType, String) -> Unit
-pub fn Legend::calculate_size(Self, Int) -> (Double, Double)
 pub fn Legend::entry_count(Self) -> Int
 pub fn Legend::is_empty(Self) -> Bool
 pub fn Legend::new() -> Self
@@ -259,7 +258,6 @@ pub struct LegendInput {
   entry_gap : Double
   icon_size : Double
 }
-pub fn LegendInput::calculate_size(Self, Int) -> (Double, Double)
 pub fn LegendInput::entry_count(Self) -> Int
 pub fn LegendInput::from_model(LegendModel) -> Self
 pub fn LegendInput::from_parts(String?, LegendPosition, Array[LegendEntryInput], String?, String?, Double, Double, Double) -> Self

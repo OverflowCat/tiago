@@ -4,6 +4,7 @@ package "Milky2018/diago/renderer_svg"
 import(
   "Milky2018/diago/diagram"
   "Milky2018/diago/graph"
+  "Milky2018/diago/layout_svg"
   "Milky2018/diago/render_api"
   "Milky2018/diago/svg"
 )
@@ -27,7 +28,7 @@ pub fn render(@diagram.Diagram, SvgConfig) -> String
 
 pub fn render_connection_ascii(@graph.ArrowheadType, @graph.ArrowheadType, String) -> String
 
-pub fn render_legend_svg(@svg.Svg, @graph.LegendInput, (Double, Double, Double, Double), SvgConfig) -> Unit
+pub fn render_legend_svg(@svg.Svg, @layout_svg.LegendLayout, SvgConfig) -> Unit
 
 pub fn render_shape_svg(@graph.ShapeType, SvgShapeContext) -> Unit
 

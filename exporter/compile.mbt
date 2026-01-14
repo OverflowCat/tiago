@@ -142,8 +142,8 @@ priv struct Edge {
   is_curve : Bool
   z_index : Int
   mut reference_count : Int
-  mut src_column_index : Int?
-  mut dst_column_index : Int?
+  src_column_index : Int?
+  dst_column_index : Int?
 } derive(Show)
 
 ///|
@@ -1066,73 +1066,6 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
 }
 
 ///|
-/// Get the parent ID from a dotted field ID (e.g., "users.id" -> "users")
-fn get_parent_id(id : String) -> String? {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot <= 0 {
-    return None
-  }
-  let buf = StringBuilder::new()
-  for i = 0; i < last_dot; i = i + 1 {
-    buf.write_char(id[i].to_int().unsafe_to_char())
-  }
-  Some(buf.to_string())
-}
-
-///|
-/// Get the field name from a dotted field ID (e.g., "users.id" -> "id")
-fn get_field_name(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot < 0 || last_dot >= id.length() - 1 {
-    return id
-  }
-  let buf = StringBuilder::new()
-  for i = last_dot + 1; i < id.length(); i = i + 1 {
-    buf.write_char(id[i].to_int().unsafe_to_char())
-  }
-  buf.to_string()
-}
-
-///|
-/// Find column index for a field ID within a SQL table
-fn find_sql_column_index(graph : Graph, field_id : String) -> Int? {
-  // Get parent ID
-  let parent_id = match get_parent_id(field_id) {
-    Some(p) => p
-    None => return None
-  }
-  // Find parent object
-  let parent = match graph.find_object(parent_id) {
-    Some(p) => p
-    None => return None
-  }
-  // Check if parent is SQL table
-  if parent.shape_type != SqlTable {
-    return None
-  }
-  // Get field name
-  let field_name = get_field_name(field_id)
-  // Find matching child index
-  for i, child in parent.children {
-    let child_name = get_field_name(child.id)
-    if child_name == field_name {
-      return Some(i)
-    }
-  }
-  None
-}
-
-///|
 fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
   for i, edge in ir.edges {
     let src_id = edge.id.src_path.join(".")
@@ -1250,9 +1183,6 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
       }
       None => ()
     }
-    // Set SQL table column indices for field-level connections
-    graph_edge.src_column_index = find_sql_column_index(graph, src_id)
-    graph_edge.dst_column_index = find_sql_column_index(graph, dst_id)
     graph.add_edge(graph_edge)
   }
 }
@@ -1943,45 +1873,15 @@ fn parse_int(s : String) -> Int? {
 }
 
 ///|
-/// Handle root-level shape declaration (e.g., shape: sequence_diagram)
-/// When the root has a special shape like sequence_diagram, we need to:
-/// 1. Set the shape on graph.root
-/// 2. Make all top-level objects children of graph.root
+/// Handle root-level shape declaration (e.g., shape: sequence_diagram).
+///
+/// Note: any structural normalization required for layout (like re-parenting
+/// top-level nodes for sequence diagrams) is done in the layout pipeline.
 fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
   match ir.get_field("shape") {
     Some(f) =>
       match f.primary {
-        Some(s) => {
-          let shape = s.to_string()
-          graph.root.shape_type = ShapeType::from_string(shape)
-          // For sequence diagrams, make all top-level objects children of root
-          if shape == "sequence_diagram" {
-            // Find all objects that are not children of other objects
-            let root_obj_ids : Array[String] = []
-            let child_ids : Array[String] = []
-            // Collect all child IDs
-            for obj in graph.objects {
-              for child in obj.children {
-                child_ids.push(child.id)
-              }
-            }
-            // Find root objects (not children of any other object)
-            for obj in graph.objects {
-              if not(child_ids.contains(obj.id)) {
-                root_obj_ids.push(obj.id)
-              }
-            }
-            // Make root objects children of graph.root
-            for id in root_obj_ids {
-              for obj in graph.objects {
-                if obj.id == id {
-                  graph.root.add_child(obj)
-                  break
-                }
-              }
-            }
-          }
-        }
+        Some(s) => graph.root.shape_type = ShapeType::from_string(s.to_string())
         None => ()
       }
     None => ()

@@ -226,7 +226,7 @@ test "layout result roundtrips via graph" {
   }
   let e = diagram.get_edges()[0]
   assert_eq(e.index, 7)
-  assert_eq(e.route.length(), 2)
+  assert_eq(e.route.length(), 3)
   match e.label_box {
     Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
     None => fail("edge should have label box")

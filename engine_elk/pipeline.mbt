@@ -41,6 +41,33 @@ fn reset_graph_layout_state(graph : Graph) -> Unit {
 }
 
 ///|
+fn default_layered_pipeline() -> LayeredPipeline {
+  let builder = LayeredPipelineBuilder::new()
+  builder.add("elk.layered.layout", BeforePhase5, fn(graph, ctx) {
+    run_elk_layout(graph, ctx.config, ctx.direction)
+  })
+  builder.add("elk.layered.position_sql_table_children", AfterPhase5, fn(
+    graph,
+    _ctx,
+  ) {
+    position_sql_table_children(graph)
+  })
+  builder.add("elk.layered.route_edges", AfterPhase5, fn(graph, ctx) {
+    route_all_edges(graph, ctx.config, ctx.direction)
+  })
+  builder.add("elk.layered.normalize_coordinates", AfterPhase5, fn(
+    graph,
+    _ctx,
+  ) {
+    normalize_coordinates(graph)
+  })
+  builder.add("elk.layered.position_edge_labels", AfterPhase5, fn(graph, ctx) {
+    position_edge_labels(graph, ctx.config)
+  })
+  builder.build()
+}
+
+///|
 fn layout_graph(
   graph : Graph,
   config : LayoutConfig,
@@ -72,15 +99,8 @@ fn layout_graph(
       layout_grid(obj, config)
     }
   }
-  run_elk_layout(graph, config, direction)
-  position_sql_table_children(graph)
-  fix_node_overlaps(graph, config)
-  apply_near_positioning(graph, config)
-  route_all_edges(graph, config, direction)
-  normalize_coordinates(graph)
-  compress_all_routes(graph)
-  fix_all_endpoint_approaches(graph)
-  position_edge_labels(graph, config)
+  let pipeline = default_layered_pipeline()
+  pipeline.run(graph, { config, direction })
 }
 
 ///|

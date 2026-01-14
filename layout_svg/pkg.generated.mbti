@@ -1,0 +1,51 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/layout_svg"
+
+import(
+  "Milky2018/diago/graph"
+)
+
+// Values
+pub fn compute_legend_layout(@graph.LegendInput, (Double, Double, Double, Double), LegendLayoutConfig) -> LegendLayout?
+
+// Errors
+
+// Types and methods
+pub enum LegendEntryLayout {
+  Shape(icon_box~ : @graph.Box, shape~ : @graph.ShapeType, label~ : String, style~ : @graph.StyleInput?, label_x~ : Double, label_y~ : Double)
+  Connection(line_start_x~ : Double, line_end_x~ : Double, line_y~ : Double, src_arrow~ : @graph.ArrowheadType, dst_arrow~ : @graph.ArrowheadType, label~ : String, style~ : @graph.StyleInput?, label_x~ : Double, label_y~ : Double)
+  Custom(icon_x~ : Double, icon_y~ : Double, icon_size~ : Double, icon~ : String, label~ : String, label_x~ : Double, label_y~ : Double)
+  Separator(x1~ : Double, x2~ : Double, y~ : Double)
+}
+pub impl Show for LegendEntryLayout
+
+pub struct LegendLayout {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+  fill : String
+  stroke : String
+  title : TitleLayout?
+  entries : Array[LegendEntryLayout]
+}
+pub impl Show for LegendLayout
+
+pub struct LegendLayoutConfig {
+  font_size : Int
+  margin : Double
+}
+pub fn LegendLayoutConfig::new(Int) -> Self
+pub impl Show for LegendLayoutConfig
+
+pub struct TitleLayout {
+  x : Double
+  y : Double
+  text : String
+}
+pub impl Show for TitleLayout
+
+// Type aliases
+
+// Traits
+
