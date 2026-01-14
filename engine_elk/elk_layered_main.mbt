@@ -1394,8 +1394,11 @@ fn order_layer_by_barycenter(
       -1
     } else if bc_a > bc_b {
       1
+      // Deterministic tie-break.
+    } else if a.position != b.position {
+      a.position - b.position
     } else {
-      0
+      a.id.compare(b.id)
     }
   })
 }
