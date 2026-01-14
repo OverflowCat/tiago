@@ -349,15 +349,6 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 /// This follows the ELK layered approach of turning edge labels into nodes so
 /// later phases can account for label sizes.
 fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
-  // Only center labels become dummies; head/tail labels are handled by end-label processors.
-  let placement = match options.edge_label_placement {
-    Some(p) => p
-    None => Center
-  }
-  match placement {
-    Head | Tail => return
-    _ => ()
-  }
   let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let original_edge_count = graph.edges.length()
   for i = 0; i < original_edge_count; i = i + 1 {
@@ -368,8 +359,17 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       continue
     }
 
-    // Ignore unlabeled edges.
+    // Ignore edges without any center labels.
     if edge.labels.is_empty() {
+      continue
+    }
+    let center_labels : Array[LLabel] = []
+    for label in edge.labels {
+      if effective_edge_label_placement(options, label) is Center {
+        center_labels.push(label)
+      }
+    }
+    if center_labels.is_empty() {
       continue
     }
 
@@ -394,13 +394,13 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     dummy.origin_edge = Some(origin)
     let mut max_w = 1.0
     let mut sum_h = 0.0
-    for label in edge.labels {
+    for label in center_labels {
       if label.width > max_w {
         max_w = label.width
       }
       sum_h = sum_h + label.height
     }
-    let gaps = (edge.labels.length() - 1).to_double()
+    let gaps = (center_labels.length() - 1).to_double()
     dummy.width = max_w
     dummy.height = sum_h + gaps * label_spacing
     dummy.properties.set(
@@ -810,6 +810,15 @@ fn remove_label_dummy_nodes(
                 let bend_y = dummy.y + dummy.height / 2.0
                 edge.bend_points.push(ElkPoint::new(bend_x, bend_y))
                 if !edge.labels.is_empty() {
+                  let center_labels : Array[LLabel] = []
+                  for label in edge.labels {
+                    if effective_edge_label_placement(options, label) is Center {
+                      center_labels.push(label)
+                    }
+                  }
+                  if center_labels.is_empty() {
+                    continue
+                  }
                   let spacing = dummy.properties.get_double_or(
                     "diago.layered.edgeLabelSpacing", 2.0,
                   )
@@ -821,14 +830,12 @@ fn remove_label_dummy_nodes(
                   let mut side_sign = side_selection_sign(
                     default_selection, direction,
                   )
-                  if !edge.labels.is_empty() {
-                    match
-                      edge.labels[0].properties.get_int(
-                        "diago.layered.labelSideSign",
-                      ) {
-                      Some(v) => side_sign = v
-                      None => ()
-                    }
+                  match
+                    center_labels[0].properties.get_int(
+                      "diago.layered.labelSideSign",
+                    ) {
+                    Some(v) => side_sign = v
+                    None => ()
                   }
                   let side_sign = side_sign.to_double()
                   let offset = options.label_node_spacing.unwrap_or(5.0)
@@ -842,11 +849,11 @@ fn remove_label_dummy_nodes(
                   } else {
                     dummy.y
                   }
-                  for i, label in edge.labels {
+                  for i, label in center_labels {
                     label.x = base_x + (dummy.width - label.width) / 2.0
                     label.y = y
                     y = y + label.height
-                    if i + 1 < edge.labels.length() {
+                    if i + 1 < center_labels.length() {
                       y = y + spacing
                     }
                   }
@@ -1177,15 +1184,6 @@ fn place_end_labels(
   options : LayoutOptions,
   direction : LayoutDirection,
 ) -> Unit {
-  let placement = match options.edge_label_placement {
-    Some(p) => p
-    None => Center
-  }
-  // Only act when end labels are enabled.
-  match placement {
-    Head | Tail => ()
-    _ => return
-  }
   let default_selection = match options.edge_label_side_selection {
     Some(s) => s
     None => DirectionDown

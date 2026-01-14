@@ -206,6 +206,30 @@ test "edge end label placement: Head" {
 }
 
 ///|
+test "mixed edge labels: head + center" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e_ab", "a", "b")
+  let head = ElkLabel::new("l_head", "H")
+  head.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  let center = ElkLabel::new("l_center", "C")
+  edge.labels.push(head)
+  edge.labels.push(center)
+  root.add_edge(edge)
+  elk_layered_layout(root, LayoutOptions::layered())
+
+  // Both labels get concrete positions, and should not coincide.
+  assert_true(edge.labels[0].x != 0.0 || edge.labels[0].y != 0.0)
+  assert_true(edge.labels[1].x != 0.0 || edge.labels[1].y != 0.0)
+  assert_true(
+    edge.labels[0].y != edge.labels[1].y || edge.labels[0].x != edge.labels[1].x,
+  )
+}
+
+///|
 test "port constraints: FixedPos keeps port anchors" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 80.0, 60.0)
