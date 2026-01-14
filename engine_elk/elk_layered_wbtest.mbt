@@ -335,6 +335,49 @@ test "end labels: label_port_horizontal_spacing affects perpendicular offset" {
 }
 
 ///|
+test "end labels: label_port_vertical_spacing affects perpendicular offset" {
+  let root1 = ElkNode::new("root1")
+  let node_a1 = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b1 = ElkNode::with_size("b", 60.0, 40.0)
+  root1.add_child(node_a1)
+  root1.add_child(node_b1)
+  let edge1 = ElkEdge::new("e1", "a", "b")
+  let l1 = ElkLabel::new("l1", "H")
+  l1.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge1.labels.push(l1)
+  root1.add_edge(edge1)
+  elk_layered_layout(root1, {
+    ..LayoutOptions::layered(),
+    direction: Some(Right),
+    label_port_vertical_spacing: Some(20.0),
+    edge_label_spacing: Some(0.0),
+    label_node_spacing: Some(0.0),
+    edge_label_side_selection: Some(AlwaysUp),
+  })
+  let y_with = l1.y
+  let root2 = ElkNode::new("root2")
+  let node_a2 = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b2 = ElkNode::with_size("b", 60.0, 40.0)
+  root2.add_child(node_a2)
+  root2.add_child(node_b2)
+  let edge2 = ElkEdge::new("e2", "a", "b")
+  let l2 = ElkLabel::new("l2", "H")
+  l2.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge2.labels.push(l2)
+  root2.add_edge(edge2)
+  elk_layered_layout(root2, {
+    ..LayoutOptions::layered(),
+    direction: Some(Right),
+    label_port_vertical_spacing: Some(0.0),
+    edge_label_spacing: Some(0.0),
+    label_node_spacing: Some(0.0),
+    edge_label_side_selection: Some(AlwaysUp),
+  })
+  let y_default = l2.y
+  assert_true((y_with - y_default).abs() > 15.0)
+}
+
+///|
 test "center labels: label_label_spacing adds extra gap" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 60.0, 40.0)
