@@ -27,8 +27,12 @@ fn parse_port_side(value : String) -> ElkPortSide? {
 }
 
 ///|
-fn infer_side_from_port_geometry(port : LPort, node : LNode) -> ElkPortSide? {
-  let tol = 1.0
+fn infer_side_from_port_geometry(
+  port : LPort,
+  node : LNode,
+  border : Double,
+) -> ElkPortSide? {
+  let tol = max_double(1.0, border + 1.0)
 
   // Prefer explicit coordinates when present.
   let left_dist = port.x.abs()
@@ -100,13 +104,15 @@ fn process_port_sides(
   options : LayoutOptions,
   direction : LayoutDirection,
 ) -> Unit {
+  let border = options.port_border_offset.unwrap_or(0.0)
+
   // Phase 1: explicit port metadata.
   for node in graph.nodes {
     for port in node.ports {
       if port.side is Undefined {
         let side = match port_side_from_properties(port) {
           Some(s) => Some(s)
-          None => infer_side_from_port_geometry(port, node)
+          None => infer_side_from_port_geometry(port, node, border)
         }
         match side {
           Some(s) => port.side = s
