@@ -1315,18 +1315,23 @@ fn place_end_labels(
 /// Minimize edge crossings between layers
 fn minimize_crossings(
   graph : LGraph,
+  options : LayoutOptions,
   strategy : CrossingMinimizationStrategy,
   thoroughness : Int,
 ) -> Unit {
   match strategy {
-    LayerSweep => layer_sweep_crossing_min(graph, thoroughness)
+    LayerSweep => layer_sweep_crossing_min(graph, options, thoroughness)
     InteractiveCrossMin | None => () // No minimization
   }
 }
 
 ///|
 /// Layer sweep crossing minimization with barycenter heuristic and greedy switch
-fn layer_sweep_crossing_min(graph : LGraph, thoroughness : Int) -> Unit {
+fn layer_sweep_crossing_min(
+  graph : LGraph,
+  options : LayoutOptions,
+  thoroughness : Int,
+) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
@@ -1362,7 +1367,15 @@ fn layer_sweep_crossing_min(graph : LGraph, thoroughness : Int) -> Unit {
   }
 
   // Phase 2: Greedy switch for further optimization
-  greedy_switch_two_sided(graph, thoroughness)
+  let greedy = match options.greedy_switch {
+    Some(v) => v
+    None => TwoSided
+  }
+  match greedy {
+    Off => ()
+    OneSided => _greedy_switch(graph, thoroughness)
+    TwoSided => greedy_switch_two_sided(graph, thoroughness)
+  }
 }
 
 ///|

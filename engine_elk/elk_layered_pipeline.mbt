@@ -548,7 +548,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
       Some(s) => s
       None => LayerSweep
     }
-    minimize_crossings(graph, crossing_strategy, ctx.thoroughness)
+    minimize_crossings(graph, ctx.options, crossing_strategy, ctx.thoroughness)
   })
   builder.add("elk.layered.phase4.nodePlacement", Phase4, fn(graph, ctx) {
     let placement_strategy = match ctx.options.node_placement_strategy {
