@@ -350,6 +350,7 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 /// later phases can account for label sizes.
 fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
   let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
+  let label_label_spacing = options.label_label_spacing.unwrap_or(0.0)
   let original_edge_count = graph.edges.length()
   for i = 0; i < original_edge_count; i = i + 1 {
     let edge = graph.edges[i]
@@ -402,10 +403,14 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     }
     let gaps = (center_labels.length() - 1).to_double()
     dummy.width = max_w
-    dummy.height = sum_h + gaps * label_spacing
+    dummy.height = sum_h + gaps * (label_spacing + label_label_spacing)
     dummy.properties.set(
       "diago.layered.edgeLabelSpacing",
       Double(label_spacing),
+    )
+    dummy.properties.set(
+      "diago.layered.labelLabelSpacing",
+      Double(label_label_spacing),
     )
     graph.add_node(dummy)
 
@@ -822,6 +827,9 @@ fn remove_label_dummy_nodes(
                   let spacing = dummy.properties.get_double_or(
                     "diago.layered.edgeLabelSpacing", 2.0,
                   )
+                  let label_label_spacing = dummy.properties.get_double_or(
+                    "diago.layered.labelLabelSpacing", 0.0,
+                  )
                   let default_selection = match
                     options.edge_label_side_selection {
                     Some(s) => s
@@ -854,7 +862,7 @@ fn remove_label_dummy_nodes(
                     label.y = y
                     y = y + label.height
                     if i + 1 < center_labels.length() {
-                      y = y + spacing
+                      y = y + spacing + label_label_spacing
                     }
                   }
                 }
