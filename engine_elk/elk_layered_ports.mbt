@@ -95,7 +95,11 @@ fn port_side_from_properties(port : LPort) -> ElkPortSide? {
 
 ///|
 /// Assign missing port sides using properties/geometry/graph structure.
-fn process_port_sides(graph : LGraph, direction : LayoutDirection) -> Unit {
+fn process_port_sides(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
   // Phase 1: explicit port metadata.
   for node in graph.nodes {
     for port in node.ports {
@@ -110,6 +114,15 @@ fn process_port_sides(graph : LGraph, direction : LayoutDirection) -> Unit {
         }
       }
     }
+  }
+  let constraints = match options.port_constraints {
+    Some(c) => c
+    None => Undefined
+  }
+  // Fixed constraints: do not infer sides from graph structure.
+  match constraints {
+    FixedSide | FixedPos | FixedRatio => return
+    _ => ()
   }
 
   // Phase 2: infer for ports referenced by edges.

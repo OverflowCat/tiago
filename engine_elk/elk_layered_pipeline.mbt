@@ -280,7 +280,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     graph,
     ctx,
   ) {
-    process_port_sides(graph, ctx.direction)
+    process_port_sides(graph, ctx.options, ctx.direction)
   })
   builder.add(
     "elk.layered.intermediate.INVERTED_PORT_PROCESSOR",
