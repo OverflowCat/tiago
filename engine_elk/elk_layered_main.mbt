@@ -761,7 +761,11 @@ fn remove_long_edge_dummy_nodes(graph : LGraph) -> Unit {
 
 ///|
 /// Remove label dummy nodes and write back label positions.
-fn remove_label_dummy_nodes(graph : LGraph) -> Unit {
+fn remove_label_dummy_nodes(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
   let dummy_chains : Map[String, Array[LNode]] = {}
   let dummy_ids : Map[String, Bool] = {}
   for node in graph.nodes {
@@ -809,9 +813,24 @@ fn remove_label_dummy_nodes(graph : LGraph) -> Unit {
                   let spacing = dummy.properties.get_double_or(
                     "diago.layered.edgeLabelSpacing", 2.0,
                   )
-                  let mut y = dummy.y
+                  let side_selection = match options.edge_label_side_selection {
+                    Some(s) => s
+                    None => DirectionDown
+                  }
+                  let side_sign = side_selection_sign(side_selection, direction).to_double()
+                  let offset = options.label_node_spacing.unwrap_or(5.0)
+                  let base_x = if direction.is_vertical() {
+                    dummy.x + side_sign * offset
+                  } else {
+                    dummy.x
+                  }
+                  let mut y = if direction.is_horizontal() {
+                    dummy.y + side_sign * offset
+                  } else {
+                    dummy.y
+                  }
                   for i, label in edge.labels {
-                    label.x = dummy.x + (dummy.width - label.width) / 2.0
+                    label.x = base_x + (dummy.width - label.width) / 2.0
                     label.y = y
                     y = y + label.height
                     if i + 1 < edge.labels.length() {
@@ -873,9 +892,13 @@ fn remove_label_dummy_nodes(graph : LGraph) -> Unit {
 
 ///|
 /// Backwards-compatible helper: remove all dummies.
-fn remove_dummy_nodes(graph : LGraph) -> Unit {
+fn remove_dummy_nodes(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
   remove_long_edge_dummy_nodes(graph)
-  remove_label_dummy_nodes(graph)
+  remove_label_dummy_nodes(graph, options, direction)
 }
 
 // ============================================================================

@@ -480,9 +480,9 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   })
   builder.add("elk.layered.intermediate.LABEL_DUMMY_REMOVER", AfterPhase5, fn(
     graph,
-    _,
+    ctx,
   ) {
-    remove_label_dummy_nodes(graph)
+    remove_label_dummy_nodes(graph, ctx.options, ctx.direction)
   })
   builder.add(
     "elk.layered.intermediate.FINAL_SPLINE_BENDPOINTS_CALCULATOR",
