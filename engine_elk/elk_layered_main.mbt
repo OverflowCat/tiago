@@ -1217,10 +1217,17 @@ fn place_end_labels(
   }
   let default_side_sign = side_selection_sign(default_selection, direction).to_double()
   let along = along_sign(direction).to_double()
-  let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
+  let edge_label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let label_label_spacing = options.label_label_spacing.unwrap_or(0.0)
-  let label_offset = options.label_node_spacing.unwrap_or(5.0)
-  let edge_offset = options.edge_label_spacing.unwrap_or(2.0)
+  let label_node_spacing = options.label_node_spacing.unwrap_or(5.0)
+  let label_port_horizontal_spacing = options.label_port_horizontal_spacing.unwrap_or(
+    1.0,
+  )
+  let label_port_vertical_spacing = options.label_port_vertical_spacing.unwrap_or(
+    1.0,
+  )
+  let perp_x = edge_label_spacing + label_port_horizontal_spacing
+  let perp_y = edge_label_spacing + label_port_vertical_spacing
   for edge in graph.edges {
     if edge.labels.is_empty() {
       continue
@@ -1247,7 +1254,7 @@ fn place_end_labels(
 
     if !head_labels.is_empty() {
       let anchor = edge_anchor_point(graph, edge, direction, true)
-      let total_h = stack_total(head_labels, label_spacing)
+      let total_h = stack_total(head_labels, label_label_spacing)
       let mut cursor = -total_h / 2.0
       for label in head_labels {
         let side_sign = match
@@ -1258,20 +1265,20 @@ fn place_end_labels(
         let mut lx = anchor.x
         let mut ly = anchor.y
         if direction.is_vertical() {
-          lx = lx + side_sign * (edge_offset + label_offset)
-          ly = ly + along * label_offset + cursor
+          lx = lx + side_sign * perp_x
+          ly = ly + along * label_node_spacing + cursor
         } else {
-          lx = lx + along * label_offset + cursor
-          ly = ly + side_sign * (edge_offset + label_offset)
+          lx = lx + along * label_node_spacing + cursor
+          ly = ly + side_sign * perp_y
         }
         label.x = lx - label.width / 2.0
         label.y = ly
-        cursor = cursor + label.height + label_spacing + label_label_spacing
+        cursor = cursor + label.height + label_label_spacing
       }
     }
     if !tail_labels.is_empty() {
       let anchor = edge_anchor_point(graph, edge, direction, false)
-      let total_h = stack_total(tail_labels, label_spacing)
+      let total_h = stack_total(tail_labels, label_label_spacing)
       let mut cursor = -total_h / 2.0
       for label in tail_labels {
         let side_sign = match
@@ -1282,15 +1289,15 @@ fn place_end_labels(
         let mut lx = anchor.x
         let mut ly = anchor.y
         if direction.is_vertical() {
-          lx = lx + side_sign * (edge_offset + label_offset)
-          ly = ly - along * label_offset + cursor
+          lx = lx + side_sign * perp_x
+          ly = ly - along * label_node_spacing + cursor
         } else {
-          lx = lx - along * label_offset + cursor
-          ly = ly + side_sign * (edge_offset + label_offset)
+          lx = lx - along * label_node_spacing + cursor
+          ly = ly + side_sign * perp_y
         }
         label.x = lx - label.width / 2.0
         label.y = ly
-        cursor = cursor + label.height + label_spacing + label_label_spacing
+        cursor = cursor + label.height + label_label_spacing
       }
     }
   }
