@@ -1440,6 +1440,9 @@ fn order_layer_by_barycenter(
       a.id.compare(b.id)
     }
   })
+  for i, node in layer.nodes {
+    node.position = i
+  }
 }
 
 // ============================================================================

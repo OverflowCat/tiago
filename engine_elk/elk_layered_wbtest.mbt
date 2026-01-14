@@ -40,6 +40,31 @@ test "simple graph layout" {
 }
 
 ///|
+test "barycenter ordering updates node positions" {
+  let root = ElkNode::new("root")
+  let u0 = ElkNode::with_size("u0", 10.0, 10.0)
+  let u1 = ElkNode::with_size("u1", 10.0, 10.0)
+  let v0 = ElkNode::with_size("v0", 10.0, 10.0)
+  let v1 = ElkNode::with_size("v1", 10.0, 10.0)
+  root.add_child(u0)
+  root.add_child(u1)
+  root.add_child(v0)
+  root.add_child(v1)
+  root.add_edge(ElkEdge::new("e0", "u0", "v1"))
+  root.add_edge(ElkEdge::new("e1", "u1", "v0"))
+  let graph = LGraph::from_elk_node(root)
+  graph.get_node("u0").unwrap().layer = 0
+  graph.get_node("u1").unwrap().layer = 0
+  graph.get_node("v0").unwrap().layer = 1
+  graph.get_node("v1").unwrap().layer = 1
+  graph.initialize_layers()
+  order_layer_by_barycenter(graph, graph.layers[1], graph.layers[0], true)
+  assert_true(graph.layers[1].nodes[0].id == "v1")
+  assert_true(graph.layers[1].nodes[0].position == 0)
+  assert_true(graph.layers[1].nodes[1].position == 1)
+}
+
+///|
 test "cycle breaking - simple cycle" {
   // Create a graph with a cycle: A -> B -> C -> A
   let root = ElkNode::new("root")
