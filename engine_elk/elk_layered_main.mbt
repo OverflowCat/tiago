@@ -1020,18 +1020,28 @@ fn preprocess_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
 
 ///|
 fn sort_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
+  fn rank(p : EdgeLabelPlacement) -> Int {
+    match p {
+      Head => 0
+      Center => 1
+      Tail => 2
+      Undefined => 1
+    }
+  }
+
   for edge in graph.edges {
-    let mut has_end = false
-    for label in edge.labels {
-      let placement = effective_edge_label_placement(options, label)
-      if placement is Head || placement is Tail {
-        has_end = true
-        break
+    if edge.labels.length() <= 1 {
+      continue
+    }
+    edge.labels.sort_by(fn(a, b) {
+      let ra = rank(effective_edge_label_placement(options, a))
+      let rb = rank(effective_edge_label_placement(options, b))
+      if ra != rb {
+        ra - rb
+      } else {
+        a.id.compare(b.id)
       }
-    }
-    if has_end {
-      edge.labels.sort_by(fn(a, b) { a.id.compare(b.id) })
-    }
+    })
   }
 }
 

@@ -222,11 +222,9 @@ test "mixed edge labels: head + center" {
   elk_layered_layout(root, LayoutOptions::layered())
 
   // Both labels get concrete positions, and should not coincide.
-  assert_true(edge.labels[0].x != 0.0 || edge.labels[0].y != 0.0)
-  assert_true(edge.labels[1].x != 0.0 || edge.labels[1].y != 0.0)
-  assert_true(
-    edge.labels[0].y != edge.labels[1].y || edge.labels[0].x != edge.labels[1].x,
-  )
+  assert_true(head.x != 0.0 || head.y != 0.0)
+  assert_true(center.x != 0.0 || center.y != 0.0)
+  assert_true(head.y != center.y || head.x != center.x)
 }
 
 ///|
