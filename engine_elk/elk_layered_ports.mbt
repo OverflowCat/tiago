@@ -166,6 +166,7 @@ fn process_port_sides(
         for port in src.ports {
           if port.id == pid && port.side is Undefined {
             port.side = src_side
+            port.properties.set("diago.layered.inferredPortSide", Bool(true))
           }
         }
       None => ()
@@ -175,9 +176,44 @@ fn process_port_sides(
         for port in tgt.ports {
           if port.id == pid && port.side is Undefined {
             port.side = tgt_side
+            port.properties.set("diago.layered.inferredPortSide", Bool(true))
           }
         }
       None => ()
+    }
+  }
+}
+
+///|
+/// Invert inferred port sides for Up/Left directions.
+fn invert_inferred_port_sides(
+  graph : LGraph,
+  direction : LayoutDirection,
+) -> Unit {
+  let flip_vertical = direction == Up
+  let flip_horizontal = direction == Left
+  if !flip_vertical && !flip_horizontal {
+    return
+  }
+  for node in graph.nodes {
+    for port in node.ports {
+      if !port.properties.get_bool_or("diago.layered.inferredPortSide", false) {
+        continue
+      }
+      if flip_vertical {
+        match port.side {
+          North => port.side = South
+          South => port.side = North
+          _ => ()
+        }
+      }
+      if flip_horizontal {
+        match port.side {
+          East => port.side = West
+          West => port.side = East
+          _ => ()
+        }
+      }
     }
   }
 }

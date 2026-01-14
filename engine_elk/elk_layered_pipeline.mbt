@@ -285,7 +285,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.INVERTED_PORT_PROCESSOR",
     BeforePhase3,
-    fn(_, _) { () },
+    fn(graph, ctx) { invert_inferred_port_sides(graph, ctx.direction) },
   )
   builder.add("elk.layered.intermediate.PORT_LIST_SORTER", BeforePhase3, fn(
     graph,
