@@ -422,6 +422,20 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
         ledge.source_port_id = elk_edge.source_port_id()
         ledge.target_port_id = elk_edge.target_port_id()
         ledge.properties.copy_from(elk_edge.properties)
+        ledge.properties.set(
+          "diago.layered.originalSourceId",
+          String(original_source_id),
+        )
+        ledge.properties.set(
+          "diago.layered.originalTargetId",
+          String(original_target_id),
+        )
+        ledge.properties.set(
+          "diago.layered.crossHierarchy",
+          Bool(
+            source_id != original_source_id || target_id != original_target_id,
+          ),
+        )
         ledge.priority = elk_edge.properties
           .get_int("elk.priority")
           .unwrap_or(
@@ -453,6 +467,7 @@ fn LGraph::to_elk_node(
   self : LGraph,
   elk_node : ElkNode,
   direction : LayoutDirection,
+  options : LayoutOptions,
 ) -> Unit {
   elk_node.width = self.width
   elk_node.height = self.height
@@ -463,6 +478,139 @@ fn LGraph::to_elk_node(
     match lnode.original_id {
       Some(id) => lnode_map[id] = lnode
       None => ()
+    }
+  }
+  fn stack_total(labels : Array[LLabel], gap : Double) -> Double {
+    if labels.is_empty() {
+      0.0
+    } else {
+      let mut sum = 0.0
+      for l in labels {
+        sum = sum + l.height
+      }
+      sum + (labels.length() - 1).to_double() * gap
+    }
+  }
+
+  fn place_node_labels(lnode : LNode, node_options : LayoutOptions) -> Unit {
+    if lnode.labels.is_empty() {
+      return
+    }
+    let placements = node_options.node_label_placement.unwrap_or([])
+    let outside = placements.contains(Outside)
+    let inside = placements.contains(Inside) || !outside
+    let top = placements.contains(Top)
+    let bottom = placements.contains(Bottom)
+    let left = placements.contains(Left)
+    let right = placements.contains(Right)
+    let spacing = node_options.label_node_spacing.unwrap_or(5.0)
+    let gap = node_options.label_label_spacing.unwrap_or(0.0)
+    let total_h = stack_total(lnode.labels, gap)
+    let start_y = if outside {
+      if top {
+        lnode.y - spacing - total_h
+      } else if bottom {
+        lnode.y + lnode.height + spacing
+      } else {
+        lnode.y - spacing - total_h
+      }
+    } else if inside {
+      if top {
+        lnode.y + spacing
+      } else if bottom {
+        lnode.y + lnode.height - spacing - total_h
+      } else {
+        lnode.y + (lnode.height - total_h) / 2.0
+      }
+    } else {
+      lnode.y + (lnode.height - total_h) / 2.0
+    }
+    let mut cursor = 0.0
+    for label in lnode.labels {
+      let x = if left {
+        lnode.x + spacing
+      } else if right {
+        lnode.x + lnode.width - spacing - label.width
+      } else {
+        lnode.x + (lnode.width - label.width) / 2.0
+      }
+      label.x = x
+      label.y = start_y + cursor
+      cursor = cursor + label.height + gap
+    }
+  }
+
+  fn place_port_labels(lnode : LNode, node_options : LayoutOptions) -> Unit {
+    let placements = node_options.port_label_placement.unwrap_or([])
+    let outside = placements.contains(Outside) ||
+      placements.contains(NextToPortIfPossible)
+    let inside = placements.contains(Inside) || !outside
+    let spacing = node_options.label_node_spacing.unwrap_or(5.0)
+    let gap = node_options.label_label_spacing.unwrap_or(0.0)
+    for port in lnode.ports {
+      if port.labels.is_empty() {
+        continue
+      }
+      let border = port.properties.get_double_or(
+        "diago.layered.portBorderOffset",
+        node_options.port_border_offset.unwrap_or(0.0),
+      )
+      let (ax, ay) = if port.width > 0.0 || port.height > 0.0 {
+        (
+          lnode.x + port.x + port.width / 2.0,
+          lnode.y + port.y + port.height / 2.0,
+        )
+      } else {
+        match port.side {
+          North => (lnode.x + port.x, lnode.y + border)
+          South => (lnode.x + port.x, lnode.y + lnode.height - border)
+          West => (lnode.x + border, lnode.y + port.y)
+          East => (lnode.x + lnode.width - border, lnode.y + port.y)
+          Undefined =>
+            (lnode.x + lnode.width / 2.0, lnode.y + lnode.height / 2.0)
+        }
+      }
+      let total_h = stack_total(port.labels, gap)
+      let start_y = match port.side {
+        North =>
+          if outside {
+            lnode.y - spacing - total_h
+          } else {
+            lnode.y + spacing
+          }
+        South =>
+          if outside {
+            lnode.y + lnode.height + spacing
+          } else {
+            lnode.y + lnode.height - spacing - total_h
+          }
+        _ => ay - total_h / 2.0
+      }
+      let mut cursor = 0.0
+      for label in port.labels {
+        let x = match port.side {
+          West =>
+            if outside {
+              lnode.x - spacing - label.width
+            } else if inside {
+              lnode.x + spacing
+            } else {
+              ax - label.width / 2.0
+            }
+          East =>
+            if outside {
+              lnode.x + lnode.width + spacing
+            } else if inside {
+              lnode.x + lnode.width - spacing - label.width
+            } else {
+              ax - label.width / 2.0
+            }
+          _ => ax - label.width / 2.0
+        }
+        label.x = x
+        label.y = start_y + cursor
+        cursor = cursor + label.height + gap
+      }
     }
   }
 
@@ -476,9 +624,58 @@ fn LGraph::to_elk_node(
         child.height = lnode.height
 
         // Apply nested graph if present
+        let child_options = resolve_options_for_node(options, child)
         match lnode.nested_graph {
-          Some(nested) => nested.to_elk_node(child, direction)
+          Some(nested) => nested.to_elk_node(child, direction, child_options)
           None => ()
+        }
+        place_node_labels(lnode, child_options)
+        place_port_labels(lnode, child_options)
+        if !child.labels.is_empty() && !lnode.labels.is_empty() {
+          let label_map : Map[String, LLabel] = {}
+          for llabel in lnode.labels {
+            label_map[llabel.id] = llabel
+          }
+          for label in child.labels {
+            match label_map.get(label.id) {
+              Some(llabel) => {
+                label.x = llabel.x
+                label.y = llabel.y
+                label.width = llabel.width
+                label.height = llabel.height
+              }
+              None => ()
+            }
+          }
+        }
+        if !child.ports.is_empty() && !lnode.ports.is_empty() {
+          let port_map : Map[String, LPort] = {}
+          for lport in lnode.ports {
+            port_map[lport.id] = lport
+          }
+          for port in child.ports {
+            match port_map.get(port.id) {
+              Some(lport) =>
+                if !port.labels.is_empty() && !lport.labels.is_empty() {
+                  let plabel_map : Map[String, LLabel] = {}
+                  for llabel in lport.labels {
+                    plabel_map[llabel.id] = llabel
+                  }
+                  for label in port.labels {
+                    match plabel_map.get(label.id) {
+                      Some(llabel) => {
+                        label.x = llabel.x
+                        label.y = llabel.y
+                        label.width = llabel.width
+                        label.height = llabel.height
+                      }
+                      None => ()
+                    }
+                  }
+                }
+              None => ()
+            }
+          }
         }
       }
       None => ()
@@ -494,10 +691,101 @@ fn LGraph::to_elk_node(
       None => ()
     }
   }
+  fn find_elk_node_abs(
+    node : ElkNode,
+    id : String,
+    ox : Double,
+    oy : Double,
+  ) -> (ElkNode?, Double, Double) {
+    let nx = ox + node.x
+    let ny = oy + node.y
+    if node.id == id {
+      return (Some(node), nx, ny)
+    }
+    for child in node.children {
+      let (found, fx, fy) = find_elk_node_abs(child, id, nx, ny)
+      match found {
+        Some(_) => return (found, fx, fy)
+        None => ()
+      }
+    }
+    (None, 0.0, 0.0)
+  }
+
+  fn anchor_on_node(
+    node : ElkNode,
+    abs_x : Double,
+    abs_y : Double,
+    direction : LayoutDirection,
+    is_source : Bool,
+  ) -> (Double, Double) {
+    let cx = abs_x + node.width / 2.0
+    let cy = abs_y + node.height / 2.0
+    match direction {
+      Down => if is_source { (cx, abs_y + node.height) } else { (cx, abs_y) }
+      Up => if is_source { (cx, abs_y) } else { (cx, abs_y + node.height) }
+      Right => if is_source { (abs_x + node.width, cy) } else { (abs_x, cy) }
+      Left => if is_source { (abs_x, cy) } else { (abs_x + node.width, cy) }
+      Undefined =>
+        if is_source {
+          (cx, abs_y + node.height)
+        } else {
+          (cx, abs_y)
+        }
+    }
+  }
+
   for elk_edge in elk_node.edges {
     match ledge_map.get(elk_edge.id) {
       Some(ledge) => {
         let section = ElkEdgeSection::new(elk_edge.id + "_s0")
+        let cross = ledge.properties.get_bool_or(
+          "diago.layered.crossHierarchy", false,
+        )
+        if cross {
+          let original_source_id = ledge.properties
+            .get_string("diago.layered.originalSourceId")
+            .unwrap_or(ledge.source_id)
+          let original_target_id = ledge.properties
+            .get_string("diago.layered.originalTargetId")
+            .unwrap_or(ledge.target_id)
+          let (src_found, src_abs_x, src_abs_y) = find_elk_node_abs(
+            elk_node, original_source_id, 0.0, 0.0,
+          )
+          let (tgt_found, tgt_abs_x, tgt_abs_y) = find_elk_node_abs(
+            elk_node, original_target_id, 0.0, 0.0,
+          )
+          match (src_found, tgt_found) {
+            (Some(src_node), Some(tgt_node)) => {
+              let (start_x, start_y) = anchor_on_node(
+                src_node, src_abs_x, src_abs_y, direction, true,
+              )
+              let (end_x, end_y) = anchor_on_node(
+                tgt_node, tgt_abs_x, tgt_abs_y, direction, false,
+              )
+              section.start_point = ElkPoint::new(start_x, start_y)
+              section.end_point = ElkPoint::new(end_x, end_y)
+              section.bend_points.clear()
+              if direction.is_vertical() {
+                if (start_x - end_x).abs() >= 1.0 {
+                  let mid_y = (start_y + end_y) / 2.0
+                  section.bend_points.push(ElkPoint::new(start_x, mid_y))
+                  section.bend_points.push(ElkPoint::new(end_x, mid_y))
+                }
+              } else if direction.is_horizontal() {
+                if (start_y - end_y).abs() >= 1.0 {
+                  let mid_x = (start_x + end_x) / 2.0
+                  section.bend_points.push(ElkPoint::new(mid_x, start_y))
+                  section.bend_points.push(ElkPoint::new(mid_x, end_y))
+                }
+              }
+              elk_edge.sections.clear()
+              elk_edge.sections.push(section)
+            }
+            _ => ()
+          }
+          continue
+        }
 
         // Look up source and target nodes by ID
         let source_node = self.node_map.get(ledge.source_id)

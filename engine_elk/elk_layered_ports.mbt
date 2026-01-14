@@ -415,19 +415,64 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       )
     }
 
-    // Group by side; optionally skip ports that already have explicit geometry.
+    // Normalize usable lengths.
+    let usable_w = max_double(0.0, node.width - 2.0 * effective_border)
+    let usable_h = max_double(0.0, node.height - 2.0 * effective_border)
+
+    // Group by side.
     let north : Array[LPort] = []
     let east : Array[LPort] = []
     let south : Array[LPort] = []
     let west : Array[LPort] = []
+    fn clamp01(v : Double) -> Double {
+      if v < 0.0 {
+        0.0
+      } else if v > 1.0 {
+        1.0
+      } else {
+        v
+      }
+    }
+
     for port in node.ports {
       let has_geometry = port.x != 0.0 ||
         port.y != 0.0 ||
         port.width != 0.0 ||
         port.height != 0.0
 
-      // When constraints ask for fixed ratios, respect explicit coordinates.
+      // FixedRatio: treat existing port coordinates as ratios along the side.
       if constraints is FixedRatio && has_geometry {
+        match port.side {
+          North => {
+            let r = clamp01(port.x)
+            port.x = effective_border + r * usable_w
+            port.y = 0.0
+            port.width = 0.0
+            port.height = 0.0
+          }
+          South => {
+            let r = clamp01(port.x)
+            port.x = effective_border + r * usable_w
+            port.y = node.height
+            port.width = 0.0
+            port.height = 0.0
+          }
+          West => {
+            let r = clamp01(port.y)
+            port.x = 0.0
+            port.y = effective_border + r * usable_h
+            port.width = 0.0
+            port.height = 0.0
+          }
+          East => {
+            let r = clamp01(port.y)
+            port.x = node.width
+            port.y = effective_border + r * usable_h
+            port.width = 0.0
+            port.height = 0.0
+          }
+          Undefined => ()
+        }
         continue
       }
       match port.side {
@@ -438,10 +483,6 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         Undefined => ()
       }
     }
-
-    // Normalize usable lengths.
-    let usable_w = max_double(0.0, node.width - 2.0 * effective_border)
-    let usable_h = max_double(0.0, node.height - 2.0 * effective_border)
     place_along(north, usable_w, alignment_for_side(options, North), spacing, fn(
       pos,
       port,

@@ -416,7 +416,7 @@ test "layered regression: cross-hierarchy edge mapping" {
       #|  - outside: (12, 140) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|edges:
-      #|  - [root] e1 g1->outside: (66, 100) (66, 120) (42, 120) (42, 140)
+      #|  - [root] e1 g1->outside: (54, 64) (54, 102) (42, 102) (42, 140)
       #|
     ),
   )

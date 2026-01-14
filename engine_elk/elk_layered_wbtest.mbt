@@ -631,6 +631,55 @@ test "mixed edge labels: head + center" {
 }
 
 ///|
+test "node labels: Outside Top places label above node" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = ElkNode::with_size("b", 60.0, 40.0)
+  let label_a = ElkLabel::new("la", "A")
+  node_a.add_label(label_a)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  root.add_edge(ElkEdge::new("e1", "a", "b"))
+  elk_layered_layout(root, {
+    ..LayoutOptions::layered(),
+    node_label_placement: Some([Outside, Top]),
+    label_node_spacing: Some(5.0),
+  })
+  assert_true(label_a.y < node_a.y)
+}
+
+///|
+test "port labels: Outside East places label right of node" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 80.0, 60.0)
+  let node_b = ElkNode::with_size("b", 80.0, 60.0)
+  let pl = ElkLabel::new("pl", "P")
+  let port_a : ElkPort = {
+    id: "pa",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: East,
+    labels: [pl],
+    properties: ElkProperties::new(),
+  }
+  node_a.add_port(port_a)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e1", "a", "b")
+  edge.properties.set("elk.sourcePort", String("pa"))
+  root.add_edge(edge)
+  elk_layered_layout(root, {
+    ..LayoutOptions::layered(),
+    port_label_placement: Some([Outside]),
+    label_node_spacing: Some(6.0),
+    port_border_offset: Some(0.0),
+  })
+  assert_true(pl.x > node_a.x + node_a.width)
+}
+
+///|
 test "port constraints: FixedPos keeps port anchors" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 80.0, 60.0)
@@ -717,6 +766,131 @@ test "port constraints: FixedOrder preserves model port order" {
   // With FixedOrder, we preserve model port list order, so "p1" is placed
   // before "p0" along the same side.
   assert_true(e1.sections[0].start_point.x < e2.sections[0].start_point.x)
+}
+
+///|
+test "port constraints: FixedRatio keeps relative port ratios" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 200.0, 60.0)
+  let node_b = ElkNode::with_size("b", 200.0, 60.0)
+  let port_a : ElkPort = {
+    id: "pa",
+    x: 0.25,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: South,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  let port_b : ElkPort = {
+    id: "pb",
+    x: 0.75,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: North,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  node_a.add_port(port_a)
+  node_b.add_port(port_b)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e_ab", "a", "b")
+  edge.properties.set("elk.sourcePort", String("pa"))
+  edge.properties.set("elk.targetPort", String("pb"))
+  root.add_edge(edge)
+  let options = {
+    ..LayoutOptions::layered(),
+    port_constraints: Some(FixedRatio),
+    port_border_offset: Some(10.0),
+  }
+  elk_layered_layout(root, options)
+  let section = edge.sections[0]
+  let border = 10.0
+  let usable = node_a.width - 2.0 * border
+  let expected_start_x = node_a.x + border + 0.25 * usable
+  let expected_end_x = node_b.x + border + 0.75 * usable
+  assert_true((section.start_point.x - expected_start_x).abs() < 0.01)
+  assert_true((section.end_point.x - expected_end_x).abs() < 0.01)
+  assert_true(
+    (section.start_point.y - (node_a.y + node_a.height - border)).abs() < 0.01,
+  )
+  assert_true((section.end_point.y - (node_b.y + border)).abs() < 0.01)
+}
+
+///|
+test "port alignment: Justified spreads ports to border" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 200.0, 60.0)
+  let node_b0 = ElkNode::with_size("b0", 60.0, 40.0)
+  let node_b1 = ElkNode::with_size("b1", 60.0, 40.0)
+  let node_b2 = ElkNode::with_size("b2", 60.0, 40.0)
+  node_a.add_port(ElkPort::with_side("p0", South))
+  node_a.add_port(ElkPort::with_side("p1", South))
+  node_a.add_port(ElkPort::with_side("p2", South))
+  root.add_child(node_a)
+  root.add_child(node_b0)
+  root.add_child(node_b1)
+  root.add_child(node_b2)
+  let e0 = ElkEdge::new("e0", "a", "b0")
+  e0.properties.set("elk.sourcePort", String("p0"))
+  let e1 = ElkEdge::new("e1", "a", "b1")
+  e1.properties.set("elk.sourcePort", String("p1"))
+  let e2 = ElkEdge::new("e2", "a", "b2")
+  e2.properties.set("elk.sourcePort", String("p2"))
+  root.add_edge(e0)
+  root.add_edge(e1)
+  root.add_edge(e2)
+  elk_layered_layout(root, {
+    ..LayoutOptions::layered(),
+    port_constraints: Some(FixedOrder),
+    port_alignment: Some(Justified),
+    port_border_offset: Some(10.0),
+  })
+  let border = 10.0
+  let expected_min = node_a.x + border
+  let expected_mid = node_a.x + node_a.width / 2.0
+  let expected_max = node_a.x + node_a.width - border
+  assert_true((e0.sections[0].start_point.x - expected_min).abs() < 0.01)
+  assert_true((e1.sections[0].start_point.x - expected_mid).abs() < 0.01)
+  assert_true((e2.sections[0].start_point.x - expected_max).abs() < 0.01)
+}
+
+///|
+test "port spacing: port_port_spacing increases gaps" {
+  let mk = fn(id : String, spacing : Double) -> (ElkEdge, ElkEdge) {
+    let root = ElkNode::new("root" + id)
+    let node_a = ElkNode::with_size("a", 300.0, 60.0)
+    let node_b0 = ElkNode::with_size("b0", 60.0, 40.0)
+    let node_b1 = ElkNode::with_size("b1", 60.0, 40.0)
+    node_a.add_port(ElkPort::with_side("p0", South))
+    node_a.add_port(ElkPort::with_side("p1", South))
+    node_a.add_port(ElkPort::with_side("p2", South))
+    root.add_child(node_a)
+    root.add_child(node_b0)
+    root.add_child(node_b1)
+    let e0 = ElkEdge::new("e0" + id, "a", "b0")
+    e0.properties.set("elk.sourcePort", String("p0"))
+    let e1 = ElkEdge::new("e1" + id, "a", "b1")
+    e1.properties.set("elk.sourcePort", String("p1"))
+    root.add_edge(e0)
+    root.add_edge(e1)
+    elk_layered_layout(root, {
+      ..LayoutOptions::layered(),
+      port_constraints: Some(FixedOrder),
+      port_alignment: Some(Center),
+      port_border_offset: Some(10.0),
+      port_port_spacing: Some(spacing),
+    })
+    (e0, e1)
+  }
+  let (e0a, e1a) = mk("_a", 10.0)
+  let (e0b, e1b) = mk("_b", 60.0)
+  let gap_small = (e1a.sections[0].start_point.x - e0a.sections[0].start_point.x).abs()
+  let gap_big = (e1b.sections[0].start_point.x - e0b.sections[0].start_point.x).abs()
+  assert_true(gap_big > gap_small + 40.0)
 }
 
 ///|
@@ -859,4 +1033,34 @@ test "parallel edges: distinct routed endpoints" {
   let s2 = e2.sections[0]
   assert_true((s1.start_point.x - s2.start_point.x).abs() > 0.01)
   assert_true((s1.end_point.x - s2.end_point.x).abs() > 0.01)
+}
+
+///|
+test "crossing: barycenter tie-break is deterministic" {
+  let build = fn(suffix : String) -> (ElkNode, ElkNode, ElkNode) {
+    let root = ElkNode::new("root" + suffix)
+    let a = ElkNode::with_size("a", 60.0, 40.0)
+    let b = ElkNode::with_size("b", 60.0, 40.0)
+    let x = ElkNode::with_size("x", 60.0, 40.0)
+    let y = ElkNode::with_size("y", 60.0, 40.0)
+    // Input order within the same layer matters for tie-breaks.
+    root.add_child(a)
+    root.add_child(b)
+    root.add_child(x)
+    root.add_child(y)
+
+    // x and y have identical barycenters: both connect to a and b.
+    root.add_edge(ElkEdge::new("e_ax" + suffix, "a", "x"))
+    root.add_edge(ElkEdge::new("e_bx" + suffix, "b", "x"))
+    root.add_edge(ElkEdge::new("e_ay" + suffix, "a", "y"))
+    root.add_edge(ElkEdge::new("e_by" + suffix, "b", "y"))
+    (root, x, y)
+  }
+  let (root1, x1, y1) = build("_1")
+  elk_layered_layout(root1, LayoutOptions::layered())
+  let order1 = x1.x < y1.x
+  let (root2, x2, y2) = build("_2")
+  elk_layered_layout(root2, LayoutOptions::layered())
+  let order2 = x2.x < y2.x
+  assert_true(order1 == order2)
 }

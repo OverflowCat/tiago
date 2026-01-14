@@ -142,9 +142,21 @@ fn route_vertical_layout(
       continue
     }
     let key = if edge.source_id < edge.target_id {
-      edge.source_id + "->" + edge.target_id
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("") +
+      "->" +
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("")
     } else {
-      edge.target_id + "->" + edge.source_id
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("") +
+      "->" +
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("")
     }
     if !edge_groups.contains(key) {
       edge_groups[key] = []
@@ -195,9 +207,21 @@ fn route_vertical_layout(
 
     // Deterministic parallel edge index using normalized key.
     let key = if edge.source_id < edge.target_id {
-      edge.source_id + "->" + edge.target_id
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("") +
+      "->" +
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("")
     } else {
-      edge.target_id + "->" + edge.source_id
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("") +
+      "->" +
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("")
     }
     let parallel_count = parallel_count_by_key.get(key).unwrap_or(1)
     let parallel_index = parallel_index_by_edge.get(edge.id).unwrap_or(0)
@@ -354,9 +378,21 @@ fn route_horizontal_layout(
       continue
     }
     let key = if edge.source_id < edge.target_id {
-      edge.source_id + "->" + edge.target_id
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("") +
+      "->" +
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("")
     } else {
-      edge.target_id + "->" + edge.source_id
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("") +
+      "->" +
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("")
     }
     if !edge_groups.contains(key) {
       edge_groups[key] = []
@@ -405,9 +441,21 @@ fn route_horizontal_layout(
       false,
     )
     let key = if edge.source_id < edge.target_id {
-      edge.source_id + "->" + edge.target_id
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("") +
+      "->" +
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("")
     } else {
-      edge.target_id + "->" + edge.source_id
+      edge.target_id +
+      ":" +
+      edge.target_port_id.unwrap_or("") +
+      "->" +
+      edge.source_id +
+      ":" +
+      edge.source_port_id.unwrap_or("")
     }
     let parallel_count = parallel_count_by_key.get(key).unwrap_or(1)
     let parallel_index = parallel_index_by_edge.get(edge.id).unwrap_or(0)

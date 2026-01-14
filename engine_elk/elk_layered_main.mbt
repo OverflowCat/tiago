@@ -84,7 +84,7 @@ fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   )
 
   // Apply results back to ElkNode
-  lgraph.to_elk_node(graph, direction)
+  lgraph.to_elk_node(graph, direction, resolved_options)
 }
 
 // ============================================================================
