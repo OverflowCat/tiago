@@ -296,7 +296,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.SORT_BY_INPUT_ORDER_OF_MODEL",
     BeforePhase3,
-    fn(_, _) { () },
+    fn(graph, _) { sort_layers_by_input_order(graph) },
   )
   builder.add(
     "elk.layered.intermediate.NORTH_SOUTH_PORT_PREPROCESSOR",

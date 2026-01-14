@@ -915,6 +915,28 @@ fn remove_dummy_nodes(
 }
 
 // ============================================================================
+// Model Order Processors
+// ============================================================================
+
+///|
+fn sort_layers_by_input_order(graph : LGraph) -> Unit {
+  let order : Map[String, Int] = {}
+  for i, node in graph.nodes {
+    order[node.id] = i
+  }
+  for layer in graph.layers {
+    layer.nodes.sort_by(fn(a, b) {
+      let ia = order.get(a.id).unwrap_or(0)
+      let ib = order.get(b.id).unwrap_or(0)
+      ia - ib
+    })
+    for i, node in layer.nodes {
+      node.position = i
+    }
+  }
+}
+
+// ============================================================================
 // End Label Processors
 // ============================================================================
 
