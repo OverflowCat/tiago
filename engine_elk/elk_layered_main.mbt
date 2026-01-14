@@ -1157,34 +1157,40 @@ fn edge_anchor_point(
           match find_port_for_id(node, pid) {
             Some(port) => {
               let has_pos = port.x != 0.0 || port.y != 0.0
+              let border = port.properties.get_double_or(
+                "diago.layered.portBorderOffset", 0.0,
+              )
               match port.side {
                 North =>
                   if has_pos {
-                    ElkPoint::new(node.x + port.x, node.y)
+                    ElkPoint::new(node.x + port.x, node.y + border)
                   } else {
-                    ElkPoint::new(node.x + node.width / 2.0, node.y)
+                    ElkPoint::new(node.x + node.width / 2.0, node.y + border)
                   }
                 South =>
                   if has_pos {
-                    ElkPoint::new(node.x + port.x, node.y + node.height)
+                    ElkPoint::new(
+                      node.x + port.x,
+                      node.y + node.height - border,
+                    )
                   } else {
                     ElkPoint::new(
                       node.x + node.width / 2.0,
-                      node.y + node.height,
+                      node.y + node.height - border,
                     )
                   }
                 West =>
                   if has_pos {
-                    ElkPoint::new(node.x, node.y + port.y)
+                    ElkPoint::new(node.x + border, node.y + port.y)
                   } else {
-                    ElkPoint::new(node.x, node.y + node.height / 2.0)
+                    ElkPoint::new(node.x + border, node.y + node.height / 2.0)
                   }
                 East =>
                   if has_pos {
-                    ElkPoint::new(node.x + node.width, node.y + port.y)
+                    ElkPoint::new(node.x + node.width - border, node.y + port.y)
                   } else {
                     ElkPoint::new(
-                      node.x + node.width,
+                      node.x + node.width - border,
                       node.y + node.height / 2.0,
                     )
                   }

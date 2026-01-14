@@ -206,6 +206,62 @@ test "edge end label placement: Head" {
 }
 
 ///|
+test "end labels: anchor honors port_border_offset" {
+  let root1 = ElkNode::new("root1")
+  let node_a1 = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b1 = ElkNode::with_size("b", 60.0, 40.0)
+  let port_a1 : ElkPort = {
+    id: "pa",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: South,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  node_a1.add_port(port_a1)
+  root1.add_child(node_a1)
+  root1.add_child(node_b1)
+  let edge1 = ElkEdge::new("e1", "a", "b")
+  edge1.properties.set("elk.sourcePort", String("pa"))
+  let l1 = ElkLabel::new("l1", "H")
+  l1.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge1.labels.push(l1)
+  root1.add_edge(edge1)
+  elk_layered_layout(root1, {
+    ..LayoutOptions::layered(),
+    port_border_offset: Some(10.0),
+  })
+  let y_with = l1.y
+  let root2 = ElkNode::new("root2")
+  let node_a2 = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b2 = ElkNode::with_size("b", 60.0, 40.0)
+  let port_a2 : ElkPort = {
+    id: "pa",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: South,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  node_a2.add_port(port_a2)
+  root2.add_child(node_a2)
+  root2.add_child(node_b2)
+  let edge2 = ElkEdge::new("e2", "a", "b")
+  edge2.properties.set("elk.sourcePort", String("pa"))
+  let l2 = ElkLabel::new("l2", "H")
+  l2.properties.set("elk.edgeLabel.placement", String("HEAD"))
+  edge2.labels.push(l2)
+  root2.add_edge(edge2)
+  elk_layered_layout(root2, LayoutOptions::layered())
+  let y_default = l2.y
+  assert_true((y_with - y_default + 10.0).abs() < 0.001)
+}
+
+///|
 test "end labels: label_label_spacing adds extra gap" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 60.0, 40.0)
