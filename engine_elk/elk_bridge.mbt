@@ -556,8 +556,17 @@ fn run_elk_layout(
   match algorithm {
     Layered => elk_layered_layout(elk_root, options)
     MrTree => elk_mrtree_layout(elk_root, options)
-    // TODO: implement and wire the remaining ELK algorithms.
-    _ => elk_layered_layout(elk_root, options)
+    Force => elk_force_layout(elk_root, options)
+    Stress => elk_stress_layout(elk_root, options)
+    Radial => elk_radial_layout(elk_root, options)
+    Box => elk_box_layout(elk_root, options)
+    RectPacking => elk_rect_packing_layout(elk_root, options)
+    TopDownPacking => elk_top_down_packing_layout(elk_root, options)
+    DisCo => elk_disco_layout(elk_root, options)
+    Fixed => elk_fixed_layout(elk_root, options)
+    Random => elk_random_layout(elk_root, options)
+    SporeCompaction => elk_spore_compaction_layout(elk_root, options)
+    SporeOverlap => elk_spore_overlap_layout(elk_root, options)
   }
 
   // Convert back to Graph format
