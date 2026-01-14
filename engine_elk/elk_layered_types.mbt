@@ -203,6 +203,8 @@ fn LLabel::new(id : String, text : String) -> LLabel {
 
 ///|
 fn LLabel::from_elk_label(elk_label : ElkLabel) -> LLabel {
+  let props = ElkProperties::new()
+  props.copy_from(elk_label.properties)
   {
     id: elk_label.id,
     text: elk_label.text,
@@ -210,7 +212,7 @@ fn LLabel::from_elk_label(elk_label : ElkLabel) -> LLabel {
     y: elk_label.y,
     width: elk_label.width,
     height: elk_label.height,
-    properties: ElkProperties::new(),
+    properties: props,
   }
 }
 

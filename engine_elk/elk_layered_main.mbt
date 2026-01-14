@@ -349,6 +349,15 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 /// This follows the ELK layered approach of turning edge labels into nodes so
 /// later phases can account for label sizes.
 fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
+  // Only center labels become dummies; head/tail labels are handled by end-label processors.
+  let placement = match options.edge_label_placement {
+    Some(p) => p
+    None => Center
+  }
+  match placement {
+    Head | Tail => return
+    _ => ()
+  }
   let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let original_edge_count = graph.edges.length()
   for i = 0; i < original_edge_count; i = i + 1 {
@@ -867,6 +876,312 @@ fn remove_label_dummy_nodes(graph : LGraph) -> Unit {
 fn remove_dummy_nodes(graph : LGraph) -> Unit {
   remove_long_edge_dummy_nodes(graph)
   remove_label_dummy_nodes(graph)
+}
+
+// ============================================================================
+// End Label Processors
+// ============================================================================
+
+///|
+fn parse_edge_label_placement(value : String) -> EdgeLabelPlacement? {
+  match value {
+    "CENTER" | "Center" | "center" => Some(Center)
+    "HEAD" | "Head" | "head" => Some(Head)
+    "TAIL" | "Tail" | "tail" => Some(Tail)
+    _ => None
+  }
+}
+
+///|
+fn label_placement_from_properties(label : LLabel) -> EdgeLabelPlacement? {
+  match label.properties.get_string("elk.edgeLabel.placement") {
+    Some(s) => parse_edge_label_placement(s)
+    None =>
+      match label.properties.get_string("org.eclipse.elk.edgeLabel.placement") {
+        Some(s) => parse_edge_label_placement(s)
+        None =>
+          match
+            label.properties.get_string("diago.layered.edgeLabelPlacement") {
+            Some(s) => parse_edge_label_placement(s)
+            None => None
+          }
+      }
+  }
+}
+
+///|
+fn effective_edge_label_placement(
+  options : LayoutOptions,
+  label : LLabel,
+) -> EdgeLabelPlacement {
+  match label_placement_from_properties(label) {
+    Some(p) => p
+    None =>
+      match options.edge_label_placement {
+        Some(p) => p
+        None => Center
+      }
+  }
+}
+
+///|
+fn preprocess_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
+  let placement = match options.edge_label_placement {
+    Some(p) => p
+    None => Center
+  }
+  match placement {
+    Head | Tail =>
+      for edge in graph.edges {
+        for label in edge.labels {
+          label.properties.set(
+            "diago.layered.edgeLabelPlacement",
+            String(
+              match placement {
+                Head => "Head"
+                Tail => "Tail"
+                _ => "Center"
+              },
+            ),
+          )
+        }
+      }
+    _ => ()
+  }
+}
+
+///|
+fn sort_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
+  for edge in graph.edges {
+    let mut has_end = false
+    for label in edge.labels {
+      let placement = effective_edge_label_placement(options, label)
+      if placement is Head || placement is Tail {
+        has_end = true
+        break
+      }
+    }
+    if has_end {
+      edge.labels.sort_by(fn(a, b) { a.id.compare(b.id) })
+    }
+  }
+}
+
+///|
+fn side_selection_sign(
+  selection : EdgeLabelSideSelection,
+  direction : LayoutDirection,
+) -> Int {
+  fn flip_for_direction(direction : LayoutDirection) -> Bool {
+    direction == Up || direction == Left
+  }
+
+  let sign = match selection {
+    AlwaysUp => -1
+    AlwaysDown => 1
+    DirectionUp => if flip_for_direction(direction) { 1 } else { -1 }
+    DirectionDown => if flip_for_direction(direction) { -1 } else { 1 }
+    SmartUp => if flip_for_direction(direction) { 1 } else { -1 }
+    SmartDown => if flip_for_direction(direction) { -1 } else { 1 }
+  }
+  sign
+}
+
+///|
+fn along_sign(direction : LayoutDirection) -> Int {
+  if direction == Down || direction == Right {
+    1
+  } else {
+    -1
+  }
+}
+
+///|
+fn find_port_for_id(node : LNode, port_id : String) -> LPort? {
+  for port in node.ports {
+    if port.id == port_id {
+      return Some(port)
+    }
+    match port.original_id {
+      Some(id) => if id == port_id { return Some(port) }
+      None => ()
+    }
+  }
+  None
+}
+
+///|
+fn default_edge_anchor(
+  node : LNode,
+  direction : LayoutDirection,
+  is_source : Bool,
+) -> ElkPoint {
+  if direction.is_vertical() {
+    if is_source {
+      ElkPoint::new(node.x + node.width / 2.0, node.y + node.height)
+    } else {
+      ElkPoint::new(node.x + node.width / 2.0, node.y)
+    }
+  } else if direction.is_horizontal() {
+    if is_source {
+      ElkPoint::new(node.x + node.width, node.y + node.height / 2.0)
+    } else {
+      ElkPoint::new(node.x, node.y + node.height / 2.0)
+    }
+  } else {
+    ElkPoint::new(node.x + node.width / 2.0, node.y + node.height / 2.0)
+  }
+}
+
+///|
+fn edge_anchor_point(
+  graph : LGraph,
+  edge : LEdge,
+  direction : LayoutDirection,
+  is_source : Bool,
+) -> ElkPoint {
+  let node_id = if is_source { edge.source_id } else { edge.target_id }
+  let port_id = if is_source {
+    edge.source_port_id
+  } else {
+    edge.target_port_id
+  }
+  match graph.get_node(node_id) {
+    Some(node) =>
+      match port_id {
+        Some(pid) =>
+          match find_port_for_id(node, pid) {
+            Some(port) => {
+              let has_pos = port.x != 0.0 || port.y != 0.0
+              match port.side {
+                North =>
+                  if has_pos {
+                    ElkPoint::new(node.x + port.x, node.y)
+                  } else {
+                    ElkPoint::new(node.x + node.width / 2.0, node.y)
+                  }
+                South =>
+                  if has_pos {
+                    ElkPoint::new(node.x + port.x, node.y + node.height)
+                  } else {
+                    ElkPoint::new(
+                      node.x + node.width / 2.0,
+                      node.y + node.height,
+                    )
+                  }
+                West =>
+                  if has_pos {
+                    ElkPoint::new(node.x, node.y + port.y)
+                  } else {
+                    ElkPoint::new(node.x, node.y + node.height / 2.0)
+                  }
+                East =>
+                  if has_pos {
+                    ElkPoint::new(node.x + node.width, node.y + port.y)
+                  } else {
+                    ElkPoint::new(
+                      node.x + node.width,
+                      node.y + node.height / 2.0,
+                    )
+                  }
+                _ => default_edge_anchor(node, direction, is_source)
+              }
+            }
+            None => default_edge_anchor(node, direction, is_source)
+          }
+        None => default_edge_anchor(node, direction, is_source)
+      }
+    None => ElkPoint::new(0.0, 0.0)
+  }
+}
+
+///|
+fn place_end_labels(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
+  let placement = match options.edge_label_placement {
+    Some(p) => p
+    None => Center
+  }
+  // Only act when end labels are enabled.
+  match placement {
+    Head | Tail => ()
+    _ => return
+  }
+  let side_selection = match options.edge_label_side_selection {
+    Some(s) => s
+    None => DirectionDown
+  }
+  let side_sign = side_selection_sign(side_selection, direction).to_double()
+  let along = along_sign(direction).to_double()
+  let label_spacing = options.edge_label_spacing.unwrap_or(2.0)
+  let label_offset = options.label_node_spacing.unwrap_or(5.0)
+  let edge_offset = options.edge_label_spacing.unwrap_or(2.0)
+  for edge in graph.edges {
+    if edge.labels.is_empty() {
+      continue
+    }
+    let head_labels : Array[LLabel] = []
+    let tail_labels : Array[LLabel] = []
+    for label in edge.labels {
+      match effective_edge_label_placement(options, label) {
+        Head => head_labels.push(label)
+        Tail => tail_labels.push(label)
+        _ => ()
+      }
+    }
+    fn stack_total(labels : Array[LLabel], spacing : Double) -> Double {
+      let mut total = 0.0
+      for i, label in labels {
+        total = total + label.height
+        if i + 1 < labels.length() {
+          total = total + spacing
+        }
+      }
+      total
+    }
+
+    if !head_labels.is_empty() {
+      let anchor = edge_anchor_point(graph, edge, direction, true)
+      let total_h = stack_total(head_labels, label_spacing)
+      let mut cursor = -total_h / 2.0
+      for label in head_labels {
+        let mut lx = anchor.x
+        let mut ly = anchor.y
+        if direction.is_vertical() {
+          lx = lx + side_sign * (edge_offset + label_offset)
+          ly = ly + along * label_offset + cursor
+        } else {
+          lx = lx + along * label_offset + cursor
+          ly = ly + side_sign * (edge_offset + label_offset)
+        }
+        label.x = lx - label.width / 2.0
+        label.y = ly
+        cursor = cursor + label.height + label_spacing
+      }
+    }
+    if !tail_labels.is_empty() {
+      let anchor = edge_anchor_point(graph, edge, direction, false)
+      let total_h = stack_total(tail_labels, label_spacing)
+      let mut cursor = -total_h / 2.0
+      for label in tail_labels {
+        let mut lx = anchor.x
+        let mut ly = anchor.y
+        if direction.is_vertical() {
+          lx = lx + side_sign * (edge_offset + label_offset)
+          ly = ly - along * label_offset + cursor
+        } else {
+          lx = lx - along * label_offset + cursor
+          ly = ly + side_sign * (edge_offset + label_offset)
+        }
+        label.x = lx - label.width / 2.0
+        label.y = ly
+        cursor = cursor + label.height + label_spacing
+      }
+    }
+  }
 }
 
 // ============================================================================

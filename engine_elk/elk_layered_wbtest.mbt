@@ -188,3 +188,19 @@ test "self-loop edge routing" {
   let section = edge_loop.sections[0]
   assert_true(section.bend_points.length() >= 4)
 }
+
+///|
+test "edge end label placement: Head" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 60.0, 40.0)
+  let node_b = ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e_ab", "a", "b")
+  edge.labels.push(ElkLabel::new("l1", "H"))
+  root.add_edge(edge)
+  let options = { ..LayoutOptions::layered(), edge_label_placement: Some(Head) }
+  elk_layered_layout(root, options)
+  let label = edge.labels[0]
+  assert_true(label.x != 0.0 || label.y != 0.0)
+}

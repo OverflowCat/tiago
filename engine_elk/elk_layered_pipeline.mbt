@@ -367,10 +367,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     fn(_, _) { () },
   )
   builder.add("elk.layered.intermediate.END_LABEL_PREPROCESSOR", BeforePhase4, fn(
-    _,
-    _,
+    graph,
+    ctx,
   ) {
-    ()
+    preprocess_end_labels(graph, ctx.options)
   })
   builder.add("elk.layered.intermediate.LABEL_DUMMY_SWITCHER", BeforePhase4, fn(
     _,
@@ -490,10 +490,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     fn(_, _) { () },
   )
   builder.add("elk.layered.intermediate.END_LABEL_SORTER", AfterPhase5, fn(
-    _,
-    _,
+    graph,
+    ctx,
   ) {
-    ()
+    sort_end_labels(graph, ctx.options)
   })
 
   // Restore reversed edges.
@@ -504,10 +504,10 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     restore_reversed_edges(graph)
   })
   builder.add("elk.layered.intermediate.END_LABEL_POSTPROCESSOR", AfterPhase5, fn(
-    _,
-    _,
+    graph,
+    ctx,
   ) {
-    ()
+    place_end_labels(graph, ctx.options, ctx.direction)
   })
   builder.add(
     "elk.layered.intermediate.HIERARCHICAL_NODE_RESIZER",
