@@ -990,29 +990,32 @@ fn effective_edge_label_placement(
 }
 
 ///|
-fn preprocess_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
+fn set_default_label_placement(graph : LGraph, options : LayoutOptions) -> Unit {
   let placement = match options.edge_label_placement {
     Some(p) => p
     None => Center
   }
-  match placement {
-    Head | Tail =>
-      for edge in graph.edges {
-        for label in edge.labels {
-          label.properties.set(
-            "diago.layered.edgeLabelPlacement",
-            String(
-              match placement {
-                Head => "Head"
-                Tail => "Tail"
-                _ => "Center"
-              },
-            ),
-          )
-        }
-      }
-    _ => ()
+  let placement_str = match placement {
+    Head => "Head"
+    Tail => "Tail"
+    _ => "Center"
   }
+  for edge in graph.edges {
+    for label in edge.labels {
+      if label_placement_from_properties(label) is None {
+        label.properties.set(
+          "diago.layered.edgeLabelPlacement",
+          String(placement_str),
+        )
+      }
+    }
+  }
+}
+
+///|
+fn preprocess_end_labels(graph : LGraph, options : LayoutOptions) -> Unit {
+  // Keep compatibility: this stage historically stamped default placement.
+  set_default_label_placement(graph, options)
 }
 
 ///|

@@ -381,7 +381,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.CENTER_LABEL_MANAGEMENT_PROCESSOR",
     BeforePhase4,
-    fn(_, _) { () },
+    fn(graph, ctx) { set_default_label_placement(graph, ctx.options) },
   )
   builder.add("elk.layered.intermediate.LABEL_SIDE_SELECTOR", BeforePhase4, fn(
     graph,
