@@ -263,7 +263,8 @@ fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
       while layer_improved {
         layer_improved = false
 
-        // Find the best swap in this layer
+        // Find the best swap in this layer.
+        // Tie-break deterministically by swap index.
         let mut best_i = -1
         let mut best_diff = 0
         for i = 0; i < layer.nodes.length() - 1; i = i + 1 {
@@ -271,6 +272,10 @@ fn greedy_switch_two_sided(graph : LGraph, max_iterations : Int) -> Unit {
           if diff < best_diff {
             best_diff = diff
             best_i = i
+          } else if diff == best_diff && diff < 0 {
+            if best_i < 0 || i < best_i {
+              best_i = i
+            }
           }
         }
 
