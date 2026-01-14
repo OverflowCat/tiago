@@ -48,6 +48,60 @@ fn edge_points(edge : ElkEdge) -> Array[ElkPoint] {
 }
 
 ///|
+fn normalize_points(points : Array[ElkPoint]) -> Array[ElkPoint] {
+  if points.length() <= 2 {
+    return points
+  }
+  let eps = 0.000001
+  fn approx_eq(a : Double, b : Double) -> Bool {
+    (a - b).abs() <= eps
+  }
+
+  fn same_point(a : ElkPoint, b : ElkPoint) -> Bool {
+    approx_eq(a.x, b.x) && approx_eq(a.y, b.y)
+  }
+
+  fn between(v : Double, a : Double, b : Double) -> Bool {
+    let lo = if a < b { a } else { b }
+    let hi = if a < b { b } else { a }
+    v >= lo - eps && v <= hi + eps
+  }
+
+  // 1) Remove consecutive duplicates.
+  let deduped : Array[ElkPoint] = []
+  for p in points {
+    if deduped.is_empty() || !same_point(deduped[deduped.length() - 1], p) {
+      deduped.push(p)
+    }
+  }
+  if deduped.length() <= 2 {
+    return deduped
+  }
+
+  // 2) Remove redundant collinear points for orthogonal routes.
+  let result : Array[ElkPoint] = []
+  for i = 0; i < deduped.length(); i = i + 1 {
+    if i == 0 || i == deduped.length() - 1 {
+      result.push(deduped[i])
+      continue
+    }
+    let prev = result[result.length() - 1]
+    let cur = deduped[i]
+    let next = deduped[i + 1]
+    let vertical = approx_eq(prev.x, cur.x) && approx_eq(cur.x, next.x)
+    let horizontal = approx_eq(prev.y, cur.y) && approx_eq(cur.y, next.y)
+    if vertical && between(cur.y, prev.y, next.y) {
+      continue
+    }
+    if horizontal && between(cur.x, prev.x, next.x) {
+      continue
+    }
+    result.push(cur)
+  }
+  result
+}
+
+///|
 fn collect_edges(
   node : ElkNode,
   prefix : String,
@@ -56,7 +110,9 @@ fn collect_edges(
   for edge in node.edges {
     let src = edge.source().unwrap_or("")
     let tgt = edge.target().unwrap_or("")
-    result.push((prefix, edge.id, src, tgt, edge_points(edge)))
+    result.push(
+      (prefix, edge.id, src, tgt, normalize_points(edge_points(edge))),
+    )
   }
   for child in node.children {
     let child_prefix = if prefix.length() == 0 {
@@ -271,9 +327,10 @@ test "layered regression: parallel edges" {
       #|  - a: (12, 12) (60, 40)
       #|  - b: (12, 92) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (39.5, 52) (39.5, 52) (39.5, 92) (39.5, 92)
-      #|  - [root] e2 a->b: (44.5, 52) (44.5, 47) (44.5, 87) (44.5, 92)
+      #|  - [root] e1 a->b: (39.5, 52) (39.5, 92)
+      #|  - [root] e2 a->b: (44.5, 52) (44.5, 47) (44.5, 92)
       #|
+
     ),
   )
 }
