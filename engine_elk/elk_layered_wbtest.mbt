@@ -672,6 +672,54 @@ test "port constraints: FixedPos keeps port anchors" {
 }
 
 ///|
+test "port constraints: FixedOrder preserves model port order" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 80.0, 60.0)
+  let node_b = ElkNode::with_size("b", 80.0, 60.0)
+
+  // Intentionally add ports in non-lexical order.
+  let port_1 : ElkPort = {
+    id: "p1",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: South,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  let port_0 : ElkPort = {
+    id: "p0",
+    x: 0.0,
+    y: 0.0,
+    width: 0.0,
+    height: 0.0,
+    side: South,
+    labels: [],
+    properties: ElkProperties::new(),
+  }
+  node_a.add_port(port_1)
+  node_a.add_port(port_0)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let e1 = ElkEdge::new("e1", "a", "b")
+  e1.properties.set("elk.sourcePort", String("p1"))
+  let e2 = ElkEdge::new("e2", "a", "b")
+  e2.properties.set("elk.sourcePort", String("p0"))
+  root.add_edge(e1)
+  root.add_edge(e2)
+  let options = {
+    ..LayoutOptions::layered(),
+    port_constraints: Some(FixedOrder),
+  }
+  elk_layered_layout(root, options)
+
+  // With FixedOrder, we preserve model port list order, so "p1" is placed
+  // before "p0" along the same side.
+  assert_true(e1.sections[0].start_point.x < e2.sections[0].start_point.x)
+}
+
+///|
 test "port border offset: inferred port anchors are inset" {
   let root = ElkNode::new("root")
   let node_a = ElkNode::with_size("a", 80.0, 60.0)

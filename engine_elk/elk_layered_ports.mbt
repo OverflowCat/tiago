@@ -127,7 +127,7 @@ fn process_port_sides(
   }
   // Fixed constraints: do not infer sides from graph structure.
   match constraints {
-    FixedSide | FixedPos | FixedRatio => return
+    FixedSide | FixedOrder | FixedPos | FixedRatio => return
     _ => ()
   }
 
@@ -227,13 +227,14 @@ fn invert_inferred_port_sides(
 ///|
 /// Sort ports in each node for determinism.
 fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
-  let sorting_strategy = match options.port_constraints {
-    Some(FixedOrder) => InputOrder
-    _ =>
-      match options.port_sorting_strategy {
-        Some(s) => s
-        None => InputOrder
-      }
+  // For fixed port order, preserve model order.
+  match options.port_constraints {
+    Some(FixedOrder) => return
+    _ => ()
+  }
+  let sorting_strategy = match options.port_sorting_strategy {
+    Some(s) => s
+    None => InputOrder
   }
   for node in graph.nodes {
     // Precompute port degrees for this node.
