@@ -245,13 +245,125 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
 /// deterministic position on the node boundary for routing.
 fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
   let border = options.port_border_offset.unwrap_or(0.0)
+  let spacing = options.port_port_spacing.unwrap_or(10.0)
+  let constraints = match options.port_constraints {
+    Some(c) => c
+    None => Undefined
+  }
+  fn alignment_for_side(
+    options : LayoutOptions,
+    side : ElkPortSide,
+  ) -> PortAlignment {
+    match side {
+      North =>
+        match options.port_alignment_north {
+          Some(a) => a
+          None =>
+            match options.port_alignment {
+              Some(a) => a
+              None => Distributed
+            }
+        }
+      South =>
+        match options.port_alignment_south {
+          Some(a) => a
+          None =>
+            match options.port_alignment {
+              Some(a) => a
+              None => Distributed
+            }
+        }
+      East =>
+        match options.port_alignment_east {
+          Some(a) => a
+          None =>
+            match options.port_alignment {
+              Some(a) => a
+              None => Distributed
+            }
+        }
+      West =>
+        match options.port_alignment_west {
+          Some(a) => a
+          None =>
+            match options.port_alignment {
+              Some(a) => a
+              None => Distributed
+            }
+        }
+      Undefined =>
+        match options.port_alignment {
+          Some(a) => a
+          None => Distributed
+        }
+    }
+  }
+
+  fn place_along(
+    ports : Array[LPort],
+    length : Double,
+    alignment : PortAlignment,
+    spacing : Double,
+    make : (Double, LPort) -> Unit,
+  ) -> Unit {
+    if ports.is_empty() {
+      return
+    }
+    if ports.length() == 1 {
+      make(length / 2.0, ports[0])
+      return
+    }
+    let mut step = spacing
+    if step <= 0.0 {
+      step = length / (ports.length() - 1).to_double()
+    }
+    let max_step = length / (ports.length() - 1).to_double()
+    if step > max_step {
+      step = max_step
+    }
+    let span = (ports.length() - 1).to_double() * step
+    let start = match alignment {
+      Begin => 0.0
+      End => max_double(0.0, length - span)
+      Center => max_double(0.0, (length - span) / 2.0)
+      Distributed => max_double(0.0, (length - span) / 2.0)
+      Justified => 0.0
+      Undefined => max_double(0.0, (length - span) / 2.0)
+    }
+    match alignment {
+      Justified =>
+        for i, port in ports {
+          let t = i.to_double() / (ports.length() - 1).to_double()
+          make(t * length, port)
+        }
+      _ =>
+        for i, port in ports {
+          make(start + i.to_double() * step, port)
+        }
+    }
+  }
+
   for node in graph.nodes {
-    // Group by side.
+    // If port positions are fixed, don't synthesize positions.
+    if constraints is FixedPos {
+      continue
+    }
+
+    // Group by side; optionally skip ports that already have explicit geometry.
     let north : Array[LPort] = []
     let east : Array[LPort] = []
     let south : Array[LPort] = []
     let west : Array[LPort] = []
     for port in node.ports {
+      let has_geometry = port.x != 0.0 ||
+        port.y != 0.0 ||
+        port.width != 0.0 ||
+        port.height != 0.0
+
+      // When constraints ask for fixed ratios, respect explicit coordinates.
+      if constraints is FixedRatio && has_geometry {
+        continue
+      }
       match port.side {
         North => north.push(port)
         East => east.push(port)
@@ -260,47 +372,41 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         Undefined => ()
       }
     }
-    fn place_along(
-      ports : Array[LPort],
-      length : Double,
-      make : (Double, LPort) -> Unit,
-    ) -> Unit {
-      if ports.is_empty() {
-        return
-      }
-      if ports.length() == 1 {
-        make(length / 2.0, ports[0])
-        return
-      }
-      // Spread evenly along the side.
-      for i, port in ports {
-        let t = i.to_double() / (ports.length() - 1).to_double()
-        make(t * length, port)
-      }
-    }
 
     // Normalize usable lengths.
     let usable_w = max_double(0.0, node.width - 2.0 * border)
     let usable_h = max_double(0.0, node.height - 2.0 * border)
-    place_along(north, usable_w, fn(pos, port) {
+    place_along(north, usable_w, alignment_for_side(options, North), spacing, fn(
+      pos,
+      port,
+    ) {
       port.x = border + pos
       port.y = 0.0
       port.width = 0.0
       port.height = 0.0
     })
-    place_along(south, usable_w, fn(pos, port) {
+    place_along(south, usable_w, alignment_for_side(options, South), spacing, fn(
+      pos,
+      port,
+    ) {
       port.x = border + pos
       port.y = node.height
       port.width = 0.0
       port.height = 0.0
     })
-    place_along(west, usable_h, fn(pos, port) {
+    place_along(west, usable_h, alignment_for_side(options, West), spacing, fn(
+      pos,
+      port,
+    ) {
       port.x = 0.0
       port.y = border + pos
       port.width = 0.0
       port.height = 0.0
     })
-    place_along(east, usable_h, fn(pos, port) {
+    place_along(east, usable_h, alignment_for_side(options, East), spacing, fn(
+      pos,
+      port,
+    ) {
       port.x = node.width
       port.y = border + pos
       port.width = 0.0
