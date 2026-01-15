@@ -345,12 +345,12 @@ test "layered regression: long edge" {
       #|root size=(164, 224) bounds=(164, 224)
       #|nodes:
       #|  - a: (12, 92) (60, 40)
-      #|  - b: (12, 12) (60, 40)
+      #|  - b: (92, 12) (60, 40)
       #|  - c: (92, 92) (60, 40)
       #|  - d: (12, 172) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (42, 132) (42, 12)
-      #|  - [root] e2 b->c: (42, 52) (42, 72) (122, 72) (122, 92)
+      #|  - [root] e1 a->b: (42, 132) (42, 72) (122, 72) (122, 12)
+      #|  - [root] e2 b->c: (122, 52) (122, 92)
       #|  - [root] e3 c->d: (122, 132) (122, 147) (42, 147) (42, 172)
       #|  - [root] e4 a->d: (42, 132) (42, 172)
       #|
@@ -370,11 +370,11 @@ test "layered regression: cycle breaking" {
       #|nodes:
       #|  - a: (12, 12) (60, 40)
       #|  - b: (92, 12) (60, 40)
-      #|  - c: (12, 92) (60, 40)
+      #|  - c: (92, 92) (60, 40)
       #|edges:
       #|  - [root] e1 a->b: (42, 52) (122, 12)
-      #|  - [root] e2 b->c: (122, 52) (122, 67) (42, 67) (42, 92)
-      #|  - [root] e3 c->a: (42, 132) (42, 12)
+      #|  - [root] e2 b->c: (122, 52) (122, 92)
+      #|  - [root] e3 c->a: (122, 132) (42, 72) (122, 72) (42, 12)
       #|
     ),
   )
@@ -388,14 +388,14 @@ test "layered regression: compound" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(132, 192) bounds=(132, 192)
+      #|root size=(108, 192) bounds=(108, 192)
       #|nodes:
-      #|  - group: (12, 12) (108, 168)
+      #|  - group: (-12, 12) (108, 168)
       #|  - outside: (12, 140) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|  - group/g2: (12, 92) (60, 40)
       #|edges:
-      #|  - [root] e1 group->outside: (66, 180) (66, 160) (42, 160) (42, 140)
+      #|  - [root] e1 group->outside: (42, 180) (42, 140)
       #|  - [group] ge1 g1->g2: (42, 52) (42, 92)
       #|
     ),
@@ -410,13 +410,13 @@ test "layered regression: cross-hierarchy edge mapping" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(132, 192) bounds=(132, 192)
+      #|root size=(108, 192) bounds=(108, 192)
       #|nodes:
-      #|  - group: (12, 12) (108, 88)
+      #|  - group: (-12, 12) (108, 88)
       #|  - outside: (12, 140) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|edges:
-      #|  - [root] e1 g1->outside: (54, 64) (54, 102) (42, 102) (42, 140)
+      #|  - [root] e1 g1->outside: (30, 64) (30, 102) (42, 102) (42, 140)
       #|
     ),
   )

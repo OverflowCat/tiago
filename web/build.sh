@@ -8,7 +8,7 @@ echo "Building WASM..."
 moon build --target wasm
 
 echo "Copying wasm.wasm..."
-cp target/wasm/release/build/cmd/wasm/wasm.wasm web/
+cp _build/wasm/release/build/cmd/wasm/wasm.wasm web/
 
 echo "Copying examples..."
 rm -rf web/examples

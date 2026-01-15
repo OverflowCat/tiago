@@ -1064,3 +1064,46 @@ test "crossing: barycenter tie-break is deterministic" {
   let order2 = x2.x < y2.x
   assert_true(order1 == order2)
 }
+
+///|
+test "placement: chain centers align to avoid bends" {
+  // Based on a minimal D2 flow where the upper nodes are narrower
+  // than the server nodes; reference ELK aligns centers.
+  let root = ElkNode::new("root")
+  let web1 = ElkNode::with_size("web1", 112.0, 60.0)
+  let web2 = ElkNode::with_size("web2", 112.0, 60.0)
+  let db1 = ElkNode::with_size("db1", 100.0, 60.0)
+  let db2 = ElkNode::with_size("db2", 100.0, 60.0)
+  let alice = ElkNode::with_size("alice", 100.0, 60.0)
+  let bob = ElkNode::with_size("bob", 100.0, 60.0)
+  root.add_child(web1)
+  root.add_child(web2)
+  root.add_child(db1)
+  root.add_child(db2)
+  root.add_child(alice)
+  root.add_child(bob)
+  let e_alice = ElkEdge::new("e_alice", "alice", "web1")
+  let e_bob = ElkEdge::new("e_bob", "bob", "web2")
+  let e_web1 = ElkEdge::new("e_web1", "web1", "db1")
+  let e_web2 = ElkEdge::new("e_web2", "web2", "db1")
+  let e_rep = ElkEdge::new("e_rep", "db1", "db2")
+  root.add_edge(e_alice)
+  root.add_edge(e_bob)
+  root.add_edge(e_web1)
+  root.add_edge(e_web2)
+  root.add_edge(e_rep)
+  elk_layered_layout(root, LayoutOptions::layered())
+  fn center_x(node : ElkNode) -> Double {
+    node.x + node.width / 2.0
+  }
+
+  // Centers should align, avoiding bends.
+  assert_true((center_x(alice) - center_x(web1)).abs() < 0.01)
+  assert_true((center_x(bob) - center_x(web2)).abs() < 0.01)
+  let s_alice = e_alice.sections[0]
+  assert_true(s_alice.bend_points.is_empty())
+  assert_true((s_alice.start_point.x - s_alice.end_point.x).abs() < 0.01)
+  let s_bob = e_bob.sections[0]
+  assert_true(s_bob.bend_points.is_empty())
+  assert_true((s_bob.start_point.x - s_bob.end_point.x).abs() < 0.01)
+}

@@ -811,7 +811,7 @@ test "debug: cyclic graph with bidirectional edges" {
   )
   inspect(
     (boxA.x, boxA.y, boxA.width, boxA.height),
-    content="(140, 180, 100, 60)",
+    content="(180, 180, 100, 60)",
   )
 
   // No overlaps - this is the key constraint
