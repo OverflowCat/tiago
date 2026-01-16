@@ -13,22 +13,6 @@
 // limitations under the License.
 
 ///|
-fn get_depths(graph : @graph.GraphInput) -> Array[Int] {
-  let n = graph.objects.length()
-  if n == 0 {
-    return []
-  }
-  let ids : Array[String] = graph.objects.map(o => o.id)
-  let id_to_idx : Map[String, Int] = Map::new(capacity=n * 2)
-  for i in 0..<n {
-    id_to_idx.set(ids[i], i)
-  }
-  let plan = els_tarjan_plan(graph)
-  let (self_loop, reversed) = dag_edge_index_sets(plan)
-  compute_depths(n, graph, id_to_idx, plan, self_loop, reversed)
-}
-
-///|
 fn dag_edge_index_sets(
   plan : DagPlan,
 ) -> (@hashset.HashSet[Int], @hashset.HashSet[Int]) {
@@ -87,6 +71,86 @@ fn compute_depths(
 }
 
 ///|
+fn level_node_id(n : LevelNode) -> String {
+  match n {
+    Physics(id) => id
+    Virtual(id) => id
+  }
+}
+
+///|
+fn map_array_push(
+  m : Map[String, Array[String]],
+  key : String,
+  value : String,
+) -> Unit {
+  match m.get(key) {
+    Some(arr) => arr.push(value)
+    None => m[key] = [value]
+  }
+}
+
+///|
+fn order_layer_by_barycenter(
+  layer : Array[LevelNode],
+  fixed_layer : Array[LevelNode],
+  neighbors : Map[String, Array[String]],
+) -> Unit {
+  if layer.length() <= 1 || fixed_layer.length() == 0 {
+    return
+  }
+  let fixed_pos : Map[String, Int] = {}
+  for i, node in fixed_layer {
+    fixed_pos[level_node_id(node)] = i
+  }
+  let original_pos : Map[String, Int] = {}
+  for i, node in layer {
+    original_pos[level_node_id(node)] = i
+  }
+  let barycenters : Map[String, Double] = {}
+  for node in layer {
+    let id = level_node_id(node)
+    let connected_positions : Array[Int] = []
+    match neighbors.get(id) {
+      Some(ns) =>
+        for nid in ns {
+          match fixed_pos.get(nid) {
+            Some(p) => connected_positions.push(p)
+            None => ()
+          }
+        }
+      None => ()
+    }
+    if connected_positions.length() > 0 {
+      let sum = connected_positions.fold(init=0, fn(acc, p) { acc + p })
+      barycenters[id] = sum.to_double() /
+        connected_positions.length().to_double()
+    } else {
+      barycenters[id] = original_pos.get(id).unwrap_or(0).to_double()
+    }
+  }
+  layer.sort_by(fn(a, b) {
+    let ida = level_node_id(a)
+    let idb = level_node_id(b)
+    let bc_a = barycenters.get(ida).unwrap_or(0.0)
+    let bc_b = barycenters.get(idb).unwrap_or(0.0)
+    if bc_a < bc_b {
+      -1
+    } else if bc_a > bc_b {
+      1
+    } else {
+      let pa = original_pos.get(ida).unwrap_or(0)
+      let pb = original_pos.get(idb).unwrap_or(0)
+      if pa != pb {
+        pa - pb
+      } else {
+        ida.compare(idb)
+      }
+    }
+  })
+}
+
+///|
 priv struct Level(Array[LevelNode])
 
 ///|
@@ -120,6 +184,8 @@ fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
   for i in 0..<n {
     nodes_by_level[depths[i]].push(Physics(ids[i]))
   }
+  let incoming : Map[String, Array[String]] = {}
+  let outgoing : Map[String, Array[String]] = {}
   for e in graph.edges {
     if self_loop.contains(e.index) {
       continue
@@ -137,10 +203,37 @@ fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
       abort("unexpected non-forward edge when building levels")
     }
     let span = dv - du
+    let mut prev_id = ids[u]
     if span > 1 {
       for step in 1..<span {
         let level = du + step
-        nodes_by_level[level].push(Virtual("virtual:\{e.index}:\{level}"))
+        let virt_id = "virtual:\{e.index}:\{level}"
+        nodes_by_level[level].push(Virtual(virt_id))
+        map_array_push(outgoing, prev_id, virt_id)
+        map_array_push(incoming, virt_id, prev_id)
+        prev_id = virt_id
+      }
+    }
+    let dst_id = ids[v]
+    map_array_push(outgoing, prev_id, dst_id)
+    map_array_push(incoming, dst_id, prev_id)
+  }
+  let thoroughness = 4
+  if nodes_by_level.length() > 1 {
+    for _sweep in 0..<thoroughness {
+      for i in 1..<nodes_by_level.length() {
+        order_layer_by_barycenter(
+          nodes_by_level[i],
+          nodes_by_level[i - 1],
+          incoming,
+        )
+      }
+      for i = nodes_by_level.length() - 2; i >= 0; i = i - 1 {
+        order_layer_by_barycenter(
+          nodes_by_level[i],
+          nodes_by_level[i + 1],
+          outgoing,
+        )
       }
     }
   }
