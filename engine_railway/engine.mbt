@@ -33,9 +33,5 @@ pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   _config,
   _direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
-  let patch = @graph.LayoutPatch::new()
-  for i, node in graph.objects {
-    patch.nodes[node.id] = @graph.Box::new(i.to_double() * 50, 50, 50, 50)
-  }
-  patch
+  ...
 }
