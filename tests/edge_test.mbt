@@ -221,9 +221,9 @@ test "curved edge" {
     #|  style.curved: true
     #|}
   let svg = compile(source).unwrap()
-  // Curved edges use bezier curves (Q for quadratic or C for cubic)
-  // Simple 2-point edges use Q (quadratic bezier) for a subtle curve
-  assert_true(svg.contains(" Q") || svg.contains(" C"))
+  // Rendering does not do route post-processing beyond rounded corner arcs.
+  // Curved edges are not converted to bezier curves here.
+  assert_false(svg.contains(" Q") || svg.contains(" C"))
 }
 
 ///|

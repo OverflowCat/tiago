@@ -20,10 +20,13 @@ priv struct DagPlan {
 }
 
 ///|
-fn require_index(id_to_idx : Map[String, Int], id : String) -> Int {
+fn require_index(
+  id_to_idx : Map[String, Int],
+  id : String,
+) -> Int raise @engine_api.LayoutError {
   match id_to_idx.get(id) {
     Some(i) => i
-    None => abort("unknown object id: \{id}")
+    None => raise Unsupported("unknown object id: \{id}")
   }
 }
 
@@ -206,7 +209,7 @@ fn topo_scc_order(
   scc_count : Int,
   comp_id : Array[Int],
   out_adj : Array[Array[Int]],
-) -> Array[Int] {
+) -> Array[Int] raise @engine_api.LayoutError {
   let scc_out : Array[Array[Int]] = Array::makei(scc_count, _ => (
     [] : Array[Int]))
   let indeg = Array::make(scc_count, 0)
@@ -240,13 +243,15 @@ fn topo_scc_order(
     }
   }
   if topo.length() != scc_count {
-    abort("unexpected: SCC condensation not a DAG")
+    raise Unsupported("unexpected: SCC condensation not a DAG")
   }
   topo
 }
 
 ///|
-fn els_tarjan_plan(g : @graph.GraphInput) -> DagPlan {
+fn els_tarjan_plan(
+  g : @graph.GraphInput,
+) -> DagPlan raise @engine_api.LayoutError {
   let n = g.objects.length()
   let ids : Array[String] = g.objects.map(o => o.id)
   let id_to_idx : Map[String, Int] = Map::new(capacity=n * 2)

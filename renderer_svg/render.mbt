@@ -42,6 +42,9 @@ pub impl @render_api.Renderer for SvgRenderer with format_name(_self) -> String 
 
 ///|
 /// Render with custom configuration
-pub fn render(diagram : @diagram.Diagram, config : SvgConfig) -> String {
+pub fn render(
+  diagram : @diagram.Diagram,
+  config : SvgConfig,
+) -> String raise @render_api.RenderError {
   render_svg(diagram, config)
 }

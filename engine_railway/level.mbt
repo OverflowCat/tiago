@@ -39,7 +39,7 @@ fn compute_depths(
   plan : DagPlan,
   self_loop : @hashset.HashSet[Int],
   reversed : @hashset.HashSet[Int],
-) -> Array[Int] {
+) -> Array[Int] raise @engine_api.LayoutError {
   let out_adj : Array[Array[Int]] = Array::makei(n, _ => ([] : Array[Int]))
   for e in graph.edges {
     if self_loop.contains(e.index) {
@@ -48,7 +48,7 @@ fn compute_depths(
     let u = require_index(id_to_idx, e.src_id)
     let v = require_index(id_to_idx, e.dst_id)
     if u == v {
-      abort("self-loop: unreachable")
+      raise Unsupported("unreachable: self-loop in compute_depths")
     }
     if reversed.contains(e.index) {
       out_adj[v].push(u)
@@ -71,29 +71,9 @@ fn compute_depths(
 }
 
 ///|
-fn level_node_id(n : LevelNode) -> String {
-  match n {
-    Physics(id) => id
-    Virtual(id) => id
-  }
-}
-
-///|
-fn map_array_push(
-  m : Map[String, Array[String]],
-  key : String,
-  value : String,
-) -> Unit {
-  match m.get(key) {
-    Some(arr) => arr.push(value)
-    None => m[key] = [value]
-  }
-}
-
-///|
 fn order_layer_by_barycenter(
-  layer : Array[LevelNode],
-  fixed_layer : Array[LevelNode],
+  layer : Array[String],
+  fixed_layer : Array[String],
   neighbors : Map[String, Array[String]],
 ) -> Unit {
   if layer.length() <= 1 || fixed_layer.length() == 0 {
@@ -101,17 +81,16 @@ fn order_layer_by_barycenter(
   }
   let fixed_pos : Map[String, Int] = {}
   for i, node in fixed_layer {
-    fixed_pos[level_node_id(node)] = i
+    fixed_pos[node] = i
   }
   let original_pos : Map[String, Int] = {}
   for i, node in layer {
-    original_pos[level_node_id(node)] = i
+    original_pos[node] = i
   }
   let barycenters : Map[String, Double] = {}
   for node in layer {
-    let id = level_node_id(node)
     let connected_positions : Array[Int] = []
-    match neighbors.get(id) {
+    match neighbors.get(node) {
       Some(ns) =>
         for nid in ns {
           match fixed_pos.get(nid) {
@@ -123,44 +102,39 @@ fn order_layer_by_barycenter(
     }
     if connected_positions.length() > 0 {
       let sum = connected_positions.fold(init=0, fn(acc, p) { acc + p })
-      barycenters[id] = sum.to_double() /
+      barycenters[node] = sum.to_double() /
         connected_positions.length().to_double()
     } else {
-      barycenters[id] = original_pos.get(id).unwrap_or(0).to_double()
+      barycenters[node] = original_pos.get(node).unwrap_or(0).to_double()
     }
   }
   layer.sort_by(fn(a, b) {
-    let ida = level_node_id(a)
-    let idb = level_node_id(b)
-    let bc_a = barycenters.get(ida).unwrap_or(0.0)
-    let bc_b = barycenters.get(idb).unwrap_or(0.0)
+    let bc_a = barycenters.get(a).unwrap_or(0.0)
+    let bc_b = barycenters.get(b).unwrap_or(0.0)
     if bc_a < bc_b {
       -1
     } else if bc_a > bc_b {
       1
     } else {
-      let pa = original_pos.get(ida).unwrap_or(0)
-      let pb = original_pos.get(idb).unwrap_or(0)
+      let pa = original_pos.get(a).unwrap_or(0)
+      let pb = original_pos.get(b).unwrap_or(0)
       if pa != pb {
         pa - pb
       } else {
-        ida.compare(idb)
+        a.compare(b)
       }
     }
   })
 }
 
 ///|
-priv struct Level(Array[LevelNode])
+type Level = Array[String]
 
 ///|
-priv enum LevelNode {
-  Physics(String)
-  Virtual(String)
-}
-
-///|
-fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
+fn make_levels(
+  graph : @graph.GraphInput,
+  depths : Array[Int],
+) -> Array[Level] raise @engine_api.LayoutError {
   let n = graph.objects.length()
   if n == 0 {
     return []
@@ -172,17 +146,15 @@ fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
   }
   let plan = els_tarjan_plan(graph)
   let (self_loop, reversed) = dag_edge_index_sets(plan)
-  let depths = compute_depths(n, graph, id_to_idx, plan, self_loop, reversed)
   let mut max_depth = 0
   for d in depths {
     if d > max_depth {
       max_depth = d
     }
   }
-  let nodes_by_level : Array[Array[LevelNode]] = Array::makei(max_depth + 1, _ => (
-    [] : Array[LevelNode]))
+  let nodes_by_level : Array[Array[String]] = Array::makei(max_depth + 1, _ => [])
   for i in 0..<n {
-    nodes_by_level[depths[i]].push(Physics(ids[i]))
+    nodes_by_level[depths[i]].push(ids[i])
   }
   let incoming : Map[String, Array[String]] = {}
   let outgoing : Map[String, Array[String]] = {}
@@ -199,24 +171,9 @@ fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
     }
     let du = depths[u]
     let dv = depths[v]
-    if dv <= du {
-      abort("unexpected non-forward edge when building levels")
+    if du >= dv {
+      raise Unsupported("make_levels: \{du} >= \{dv}")
     }
-    let span = dv - du
-    let mut prev_id = ids[u]
-    if span > 1 {
-      for step in 1..<span {
-        let level = du + step
-        let virt_id = "virtual:\{e.index}:\{level}"
-        nodes_by_level[level].push(Virtual(virt_id))
-        map_array_push(outgoing, prev_id, virt_id)
-        map_array_push(incoming, virt_id, prev_id)
-        prev_id = virt_id
-      }
-    }
-    let dst_id = ids[v]
-    map_array_push(outgoing, prev_id, dst_id)
-    map_array_push(incoming, dst_id, prev_id)
   }
   let thoroughness = 4
   if nodes_by_level.length() > 1 {
@@ -237,5 +194,5 @@ fn make_levels(graph : @graph.GraphInput) -> Array[Level] {
       }
     }
   }
-  nodes_by_level.map(nodes => Level(nodes))
+  nodes_by_level
 }

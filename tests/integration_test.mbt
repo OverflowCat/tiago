@@ -28,7 +28,11 @@ fn compile(source : String) -> Result[String, String] {
   match compile_to_diagram(source, @engine_api.Direction::Down) {
     Ok(diagram) => {
       let render_config = @renderer_svg.SvgConfig::new()
-      Ok(@renderer_svg.render(diagram, render_config))
+      try @renderer_svg.render(diagram, render_config) catch {
+        e => Err(e.to_string())
+      } noraise {
+        v => Ok(v)
+      }
     }
     Err(e) => Err(e)
   }
@@ -496,7 +500,11 @@ fn compile_with_theme(
   }
   let diagram = @diagram.from_graph(laid_out_graph, None)
   let render_config = @renderer_svg.SvgConfig::with_theme(theme_id)
-  Ok(@renderer_svg.render(diagram, render_config))
+  try @renderer_svg.render(diagram, render_config) catch {
+    e => Err(e.to_string())
+  } noraise {
+    v => Ok(v)
+  }
 }
 
 ///|

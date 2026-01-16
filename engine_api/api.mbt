@@ -48,7 +48,7 @@ pub(all) enum Direction {
 
 ///|
 /// Layout error
-pub suberror LayoutError {
+pub(all) suberror LayoutError {
   InvalidGraph(String)
   CycleDetected(String)
   Unsupported(String)

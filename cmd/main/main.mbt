@@ -578,7 +578,11 @@ fn compile_diago_svg(
         Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
         None => @renderer_svg.SvgConfig::new()
       }
-      Ok(@renderer_svg.render(diagram, render_config))
+      try @renderer_svg.render(diagram, render_config) catch {
+        e => Err(e.to_string())
+      } noraise {
+        v => Ok(v)
+      }
     }
     Err(e) => Err(e)
   }

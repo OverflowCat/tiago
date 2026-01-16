@@ -1,0 +1,400 @@
+// Copyright 2025 International Digital Economy Academy
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+///|
+using @engine_api {type Direction, type LayoutConfig}
+
+///|
+using @graph {type Box, type GraphInput, type LayoutPatch, type Point}
+
+///|
+fn object_size(
+  obj : @graph.ObjectInput,
+  config : LayoutConfig,
+) -> (Double, Double) {
+  match obj.box {
+    Some(b) => (b.width, b.height)
+    None => (config.default_width, config.default_height)
+  }
+}
+
+///|
+fn node_center_from_box(b : Box) -> Point {
+  @graph.Point::new(b.x + b.width / 2.0, b.y + b.height / 2.0)
+}
+
+///|
+fn node_exit_point(
+  src : Box,
+  dst_center : Point,
+  direction : Direction,
+  edge_padding : Double,
+) -> Point {
+  let src_center = node_center_from_box(src)
+  match direction {
+    Down => {
+      let y = if dst_center.y >= src_center.y {
+        src.y + src.height + edge_padding
+      } else {
+        src.y - edge_padding
+      }
+      @graph.Point::new(src_center.x, y)
+    }
+    Up => {
+      let y = if dst_center.y <= src_center.y {
+        src.y - edge_padding
+      } else {
+        src.y + src.height + edge_padding
+      }
+      @graph.Point::new(src_center.x, y)
+    }
+    Right => {
+      let x = if dst_center.x >= src_center.x {
+        src.x + src.width + edge_padding
+      } else {
+        src.x - edge_padding
+      }
+      @graph.Point::new(x, src_center.y)
+    }
+    Left => {
+      let x = if dst_center.x <= src_center.x {
+        src.x - edge_padding
+      } else {
+        src.x + src.width + edge_padding
+      }
+      @graph.Point::new(x, src_center.y)
+    }
+  }
+}
+
+///|
+fn node_entry_point(
+  dst : Box,
+  src_center : Point,
+  direction : Direction,
+  edge_padding : Double,
+) -> Point {
+  // Symmetric with exit point, but uses the destination box boundary.
+  let dst_center = node_center_from_box(dst)
+  match direction {
+    Down => {
+      let y = if dst_center.y >= src_center.y {
+        dst.y - edge_padding
+      } else {
+        dst.y + dst.height + edge_padding
+      }
+      @graph.Point::new(dst_center.x, y)
+    }
+    Up => {
+      let y = if dst_center.y <= src_center.y {
+        dst.y + dst.height + edge_padding
+      } else {
+        dst.y - edge_padding
+      }
+      @graph.Point::new(dst_center.x, y)
+    }
+    Right => {
+      let x = if dst_center.x >= src_center.x {
+        dst.x - edge_padding
+      } else {
+        dst.x + dst.width + edge_padding
+      }
+      @graph.Point::new(x, dst_center.y)
+    }
+    Left => {
+      let x = if dst_center.x <= src_center.x {
+        dst.x + dst.width + edge_padding
+      } else {
+        dst.x - edge_padding
+      }
+      @graph.Point::new(x, dst_center.y)
+    }
+  }
+}
+
+///|
+fn append_orthogonal_segment(
+  points : Array[Point],
+  a : Point,
+  b : Point,
+  direction : Direction,
+) -> Unit {
+  append_point(points, a)
+  match direction {
+    Down | Up => {
+      let mid_y = (a.y + b.y) / 2.0
+      append_point(points, @graph.Point::new(a.x, mid_y))
+      append_point(points, @graph.Point::new(b.x, mid_y))
+    }
+    Right | Left => {
+      let mid_x = (a.x + b.x) / 2.0
+      append_point(points, @graph.Point::new(mid_x, a.y))
+      append_point(points, @graph.Point::new(mid_x, b.y))
+    }
+  }
+  append_point(points, b)
+}
+
+///|
+fn self_loop_route(
+  b : Box,
+  direction : Direction,
+  edge_padding : Double,
+) -> Array[Point] {
+  let center = node_center_from_box(b)
+  let cx = center.x
+  let cy = center.y
+  let points : Array[Point] = []
+  append_point(points, center)
+  match direction {
+    Down | Up => {
+      let x0 = b.x + b.width + edge_padding
+      let y0 = cy
+      let x1 = x0 + b.width / 2.0 + edge_padding
+      let y1 = b.y - edge_padding
+      let y2 = b.y + b.height + edge_padding
+      points.append([
+        @graph.Point::new(x0, y0),
+        @graph.Point::new(x1, y1),
+        @graph.Point::new(x1, y2),
+        @graph.Point::new(cx, y2),
+      ])
+    }
+    Right | Left => {
+      let y0 = b.y + b.height + edge_padding
+      let x0 = cx
+      let y1 = y0 + b.height / 2.0 + edge_padding
+      let x1 = b.x - edge_padding
+      let x2 = b.x + b.width + edge_padding
+      points.append([
+        @graph.Point::new(x0, y0),
+        @graph.Point::new(x1, y1),
+        @graph.Point::new(x2, y1),
+        @graph.Point::new(x2, cy),
+      ])
+    }
+  }
+  append_point(points, center)
+  points
+}
+
+///|
+fn place_nodes(
+  graph : GraphInput,
+  config : LayoutConfig,
+  direction : Direction,
+  levels : Array[Level],
+) -> (Map[String, Box], Map[String, Point]) {
+  let n = graph.objects.length()
+  let boxes : Map[String, Box] = Map::new(capacity=n * 2)
+  let centers : Map[String, Point] = Map::new(capacity=n * 3)
+  let id_to_obj : Map[String, @graph.ObjectInput] = Map::new(capacity=n * 2)
+  for obj in graph.objects {
+    id_to_obj[obj.id] = obj
+  }
+  let is_horizontal = match direction {
+    Right | Left => true
+    _ => false
+  }
+  let reverse_layers = match direction {
+    Up => not(is_horizontal)
+    Left => is_horizontal
+    _ => false
+  }
+  let ordered_levels : Array[Level] = []
+  if reverse_layers {
+    for i in 0..<levels.length() {
+      ordered_levels.push(levels[levels.length() - 1 - i])
+    }
+  } else {
+    ordered_levels.append(levels)
+  }
+  let mut layer_offset = 0.0
+  for level in ordered_levels {
+    let Level(nodes) = level
+    let mut layer_size = 0.0
+    for node in nodes {
+      let id = level_node_id(node)
+      let (w, h) = match id_to_obj.get(id) {
+        Some(obj) => object_size(obj, config)
+        None => (config.edge_padding * 2.0, config.edge_padding * 2.0)
+      }
+      if is_horizontal {
+        if w > layer_size {
+          layer_size = w
+        }
+      } else if h > layer_size {
+        layer_size = h
+      }
+    }
+    let mut node_offset = 0.0
+    for node in nodes {
+      let id = level_node_id(node)
+      let (w, h) = match id_to_obj.get(id) {
+        Some(obj) => object_size(obj, config)
+        None => (config.edge_padding * 2.0, config.edge_padding * 2.0)
+      }
+      let (x, y) = if is_horizontal {
+        (layer_offset, node_offset)
+      } else {
+        (node_offset, layer_offset)
+      }
+      let b = @graph.Box::new(x, y, w, h)
+      let c = @graph.Point::new(x + w / 2.0, y + h / 2.0)
+      centers[id] = c
+      if node is Physical(_) {
+        boxes[id] = b
+      }
+      if is_horizontal {
+        node_offset = node_offset + h + config.vertical_spacing
+      } else {
+        node_offset = node_offset + w + config.horizontal_spacing
+      }
+    }
+    layer_offset = layer_offset +
+      layer_size +
+      (if is_horizontal {
+        config.horizontal_spacing
+      } else {
+        config.vertical_spacing
+      })
+  }
+  (boxes, centers)
+}
+
+///|
+fn edge_virtual_path_ids(edge_index : Int, du : Int, dv : Int) -> Array[String] {
+  let ids : Array[String] = []
+  if du == dv || (du - dv).abs() <= 1 {
+    return ids
+  }
+  if du < dv {
+    for level in (du + 1)..<dv {
+      ids.push("virtual:\{edge_index}:\{level}")
+    }
+  } else {
+    let mut level = du - 1
+    while level > dv {
+      ids.push("virtual:\{edge_index}:\{level}")
+      level = level - 1
+    }
+  }
+  ids
+}
+
+///|
+fn route_edge(
+  edge_index : Int,
+  src_id : String,
+  dst_id : String,
+  du : Int,
+  dv : Int,
+  centers : Map[String, Point],
+  boxes : Map[String, Box],
+  direction : Direction,
+  config : LayoutConfig,
+) -> Array[Point] raise @engine_api.LayoutError {
+  let points : Array[Point] = []
+  let virt_ids = edge_virtual_path_ids(edge_index, du, dv)
+  let path_ids : Array[String] = [src_id]
+  path_ids.append(virt_ids)
+  path_ids.push(dst_id)
+  let src_center = match centers.get(src_id) {
+    Some(p) => p
+    None => raise Unsupported("missing center for node: \{src_id}")
+  }
+  let dst_center = match centers.get(dst_id) {
+    Some(p) => p
+    None => raise Unsupported("missing center for node: \{dst_id}")
+  }
+  append_point(points, src_center)
+  for i in 0..<(path_ids.length() - 1) {
+    let a_id = path_ids[i]
+    let b_id = path_ids[i + 1]
+    let a_center = match centers.get(a_id) {
+      Some(p) => p
+      None => raise Unsupported("missing center for node: \{a_id}")
+    }
+    let b_center = match centers.get(b_id) {
+      Some(p) => p
+      None => raise Unsupported("missing center for node: \{b_id}")
+    }
+    let a_point = if i == 0 { src_exit } else { a_center }
+    let b_point = if i + 1 == path_ids.length() - 1 {
+      node_entry_point(last_dst_box, a_center, direction, config.edge_padding)
+    } else {
+      b_center
+    }
+    append_orthogonal_segment(points, a_point, b_point, direction)
+  }
+  append_point(points, dst_center)
+  points
+}
+
+///|
+fn layout_graph(
+  graph : GraphInput,
+  config : LayoutConfig,
+  direction : Direction,
+) -> LayoutPatch raise @engine_api.LayoutError {
+  let patch = @graph.LayoutPatch::new()
+  let plan = els_tarjan_plan(graph)
+  let (self_loop, reversed_set) = dag_edge_index_sets(plan)
+  let n = graph.objects.length()
+  let id_to_idx : Map[String, Int] = Map::new(capacity=n * 2)
+  for i in 0..<n {
+    id_to_idx.set(graph.objects[i].id, i)
+  }
+  let depths = compute_depths(
+    n, graph, id_to_idx, plan, self_loop, reversed_set,
+  )
+  let levels = make_levels(graph, depths)
+  let (boxes, centers) = place_nodes(graph, config, direction, levels)
+  for obj in graph.objects {
+    match boxes.get(obj.id) {
+      Some(b) => patch.nodes[obj.id] = b
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    if self_loop.contains(edge.index) {
+      let b = match boxes.get(edge.src_id) {
+        Some(b) => b
+        None => raise Unsupported("missing box for node: \{edge.src_id}")
+      }
+      patch.edges[edge.index] = self_loop_route(
+        b,
+        direction,
+        config.edge_padding,
+      )
+      continue
+    }
+    let su = require_index(id_to_idx, edge.src_id)
+    let sv = require_index(id_to_idx, edge.dst_id)
+    let du = depths[su]
+    let dv = depths[sv]
+    patch.edges[edge.index] = route_edge(
+      edge.index,
+      edge.src_id,
+      edge.dst_id,
+      du,
+      dv,
+      centers,
+      boxes,
+      direction,
+      config,
+    )
+  }
+  patch
+}

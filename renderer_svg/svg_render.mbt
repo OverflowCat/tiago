@@ -130,7 +130,10 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
 
 ///|
 /// Render a graph to SVG string
-pub fn render_svg(graph : Diagram, config : SvgConfig) -> String {
+pub fn render_svg(
+  graph : Diagram,
+  config : SvgConfig,
+) -> String raise @render_api.RenderError {
   // Check if we have layers, scenarios, or steps
   let has_layers = graph.has_layers()
   let has_scenarios = graph.has_scenarios()
@@ -2196,65 +2199,8 @@ fn render_svg_callout(
 }
 
 ///|
-/// Build a smooth curved path through waypoints using Catmull-Rom to Bezier conversion
-fn build_curved_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
-  if points.length() < 2 {
-    return
-  }
-  // Move to first point
-  let _ = pb.move_to(points[0].x, points[0].y)
-  if points.length() == 2 {
-    // Only two points - create a subtle curve using quadratic bezier
-    let p0 = points[0]
-    let p1 = points[1]
-    let dx = p1.x - p0.x
-    let dy = p1.y - p0.y
-    let mx = (p0.x + p1.x) / 2.0
-    let my = (p0.y + p1.y) / 2.0
-    let len = (dx * dx + dy * dy).sqrt()
-    if len > 0.0 {
-      let offset = len * 0.1
-      let cx = mx - dy / len * offset
-      let cy = my + dx / len * offset
-      let _ = pb.quad_to(cx, cy, p1.x, p1.y)
-
-    } else {
-      let _ = pb.line_to(p1.x, p1.y)
-
-    }
-    return
-  }
-  // Tension factor for Catmull-Rom (0.5 is typical)
-  let tension = 0.5
-  // For each segment, calculate cubic bezier control points
-  for i = 0; i < points.length() - 1; i = i + 1 {
-    // Get the four points for Catmull-Rom (p0, p1, p2, p3)
-    // Clamp to valid indices
-    let p0 = if i == 0 { points[0] } else { points[i - 1] }
-    let p1 = points[i]
-    let p2 = points[i + 1]
-    let p3 = if i + 2 >= points.length() {
-      points[i + 1]
-    } else {
-      points[i + 2]
-    }
-    // Convert Catmull-Rom to Bezier control points
-    // The formulas for control points:
-    // cp1 = p1 + (p2 - p0) / 6 * tension
-    // cp2 = p2 - (p3 - p1) / 6 * tension
-    let cp1_x = p1.x + (p2.x - p0.x) * tension / 3.0
-    let cp1_y = p1.y + (p2.y - p0.y) * tension / 3.0
-    let cp2_x = p2.x - (p3.x - p1.x) * tension / 3.0
-    let cp2_y = p2.y - (p3.y - p1.y) * tension / 3.0
-    // Draw cubic bezier
-    let _ = pb.cubic_to(cp1_x, cp1_y, cp2_x, cp2_y, p2.x, p2.y)
-
-  }
-}
-
-///|
 /// Build a polyline path with rounded corners.
-fn build_railroad_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
+fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
   if points.length() < 2 {
     return
   }
@@ -2334,7 +2280,7 @@ fn render_svg_edge(
   edge : Connection,
   config : SvgConfig,
   theme : @themes.Theme,
-) -> Unit {
+) -> Unit raise @render_api.RenderError {
   // Suppress unused variable warning
   let _ = theme
   if edge.route.length() < 2 {
@@ -2352,17 +2298,10 @@ fn render_svg_edge(
     config.default_stroke_width,
   )
   let stroke_dash = style_double(edge.style.stroke_dash, 0.0)
-  // Build path - use railroad style (orthogonal with rounded corners) by default
-  // Curved style overrides to smooth bezier curves when explicitly requested
-  let use_curved = style_bool(edge.style.curved, false)
   let pb = @svg.PathBuilder::new()
-  if use_curved && edge.route.length() >= 2 {
-    // Use smooth bezier curves (Catmull-Rom to Bezier conversion)
-    build_curved_path(pb, edge.route)
-  } else {
-    // Use railroad style: orthogonal lines with rounded corners at bends
-    build_railroad_path(pb, edge.route)
-  }
+  // Route points are provided by the layout pipeline.
+  // Only apply rounded corner transitions at bends here.
+  build_rounded_path(pb, edge.route)
   // Determine markers based on arrowhead types
   // For marker-start: reverse direction (arrow points toward destination/into line)
   // For marker-end: normal direction (arrow points toward destination/away from line)
@@ -2422,7 +2361,7 @@ fn render_svg_edge(
         )
       }
       None =>
-        abort(
+        raise InvalidDiagram(
           "Connection '\{edge.src_id} -> \{edge.dst_id}' has no label_box; sizes must be precomputed",
         )
     }

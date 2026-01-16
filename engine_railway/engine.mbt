@@ -30,8 +30,8 @@ pub fn RailwayEngine::new() -> RailwayEngine {
 pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
   _self,
   graph,
-  _config,
-  _direction,
+  config,
+  direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
-  ...
+  layout_graph(graph, config, direction)
 }

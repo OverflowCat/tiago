@@ -17,7 +17,7 @@
 
 ///|
 /// Renderer error
-pub suberror RenderError {
+pub(all) suberror RenderError {
   UnsupportedFormat(String)
   RenderFailed(String)
   InvalidDiagram(String)
