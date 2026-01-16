@@ -713,10 +713,12 @@ fn LayoutOptions::force() -> LayoutOptions {
     algorithm: Some(Force),
     force_model: Some(FruchtermanReingold),
     force_iterations: Some(300),
+    node_node_spacing: Some(80.0),
+    padding: Some(ElkPadding::uniform(50.0)),
+    aspect_ratio: Some(1.6),
+    separate_connected_components: Some(true),
+    force_temperature: Some(0.001),
     force_repulsion: Some(5.0),
-    force_temperature: Some(0.1),
-    node_node_spacing: Some(20.0),
-    padding: Some(ElkPadding::uniform(12.0)),
   }
 }
 

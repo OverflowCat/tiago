@@ -60,3 +60,16 @@ test "options: resolve inheritance graph/node/edge" {
   let edge_options = _resolve_options_for_edge(graph_options, edge_override)
   assert_eq(edge_options.priority, Some(4))
 }
+
+///|
+test "options: force defaults match elk-reference" {
+  let options = LayoutOptions::force()
+  assert_eq(options.algorithm, Some(Force))
+  assert_eq(options.force_model, Some(FruchtermanReingold))
+  assert_eq(options.force_iterations, Some(300))
+  assert_eq(options.force_temperature, Some(0.001))
+  assert_eq(options.node_node_spacing, Some(80.0))
+  assert_eq(options.padding, Some(ElkPadding::uniform(50.0)))
+  assert_eq(options.aspect_ratio, Some(1.6))
+  assert_eq(options.separate_connected_components, Some(true))
+}

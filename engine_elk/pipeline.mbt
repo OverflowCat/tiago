@@ -52,9 +52,6 @@ fn default_layered_pipeline() -> LayeredPipeline {
   ) {
     position_sql_table_children(graph)
   })
-  builder.add("elk.layered.route_edges", AfterPhase5, fn(graph, ctx) {
-    route_all_edges(graph, ctx.config, ctx.direction)
-  })
   builder.add("elk.layered.normalize_coordinates", AfterPhase5, fn(
     graph,
     _ctx,
