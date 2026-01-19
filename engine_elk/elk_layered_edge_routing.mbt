@@ -417,18 +417,40 @@ fn segment_lane_for_layer_pair(
     port_id : String?,
     direction : LayoutDirection,
     is_source : Bool,
+    fallback_side : ElkPortSide,
   ) -> (Double, Double, ElkPortSide) {
-    let fallback_side = if is_source {
-      routing_source_side(direction)
+    let default_side = if fallback_side is Undefined {
+      if is_source {
+        routing_source_side(direction)
+      } else {
+        routing_target_side(direction)
+      }
     } else {
-      routing_target_side(direction)
+      fallback_side
     }
+    fn anchor_for_side(
+      node : LNode,
+      side : ElkPortSide,
+      direction : LayoutDirection,
+      is_source : Bool,
+    ) -> (Double, Double) {
+      let cx = node.x + node.width / 2.0
+      let cy = node.y + node.height / 2.0
+      match side {
+        North => (cx, node.y)
+        South => (cx, node.y + node.height)
+        West => (node.x, cy)
+        East => (node.x + node.width, cy)
+        Undefined => default_anchor(node, direction, is_source)
+      }
+    }
+
     match port_id {
       Some(pid) => {
         for port in node.ports {
           if port.id == pid {
             let side = if port.side is Undefined {
-              fallback_side
+              default_side
             } else {
               port.side
             }
@@ -469,17 +491,18 @@ fn segment_lane_for_layer_pair(
                 } else {
                   (node.x + node.width - border, node.y + node.height / 2.0)
                 }
-              Undefined => default_anchor(node, direction, is_source)
+              Undefined =>
+                anchor_for_side(node, default_side, direction, is_source)
             }
             return (ax, ay, side)
           }
         }
-        let (ax, ay) = default_anchor(node, direction, is_source)
-        (ax, ay, fallback_side)
+        let (ax, ay) = anchor_for_side(node, default_side, direction, is_source)
+        (ax, ay, default_side)
       }
       None => {
-        let (ax, ay) = default_anchor(node, direction, is_source)
-        (ax, ay, fallback_side)
+        let (ax, ay) = anchor_for_side(node, default_side, direction, is_source)
+        (ax, ay, default_side)
       }
     }
   }
@@ -681,21 +704,56 @@ fn segment_lane_for_layer_pair(
     let edge_src_key : Map[String, String] = {}
     let all_ports : Array[String] = []
     let source_side = routing_source_side(direction)
+    fn infer_for_edge(
+      src : LNode,
+      tgt : LNode,
+      direction : LayoutDirection,
+    ) -> (ElkPortSide, ElkPortSide) {
+      if src.layer < tgt.layer {
+        if direction.is_vertical() {
+          (South, North)
+        } else {
+          (East, West)
+        }
+      } else if src.layer > tgt.layer {
+        if direction.is_vertical() {
+          (North, South)
+        } else {
+          (West, East)
+        }
+      } else if direction.is_vertical() {
+        if src.position < tgt.position {
+          (East, West)
+        } else {
+          (West, East)
+        }
+      } else if src.position < tgt.position {
+        (South, North)
+      } else {
+        (North, South)
+      }
+    }
+
     for e in layer_edges {
       let src_node = graph.get_node(e.source_id)
       let tgt_node = graph.get_node(e.target_id)
       guard src_node is Some(src) && tgt_node is Some(tgt) else { continue }
+      let (fallback_src_side, fallback_tgt_side) = infer_for_edge(
+        src, tgt, direction,
+      )
       let (sx, sy, s_side) = anchor_with_port_and_side(
         src,
         e.source_port_id,
         direction,
         true,
+        fallback_src_side,
       )
       let (tx, ty, t_side) = anchor_with_port_and_side(
         tgt,
         e.target_port_id,
         direction,
         false,
+        fallback_tgt_side,
       )
       let sk = port_key_for_edge(e.source_id, e.source_port_id, true)
       let tk = port_key_for_edge(e.target_id, e.target_port_id, false)
@@ -1666,11 +1724,43 @@ fn route_vertical_layout(
     port_id : String?,
     direction : LayoutDirection,
     is_source : Bool,
+    fallback_side : ElkPortSide,
   ) -> (Double, Double) {
+    fn anchor_for_side(
+      node : LNode,
+      side : ElkPortSide,
+      direction : LayoutDirection,
+      is_source : Bool,
+    ) -> (Double, Double) {
+      let cx = node.x + node.width / 2.0
+      let cy = node.y + node.height / 2.0
+      match side {
+        North => (cx, node.y)
+        South => (cx, node.y + node.height)
+        West => (node.x, cy)
+        East => (node.x + node.width, cy)
+        Undefined => default_anchor(node, direction, is_source)
+      }
+    }
+
+    let default_side = if fallback_side is Undefined {
+      if is_source {
+        South
+      } else {
+        North
+      }
+    } else {
+      fallback_side
+    }
     match port_id {
       Some(pid) => {
         for port in node.ports {
           if port.id == pid {
+            let side = if port.side is Undefined {
+              default_side
+            } else {
+              port.side
+            }
             let has_size = port.width > 0.0 || port.height > 0.0
             if has_size {
               return (
@@ -1682,7 +1772,7 @@ fn route_vertical_layout(
             let border = port.properties.get_double_or(
               "diago.layered.portBorderOffset", 0.0,
             )
-            let anchor = match port.side {
+            let anchor = match side {
               North =>
                 if has_pos {
                   (node.x + port.x, node.y + border)
@@ -1707,14 +1797,45 @@ fn route_vertical_layout(
                 } else {
                   (node.x + node.width - border, node.y + node.height / 2.0)
                 }
-              _ => (node.x + port.x, node.y + port.y)
+              Undefined =>
+                anchor_for_side(node, default_side, direction, is_source)
             }
             return anchor
           }
         }
-        default_anchor(node, direction, is_source)
+        anchor_for_side(node, default_side, direction, is_source)
       }
-      None => default_anchor(node, direction, is_source)
+      None => anchor_for_side(node, default_side, direction, is_source)
+    }
+  }
+
+  fn infer_for_edge(
+    src : LNode,
+    tgt : LNode,
+    direction : LayoutDirection,
+  ) -> (ElkPortSide, ElkPortSide) {
+    if src.layer < tgt.layer {
+      if direction.is_vertical() {
+        (South, North)
+      } else {
+        (East, West)
+      }
+    } else if src.layer > tgt.layer {
+      if direction.is_vertical() {
+        (North, South)
+      } else {
+        (West, East)
+      }
+    } else if direction.is_vertical() {
+      if src.position < tgt.position {
+        (East, West)
+      } else {
+        (West, East)
+      }
+    } else if src.position < tgt.position {
+      (South, North)
+    } else {
+      (North, South)
     }
   }
 
@@ -1792,17 +1913,22 @@ fn route_vertical_layout(
     edge.bend_points.clear()
 
     // Calculate source and target connection points (from ports if present)
+    let (fallback_src_side, fallback_tgt_side) = infer_for_edge(
+      src, tgt, direction,
+    )
     let (src_x, src_y) = anchor_with_port(
       src,
       edge.source_port_id,
       direction,
       true,
+      fallback_src_side,
     )
     let (tgt_x, tgt_y) = anchor_with_port(
       tgt,
       edge.target_port_id,
       direction,
       false,
+      fallback_tgt_side,
     )
 
     // Deterministic parallel edge index using normalized key.
@@ -1916,11 +2042,43 @@ fn route_horizontal_layout(
     port_id : String?,
     direction : LayoutDirection,
     is_source : Bool,
+    fallback_side : ElkPortSide,
   ) -> (Double, Double) {
+    fn anchor_for_side(
+      node : LNode,
+      side : ElkPortSide,
+      direction : LayoutDirection,
+      is_source : Bool,
+    ) -> (Double, Double) {
+      let cx = node.x + node.width / 2.0
+      let cy = node.y + node.height / 2.0
+      match side {
+        North => (cx, node.y)
+        South => (cx, node.y + node.height)
+        West => (node.x, cy)
+        East => (node.x + node.width, cy)
+        Undefined => default_anchor(node, direction, is_source)
+      }
+    }
+
+    let default_side = if fallback_side is Undefined {
+      if is_source {
+        East
+      } else {
+        West
+      }
+    } else {
+      fallback_side
+    }
     match port_id {
       Some(pid) => {
         for port in node.ports {
           if port.id == pid {
+            let side = if port.side is Undefined {
+              default_side
+            } else {
+              port.side
+            }
             let has_size = port.width > 0.0 || port.height > 0.0
             if has_size {
               return (
@@ -1932,7 +2090,7 @@ fn route_horizontal_layout(
             let border = port.properties.get_double_or(
               "diago.layered.portBorderOffset", 0.0,
             )
-            let anchor = match port.side {
+            let anchor = match side {
               North =>
                 if has_pos {
                   (node.x + port.x, node.y + border)
@@ -1957,14 +2115,45 @@ fn route_horizontal_layout(
                 } else {
                   (node.x + node.width - border, node.y + node.height / 2.0)
                 }
-              _ => (node.x + port.x, node.y + port.y)
+              Undefined =>
+                anchor_for_side(node, default_side, direction, is_source)
             }
             return anchor
           }
         }
-        default_anchor(node, direction, is_source)
+        anchor_for_side(node, default_side, direction, is_source)
       }
-      None => default_anchor(node, direction, is_source)
+      None => anchor_for_side(node, default_side, direction, is_source)
+    }
+  }
+
+  fn infer_for_edge(
+    src : LNode,
+    tgt : LNode,
+    direction : LayoutDirection,
+  ) -> (ElkPortSide, ElkPortSide) {
+    if src.layer < tgt.layer {
+      if direction.is_vertical() {
+        (South, North)
+      } else {
+        (East, West)
+      }
+    } else if src.layer > tgt.layer {
+      if direction.is_vertical() {
+        (North, South)
+      } else {
+        (West, East)
+      }
+    } else if direction.is_vertical() {
+      if src.position < tgt.position {
+        (East, West)
+      } else {
+        (West, East)
+      }
+    } else if src.position < tgt.position {
+      (South, North)
+    } else {
+      (North, South)
     }
   }
 
@@ -2042,17 +2231,22 @@ fn route_horizontal_layout(
     edge.bend_points.clear()
 
     // Calculate source and target connection points (from ports if present)
+    let (fallback_src_side, fallback_tgt_side) = infer_for_edge(
+      src, tgt, direction,
+    )
     let (src_x, src_y) = anchor_with_port(
       src,
       edge.source_port_id,
       direction,
       true,
+      fallback_src_side,
     )
     let (tgt_x, tgt_y) = anchor_with_port(
       tgt,
       edge.target_port_id,
       direction,
       false,
+      fallback_tgt_side,
     )
     let key = if edge.source_id < edge.target_id {
       edge.source_id +

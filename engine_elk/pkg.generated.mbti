@@ -7,6 +7,8 @@ import(
 )
 
 // Values
+pub fn count_in_layer_crossings_on_side(Array[LNode], ElkPortSide) -> Int
+
 pub fn find_edge_intersection(@graph.Box, @graph.Point, @graph.Point) -> @graph.Point
 
 pub fn layout(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> @graph.GraphInput raise @engine_api.LayoutError
@@ -21,6 +23,19 @@ pub impl Show for AStarEntry
 type BKNodePlacementMode
 pub impl Eq for BKNodePlacementMode
 pub impl Show for BKNodePlacementMode
+
+pub struct BinaryIndexedTree {
+  n : Int
+  mut size_ : Int
+  tree : Array[Int]
+  counts : Array[Int]
+}
+pub fn BinaryIndexedTree::add(Self, Int) -> Unit
+pub fn BinaryIndexedTree::new(Int) -> Self
+pub fn BinaryIndexedTree::rank(Self, Int) -> Int
+pub fn BinaryIndexedTree::removeAll(Self, Int) -> Unit
+pub fn BinaryIndexedTree::size(Self) -> Int
+pub impl Show for BinaryIndexedTree
 
 type BlockInfo
 pub impl Show for BlockInfo
@@ -40,6 +55,17 @@ pub impl Show for ContentAlignment
 type CrossingMinimizationStrategy
 pub impl Eq for CrossingMinimizationStrategy
 pub impl Show for CrossingMinimizationStrategy
+
+pub struct CrossingsCounter {
+  mut left : Array[LNode]
+  mut right : Array[LNode]
+}
+pub fn CrossingsCounter::count_crossings_between_layers(Self) -> Int
+pub fn CrossingsCounter::count_crossings_between_ports_in_both_orders(Self, LPort, LPort) -> (Int, Int)
+pub fn CrossingsCounter::init_for_counting_between(Self, Array[LNode], Array[LNode]) -> Unit
+pub fn CrossingsCounter::new() -> Self
+pub fn CrossingsCounter::switch_ports(Self, LPort, LPort) -> Unit
+pub impl Show for CrossingsCounter
 
 type CycleBreakingStrategy
 pub impl Eq for CycleBreakingStrategy
@@ -211,6 +237,10 @@ pub impl Show for PortLabelPlacement
 type PortSortingStrategy
 pub impl Eq for PortSortingStrategy
 pub impl Show for PortSortingStrategy
+
+type PortTag
+pub impl Eq for PortTag
+pub impl Show for PortTag
 
 type PropertyValue
 pub impl Eq for PropertyValue

@@ -270,6 +270,15 @@ fn LEdge::reverse(self : LEdge) -> Unit {
   let temp_port = self.source_port_id
   self.source_port_id = self.target_port_id
   self.target_port_id = temp_port
+
+  // Keep bend point traversal consistent with direction.
+  let n = self.bend_points.length()
+  for i = 0; i < n / 2; i = i + 1 {
+    let j = n - 1 - i
+    let tmp = self.bend_points[i]
+    self.bend_points[i] = self.bend_points[j]
+    self.bend_points[j] = tmp
+  }
   self.reversed = !self.reversed
 }
 

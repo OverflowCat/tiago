@@ -308,6 +308,35 @@ test "edge routing: chain A -> B -> C" {
 }
 
 ///|
+/// Regression: fanout edges must enter targets vertically in Down layout
+/// (matches layered orthogonal routing behavior; unified router violates this).
+test "edge routing: fanout enters from top" {
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("a", "a"))
+  graph.add_object(object_with_label_for_routing("b", "b"))
+  graph.add_object(object_with_label_for_routing("c", "c"))
+  graph.add_object(object_with_label_for_routing("d", "d"))
+  graph.add_object(object_with_label_for_routing("e", "e"))
+  graph.add_edge(Edge::new(0, "a", "b", false, true))
+  graph.add_edge(Edge::new(1, "a", "c", false, true))
+  graph.add_edge(Edge::new(2, "a", "d", false, true))
+  graph.add_edge(Edge::new(3, "a", "e", false, true))
+  let config = LayoutConfig::new()
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
+  for edge in laid_out.edges {
+    // End point must lie on top boundary of target.
+    let tgt_box = laid_out.find_object(edge.dst_id).unwrap().box.unwrap()
+    let p_last = edge.route[edge.route.length() - 1]
+    let (_on_left, _on_right, on_top, _on_bottom) = point_on_boundary(
+      p_last, tgt_box, 2.0,
+    )
+    inspect(on_top, content="true")
+  }
+}
+
+///|
 /// Test: Cycle (A -> B, B -> A) - tests reversed edges
 test "edge routing: cycle A <-> B" {
   let graph = new_graph_for_routing("test")
@@ -399,23 +428,60 @@ test "edge routing: complex with cycle" {
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
   }
+  fn strictly_inside(p : @graph.Point, box : @graph.Box, tol : Double) -> Bool {
+    p.x > box.x + tol &&
+    p.x < box.x + box.width - tol &&
+    p.y > box.y + tol &&
+    p.y < box.y + box.height - tol
+  }
+
+  let boxes : Array[@graph.Box] = [
+    laid_out.find_object("N1").unwrap().box.unwrap(),
+    laid_out.find_object("N2").unwrap().box.unwrap(),
+    laid_out.find_object("N3").unwrap().box.unwrap(),
+  ]
   let mut errors = 0
   for edge in laid_out.edges {
-    if edge.route.length() >= 2 {
-      let src_obj = laid_out.find_object(edge.src_id).unwrap()
-      let src_box = src_obj.box.unwrap()
-      let p0 = edge.route[0]
-      let p1 = edge.route[1]
-      let first_horiz = is_horizontal(p0, p1, 2.0)
-      let first_vert = is_vertical(p0, p1, 2.0)
-      let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
-        p0, src_box, 2.0,
-      )
-      if first_vert && !(on_top || on_bottom) {
-        errors = errors + 1
-      }
-      if first_horiz && !(on_left || on_right) {
-        errors = errors + 1
+    if edge.route.length() < 2 {
+      errors = errors + 1
+      continue
+    }
+    let src_box = laid_out.find_object(edge.src_id).unwrap().box.unwrap()
+    let dst_box = laid_out.find_object(edge.dst_id).unwrap().box.unwrap()
+    let p0 = edge.route[0]
+    let p1 = edge.route[1]
+    let p_last = edge.route[edge.route.length() - 1]
+
+    // Start point must lie on the source boundary.
+    let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
+      p0, src_box, 2.0,
+    )
+
+    // End point must lie on the target boundary.
+    let (end_left, end_right, end_top, end_bottom) = point_on_boundary(
+      p_last, dst_box, 2.0,
+    )
+    if !(end_left || end_right || end_top || end_bottom) {
+      errors = errors + 1
+    }
+
+    // First segment direction must match the boundary side.
+    let first_horiz = is_horizontal(p0, p1, 2.0)
+    let first_vert = is_vertical(p0, p1, 2.0)
+    if first_vert && !(on_top || on_bottom) {
+      errors = errors + 1
+    }
+    if first_horiz && !(on_left || on_right) {
+      errors = errors + 1
+    }
+
+    // No intermediate point should pass through a node.
+    for i = 1; i + 1 < edge.route.length(); i = i + 1 {
+      let p = edge.route[i]
+      for b in boxes {
+        if strictly_inside(p, b, 0.5) {
+          errors = errors + 1
+        }
       }
     }
   }

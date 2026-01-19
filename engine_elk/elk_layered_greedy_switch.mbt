@@ -187,38 +187,26 @@ fn greedy_switch_layer(
 }
 
 ///|
-/// Run greedy switch crossing minimization on the entire graph
+/// Run one-sided greedy switch crossing minimization.
+///
+/// Parity note:
+/// In ELK, the one-sided greedy switch improves a layer's ordering with respect
+/// to its adjacent layer, without also reordering the adjacent layer in the
+/// same pass. We mirror that by only optimizing each layer against its
+/// predecessor.
 fn _greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
 
-  // Run multiple passes until no improvement
+  // Run multiple passes until no improvement.
   for iter = 0; iter < max_iterations; iter = iter + 1 {
     let mut any_improved = false
 
-    // Forward sweep
-    for i = 0; i < graph.layers.length(); i = i + 1 {
-      let upper = if i > 0 { Some(graph.layers[i - 1]) } else { None }
-      let lower = if i < graph.layers.length() - 1 {
-        Some(graph.layers[i + 1])
-      } else {
-        None
-      }
-      if greedy_switch_layer(graph.layers[i], upper, lower) {
-        any_improved = true
-      }
-    }
-
-    // Backward sweep
-    for i = graph.layers.length() - 1; i >= 0; i = i - 1 {
-      let upper = if i > 0 { Some(graph.layers[i - 1]) } else { None }
-      let lower = if i < graph.layers.length() - 1 {
-        Some(graph.layers[i + 1])
-      } else {
-        None
-      }
-      if greedy_switch_layer(graph.layers[i], upper, lower) {
+    // Optimize each layer relative to its predecessor (layer 0 stays fixed).
+    for i = 1; i < graph.layers.length(); i = i + 1 {
+      let upper = Some(graph.layers[i - 1])
+      if greedy_switch_layer(graph.layers[i], upper, None) {
         any_improved = true
       }
     }
@@ -227,7 +215,7 @@ fn _greedy_switch(graph : LGraph, max_iterations : Int) -> Unit {
     }
   }
 
-  // Update node positions after all swaps
+  // Update node positions after all swaps.
   for layer in graph.layers {
     for i, node in layer.nodes {
       node.position = i

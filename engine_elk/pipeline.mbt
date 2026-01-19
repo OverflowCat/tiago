@@ -58,9 +58,11 @@ fn default_layered_pipeline() -> LayeredPipeline {
   ) {
     normalize_coordinates(graph)
   })
-  builder.add("elk.layered.route_edges", AfterPhase5, fn(graph, ctx) {
-    route_all_edges(graph, ctx.config, ctx.direction)
+  builder.add("elk.layered.apply_edge_overrides", AfterPhase5, fn(graph, _ctx) {
+    apply_post_layout_edge_overrides(graph)
   })
+  // ELK already computes edge routes as part of layered layout.
+  // Do not override them with the legacy unified router.
   builder.add("elk.layered.position_edge_labels", AfterPhase5, fn(graph, ctx) {
     position_edge_labels(graph, ctx.config)
   })
