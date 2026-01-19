@@ -272,7 +272,13 @@ fn assign_gap_lane_offsets(
       continue
     }
     let center = (lane_count - 1).to_double() / 2.0
-    let max_offset = @cmp.maximum(0.0, config.vertical_spacing / 2.0 - 4.0)
+    // Keep rails away from node boundaries so rounded corners don't start
+    // immediately at the box exit/entry.
+    let min_clear = @cmp.maximum(12.0, config.edge_padding / 2.0)
+    let max_offset = @cmp.maximum(
+      0.0,
+      config.vertical_spacing / 2.0 - min_clear,
+    )
     let mut spacing = track_spacing(config)
     if center > 0.0 && spacing * center > max_offset {
       spacing = max_offset / center
