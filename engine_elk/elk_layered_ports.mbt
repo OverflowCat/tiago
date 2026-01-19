@@ -98,16 +98,38 @@ fn port_side_from_properties(port : LPort) -> ElkPortSide? {
 }
 
 ///|
+fn resolve_options_for_lnode(
+  inherited : LayoutOptions,
+  node : LNode,
+) -> LayoutOptions {
+  LayoutOptions::merge(
+    inherited,
+    LayoutOptions::from_properties(node.properties),
+  )
+}
+
+///|
+fn resolve_options_for_lport(
+  inherited : LayoutOptions,
+  port : LPort,
+) -> LayoutOptions {
+  LayoutOptions::merge(
+    inherited,
+    LayoutOptions::from_properties(port.properties),
+  )
+}
+
+///|
 /// Assign missing port sides using properties/geometry/graph structure.
 fn process_port_sides(
   graph : LGraph,
   options : LayoutOptions,
   direction : LayoutDirection,
 ) -> Unit {
-  let border = options.port_border_offset.unwrap_or(0.0)
-
-  // Phase 1: explicit port metadata.
+  // Phase 1: explicit port metadata and geometry hints.
   for node in graph.nodes {
+    let node_options = resolve_options_for_lnode(options, node)
+    let border = node_options.port_border_offset.unwrap_or(0.0)
     for port in node.ports {
       if port.side is Undefined {
         let side = match port_side_from_properties(port) {
@@ -120,15 +142,6 @@ fn process_port_sides(
         }
       }
     }
-  }
-  let constraints = match options.port_constraints {
-    Some(c) => c
-    None => Undefined
-  }
-  // Fixed constraints: do not infer sides from graph structure.
-  match constraints {
-    FixedSide | FixedOrder | FixedPos | FixedRatio => return
-    _ => ()
   }
 
   // Phase 2: infer for ports referenced by edges.
@@ -167,25 +180,49 @@ fn process_port_sides(
     let tgt_node = graph.get_node(edge.target_id)
     guard src_node is Some(src) && tgt_node is Some(tgt) else { continue }
     let (src_side, tgt_side) = infer_for_edge(src, tgt, direction)
-    match edge.source_port_id {
-      Some(pid) =>
-        for port in src.ports {
-          if port.id == pid && port.side is Undefined {
-            port.side = src_side
-            port.properties.set("diago.layered.inferredPortSide", Bool(true))
-          }
-        }
-      None => ()
+    let src_constraints = match
+      resolve_options_for_lnode(options, src).port_constraints {
+      Some(c) => c
+      None => Undefined
     }
-    match edge.target_port_id {
-      Some(pid) =>
-        for port in tgt.ports {
-          if port.id == pid && port.side is Undefined {
-            port.side = tgt_side
-            port.properties.set("diago.layered.inferredPortSide", Bool(true))
-          }
+    match src_constraints {
+      FixedSide | FixedOrder | FixedPos | FixedRatio => ()
+      _ =>
+        match edge.source_port_id {
+          Some(pid) =>
+            for port in src.ports {
+              if port.id == pid && port.side is Undefined {
+                port.side = src_side
+                port.properties.set(
+                  "diago.layered.inferredPortSide",
+                  Bool(true),
+                )
+              }
+            }
+          None => ()
         }
-      None => ()
+    }
+    let tgt_constraints = match
+      resolve_options_for_lnode(options, tgt).port_constraints {
+      Some(c) => c
+      None => Undefined
+    }
+    match tgt_constraints {
+      FixedSide | FixedOrder | FixedPos | FixedRatio => ()
+      _ =>
+        match edge.target_port_id {
+          Some(pid) =>
+            for port in tgt.ports {
+              if port.id == pid && port.side is Undefined {
+                port.side = tgt_side
+                port.properties.set(
+                  "diago.layered.inferredPortSide",
+                  Bool(true),
+                )
+              }
+            }
+          None => ()
+        }
     }
   }
 }
@@ -227,16 +264,19 @@ fn invert_inferred_port_sides(
 ///|
 /// Sort ports in each node for determinism.
 fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
-  // For fixed port order, preserve model order.
-  match options.port_constraints {
-    Some(FixedOrder) => return
-    _ => ()
-  }
-  let sorting_strategy = match options.port_sorting_strategy {
-    Some(s) => s
-    None => InputOrder
-  }
   for node in graph.nodes {
+    let node_options = resolve_options_for_lnode(options, node)
+
+    // For fixed port order, preserve model order.
+    match node_options.port_constraints {
+      Some(FixedOrder) => continue
+      _ => ()
+    }
+    let sorting_strategy = match node_options.port_sorting_strategy {
+      Some(s) => s
+      None => InputOrder
+    }
+
     // Precompute port degrees for this node.
     let degree_by_port : Map[String, Int] = {}
     for edge in graph.edges {
@@ -300,12 +340,16 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
 /// After node placement, many ports only have side + index, so we generate a
 /// deterministic position on the node boundary for routing.
 fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
-  let border = options.port_border_offset.unwrap_or(0.0)
-  let spacing = options.port_port_spacing.unwrap_or(10.0)
-  let constraints = match options.port_constraints {
-    Some(c) => c
-    None => Undefined
+  fn clamp_border(value : Double, max_abs : Double) -> Double {
+    if value > max_abs {
+      max_abs
+    } else if value < -max_abs {
+      -max_abs
+    } else {
+      value
+    }
   }
+
   fn alignment_for_side(
     options : LayoutOptions,
     side : ElkPortSide,
@@ -400,19 +444,29 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
   }
 
   for node in graph.nodes {
+    let node_options = resolve_options_for_lnode(options, node)
+    let constraints = match node_options.port_constraints {
+      Some(c) => c
+      None => Undefined
+    }
+
     // If port positions are fixed, don't synthesize positions.
     if constraints is FixedPos {
       continue
     }
-    let effective_border = min_double(
-      border,
-      min_double(node.width, node.height) / 2.0,
-    )
+    let node_border = node_options.port_border_offset.unwrap_or(0.0)
+    let max_abs_border = min_double(node.width, node.height) / 2.0
+    let effective_border = clamp_border(node_border, max_abs_border)
+    let spacing = node_options.port_port_spacing.unwrap_or(10.0)
+
+    // Store the effective border offset per port (ports may override).
     for port in node.ports {
-      port.properties.set(
-        "diago.layered.portBorderOffset",
-        Double(effective_border),
+      let port_options = resolve_options_for_lport(node_options, port)
+      let port_border = clamp_border(
+        port_options.port_border_offset.unwrap_or(node_border),
+        max_abs_border,
       )
+      port.properties.set("diago.layered.portBorderOffset", Double(port_border))
     }
 
     // Normalize usable lengths.
@@ -483,42 +537,54 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         Undefined => ()
       }
     }
-    place_along(north, usable_w, alignment_for_side(options, North), spacing, fn(
-      pos,
-      port,
-    ) {
-      port.x = effective_border + pos
-      port.y = 0.0
-      port.width = 0.0
-      port.height = 0.0
-    })
-    place_along(south, usable_w, alignment_for_side(options, South), spacing, fn(
-      pos,
-      port,
-    ) {
-      port.x = effective_border + pos
-      port.y = node.height
-      port.width = 0.0
-      port.height = 0.0
-    })
-    place_along(west, usable_h, alignment_for_side(options, West), spacing, fn(
-      pos,
-      port,
-    ) {
-      port.x = 0.0
-      port.y = effective_border + pos
-      port.width = 0.0
-      port.height = 0.0
-    })
-    place_along(east, usable_h, alignment_for_side(options, East), spacing, fn(
-      pos,
-      port,
-    ) {
-      port.x = node.width
-      port.y = effective_border + pos
-      port.width = 0.0
-      port.height = 0.0
-    })
+    place_along(
+      north,
+      usable_w,
+      alignment_for_side(node_options, North),
+      spacing,
+      fn(pos, port) {
+        port.x = effective_border + pos
+        port.y = 0.0
+        port.width = 0.0
+        port.height = 0.0
+      },
+    )
+    place_along(
+      south,
+      usable_w,
+      alignment_for_side(node_options, South),
+      spacing,
+      fn(pos, port) {
+        port.x = effective_border + pos
+        port.y = node.height
+        port.width = 0.0
+        port.height = 0.0
+      },
+    )
+    place_along(
+      west,
+      usable_h,
+      alignment_for_side(node_options, West),
+      spacing,
+      fn(pos, port) {
+        port.x = 0.0
+        port.y = effective_border + pos
+        port.width = 0.0
+        port.height = 0.0
+      },
+    )
+    place_along(
+      east,
+      usable_h,
+      alignment_for_side(node_options, East),
+      spacing,
+      fn(pos, port) {
+        port.x = node.width
+        port.y = effective_border + pos
+        port.width = 0.0
+        port.height = 0.0
+      },
+    )
   }
 }
 

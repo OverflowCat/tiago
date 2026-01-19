@@ -40,20 +40,40 @@ fn count_crossings_between_layers(upper : LLayer, lower : LLayer) -> Int {
   for i, node in lower.nodes {
     lower_pos[node.id] = i
   }
+  fn port_rank(node : LNode, port_id : String?) -> Int {
+    match port_id {
+      Some(pid) => {
+        for i, p in node.ports {
+          if p.id == pid {
+            return i
+          }
+        }
+        0
+      }
+      None => 0
+    }
+  }
 
-  // Collect edges between layers as (upper_pos, lower_pos) pairs
+  // Collect edges between layers as (upper_rank, lower_rank) pairs.
+  // Rank includes both node position and port order so that port reordering can
+  // influence crossing counts (ELK phase 3).
   let edges : Array[(Int, Int)] = []
+  let scale = 10_000
   for node in upper.nodes {
     for edge in node.outgoing_edges {
-      // Check if target is in lower layer by looking up in lower_pos map
       match (upper_pos.get(node.id), lower_pos.get(edge.target_id)) {
-        (Some(u), Some(l)) => edges.push((u, l))
+        (Some(u), Some(l)) => {
+          let ur = u * scale + port_rank(node, edge.source_port_id)
+          let target = lower.nodes[l]
+          let lr = l * scale + port_rank(target, edge.target_port_id)
+          edges.push((ur, lr))
+        }
         _ => ()
       }
     }
   }
 
-  // Sort edges by upper position, then by lower position
+  // Sort edges by upper rank, then by lower rank.
   edges.sort_by(fn(a, b) {
     let (au, al) = a
     let (bu, bl) = b
@@ -64,8 +84,7 @@ fn count_crossings_between_layers(upper : LLayer, lower : LLayer) -> Int {
     }
   })
 
-  // Count inversions using merge sort approach
-  // For simplicity, use O(n^2) counting here
+  // Count inversions (O(n^2) for simplicity).
   let mut crossings = 0
   for i = 0; i < edges.length(); i = i + 1 {
     for j = i + 1; j < edges.length(); j = j + 1 {

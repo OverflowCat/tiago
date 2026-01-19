@@ -58,7 +58,16 @@ test "barycenter ordering updates node positions" {
   graph.get_node("v0").unwrap().layer = 1
   graph.get_node("v1").unwrap().layer = 1
   graph.initialize_layers()
-  order_layer_by_barycenter(graph, graph.layers[1], graph.layers[0], true)
+  order_layer_by_barycenter(
+    graph,
+    graph.layers[1],
+    graph.layers[0],
+    true,
+    0,
+    1,
+    false,
+    None,
+  )
   assert_true(graph.layers[1].nodes[0].id == "v1")
   assert_true(graph.layers[1].nodes[0].position == 0)
   assert_true(graph.layers[1].nodes[1].position == 1)
@@ -126,6 +135,10 @@ test "layer sweep: keep best intermediate ordering" {
           graph.layers[i],
           graph.layers[i - 1],
           true,
+          sweep,
+          1,
+          false,
+          None,
         )
       }
       for i = graph.layers.length() - 2; i >= 0; i = i - 1 {
@@ -134,6 +147,10 @@ test "layer sweep: keep best intermediate ordering" {
           graph.layers[i],
           graph.layers[i + 1],
           false,
+          sweep,
+          1,
+          false,
+          None,
         )
       }
     }
@@ -146,7 +163,11 @@ test "layer sweep: keep best intermediate ordering" {
   }
 
   fn run_new(graph : LGraph, thoroughness : Int) -> Int {
-    layer_sweep_barycenter_best(graph, thoroughness)
+    layer_sweep_barycenter_best(
+      graph,
+      { ..LayoutOptions::layered(), random_seed: Some(1) },
+      thoroughness,
+    )
     total_crossings(graph)
   }
 
@@ -859,6 +880,63 @@ test "port alignment: Justified spreads ports to border" {
 }
 
 ///|
+test "properties: node portConstraints/portAlignment are applied" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 200.0, 60.0)
+  let node_b0 = ElkNode::with_size("b0", 60.0, 40.0)
+  let node_b1 = ElkNode::with_size("b1", 60.0, 40.0)
+  let node_b2 = ElkNode::with_size("b2", 60.0, 40.0)
+  node_a.properties.set("elk.portConstraints", String("FIXED_ORDER"))
+  node_a.properties.set("elk.portAlignment", String("JUSTIFIED"))
+  node_a.add_port(ElkPort::with_side("p0", South))
+  node_a.add_port(ElkPort::with_side("p1", South))
+  node_a.add_port(ElkPort::with_side("p2", South))
+  root.add_child(node_a)
+  root.add_child(node_b0)
+  root.add_child(node_b1)
+  root.add_child(node_b2)
+  let e0 = ElkEdge::new("e0", "a", "b0")
+  e0.properties.set("elk.sourcePort", String("p0"))
+  let e1 = ElkEdge::new("e1", "a", "b1")
+  e1.properties.set("elk.sourcePort", String("p1"))
+  let e2 = ElkEdge::new("e2", "a", "b2")
+  e2.properties.set("elk.sourcePort", String("p2"))
+  root.add_edge(e0)
+  root.add_edge(e1)
+  root.add_edge(e2)
+  elk_layered_layout(root, LayoutOptions::layered())
+  let expected_min = node_a.x
+  let expected_mid = node_a.x + node_a.width / 2.0
+  let expected_max = node_a.x + node_a.width
+  assert_true((e0.sections[0].start_point.x - expected_min).abs() < 0.01)
+  assert_true((e1.sections[0].start_point.x - expected_mid).abs() < 0.01)
+  assert_true((e2.sections[0].start_point.x - expected_max).abs() < 0.01)
+}
+
+///|
+test "properties: port borderOffset affects anchors" {
+  let root = ElkNode::new("root")
+  let node_a = ElkNode::with_size("a", 80.0, 60.0)
+  let node_b = ElkNode::with_size("b", 80.0, 60.0)
+  let port_a = ElkPort::with_side("pa", South)
+  port_a.properties.set("elk.port.borderOffset", Double(12.0))
+  node_a.add_port(port_a)
+  let port_b = ElkPort::with_side("pb", North)
+  node_b.add_port(port_b)
+  root.add_child(node_a)
+  root.add_child(node_b)
+  let edge = ElkEdge::new("e", "a", "b")
+  edge.properties.set("elk.sourcePort", String("pa"))
+  edge.properties.set("elk.targetPort", String("pb"))
+  root.add_edge(edge)
+  elk_layered_layout(root, LayoutOptions::layered())
+  let section = edge.sections[0]
+  assert_true(
+    (section.start_point.y - (node_a.y + node_a.height - 12.0)).abs() < 0.01,
+  )
+}
+
+///|
 test "port spacing: port_port_spacing increases gaps" {
   let mk = fn(id : String, spacing : Double) -> (ElkEdge, ElkEdge) {
     let root = ElkNode::new("root" + id)
@@ -1037,6 +1115,8 @@ test "parallel edges: distinct routed endpoints" {
 
 ///|
 test "crossing: barycenter tie-break is deterministic" {
+  // Fix random seed so the perturbation is deterministic across runs.
+
   let build = fn(suffix : String) -> (ElkNode, ElkNode, ElkNode) {
     let root = ElkNode::new("root" + suffix)
     let a = ElkNode::with_size("a", 60.0, 40.0)
@@ -1057,12 +1137,114 @@ test "crossing: barycenter tie-break is deterministic" {
     (root, x, y)
   }
   let (root1, x1, y1) = build("_1")
-  elk_layered_layout(root1, LayoutOptions::layered())
+  elk_layered_layout(root1, { ..LayoutOptions::layered(), random_seed: Some(1) })
   let order1 = x1.x < y1.x
   let (root2, x2, y2) = build("_2")
-  elk_layered_layout(root2, LayoutOptions::layered())
+  elk_layered_layout(root2, { ..LayoutOptions::layered(), random_seed: Some(1) })
   let order2 = x2.x < y2.x
   assert_true(order1 == order2)
+}
+
+///|
+test "crossing: forceNodeModelOrder preserves input order" {
+  let root = ElkNode::new("root")
+  root.properties.set(
+    "org.eclipse.elk.alg.layered.crossingMinimization.forceNodeModelOrder",
+    Bool(true),
+  )
+  root.properties.set(
+    "org.eclipse.elk.alg.layered.considerModelOrder.strategy",
+    String("NODES_AND_EDGES"),
+  )
+  let u0 = ElkNode::with_size("u0", 10.0, 10.0)
+  let u1 = ElkNode::with_size("u1", 10.0, 10.0)
+  let v0 = ElkNode::with_size("v0", 10.0, 10.0)
+  let v1 = ElkNode::with_size("v1", 10.0, 10.0)
+
+  // Add in order: v0 then v1.
+  root.add_child(u0)
+  root.add_child(u1)
+  root.add_child(v0)
+  root.add_child(v1)
+
+  // This would normally cause v-layer to swap under barycenter.
+  root.add_edge(ElkEdge::new("e0", "u0", "v1"))
+  root.add_edge(ElkEdge::new("e1", "u1", "v0"))
+  elk_layered_layout(root, { ..LayoutOptions::layered(), random_seed: Some(1) })
+
+  // With forceNodeModelOrder=true, keep v0 before v1.
+  assert_true(v0.x < v1.x)
+}
+
+///|
+test "routing: fanout edges share lane" {
+  // Regression for `direction: down; x -> y, y2, y3, y4`.
+  // ELK routes these in the same routing slot (same lane).
+  let root = ElkNode::new("root")
+  root.properties.set("elk.direction", Enum("DOWN"))
+  let x = ElkNode::with_size("x", 80.0, 60.0)
+  let y = ElkNode::with_size("y", 80.0, 60.0)
+  let y2 = ElkNode::with_size("y2", 80.0, 60.0)
+  let y3 = ElkNode::with_size("y3", 80.0, 60.0)
+  let y4 = ElkNode::with_size("y4", 80.0, 60.0)
+  root.add_child(x)
+  root.add_child(y)
+  root.add_child(y2)
+  root.add_child(y3)
+  root.add_child(y4)
+  let e_y = ElkEdge::new("e_y", "x", "y")
+  let e_y2 = ElkEdge::new("e_y2", "x", "y2")
+  let e_y3 = ElkEdge::new("e_y3", "x", "y3")
+  let e_y4 = ElkEdge::new("e_y4", "x", "y4")
+  root.add_edge(e_y)
+  root.add_edge(e_y2)
+  root.add_edge(e_y3)
+  root.add_edge(e_y4)
+  elk_layered_layout(root, {
+    ..LayoutOptions::layered(),
+    direction: Some(LayoutDirection::Down),
+    edge_routing: Some(Orthogonal),
+    edge_node_between_layers_spacing: Some(10.0),
+    edge_edge_between_layers_spacing: Some(10.0),
+  })
+  let s3 = e_y3.sections[0]
+  let s4 = e_y4.sections[0]
+  assert_true(s3.bend_points.length() == 2)
+  assert_true(s4.bend_points.length() == 2)
+  assert_true((s3.bend_points[0].y - s4.bend_points[0].y).abs() < 0.01)
+}
+
+///|
+test "routing: startPos respects edgeNodeSpacing" {
+  // ELK places the first routing slot at:
+  //   startPos = layerBoundary + edgeNodeSpacing
+  // for Down direction.
+  let root = ElkNode::new("root")
+  root.properties.set("elk.direction", Enum("DOWN"))
+  let x = ElkNode::with_size("x", 80.0, 60.0)
+  let y = ElkNode::with_size("y", 80.0, 60.0)
+  let y2 = ElkNode::with_size("y2", 80.0, 60.0)
+  root.add_child(x)
+  root.add_child(y)
+  root.add_child(y2)
+  let e_y = ElkEdge::new("e_y", "x", "y")
+  let e_y2 = ElkEdge::new("e_y2", "x", "y2")
+  root.add_edge(e_y)
+  root.add_edge(e_y2)
+  let edge_node_spacing = 30.0
+  elk_layered_layout(root, {
+    ..LayoutOptions::layered(),
+    direction: Some(LayoutDirection::Down),
+    edge_routing: Some(Orthogonal),
+    edge_node_between_layers_spacing: Some(edge_node_spacing),
+    edge_edge_between_layers_spacing: Some(10.0),
+  })
+  let s0 = e_y.sections[0]
+  let s1 = e_y2.sections[0]
+  let s = if s0.bend_points.length() == 2 { s0 } else { s1 }
+  assert_true(s.bend_points.length() == 2)
+  let expected = x.y + x.height + edge_node_spacing
+  assert_true((s.bend_points[0].y - expected).abs() < 0.01)
 }
 
 ///|

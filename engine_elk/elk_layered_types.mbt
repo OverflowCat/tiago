@@ -1007,10 +1007,44 @@ fn LGraph::initialize_layers(self : LGraph) -> Unit {
     }
   }
 
-  // Update position indices
+  // Update position indices and store initial model order.
+  // Only set model order if requested by options.
+  let mut enable_model_order = false
+  fn get_string_any(props : ElkProperties, keys : Array[String]) -> String? {
+    for key in keys {
+      match props.get_string(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+      match props.get_enum(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  match
+    get_string_any(self.properties, [
+      "org.eclipse.elk.alg.layered.considerModelOrder.strategy", "elk.layered.considerModelOrder.strategy",
+    ]) {
+    Some(s) => if s.to_upper() != "NONE" { enable_model_order = true }
+    None => ()
+  }
+  if self.properties.get_bool_or(
+      "org.eclipse.elk.alg.layered.crossingMinimization.forceNodeModelOrder", false,
+    ) {
+    enable_model_order = true
+  }
   for layer in self.layers {
     for i, node in layer.nodes {
       node.position = i
+      if enable_model_order &&
+        !node.properties.get_bool_or(
+          "org.eclipse.elk.alg.layered.considerModelOrder.noModelOrder", false,
+        ) {
+        node.properties.set("diago.layered.modelOrder", Int(i))
+      }
     }
   }
 }

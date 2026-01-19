@@ -971,16 +971,32 @@ fn parse_edge_label_placement(value : String) -> EdgeLabelPlacement? {
 
 ///|
 fn label_placement_from_properties(label : LLabel) -> EdgeLabelPlacement? {
-  match label.properties.get_string("elk.edgeLabel.placement") {
+  // ELK uses `edgeLabels.placement` (plural) on labels; keep the older
+  // `edgeLabel.placement` (singular) for compatibility with existing tests.
+  match label.properties.get_string("elk.edgeLabels.placement") {
     Some(s) => parse_edge_label_placement(s)
     None =>
-      match label.properties.get_string("org.eclipse.elk.edgeLabel.placement") {
+      match
+        label.properties.get_string("org.eclipse.elk.edgeLabels.placement") {
         Some(s) => parse_edge_label_placement(s)
         None =>
-          match
-            label.properties.get_string("diago.layered.edgeLabelPlacement") {
+          match label.properties.get_string("elk.edgeLabel.placement") {
             Some(s) => parse_edge_label_placement(s)
-            None => None
+            None =>
+              match
+                label.properties.get_string(
+                  "org.eclipse.elk.edgeLabel.placement",
+                ) {
+                Some(s) => parse_edge_label_placement(s)
+                None =>
+                  match
+                    label.properties.get_string(
+                      "diago.layered.edgeLabelPlacement",
+                    ) {
+                    Some(s) => parse_edge_label_placement(s)
+                    None => None
+                  }
+              }
           }
       }
   }
@@ -1326,11 +1342,152 @@ fn minimize_crossings(
 }
 
 ///|
+/// Sweep port distributors (partial ELK port)
+///
+/// ELK adjusts port order during layer sweep to reduce crossings.
+fn distribute_ports_node_relative(
+  graph : LGraph,
+  layer : LLayer,
+  fixed_layer : LLayer,
+  forward : Bool,
+  options : LayoutOptions,
+) -> Unit {
+  fn resolve_options_for_lnode(
+    inherited : LayoutOptions,
+    node : LNode,
+  ) -> LayoutOptions {
+    LayoutOptions::merge(
+      inherited,
+      LayoutOptions::from_properties(node.properties),
+    )
+  }
+
+  fn allow_reorder(node_options : LayoutOptions) -> Bool {
+    match node_options.port_constraints {
+      Some(FixedOrder) | Some(FixedPos) => false
+      _ => true
+    }
+  }
+
+  fn port_side_order(side : ElkPortSide) -> Int {
+    match side {
+      North => 0
+      East => 1
+      South => 2
+      West => 3
+      Undefined => 4
+    }
+  }
+
+  for node in layer.nodes {
+    let node_options = resolve_options_for_lnode(options, node)
+    if !allow_reorder(node_options) {
+      continue
+    }
+
+    // Compute barycenters per port based on adjacent-layer node positions.
+    let sum_by_port : Map[String, Int] = {}
+    let cnt_by_port : Map[String, Int] = {}
+    if forward {
+      for edge in node.incoming_edges {
+        match graph.get_node(edge.source_id) {
+          Some(src) =>
+            if src.layer == fixed_layer.index {
+              match edge.target_port_id {
+                Some(pid) => {
+                  sum_by_port[pid] = sum_by_port.get(pid).unwrap_or(0) +
+                    src.position
+                  cnt_by_port[pid] = cnt_by_port.get(pid).unwrap_or(0) + 1
+                }
+                None => ()
+              }
+            }
+          None => ()
+        }
+      }
+    } else {
+      for edge in node.outgoing_edges {
+        match graph.get_node(edge.target_id) {
+          Some(tgt) =>
+            if tgt.layer == fixed_layer.index {
+              match edge.source_port_id {
+                Some(pid) => {
+                  sum_by_port[pid] = sum_by_port.get(pid).unwrap_or(0) +
+                    tgt.position
+                  cnt_by_port[pid] = cnt_by_port.get(pid).unwrap_or(0) + 1
+                }
+                None => ()
+              }
+            }
+          None => ()
+        }
+      }
+    }
+    if sum_by_port.is_empty() {
+      continue
+    }
+    let orig_index : Map[String, Int] = {}
+    for i, p in node.ports {
+      orig_index[p.id] = i
+    }
+    let port_ids : Array[String] = []
+    for pid, _ in sum_by_port {
+      port_ids.push(pid)
+    }
+    port_ids.sort_by(fn(a, b) {
+      let sa = sum_by_port.get(a).unwrap_or(0).to_double() /
+        cnt_by_port.get(a).unwrap_or(1).to_double()
+      let sb = sum_by_port.get(b).unwrap_or(0).to_double() /
+        cnt_by_port.get(b).unwrap_or(1).to_double()
+      if sa < sb {
+        -1
+      } else if sa > sb {
+        1
+      } else {
+        orig_index.get(a).unwrap_or(0) - orig_index.get(b).unwrap_or(0)
+      }
+    })
+    let rank_by_port : Map[String, Int] = {}
+    for i, pid in port_ids {
+      rank_by_port[pid] = i
+    }
+
+    // Sort ports by side, then by port rank if affected.
+    node.ports.sort_by(fn(a, b) {
+      let sa = port_side_order(a.side)
+      let sb = port_side_order(b.side)
+      if sa != sb {
+        return sa - sb
+      }
+      let oa = orig_index.get(a.id).unwrap_or(0)
+      let ob = orig_index.get(b.id).unwrap_or(0)
+      let ka = match rank_by_port.get(a.id) {
+        Some(r) => r
+        None => 10_000 + oa
+      }
+      let kb = match rank_by_port.get(b.id) {
+        Some(r) => r
+        None => 10_000 + ob
+      }
+      if ka != kb {
+        ka - kb
+      } else {
+        oa - ob
+      }
+    })
+  }
+}
+
+///|
 /// Layer sweep barycenter ordering
 ///
 /// Runs multiple sweeps and keeps the best (lowest crossings) intermediate
 /// ordering. Greedy switching is intentionally not run here.
-fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
+fn layer_sweep_barycenter_best(
+  graph : LGraph,
+  options : LayoutOptions,
+  thoroughness : Int,
+) -> Unit {
   if graph.layers.length() <= 1 || thoroughness <= 0 {
     return
   }
@@ -1343,22 +1500,36 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
     total
   }
 
-  fn snapshot_positions() -> Array[Map[String, Int]] {
-    let snapshot : Array[Map[String, Int]] = []
+  fn snapshot_positions() -> (
+    Array[Map[String, Int]],
+    Map[String, Array[String]],
+  ) {
+    let layer_snapshot : Array[Map[String, Int]] = []
     for layer in graph.layers {
       let m : Map[String, Int] = {}
       for i, node in layer.nodes {
         m[node.id] = i
       }
-      snapshot.push(m)
+      layer_snapshot.push(m)
     }
-    snapshot
+    let port_snapshot : Map[String, Array[String]] = {}
+    for node in graph.nodes {
+      let ids : Array[String] = []
+      for p in node.ports {
+        ids.push(p.id)
+      }
+      port_snapshot[node.id] = ids
+    }
+    (layer_snapshot, port_snapshot)
   }
 
-  fn restore_positions(snapshot : Array[Map[String, Int]]) -> Unit {
+  fn restore_positions(
+    snapshot : (Array[Map[String, Int]], Map[String, Array[String]]),
+  ) -> Unit {
+    let (layer_snapshot, port_snapshot) = snapshot
     for li = 0; li < graph.layers.length(); li = li + 1 {
       let layer = graph.layers[li]
-      let m = snapshot[li]
+      let m = layer_snapshot[li]
       for node in layer.nodes {
         match m.get(node.id) {
           Some(pos) => node.position = pos
@@ -1376,8 +1547,29 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
         node.position = i
       }
     }
+    for node in graph.nodes {
+      match port_snapshot.get(node.id) {
+        Some(ids) => {
+          let rank : Map[String, Int] = {}
+          for i, pid in ids {
+            rank[pid] = i
+          }
+          node.ports.sort_by(fn(a, b) {
+            let ra = rank.get(a.id).unwrap_or(1_000_000)
+            let rb = rank.get(b.id).unwrap_or(1_000_000)
+            if ra != rb {
+              ra - rb
+            } else {
+              a.id.compare(b.id)
+            }
+          })
+        }
+        None => ()
+      }
+    }
   }
 
+  let seed = options.random_seed.unwrap_or(1)
   let mut best_crossings = total_crossings()
   let mut best_snapshot = snapshot_positions()
   for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
@@ -1388,6 +1580,17 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
         graph.layers[i],
         graph.layers[i - 1],
         true,
+        sweep,
+        seed,
+        options.crossing_min_force_node_model_order.unwrap_or(false),
+        options.consider_model_order_strategy.unwrap_or(None),
+      )
+      distribute_ports_node_relative(
+        graph,
+        graph.layers[i],
+        graph.layers[i - 1],
+        true,
+        options,
       )
     }
 
@@ -1398,6 +1601,17 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
         graph.layers[i],
         graph.layers[i + 1],
         false,
+        sweep,
+        seed,
+        options.crossing_min_force_node_model_order.unwrap_or(false),
+        options.consider_model_order_strategy.unwrap_or(None),
+      )
+      distribute_ports_node_relative(
+        graph,
+        graph.layers[i],
+        graph.layers[i + 1],
+        false,
+        options,
       )
     }
     let crossings = total_crossings()
@@ -1420,13 +1634,13 @@ fn layer_sweep_barycenter_best(graph : LGraph, thoroughness : Int) -> Unit {
 /// Layer sweep crossing minimization (barycenter ordering only)
 fn layer_sweep_crossing_min(
   graph : LGraph,
-  _options : LayoutOptions,
+  options : LayoutOptions,
   thoroughness : Int,
 ) -> Unit {
   if graph.layers.length() <= 1 {
     return
   }
-  layer_sweep_barycenter_best(graph, thoroughness)
+  layer_sweep_barycenter_best(graph, options, thoroughness)
 }
 
 ///|
@@ -1436,13 +1650,48 @@ fn order_layer_by_barycenter(
   layer : LLayer,
   fixed_layer : LLayer,
   forward : Bool,
+  sweep : Int,
+  seed : Int,
+  force_model_order : Bool,
+  consider_model_order : OrderingStrategy,
 ) -> Unit {
-  // Calculate barycenter for each node
-  let barycenters : Map[String, Double] = {}
+  // ELK parity notes:
+  // - Nodes with no connections get an "unknown" barycenter, then filled in by
+  //   taking the midpoint between previous and next defined barycenter.
+  // - A small random perturbation is added to increase solution diversity.
+  //   We keep determinism by deriving it from `(seed, sweep, node.id)`.
+
+  fn hash_u32(s : String) -> Int {
+    let mut h : Int = 216613626
+    for i in 0..<s.length() {
+      let b = s.code_unit_at(i).to_int()
+      h = h ^ b
+      h = (h * 16777619) & 0x7fffffff
+    }
+    h
+  }
+
+  fn perturb(
+    node_id : String,
+    sweep : Int,
+    forward : Bool,
+    seed : Int,
+  ) -> Double {
+    // ELK uses RANDOM_AMOUNT=0.07.
+    let amount = 0.07
+    let tag = if forward { "f" } else { "b" }
+    let r = hash_u32(
+        node_id + ":" + sweep.to_string() + ":" + tag + ":" + seed.to_string(),
+      ).to_double() /
+      2147483647.0
+    (r - 0.5) * amount
+  }
+
+  // Compute barycenters.
+  let barycenters : Map[String, Double?] = {}
   for node in layer.nodes {
     let connected_positions : Array[Int] = []
     if forward {
-      // Use incoming edges (connect to fixed layer above)
       for edge in node.incoming_edges {
         match graph.get_node(edge.source_id) {
           Some(source) =>
@@ -1453,7 +1702,6 @@ fn order_layer_by_barycenter(
         }
       }
     } else {
-      // Use outgoing edges (connect to fixed layer below)
       for edge in node.outgoing_edges {
         match graph.get_node(edge.target_id) {
           Some(target) =>
@@ -1464,31 +1712,83 @@ fn order_layer_by_barycenter(
         }
       }
     }
-
-    // Calculate barycenter
     if connected_positions.length() > 0 {
       let sum = connected_positions.fold(init=0, fn(acc, p) { acc + p })
-      barycenters[node.id] = sum.to_double() /
-        connected_positions.length().to_double()
+      let base = sum.to_double() / connected_positions.length().to_double()
+      barycenters[node.id] = Some(base + perturb(node.id, sweep, forward, seed))
     } else {
-      // Keep original position for disconnected nodes
-      barycenters[node.id] = node.position.to_double()
+      barycenters[node.id] = None
     }
   }
 
-  // Sort layer nodes by barycenter
+  // Fill unknown barycenters (ELK: preOrdered=true behavior).
+  let mut last_value = -1.0
+  for i = 0; i < layer.nodes.length(); i = i + 1 {
+    let node = layer.nodes[i]
+    match barycenters.get(node.id).unwrap_or(None) {
+      Some(v) => last_value = v
+      None => {
+        let mut next_value = last_value + 1.0
+        for j = i + 1; j < layer.nodes.length(); j = j + 1 {
+          let nxt = layer.nodes[j]
+          match barycenters.get(nxt.id).unwrap_or(None) {
+            Some(v) => {
+              next_value = v
+              break
+            }
+            None => ()
+          }
+        }
+        let v = (last_value + next_value) / 2.0
+        barycenters[node.id] = Some(v)
+        last_value = v
+      }
+    }
+  }
+  fn model_order(node : LNode) -> Int? {
+    match node.properties.get_int("diago.layered.modelOrder") {
+      Some(v) => Some(v)
+      None => None
+    }
+  }
+
+  // Sort by barycenter; optionally prevent normal nodes from reordering.
   layer.nodes.sort_by(fn(a, b) {
-    let bc_a = barycenters.get(a.id).unwrap_or(0.0)
-    let bc_b = barycenters.get(b.id).unwrap_or(0.0)
+    if force_model_order {
+      match (a.node_type, b.node_type) {
+        (Normal, Normal) =>
+          match (model_order(a), model_order(b)) {
+            (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
+            _ => ()
+          }
+        _ => ()
+      }
+    }
+    let bc_a = barycenters.get(a.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+    let bc_b = barycenters.get(b.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
     if bc_a < bc_b {
       -1
     } else if bc_a > bc_b {
       1
-      // Deterministic tie-break.
-    } else if a.position != b.position {
-      a.position - b.position
     } else {
-      a.id.compare(b.id)
+      // Barycenter tie-break: if requested, use initial model order.
+      match consider_model_order {
+        NodesAndEdges | PreferEdges | PreferNodes =>
+          match (a.node_type, b.node_type) {
+            (Normal, Normal) =>
+              match (model_order(a), model_order(b)) {
+                (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
+                _ => ()
+              }
+            _ => ()
+          }
+        None => ()
+      }
+      if a.position != b.position {
+        a.position - b.position
+      } else {
+        a.id.compare(b.id)
+      }
     }
   })
   for i, node in layer.nodes {
@@ -1602,24 +1902,37 @@ fn brandes_koepf_placement(
 /// Route edges between nodes
 fn route_edges(
   graph : LGraph,
+  options : LayoutOptions,
   routing : EdgeRouting,
   direction : LayoutDirection,
 ) -> Unit {
   match routing {
-    Orthogonal => orthogonal_routing(graph, direction)
+    Orthogonal => orthogonal_routing(graph, options, direction)
     Polyline => polyline_routing(graph, direction)
     Splines => spline_routing(graph, direction)
-    Undefined => orthogonal_routing(graph, direction)
+    Undefined => orthogonal_routing(graph, options, direction)
   }
 }
 
 ///|
 /// Orthogonal edge routing - strict 90-degree turns with slot assignment
-fn orthogonal_routing(graph : LGraph, direction : LayoutDirection) -> Unit {
-  let edge_spacing = 10.0 // Default edge spacing
+fn orthogonal_routing(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
+  let edge_edge_spacing = options.edge_edge_between_layers_spacing.unwrap_or(
+    10.0,
+  )
+  let edge_node_spacing = options.edge_node_between_layers_spacing.unwrap_or(
+    10.0,
+  )
 
   // Use improved routing with slot assignment
-  route_edges_orthogonal(graph, direction, edge_spacing)
+  let random_seed = options.random_seed.unwrap_or(1)
+  route_edges_orthogonal(
+    graph, direction, edge_edge_spacing, edge_node_spacing, random_seed,
+  )
 
   // Clean up unnecessary bend points
   straighten_edges(graph)

@@ -580,7 +580,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
       Some(r) => r
       None => Orthogonal
     }
-    route_edges(graph, routing, ctx.direction)
+    route_edges(graph, ctx.options, routing, ctx.direction)
   })
   builder.build()
 }

@@ -199,6 +199,28 @@ enum CrossingMinimizationStrategy {
 } derive(Show, Eq)
 
 ///|
+/// Strategy to preserve model order.
+///
+/// Mirrors ELK `OrderingStrategy` but only keeps the variants we currently use.
+enum OrderingStrategy {
+  None
+  NodesAndEdges
+  PreferEdges
+  PreferNodes
+} derive(Show, Eq)
+
+///|
+fn OrderingStrategy::from_string(s : String) -> OrderingStrategy? {
+  match s.to_upper() {
+    "NONE" => Some(None)
+    "NODES_AND_EDGES" | "NODESANDEDGES" => Some(NodesAndEdges)
+    "PREFER_EDGES" | "PREFEREDGES" => Some(PreferEdges)
+    "PREFER_NODES" | "PREFERNODES" => Some(PreferNodes)
+    _ => None
+  }
+}
+
+///|
 fn CrossingMinimizationStrategy::from_string(
   s : String,
 ) -> CrossingMinimizationStrategy? {
@@ -280,6 +302,19 @@ enum PortConstraints {
 } derive(Show, Eq)
 
 ///|
+fn PortConstraints::from_string(s : String) -> PortConstraints? {
+  match s.to_upper() {
+    "UNDEFINED" => Some(Undefined)
+    "FREE" => Some(Free)
+    "FIXED_SIDE" | "FIXEDSIDE" => Some(FixedSide)
+    "FIXED_ORDER" | "FIXEDORDER" => Some(FixedOrder)
+    "FIXED_RATIO" | "FIXEDRATIO" => Some(FixedRatio)
+    "FIXED_POS" | "FIXEDPOS" => Some(FixedPos)
+    _ => None
+  }
+}
+
+///|
 /// Port alignment within side
 enum PortAlignment {
   Undefined
@@ -291,7 +326,22 @@ enum PortAlignment {
 } derive(Show, Eq)
 
 ///|
+fn PortAlignment::from_string(s : String) -> PortAlignment? {
+  match s.to_upper() {
+    "UNDEFINED" => Some(Undefined)
+    "DISTRIBUTED" => Some(Distributed)
+    "JUSTIFIED" => Some(Justified)
+    "BEGIN" => Some(Begin)
+    "CENTER" => Some(Center)
+    "END" => Some(End)
+    _ => None
+  }
+}
+
+///|
 /// Port label placement
+///
+/// Note: ELK's enum has more variants; we map the subset we support.
 enum PortLabelPlacement {
   Inside
   Outside
@@ -299,6 +349,18 @@ enum PortLabelPlacement {
   AlwaysOther
   AlwaysSameSide
 } derive(Show, Eq)
+
+///|
+fn PortLabelPlacement::from_string(s : String) -> PortLabelPlacement? {
+  match s.to_upper() {
+    "INSIDE" => Some(Inside)
+    "OUTSIDE" => Some(Outside)
+    "NEXT_TO_PORT_IF_POSSIBLE" => Some(NextToPortIfPossible)
+    "ALWAYS_OTHER_SAME_SIDE" => Some(AlwaysOther)
+    "ALWAYS_SAME_SIDE" => Some(AlwaysSameSide)
+    _ => None
+  }
+}
 
 ///|
 /// Port sort order
@@ -338,6 +400,8 @@ enum NodeSizeOptions {
 
 ///|
 /// Node label placement
+///
+/// This is a simplified representation of ELK's `NodeLabelPlacement` EnumSet.
 enum NodeLabelPlacement {
   Inside
   Outside
@@ -349,6 +413,28 @@ enum NodeLabelPlacement {
   Left
   Right
 } derive(Show, Eq)
+
+///|
+fn NodeLabelPlacement::from_string(s : String) -> NodeLabelPlacement? {
+  match s.to_upper() {
+    "INSIDE" => Some(Inside)
+    "OUTSIDE" => Some(Outside)
+
+    // Horizontal group.
+    "H_LEFT" | "LEFT" => Some(Left)
+    "H_CENTER" | "CENTER" => Some(Center)
+    "H_RIGHT" | "RIGHT" => Some(Right)
+
+    // Vertical group.
+    "V_TOP" | "TOP" => Some(Top)
+    "V_CENTER" => Some(Center)
+    "V_BOTTOM" | "BOTTOM" => Some(Bottom)
+
+    // Rare / internal.
+    "H_PRIORITY" => Some(Horizontal)
+    _ => None
+  }
+}
 
 // ============================================================================
 // Edge Label Options
@@ -364,6 +450,17 @@ enum EdgeLabelPlacement {
 } derive(Show, Eq)
 
 ///|
+fn EdgeLabelPlacement::from_string(s : String) -> EdgeLabelPlacement? {
+  match s.to_upper() {
+    "UNDEFINED" => Some(Undefined)
+    "CENTER" => Some(Center)
+    "HEAD" => Some(Head)
+    "TAIL" => Some(Tail)
+    _ => None
+  }
+}
+
+///|
 /// Edge label side selection
 enum EdgeLabelSideSelection {
   AlwaysUp
@@ -373,6 +470,47 @@ enum EdgeLabelSideSelection {
   SmartUp
   SmartDown
 } derive(Show, Eq)
+
+///|
+fn EdgeLabelSideSelection::from_string(s : String) -> EdgeLabelSideSelection? {
+  match s.to_upper() {
+    "ALWAYS_UP" => Some(AlwaysUp)
+    "ALWAYS_DOWN" => Some(AlwaysDown)
+    "DIRECTION_UP" => Some(DirectionUp)
+    "DIRECTION_DOWN" => Some(DirectionDown)
+    "SMART_UP" => Some(SmartUp)
+    "SMART_DOWN" => Some(SmartDown)
+    _ => None
+  }
+}
+
+///|
+/// Center edge label placement strategy.
+///
+/// In ELK this decides into which layer long-edge center label dummies are moved.
+enum CenterEdgeLabelPlacementStrategy {
+  MedianLayer
+  TailLayer
+  HeadLayer
+  SpaceEfficientLayer
+  WidestLayer
+  CenterLayer
+} derive(Show, Eq)
+
+///|
+fn CenterEdgeLabelPlacementStrategy::from_string(
+  s : String,
+) -> CenterEdgeLabelPlacementStrategy? {
+  match s.to_upper() {
+    "MEDIAN_LAYER" => Some(MedianLayer)
+    "TAIL_LAYER" => Some(TailLayer)
+    "HEAD_LAYER" => Some(HeadLayer)
+    "SPACE_EFFICIENT_LAYER" => Some(SpaceEfficientLayer)
+    "WIDEST_LAYER" => Some(WidestLayer)
+    "CENTER_LAYER" => Some(CenterLayer)
+    _ => None
+  }
+}
 
 // ============================================================================
 // Hierarchy Options
@@ -546,12 +684,13 @@ struct LayoutOptions {
   // Edge labels
   edge_label_placement : EdgeLabelPlacement?
   edge_label_side_selection : EdgeLabelSideSelection?
-  center_edge_label_placement_strategy : Bool?
+  center_edge_label_placement_strategy : CenterEdgeLabelPlacementStrategy?
 
   // Layered-specific options
   cycle_breaking_strategy : CycleBreakingStrategy?
   layering_strategy : LayeringStrategy?
   crossing_min_strategy : CrossingMinimizationStrategy?
+  crossing_min_force_node_model_order : Bool?
   greedy_switch : GreedySwitchType?
   node_placement_strategy : NodePlacementStrategy?
   bk_fixed_alignment : BKNodePlacementMode?
@@ -571,6 +710,9 @@ struct LayoutOptions {
   interactive : Bool?
   interactive_reference_point : (Double, Double)?
 
+  // Random seed (for deterministic pseudo-random choices)
+  random_seed : Int?
+
   // Compaction
   compaction_strategy : CompactionStrategy?
   post_compaction_strategy : GraphCompactionStrategy?
@@ -588,7 +730,7 @@ struct LayoutOptions {
 
   // Component handling
   separate_connected_components : Bool?
-  consider_model_order_strategy : Bool?
+  consider_model_order_strategy : OrderingStrategy?
 
   // Various flags
   merge_edges : Bool?
@@ -648,6 +790,7 @@ fn LayoutOptions::new() -> LayoutOptions {
     cycle_breaking_strategy: None,
     layering_strategy: None,
     crossing_min_strategy: None,
+    crossing_min_force_node_model_order: None,
     greedy_switch: None,
     node_placement_strategy: None,
     bk_fixed_alignment: None,
@@ -660,6 +803,7 @@ fn LayoutOptions::new() -> LayoutOptions {
     aspect_ratio: None,
     interactive: None,
     interactive_reference_point: None,
+    random_seed: None,
     compaction_strategy: None,
     post_compaction_strategy: None,
     self_loop_distribution: None,
@@ -700,6 +844,7 @@ fn LayoutOptions::layered() -> LayoutOptions {
     cycle_breaking_strategy: Some(GreedyModelOrder),
     layering_strategy: Some(NetworkSimplex),
     crossing_min_strategy: Some(LayerSweep),
+    crossing_min_force_node_model_order: Some(false),
     node_placement_strategy: Some(BrandesKoepf),
     thoroughness: Some(7),
   }
@@ -1051,6 +1196,10 @@ fn LayoutOptions::merge(
       child.crossing_min_strategy,
       parent.crossing_min_strategy,
     ),
+    crossing_min_force_node_model_order: merge_opt(
+      child.crossing_min_force_node_model_order,
+      parent.crossing_min_force_node_model_order,
+    ),
     greedy_switch: merge_opt(child.greedy_switch, parent.greedy_switch),
     node_placement_strategy: merge_opt(
       child.node_placement_strategy,
@@ -1084,6 +1233,9 @@ fn LayoutOptions::merge(
       child.interactive_reference_point,
       parent.interactive_reference_point,
     ),
+    random_seed: merge_opt(child.random_seed, parent.random_seed),
+
+    // Compaction
     compaction_strategy: merge_opt(
       child.compaction_strategy,
       parent.compaction_strategy,
@@ -1258,6 +1410,10 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
         Some(v) => return Some(v)
         None => ()
       }
+      match props.get_enum(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
     }
     None
   }
@@ -1282,12 +1438,35 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
     None
   }
 
+  fn get_bool_any(props : ElkProperties, keys : Array[String]) -> Bool? {
+    for key in keys {
+      match props.get_bool(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
   fn get_padding_any(
     props : ElkProperties,
     keys : Array[String],
   ) -> ElkPadding? {
     for key in keys {
       match props.get_padding(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
+  fn get_array_any(
+    props : ElkProperties,
+    keys : Array[String],
+  ) -> Array[PropertyValue]? {
+    for key in keys {
+      match props.get_array(key) {
         Some(v) => return Some(v)
         None => ()
       }
@@ -1366,6 +1545,48 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
   }
   match
     get_double_any(props, [
+      "elk.spacing.edgeLabel", "org.eclipse.elk.spacing.edgeLabel",
+    ]) {
+    Some(v) => options = { ..options, edge_label_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.labelLabel", "org.eclipse.elk.spacing.labelLabel",
+    ]) {
+    Some(v) => options = { ..options, label_label_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.labelNode", "org.eclipse.elk.spacing.labelNode",
+    ]) {
+    Some(v) => options = { ..options, label_node_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.labelPortHorizontal", "org.eclipse.elk.spacing.labelPortHorizontal",
+    ]) {
+    Some(v) => options = { ..options, label_port_horizontal_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.labelPortVertical", "org.eclipse.elk.spacing.labelPortVertical",
+    ]) {
+    Some(v) => options = { ..options, label_port_vertical_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.spacing.portPort", "org.eclipse.elk.spacing.portPort",
+    ]) {
+    Some(v) => options = { ..options, port_port_spacing: Some(v) }
+    None => ()
+  }
+  match
+    get_double_any(props, [
       "elk.spacing.componentComponent", "org.eclipse.elk.spacing.componentComponent",
     ]) {
     Some(v) => options = { ..options, component_component_spacing: Some(v) }
@@ -1375,8 +1596,196 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
     Some(p) => options = options.with_padding(p)
     None => ()
   }
+  match
+    get_string_any(props, [
+      "elk.portConstraints", "org.eclipse.elk.portConstraints",
+    ]) {
+    Some(s) =>
+      match PortConstraints::from_string(s) {
+        Some(v) => options = { ..options, port_constraints: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.portAlignment", "org.eclipse.elk.portAlignment", "elk.portAlignment.default",
+      "org.eclipse.elk.portAlignment.default",
+    ]) {
+    Some(s) =>
+      match PortAlignment::from_string(s) {
+        Some(v) => options = { ..options, port_alignment: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.portAlignment.north", "org.eclipse.elk.portAlignment.north",
+    ]) {
+    Some(s) =>
+      match PortAlignment::from_string(s) {
+        Some(v) => options = { ..options, port_alignment_north: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.portAlignment.south", "org.eclipse.elk.portAlignment.south",
+    ]) {
+    Some(s) =>
+      match PortAlignment::from_string(s) {
+        Some(v) => options = { ..options, port_alignment_south: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.portAlignment.east", "org.eclipse.elk.portAlignment.east",
+    ]) {
+    Some(s) =>
+      match PortAlignment::from_string(s) {
+        Some(v) => options = { ..options, port_alignment_east: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.portAlignment.west", "org.eclipse.elk.portAlignment.west",
+    ]) {
+    Some(s) =>
+      match PortAlignment::from_string(s) {
+        Some(v) => options = { ..options, port_alignment_west: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_double_any(props, [
+      "elk.port.borderOffset", "org.eclipse.elk.port.borderOffset",
+    ]) {
+    Some(v) => options = { ..options, port_border_offset: Some(v) }
+    None => ()
+  }
+  fn parse_node_label_placements(
+    raw : Array[PropertyValue],
+  ) -> Array[NodeLabelPlacement] {
+    let out : Array[NodeLabelPlacement] = []
+    for v in raw {
+      match v {
+        String(s) | Enum(s) =>
+          match NodeLabelPlacement::from_string(s) {
+            Some(e) => out.push(e)
+            None => ()
+          }
+        _ => ()
+      }
+    }
+    out
+  }
+
+  fn parse_port_label_placements(
+    raw : Array[PropertyValue],
+  ) -> Array[PortLabelPlacement] {
+    let out : Array[PortLabelPlacement] = []
+    for v in raw {
+      match v {
+        String(s) | Enum(s) =>
+          match PortLabelPlacement::from_string(s) {
+            Some(e) => out.push(e)
+            None => ()
+          }
+        _ => ()
+      }
+    }
+    out
+  }
+
+  match
+    get_array_any(props, [
+      "elk.nodeLabels.placement", "org.eclipse.elk.nodeLabels.placement",
+    ]) {
+    Some(raw) =>
+      options = {
+        ..options,
+        node_label_placement: Some(parse_node_label_placements(raw)),
+      }
+    None => ()
+  }
+  match
+    get_array_any(props, [
+      "elk.portLabels.placement", "org.eclipse.elk.portLabels.placement",
+    ]) {
+    Some(raw) =>
+      options = {
+        ..options,
+        port_label_placement: Some(parse_port_label_placements(raw)),
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.edgeLabels.placement", "org.eclipse.elk.edgeLabels.placement",
+    ]) {
+    Some(s) =>
+      match EdgeLabelPlacement::from_string(s) {
+        Some(v) => options = { ..options, edge_label_placement: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.edgeLabels.sideSelection", "org.eclipse.elk.alg.layered.edgeLabels.sideSelection",
+    ]) {
+    Some(s) =>
+      match EdgeLabelSideSelection::from_string(s) {
+        Some(v) => options = { ..options, edge_label_side_selection: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.edgeLabels.centerLabelPlacementStrategy", "org.eclipse.elk.alg.layered.edgeLabels.centerLabelPlacementStrategy",
+    ]) {
+    Some(s) =>
+      match CenterEdgeLabelPlacementStrategy::from_string(s) {
+        Some(v) =>
+          options = { ..options, center_edge_label_placement_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_bool_any(props, [
+      "elk.layered.crossingMinimization.forceNodeModelOrder", "org.eclipse.elk.alg.layered.crossingMinimization.forceNodeModelOrder",
+    ]) {
+    Some(v) =>
+      options = { ..options, crossing_min_force_node_model_order: Some(v) }
+    None => ()
+  }
   match get_int_any(props, ["elk.priority", "org.eclipse.elk.priority"]) {
     Some(v) => options = { ..options, priority: Some(v) }
+    None => ()
+  }
+  match get_int_any(props, ["elk.randomSeed", "org.eclipse.elk.randomSeed"]) {
+    Some(v) => options = { ..options, random_seed: Some(v) }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.considerModelOrder.strategy", "org.eclipse.elk.alg.layered.considerModelOrder.strategy",
+    ]) {
+    Some(s) =>
+      match OrderingStrategy::from_string(s) {
+        Some(v) =>
+          options = { ..options, consider_model_order_strategy: Some(v) }
+        None => ()
+      }
     None => ()
   }
   match

@@ -406,20 +406,17 @@ fn adjust_start_point_perpendicular(
     let start_y = clamp(next_y, src.y, src.y + src.height)
     @graph.Point::new(start_x, start_y)
   } else {
-    // Vertical layout with diagonal segment - prefer top/bottom exit
-    let dx = (next_x - src_cx).abs()
-    let dy = (next_y - src_cy).abs()
-    if dx > dy {
-      // More horizontal - connect from left/right
-      let start_x = if next_x > src_cx { src.x + src.width } else { src.x }
-      let start_y = clamp(next_y, src.y, src.y + src.height)
-      @graph.Point::new(start_x, start_y)
-    } else {
-      // More vertical - connect from top/bottom
-      let start_y = if next_y > src_cy { src.y + src.height } else { src.y }
-      let start_x = clamp(next_x, src.x, src.x + src.width)
-      @graph.Point::new(start_x, start_y)
+    // Vertical layout with diagonal segment.
+    // For ELK parity we must not "decide" left/right based on dx/dy, since
+    // that can flip a vertical-flow edge into a side-exiting edge for far targets.
+    // Always respect the layout direction (Down/Up) for entry/exit side.
+    let start_y = match direction {
+      Down => src.y + src.height
+      Up => src.y
+      _ => if next_y > src_cy { src.y + src.height } else { src.y }
     }
+    let start_x = clamp(next_x, src.x, src.x + src.width)
+    @graph.Point::new(start_x, start_y)
   }
 }
 
@@ -498,20 +495,16 @@ fn adjust_end_point_perpendicular(
     let end_y = clamp(prev_y, tgt.y, tgt.y + tgt.height)
     @graph.Point::new(end_x, end_y)
   } else {
-    // Vertical layout with diagonal segment - prefer top/bottom entry
-    let dx = (prev_x - tgt_cx).abs()
-    let dy = (prev_y - tgt_cy).abs()
-    if dx > dy {
-      // More horizontal - connect to left/right
-      let end_x = if prev_x < tgt_cx { tgt.x } else { tgt.x + tgt.width }
-      let end_y = clamp(prev_y, tgt.y, tgt.y + tgt.height)
-      @graph.Point::new(end_x, end_y)
-    } else {
-      // More vertical - connect to top/bottom
-      let end_y = if prev_y < tgt_cy { tgt.y } else { tgt.y + tgt.height }
-      let end_x = clamp(prev_x, tgt.x, tgt.x + tgt.width)
-      @graph.Point::new(end_x, end_y)
+    // Vertical layout with diagonal segment.
+    // Same parity rationale as start-point adjustment: keep vertical-flow edges
+    // entering on top/bottom rather than picking left/right for far targets.
+    let end_y = match direction {
+      Down => tgt.y
+      Up => tgt.y + tgt.height
+      _ => if prev_y < tgt_cy { tgt.y } else { tgt.y + tgt.height }
     }
+    let end_x = clamp(prev_x, tgt.x, tgt.x + tgt.width)
+    @graph.Point::new(end_x, end_y)
   }
 }
 

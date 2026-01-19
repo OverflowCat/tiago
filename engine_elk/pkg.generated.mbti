@@ -25,6 +25,10 @@ pub impl Show for BKNodePlacementMode
 type BlockInfo
 pub impl Show for BlockInfo
 
+type CenterEdgeLabelPlacementStrategy
+pub impl Eq for CenterEdgeLabelPlacementStrategy
+pub impl Show for CenterEdgeLabelPlacementStrategy
+
 type CompactionStrategy
 pub impl Eq for CompactionStrategy
 pub impl Show for CompactionStrategy
@@ -187,6 +191,10 @@ pub impl Show for NodeSizeConstraints
 type NodeSizeOptions
 pub impl Eq for NodeSizeOptions
 pub impl Show for NodeSizeOptions
+
+type OrderingStrategy
+pub impl Eq for OrderingStrategy
+pub impl Show for OrderingStrategy
 
 type PortAlignment
 pub impl Eq for PortAlignment
