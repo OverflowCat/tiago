@@ -31,11 +31,14 @@ fn layout_graph(
   )
   let levels = make_levels(graph, depths)
   let (boxes, level_heights) = place_nodes(graph, config, direction, levels)
+  let (src_ports, dst_ports) = assign_ports(
+    graph, id_to_idx, depths, self_loop, direction, config, boxes,
+  )
   let rail_tracks = assign_rail_tracks(
     graph, id_to_idx, depths, self_loop, direction,
   )
   let rail_shifts = assign_gap_lane_offsets(
-    graph, id_to_idx, depths, self_loop, direction, config, boxes,
+    graph, id_to_idx, depths, self_loop, direction, config, boxes, src_ports, dst_ports,
   )
   for obj in graph.objects {
     match boxes.get(obj.id) {
@@ -60,6 +63,14 @@ fn layout_graph(
     let sv = require_index(id_to_idx, edge.dst_id)
     let du = depths[su]
     let dv = depths[sv]
+    let start = match src_ports.get(edge.index) {
+      Some(p) => p
+      None => raise Unsupported("missing src port for edge: \{edge.index}")
+    }
+    let end = match dst_ports.get(edge.index) {
+      Some(p) => p
+      None => raise Unsupported("missing dst port for edge: \{edge.index}")
+    }
     patch.edges[edge.index] = route_edge(
       edge.index,
       edge.src_id,
@@ -68,6 +79,8 @@ fn layout_graph(
       dv,
       rail_tracks.get(edge.index).unwrap_or(0),
       rail_shifts.get(edge.index).unwrap_or(0.0),
+      start,
+      end,
       boxes,
       direction,
       config,
@@ -75,6 +88,240 @@ fn layout_graph(
     )
   }
   patch
+}
+
+///|
+priv struct PortItem {
+  edge_index : Int
+  other_axis : Double
+} derive(Eq, Show)
+
+///|
+fn port_axis(p : @graph.Point, flow : @engine_api.Direction) -> Double {
+  match flow {
+    Down | Up => p.x
+    Right | Left => p.y
+  }
+}
+
+///|
+fn port_margin(
+  box : @graph.Box,
+  flow : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  let base = @cmp.maximum(6.0, config.edge_padding / 2.0)
+  match flow {
+    Down | Up => @cmp.maximum(0.0, @cmp.minimum(base, box.width / 2.0 - 1.0))
+    Right | Left =>
+      @cmp.maximum(0.0, @cmp.minimum(base, box.height / 2.0 - 1.0))
+  }
+}
+
+///|
+fn exit_of_box_at(
+  box : @graph.Box,
+  flow : @engine_api.Direction,
+  t : Double,
+  config : @engine_api.LayoutConfig,
+) -> @graph.Point {
+  let m = port_margin(box, flow, config)
+  match flow {
+    Down => {
+      let x = box.x + m + (box.width - 2.0 * m) * t
+      @graph.Point::new(x, box.y + box.height)
+    }
+    Up => {
+      let x = box.x + m + (box.width - 2.0 * m) * t
+      @graph.Point::new(x, box.y)
+    }
+    Right => {
+      let y = box.y + m + (box.height - 2.0 * m) * t
+      @graph.Point::new(box.x + box.width, y)
+    }
+    Left => {
+      let y = box.y + m + (box.height - 2.0 * m) * t
+      @graph.Point::new(box.x, y)
+    }
+  }
+}
+
+///|
+fn entry_of_box_at(
+  box : @graph.Box,
+  flow : @engine_api.Direction,
+  t : Double,
+  config : @engine_api.LayoutConfig,
+) -> @graph.Point {
+  let m = port_margin(box, flow, config)
+  match flow {
+    Down => {
+      let x = box.x + m + (box.width - 2.0 * m) * t
+      @graph.Point::new(x, box.y)
+    }
+    Up => {
+      let x = box.x + m + (box.width - 2.0 * m) * t
+      @graph.Point::new(x, box.y + box.height)
+    }
+    Right => {
+      let y = box.y + m + (box.height - 2.0 * m) * t
+      @graph.Point::new(box.x, y)
+    }
+    Left => {
+      let y = box.y + m + (box.height - 2.0 * m) * t
+      @graph.Point::new(box.x + box.width, y)
+    }
+  }
+}
+
+///|
+fn assign_ports(
+  graph : @graph.GraphInput,
+  id_to_idx : Map[String, Int],
+  depths : Array[Int],
+  self_loop : @hashset.HashSet[Int],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+  boxes : Map[String, @graph.Box],
+) -> (Map[Int, @graph.Point], Map[Int, @graph.Point]) raise @engine_api.LayoutError {
+  let src_groups : Map[String, Array[PortItem]] = {}
+  let src_meta : Map[String, (String, @engine_api.Direction)] = {}
+  let dst_groups : Map[String, Array[PortItem]] = {}
+  let dst_meta : Map[String, (String, @engine_api.Direction)] = {}
+  for e in graph.edges {
+    if self_loop.contains(e.index) {
+      continue
+    }
+    let su = require_index(id_to_idx, e.src_id)
+    let sv = require_index(id_to_idx, e.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    if src_level == dst_level {
+      continue
+    }
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    let src_box = match boxes.get(e.src_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.src_id}")
+    }
+    let dst_box = match boxes.get(e.dst_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.dst_id}")
+    }
+    let other_for_src = entry_of_box(dst_box, flow)
+    let other_for_dst = exit_of_box(src_box, flow)
+    let src_key = "s:\{e.src_id}:\{flow}"
+    let dst_key = "t:\{e.dst_id}:\{flow}"
+    if !src_meta.contains(src_key) {
+      src_meta[src_key] = (e.src_id, flow)
+    }
+    if !dst_meta.contains(dst_key) {
+      dst_meta[dst_key] = (e.dst_id, flow)
+    }
+    let src_item = {
+      edge_index: e.index,
+      other_axis: port_axis(other_for_src, flow),
+    }
+    let dst_item = {
+      edge_index: e.index,
+      other_axis: port_axis(other_for_dst, flow),
+    }
+    match src_groups.get(src_key) {
+      Some(arr) => arr.push(src_item)
+      None => src_groups[src_key] = [src_item]
+    }
+    match dst_groups.get(dst_key) {
+      Some(arr) => arr.push(dst_item)
+      None => dst_groups[dst_key] = [dst_item]
+    }
+  }
+  let src_ports : Map[Int, @graph.Point] = {}
+  let dst_ports : Map[Int, @graph.Point] = {}
+  fn assign_group(
+    items : Array[PortItem],
+    is_source : Bool,
+    node_id : String,
+    flow : @engine_api.Direction,
+  ) -> Unit raise @engine_api.LayoutError {
+    let ordered = items.copy()
+    ordered.sort_by(fn(a, b) {
+      if a.other_axis < b.other_axis {
+        -1
+      } else if a.other_axis > b.other_axis {
+        1
+      } else {
+        a.edge_index - b.edge_index
+      }
+    })
+    let k = ordered.length()
+    let box = match boxes.get(node_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{node_id}")
+    }
+    for i in 0..<k {
+      let t = (i + 1).to_double() / (k + 1).to_double()
+      let ei = ordered[i].edge_index
+      let p = if is_source {
+        exit_of_box_at(box, flow, t, config)
+      } else {
+        entry_of_box_at(box, flow, t, config)
+      }
+      if is_source {
+        src_ports[ei] = p
+      } else {
+        dst_ports[ei] = p
+      }
+    }
+  }
+
+  for entry in src_groups {
+    let key = entry.0
+    let items = entry.1
+    let (node_id, flow) = match src_meta.get(key) {
+      Some(v) => v
+      None => raise Unsupported("missing src port meta for key: \{key}")
+    }
+    assign_group(items, true, node_id, flow)
+  }
+  for entry in dst_groups {
+    let key = entry.0
+    let items = entry.1
+    let (node_id, flow) = match dst_meta.get(key) {
+      Some(v) => v
+      None => raise Unsupported("missing dst port meta for key: \{key}")
+    }
+    assign_group(items, false, node_id, flow)
+  }
+
+  // Ensure every routed edge has a port, even if it didn't appear in groups.
+  for e in graph.edges {
+    if self_loop.contains(e.index) {
+      continue
+    }
+    let su = require_index(id_to_idx, e.src_id)
+    let sv = require_index(id_to_idx, e.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    if src_level == dst_level {
+      continue
+    }
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    if !src_ports.contains(e.index) {
+      let b = match boxes.get(e.src_id) {
+        Some(b) => b
+        None => raise Unsupported("missing box for node: \{e.src_id}")
+      }
+      src_ports[e.index] = exit_of_box_at(b, flow, 0.5, config)
+    }
+    if !dst_ports.contains(e.index) {
+      let b = match boxes.get(e.dst_id) {
+        Some(b) => b
+        None => raise Unsupported("missing box for node: \{e.dst_id}")
+      }
+      dst_ports[e.index] = entry_of_box_at(b, flow, 0.5, config)
+    }
+  }
+  (src_ports, dst_ports)
 }
 
 ///|
@@ -212,6 +459,8 @@ fn assign_gap_lane_offsets(
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
   boxes : Map[String, @graph.Box],
+  src_ports : Map[Int, @graph.Point],
+  dst_ports : Map[Int, @graph.Point],
 ) -> Map[Int, Double] raise @engine_api.LayoutError {
   let spans_by_gap : Map[Int, Array[EdgeSpan]] = {}
   for e in graph.edges {
@@ -231,16 +480,14 @@ fn assign_gap_lane_offsets(
       // Back edges already get distinct rails by `rail_track`.
       continue
     }
-    let src_box = match boxes.get(e.src_id) {
-      Some(b) => b
-      None => raise Unsupported("missing box for node: \{e.src_id}")
+    let start = match src_ports.get(e.index) {
+      Some(p) => p
+      None => raise Unsupported("missing src port for edge: \{e.index}")
     }
-    let dst_box = match boxes.get(e.dst_id) {
-      Some(b) => b
-      None => raise Unsupported("missing box for node: \{e.dst_id}")
+    let end = match dst_ports.get(e.index) {
+      Some(p) => p
+      None => raise Unsupported("missing dst port for edge: \{e.index}")
     }
-    let start = exit_of_box(src_box, flow)
-    let end = entry_of_box(dst_box, flow)
     let (a0, a1, needs_rail) = match flow {
       Down | Up =>
         (
@@ -365,6 +612,8 @@ fn route_edge(
   dst_level : Int,
   rail_track : Int,
   rail_shift : Double,
+  start : @graph.Point,
+  end : @graph.Point,
   boxes : Map[String, @graph.Box],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
@@ -396,16 +645,6 @@ fn route_edge(
     continue next_level
   }
   let waypoints : Array[@graph.Point] = []
-  let src_box = match boxes.get(src_id) {
-    Some(b) => b
-    None => raise Unsupported("missing box for node: \{src_id}")
-  }
-  let dst_box = match boxes.get(dst_id) {
-    Some(b) => b
-    None => raise Unsupported("missing box for node: \{dst_id}")
-  }
-  let start = exit_of_box(src_box, flow)
-  let end = entry_of_box(dst_box, flow)
   waypoints.push(start)
   if rails.length() == 0 {
     // Defensive: should be unreachable when `src_level != dst_level`.

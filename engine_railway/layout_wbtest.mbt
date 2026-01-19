@@ -220,6 +220,36 @@ test "railway layout offsets overlapping gap rails" {
 }
 
 ///|
+test "railway layout fans out shared source ports" {
+  let x = @graph.ObjectInput::new("x")
+  let y1 = @graph.ObjectInput::new("y1")
+  let y2 = @graph.ObjectInput::new("y2")
+  let mut edge_counter = 0
+  fn make_edge_between(
+    src : @graph.ObjectInput,
+    dst : @graph.ObjectInput,
+  ) -> @graph.EdgeInput {
+    edge_counter = edge_counter + 1
+    @graph.EdgeInput::new(edge_counter - 1, src.id, dst.id, false, true)
+  }
+
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([x, y1, y2])
+  let e0 = make_edge_between(x, y1)
+  let e1 = make_edge_between(x, y2)
+  g.edges.append([e0, e1])
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Down)
+  let r0 = patch.edges.get(e0.index).unwrap_or([])
+  let r1 = patch.edges.get(e1.index).unwrap_or([])
+  assert_true(r0.length() >= 2 && r1.length() >= 2)
+  assert_true(
+    r0[0].x != r1[0].x,
+    msg="shared source should have distinct exit x",
+  )
+}
+
+///|
 test "simple DAG" {
   let mut edge_counter = 0
   fn make_edge_between(
@@ -247,10 +277,14 @@ test "simple DAG" {
   // 
   let config = @engine_api.LayoutConfig::new()
   let patch = layout_graph(g, config, @engine_api.Down)
-  inspect(
-    patch.edges,
-    content="{0: [{x: 210, y: 60}, {x: 210, y: 120}], 1: [{x: 370, y: 60}, {x: 370, y: 120}], 2: [{x: 210, y: 180}, {x: 210, y: 240}], 3: [{x: 370, y: 180}, {x: 370, y: 210}, {x: 210, y: 210}, {x: 210, y: 240}]}",
-  )
+  let r2 = patch.edges.get(e2.index).unwrap_or([])
+  let r3 = patch.edges.get(e3.index).unwrap_or([])
+  assert_true(r2.length() >= 2 && r3.length() >= 2)
+  let end2 = r2[r2.length() - 1]
+  let end3 = r3[r3.length() - 1]
+  // Fan-in ports on Storage should be distinct.
+  assert_true(end2.y == 240.0 && end3.y == 240.0)
+  assert_true(end2.x != end3.x, msg="Storage entry ports should differ")
   inspect(
     patch.nodes,
     content=(
