@@ -2,11 +2,26 @@ legend: {
   title: Key
   position: top-right
   entries: [
-    { shape: rectangle, label: Service, style: { fill: "#E3E9FD" } }
-    { shape: cylinder, label: Storage }
+    {
+      shape: rectangle
+      label: Service
+      style: {
+        fill: "#E3E9FD"
+      }
+    }
+    {
+      shape: cylinder
+      label: Storage
+    }
     "---"
-    { connection: "->", label: Request }
-    { connection: "--", label: Association }
+    {
+      connection: "->"
+      label: Request
+    }
+    {
+      connection: "--"
+      label: Association
+    }
   ]
 }
 

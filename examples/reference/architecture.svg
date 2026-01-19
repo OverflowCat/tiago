@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1960" height="1404.8" viewBox="0 0 1960 1404.8">
+<defs>
+<marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer" transform="translate(0,0)">
+<rect x="20" y="20" width="224.7999999999999" height="64" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 888 80 H 788 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 806.7408491947291 51.70542635658914 801.0307467057102 45.89147286821705 801.0307467057102 39.53488372093023 C 801.0307467057102 28.759689922480618 817.5754026354319 20 837.9267935578331 20 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 808 344.7999999999999 C 808 359.7999999999999 823 364.7999999999999 838 359.7999999999999 C 853 364.7999999999999 868 359.7999999999999 873 344.7999999999999 C 888 339.7999999999999 888 324.7999999999999 873 319.7999999999999 C 873 309.7999999999999 858 304.7999999999999 843 314.7999999999999 C 833 304.7999999999999 818 309.7999999999999 813 324.7999999999999 C 798 324.7999999999999 793 334.7999999999999 808 344.7999999999999 Z" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="808.5,464.7999999999999 867.5,464.7999999999999 897,494.7999999999999 867.5,524.8 808.5,524.8 779,494.7999999999999" fill="#fff3e0" stroke="#0A0F25" stroke-width="2"/>
+<rect x="536" y="20" width="192" height="484" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="948" y="20" width="192" height="312" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 20 995.8 A 53 9 0 0 1 126 995.8 L 126 1037.8 A 53 9 0 0 1 20 1037.8 Z" fill="#ffebee" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="73" cy="995.8" rx="53" ry="9" fill="#ffebee" stroke="#0A0F25" stroke-width="2"/>
+<rect x="1520" y="20" width="180" height="460" fill="#fff8e1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 201 986.8 L 289 986.8 C 297.25 986.8 304 1001.8 304 1016.8 C 304 1031.8 297.25 1046.8 289 1046.8 L 201 1046.8 C 192.75 1046.8 186 1031.8 186 1016.8 C 186 1001.8 192.75 986.8 201 986.8 Z" fill="#e0f2f1" stroke="#0A0F25" stroke-width="2"/>
+<rect x="1760" y="20" width="180" height="300" fill="#fce4ec" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 198 1324.8 L 292 1324.8 C 302.95 1324.8 307 1339.8 307 1354.8 C 307 1369.8 302.95 1384.8 292 1384.8 L 198 1384.8 C 187.05 1384.8 183 1369.8 183 1354.8 C 183 1339.8 187.05 1324.8 198 1324.8 Z" fill="#f5f5f5" stroke="#0A0F25" stroke-width="2"/>
+<rect x="556" y="384" width="112" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 1540 49 A 50 9 0 0 1 1640 49 L 1640 91 A 50 9 0 0 1 1540 91 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="1590" cy="49" rx="50" ry="9" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 1540 209 A 50 9 0 0 1 1640 209 L 1640 251 A 50 9 0 0 1 1540 251 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="1590" cy="209" rx="50" ry="9" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 1540 369 A 50 9 0 0 1 1640 369 L 1640 411 A 50 9 0 0 1 1540 411 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="1590" cy="369" rx="50" ry="9" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="556" y="40" width="112" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="968" y="40" width="112" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="1780" y="40" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="1780" y="200" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="968" y="212" width="112" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="556" y="212" width="112" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 838 80 L 838 304.7999999999999" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 838 364.7999999999999 L 838 464.7999999999999" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 838 524.8 L 838 529.8 A 5 5 0 0 1 833 534.8 L 433.5 534.8 A 8 8 0 0 1 421.537723536316 527.850153582608 L 132 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 838 524.8 L 838 200 A 8 8 0 0 0 830 192 L 132 192" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 838 524.8 L 838 529.8 A 5 5 0 0 1 833 534.8 L 81 534.8 A 8 8 0 0 1 73 526.8 L 73 364" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 80 L 132 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 252 L 831.3007013766695 708.4274266209196 A 8 8 0 0 1 830 712.8 L 433.5 712.8 A 8 8 0 0 1 422.37934247037305 705.4337596711224 L 132 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 252 L 831.3007013766695 708.4274266209196 A 8 8 0 0 1 830 712.8 L 81 712.8 A 8 8 0 0 1 73 704.8 L 73 192" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 73 424 L 73 192" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 80 L 422.75908329986044 877.2841916174708 A 8 8 0 0 1 417.5 884.8 L 81 884.8 A 8 8 0 0 0 73 892.8 L 73 986.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 73 252 L 73 986.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 80 L 423.03772809351057 979.6883499122389 A 8 8 0 0 1 425.5 995.3 L 425.5 1157.3 A 8 8 0 0 1 423.4381527123887 1157.5702661260189 L 120 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 252 L 362.0881193240713 979.6722328558692 A 8 8 0 0 1 364.5 995.3 L 364.5 1157.3 A 8 8 0 0 1 362.8297858554363 1157.4762934160783 L 120 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 132 80 L 422.75908329986044 877.2841916174708 A 8 8 0 0 1 417.5 884.8 L 253 884.8 A 8 8 0 0 0 245 892.8 L 245 986.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 73 252 L 73 876.8 A 8 8 0 0 0 81 884.8 L 237 884.8 A 8 8 0 0 1 245 892.8 L 245 986.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 245 1046.8 L 245 1051.8 A 5 5 0 0 1 240 1056.8 L 78 1056.8 A 8 8 0 0 1 70 1048.8 L 70 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 245 1046.8 L 245 188 A 8 8 0 0 0 237 180 L 120 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 70 80 L 70 1226.8 A 8 8 0 0 0 78 1234.8 L 237 1234.8 A 8 8 0 0 1 245 1242.8 L 245 1324.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 120 240 L 120 1316.8 A 8 8 0 0 0 128 1324.8 L 245 1324.8" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 70 80 L 70 1226.8 A 8 8 0 0 0 78 1234.8 L 417.5 1234.8 A 8 8 0 0 0 423.5488972530747 1227.0415724485601 L 120 20" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="132.39999999999995" y="52" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Application Architecture</text>
+<text x="838" y="50" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Users</text>
+<text x="838" y="334.7999999999999" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">CDN</text>
+<text x="838" y="494.7999999999999" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Load Balancer</text>
+<text x="632" y="262" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Tier</text>
+<text x="1044" y="176" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Application Tier</text>
+<text x="73" y="1016.8" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Redis Cache</text>
+<text x="1610" y="250" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Database Cluster</text>
+<text x="245" y="1016.8" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Message Queue</text>
+<text x="1850" y="170" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Background Workers</text>
+<text x="245" y="1354.8" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Object Storage</text>
+<text x="612" y="414" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Server 3</text>
+<text x="1590" y="70" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Primary DB</text>
+<text x="1590" y="230" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Replica 1</text>
+<text x="1590" y="390" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Replica 2</text>
+<text x="612" y="70" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Server 1</text>
+<text x="1024" y="70" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">App Server 1</text>
+<text x="1830" y="70" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Worker 1</text>
+<text x="1830" y="230" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Worker 2</text>
+<text x="1024" y="242" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">App Server 2</text>
+<text x="612" y="242" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14">Web Server 2</text>
+</g>
+</svg>
