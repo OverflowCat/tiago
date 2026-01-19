@@ -250,6 +250,40 @@ test "railway layout fans out shared source ports" {
 }
 
 ///|
+test "railway layout keeps straight edges straight" {
+  let x = @graph.ObjectInput::new("x")
+  let x1 = @graph.ObjectInput::new("x1")
+  let y = @graph.ObjectInput::new("y")
+  let z = @graph.ObjectInput::new("z")
+  let mut edge_counter = 0
+  fn make_edge_between(
+    src : @graph.ObjectInput,
+    dst : @graph.ObjectInput,
+  ) -> @graph.EdgeInput {
+    edge_counter = edge_counter + 1
+    @graph.EdgeInput::new(edge_counter - 1, src.id, dst.id, false, true)
+  }
+
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([x, x1, y, z])
+  let e_xy = make_edge_between(x, y)
+  let e_xz = make_edge_between(x, z)
+  let e_x1y = make_edge_between(x1, y)
+  let e_x1z = make_edge_between(x1, z)
+  g.edges.append([e_xy, e_xz, e_x1y, e_x1z])
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Down)
+  let r_xy = patch.edges.get(e_xy.index).unwrap_or([])
+  let r_x1z = patch.edges.get(e_x1z.index).unwrap_or([])
+  assert_true(r_xy.length() >= 2 && r_x1z.length() >= 2)
+  let end_xy = r_xy[r_xy.length() - 1]
+  let end_x1z = r_x1z[r_x1z.length() - 1]
+  // For the vertical edges, keep the port x aligned (no horizontal detour).
+  assert_true(r_xy[0].x == end_xy.x, msg="x->y should stay vertical")
+  assert_true(r_x1z[0].x == end_x1z.x, msg="x1->z should stay vertical")
+}
+
+///|
 test "simple DAG" {
   let mut edge_counter = 0
   fn make_edge_between(
@@ -288,7 +322,7 @@ test "simple DAG" {
   inspect(
     patch.nodes,
     content=(
-      #|{"Alice": {x: 160, y: 0, width: 100, height: 60}, "Bob": {x: 320, y: 0, width: 100, height: 60}, "WebServer1": {x: 160, y: 120, width: 100, height: 60}, "WebServer2": {x: 320, y: 120, width: 100, height: 60}, "Storage": {x: 160, y: 240, width: 100, height: 60}}
+      #|{"Alice": {x: 160, y: 0, width: 100, height: 60}, "Bob": {x: 320, y: 0, width: 100, height: 60}, "WebServer1": {x: 160, y: 120, width: 100, height: 60}, "WebServer2": {x: 320, y: 120, width: 100, height: 60}, "Storage": {x: 240, y: 240, width: 100, height: 60}}
     ),
   )
 }

@@ -38,7 +38,7 @@ fn layout_graph(
     graph, id_to_idx, depths, self_loop, direction,
   )
   let rail_shifts = assign_gap_lane_offsets(
-    graph, id_to_idx, depths, self_loop, direction, config, boxes, src_ports, dst_ports,
+    graph, id_to_idx, depths, self_loop, direction, config, src_ports, dst_ports,
   )
   for obj in graph.objects {
     match boxes.get(obj.id) {
@@ -93,7 +93,7 @@ fn layout_graph(
 ///|
 priv struct PortItem {
   edge_index : Int
-  other_axis : Double
+  desired_axis : Double
 } derive(Eq, Show)
 
 ///|
@@ -208,8 +208,8 @@ fn assign_ports(
       Some(b) => b
       None => raise Unsupported("missing box for node: \{e.dst_id}")
     }
-    let other_for_src = entry_of_box(dst_box, flow)
-    let other_for_dst = exit_of_box(src_box, flow)
+    let desired_for_src = dst_box.center()
+    let desired_for_dst = src_box.center()
     let src_key = "s:\{e.src_id}:\{flow}"
     let dst_key = "t:\{e.dst_id}:\{flow}"
     if !src_meta.contains(src_key) {
@@ -220,11 +220,11 @@ fn assign_ports(
     }
     let src_item = {
       edge_index: e.index,
-      other_axis: port_axis(other_for_src, flow),
+      desired_axis: port_axis(desired_for_src, flow),
     }
     let dst_item = {
       edge_index: e.index,
-      other_axis: port_axis(other_for_dst, flow),
+      desired_axis: port_axis(desired_for_dst, flow),
     }
     match src_groups.get(src_key) {
       Some(arr) => arr.push(src_item)
@@ -237,6 +237,34 @@ fn assign_ports(
   }
   let src_ports : Map[Int, @graph.Point] = {}
   let dst_ports : Map[Int, @graph.Point] = {}
+  fn axis_min_max(
+    box : @graph.Box,
+    flow : @engine_api.Direction,
+  ) -> (Double, Double) {
+    match flow {
+      Down | Up => (box.x, box.x + box.width)
+      Right | Left => (box.y, box.y + box.height)
+    }
+  }
+
+  fn port_point_on_axis(
+    box : @graph.Box,
+    flow : @engine_api.Direction,
+    is_source : Bool,
+    axis : Double,
+  ) -> @graph.Point {
+    match (flow, is_source) {
+      (Down, true) => @graph.Point::new(axis, box.y + box.height)
+      (Down, false) => @graph.Point::new(axis, box.y)
+      (Up, true) => @graph.Point::new(axis, box.y)
+      (Up, false) => @graph.Point::new(axis, box.y + box.height)
+      (Right, true) => @graph.Point::new(box.x + box.width, axis)
+      (Right, false) => @graph.Point::new(box.x, axis)
+      (Left, true) => @graph.Point::new(box.x, axis)
+      (Left, false) => @graph.Point::new(box.x + box.width, axis)
+    }
+  }
+
   fn assign_group(
     items : Array[PortItem],
     is_source : Bool,
@@ -245,9 +273,9 @@ fn assign_ports(
   ) -> Unit raise @engine_api.LayoutError {
     let ordered = items.copy()
     ordered.sort_by(fn(a, b) {
-      if a.other_axis < b.other_axis {
+      if a.desired_axis < b.desired_axis {
         -1
-      } else if a.other_axis > b.other_axis {
+      } else if a.desired_axis > b.desired_axis {
         1
       } else {
         a.edge_index - b.edge_index
@@ -258,14 +286,41 @@ fn assign_ports(
       Some(b) => b
       None => raise Unsupported("missing box for node: \{node_id}")
     }
-    for i in 0..<k {
-      let t = (i + 1).to_double() / (k + 1).to_double()
-      let ei = ordered[i].edge_index
-      let p = if is_source {
-        exit_of_box_at(box, flow, t, config)
+    let m = port_margin(box, flow, config)
+    let (lo0, hi0) = axis_min_max(box, flow)
+    let lo = lo0 + m
+    let hi = hi0 - m
+    if k == 1 || hi <= lo + 1.0e-6 {
+      let ei = ordered[0].edge_index
+      let axis = (lo + hi) / 2.0
+      let p = port_point_on_axis(box, flow, is_source, axis)
+      if is_source {
+        src_ports[ei] = p
       } else {
-        entry_of_box_at(box, flow, t, config)
+        dst_ports[ei] = p
       }
+      return
+    }
+    let span = hi - lo
+    let max_sep = span / (k - 1).to_double()
+    let min_sep = @cmp.minimum(track_spacing(config), max_sep)
+    let pos : Array[Double] = Array::make(k, 0.0)
+    for i in 0..<k {
+      let v0 = ordered[i].desired_axis
+      let v1 = @cmp.maximum(lo, @cmp.minimum(v0, hi))
+      pos[i] = v1
+    }
+    for i in 1..<k {
+      pos[i] = @cmp.maximum(pos[i], pos[i - 1] + min_sep)
+    }
+    pos[k - 1] = @cmp.minimum(pos[k - 1], hi)
+    for i = k - 2; i >= 0; i = i - 1 {
+      pos[i] = @cmp.minimum(pos[i], pos[i + 1] - min_sep)
+    }
+    pos[0] = @cmp.maximum(pos[0], lo)
+    for i in 0..<k {
+      let ei = ordered[i].edge_index
+      let p = port_point_on_axis(box, flow, is_source, pos[i])
       if is_source {
         src_ports[ei] = p
       } else {
@@ -458,7 +513,6 @@ fn assign_gap_lane_offsets(
   self_loop : @hashset.HashSet[Int],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
-  boxes : Map[String, @graph.Box],
   src_ports : Map[Int, @graph.Point],
   dst_ports : Map[Int, @graph.Point],
 ) -> Map[Int, Double] raise @engine_api.LayoutError {
@@ -620,6 +674,8 @@ fn route_edge(
   level_heights : Array[Double],
 ) -> Array[@graph.Point] raise @engine_api.LayoutError {
   ignore(edge_index)
+  ignore(src_id)
+  ignore(dst_id)
   if dst_level == src_level {
     raise Unsupported(
       "route_edge: dst_level is \{dst_level}, src_level is \{src_level}",
@@ -857,14 +913,17 @@ fn place_nodes(
   ignore(direction) // TODO: take direction into consideration
   let boxes = Map::new()
   let level_heights = []
+  let level_spans : Array[Double] = []
+  let level_max_heights : Array[Double] = []
+  let level_max_widths : Array[Double] = []
+  let mut global_span = 0.0
   let object_by_id : Map[String, @graph.ObjectInput] = Map::new(
     capacity=graph.objects.length() * 2,
   )
   for obj in graph.objects {
     object_by_id[obj.id] = obj
   }
-  let mut layer_offset = 0.0
-  for i, level in levels {
+  for level in levels {
     let level_objects : Array[@graph.ObjectInput] = []
     for id in level {
       match object_by_id.get(id) {
@@ -883,10 +942,26 @@ fn place_nodes(
       }
       (mw, mh)
     }
+    let cell = max_object_width + config.horizontal_spacing
+    let span = (level_length - 1).to_double() * cell + max_object_width
+    level_spans.push(span)
+    level_max_heights.push(max_object_height)
+    level_max_widths.push(max_object_width)
+    global_span = @cmp.maximum(global_span, span)
+  }
+  let mut layer_offset = 0.0
+  for i, level in levels {
+    let level_objects : Array[@graph.ObjectInput] = []
+    for id in level {
+      match object_by_id.get(id) {
+        Some(obj) => level_objects.push(obj)
+        None => ()
+      }
+    }
+    let max_object_width = level_max_widths[i]
+    let max_object_height = level_max_heights[i]
     let level_height = max_object_height + config.vertical_spacing
-    let level_width = level_length.to_double() *
-      (max_object_width + config.horizontal_spacing)
-    let mut node_offset = 0.0
+    let mut node_offset = (global_span - level_spans[i]) / 2.0
 
     // put the downward virtual node 
     let box = @graph.Box::new(
