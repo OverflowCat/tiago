@@ -13,7 +13,7 @@ pub fn render_failed(String) -> RenderError
 pub fn unsupported_format(String) -> RenderError
 
 // Errors
-pub suberror RenderError {
+pub(all) suberror RenderError {
   UnsupportedFormat(String)
   RenderFailed(String)
   InvalidDiagram(String)

@@ -37,20 +37,93 @@ test "railway layout routes via virtual nodes" {
   let patch = layout_graph(g, config, @engine_api.Down)
 
   // Virtual nodes are not emitted as node boxes.
-  assert_true(patch.nodes.get("virtual:\{e_ac.index}:1") is None)
+  assert_true(patch.nodes.get(forward_virtual_node_label(1)) is None)
+  assert_true(patch.nodes.get(backward_virtual_node_label(1)) is None)
 
-  // The spanning edge should pass through the expected virtual node location.
-  // With the current placement, the virtual is placed after B on level 1.
-  let virt_center = @graph.Point::new(180.0, 140.0)
+  // The spanning edge should use the rail anchor, but the virtual node center
+  // itself must NOT be a waypoint. Only rail points are waypoints.
+  let a_box = patch.nodes.get("A").unwrap()
+  let b_box = patch.nodes.get("B").unwrap()
+  let c_box = patch.nodes.get("C").unwrap()
+  let rail_0_1 = (a_box.y + a_box.height + b_box.y) / 2.0
+  let rail_1_2 = (b_box.y + b_box.height + c_box.y) / 2.0
+  let virt_x = config.default_width / 2.0
+  let virt_center = @graph.Point::new(virt_x, b_box.y + b_box.height / 2.0)
   let points = patch.edges.get(e_ac.index).unwrap_or([])
-  let mut found = false
+  let mut has_rail_0_1 = false
+  let mut has_rail_1_2 = false
+  let mut has_virt_center = false
   for p in points {
-    if p.x == virt_center.x && p.y == virt_center.y {
-      found = true
+    if p == virt_center {
+      has_virt_center = true
+    }
+    if p.x == virt_x && p.y == rail_0_1 {
+      has_rail_0_1 = true
+    }
+    if p.x == virt_x && p.y == rail_1_2 {
+      has_rail_1_2 = true
+    }
+  }
+  assert_true(has_rail_0_1)
+  assert_true(has_rail_1_2)
+  assert_true(!has_virt_center)
+}
+
+///|
+test "railway layout back edge avoids per-level waypoints" {
+  let x = @graph.ObjectInput::new("x")
+  let y = @graph.ObjectInput::new("y")
+  let z = @graph.ObjectInput::new("z")
+  let c = @graph.ObjectInput::new("c")
+  let mut edge_counter = 0
+  fn make_edge_between(
+    src : @graph.ObjectInput,
+    dst : @graph.ObjectInput,
+  ) -> @graph.EdgeInput {
+    edge_counter = edge_counter + 1
+    @graph.EdgeInput::new(edge_counter - 1, src.id, dst.id, false, true)
+  }
+
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([x, y, z, c])
+  // Create a cycle so one edge is reversed by MFAS; then route that back edge.
+  let e_xy = make_edge_between(x, y)
+  let e_yz = make_edge_between(y, z)
+  let e_zc = make_edge_between(z, c)
+  let e_cx = make_edge_between(c, x)
+  g.edges.append([e_xy, e_yz, e_zc, e_cx])
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Down)
+  let plan = els_tarjan_plan(g)
+  let (_self_loop, reversed) = dag_edge_index_sets(plan)
+  // Pick any reversed edge (a back edge) and assert it doesn't include a
+  // per-level intermediate waypoint at the outer rail for each level.
+  let mut target = -1
+  for e in g.edges {
+    if reversed.contains(e.index) {
+      target = e.index
       break
     }
   }
-  assert_true(found)
+  assert_true(target >= 0, msg="expected at least one reversed edge")
+  let points = patch.edges.get(target).unwrap_or([])
+  // For a long back edge, we should not emit more than one outer-rail Y waypoint.
+  // Route is: start, (rail_x, start.y), (rail_x, last_rail_y), (dst_x, last_rail_y), end
+  // so at most 2 points with x near the outer rail.
+  let mut max_x = 0.0
+  for entry in patch.nodes {
+    let b = entry.1
+    if b.x + b.width > max_x {
+      max_x = b.x + b.width
+    }
+  }
+  let mut rail_hits = 0
+  for p in points {
+    if p.x > max_x + 1.0 {
+      rail_hits = rail_hits + 1
+    }
+  }
+  assert_true(rail_hits <= 2, msg="too many outer-rail waypoints: \{rail_hits}")
 }
 
 ///|
@@ -83,12 +156,12 @@ test "simple DAG" {
   let patch = layout_graph(g, config, @engine_api.Down)
   inspect(
     patch.edges,
-    content="{0: [{x: 210, y: 300}, {x: 210, y: 240}], 1: [{x: 210, y: 300}, {x: 210, y: 240}], 2: [{x: 210, y: 300}, {x: 210, y: 240}], 3: [{x: 210, y: 300}, {x: 210, y: 240}]}",
+    content="{0: [{x: 210, y: 60}, {x: 210, y: 120}], 1: [{x: 370, y: 60}, {x: 370, y: 120}], 2: [{x: 210, y: 180}, {x: 210, y: 240}], 3: [{x: 370, y: 180}, {x: 370, y: 210}, {x: 210, y: 210}, {x: 210, y: 240}]}",
   )
   inspect(
     patch.nodes,
     content=(
-      #|{"Alice": {x: 160, y: 240, width: 100, height: 60}, "Bob": {x: 160, y: 240, width: 100, height: 60}, "WebServer1": {x: 160, y: 240, width: 100, height: 60}, "WebServer2": {x: 160, y: 240, width: 100, height: 60}, "Storage": {x: 160, y: 240, width: 100, height: 60}}
+      #|{"Alice": {x: 160, y: 0, width: 100, height: 60}, "Bob": {x: 320, y: 0, width: 100, height: 60}, "WebServer1": {x: 160, y: 120, width: 100, height: 60}, "WebServer2": {x: 320, y: 120, width: 100, height: 60}, "Storage": {x: 160, y: 240, width: 100, height: 60}}
     ),
   )
 }

@@ -15,7 +15,7 @@ pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, Layo
 pub fn unsupported(String) -> LayoutError
 
 // Errors
-pub suberror LayoutError {
+pub(all) suberror LayoutError {
   InvalidGraph(String)
   CycleDetected(String)
   Unsupported(String)
