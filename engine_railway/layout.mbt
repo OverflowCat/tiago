@@ -34,6 +34,9 @@ fn layout_graph(
   let rail_tracks = assign_rail_tracks(
     graph, id_to_idx, depths, self_loop, direction,
   )
+  let rail_shifts = assign_gap_lane_offsets(
+    graph, id_to_idx, depths, self_loop, direction, config, boxes,
+  )
   for obj in graph.objects {
     match boxes.get(obj.id) {
       Some(b) => patch.nodes[obj.id] = b
@@ -64,6 +67,7 @@ fn layout_graph(
       du,
       dv,
       rail_tracks.get(edge.index).unwrap_or(0),
+      rail_shifts.get(edge.index).unwrap_or(0.0),
       boxes,
       direction,
       config,
@@ -140,6 +144,149 @@ fn allocate_interval_tracks(intervals : Array[EdgeInterval]) -> Map[Int, Int] {
 }
 
 ///|
+priv struct EdgeSpan {
+  start : Double
+  end : Double
+  edge_index : Int
+} derive(Eq, Show)
+
+///|
+priv struct LaneUsage {
+  end : Double
+  lane : Int
+} derive(Eq, Show)
+
+///|
+impl Compare for LaneUsage with compare(a, b) {
+  let c = a.end.compare(b.end)
+  if c != 0 {
+    c
+  } else {
+    a.lane.compare(b.lane)
+  }
+}
+
+///|
+fn allocate_span_lanes(spans : Array[EdgeSpan]) -> (Map[Int, Int], Int) {
+  let lane_by_edge : Map[Int, Int] = {}
+  if spans.length() == 0 {
+    return (lane_by_edge, 0)
+  }
+  let ordered = spans.copy()
+  ordered.sort_by(fn(a, b) {
+    let c = a.start.compare(b.start)
+    if c != 0 {
+      c
+    } else {
+      a.end.compare(b.end)
+    }
+  })
+  let active : @priority_queue.PriorityQueue[@cmp.Reverse[LaneUsage]] = @priority_queue.new()
+  let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+  let mut next_lane = 0
+  for it in ordered {
+    while active.peek() is Some(@cmp.Reverse(u)) && u.end <= it.start {
+      ignore(active.pop())
+      free.push(@cmp.Reverse(u.lane))
+    }
+    let lane = match free.pop() {
+      Some(@cmp.Reverse(t)) => t
+      None => {
+        let t = next_lane
+        next_lane = next_lane + 1
+        t
+      }
+    }
+    lane_by_edge[it.edge_index] = lane
+    active.push(@cmp.Reverse({ end: it.end, lane }))
+  }
+  (lane_by_edge, next_lane)
+}
+
+///|
+fn assign_gap_lane_offsets(
+  graph : @graph.GraphInput,
+  id_to_idx : Map[String, Int],
+  depths : Array[Int],
+  self_loop : @hashset.HashSet[Int],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+  boxes : Map[String, @graph.Box],
+) -> Map[Int, Double] raise @engine_api.LayoutError {
+  let spans_by_gap : Map[Int, Array[EdgeSpan]] = {}
+  for e in graph.edges {
+    if self_loop.contains(e.index) {
+      continue
+    }
+    let su = require_index(id_to_idx, e.src_id)
+    let sv = require_index(id_to_idx, e.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    let span = Int::abs(dst_level - src_level)
+    if span != 1 {
+      continue
+    }
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    if flow != direction {
+      // Back edges already get distinct rails by `rail_track`.
+      continue
+    }
+    let src_box = match boxes.get(e.src_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.src_id}")
+    }
+    let dst_box = match boxes.get(e.dst_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.dst_id}")
+    }
+    let start = exit_of_box(src_box, flow)
+    let end = entry_of_box(dst_box, flow)
+    let (a0, a1, needs_rail) = match flow {
+      Down | Up =>
+        (
+          @cmp.minimum(start.x, end.x),
+          @cmp.maximum(start.x, end.x),
+          start.x != end.x,
+        )
+      Right | Left =>
+        (
+          @cmp.minimum(start.y, end.y),
+          @cmp.maximum(start.y, end.y),
+          start.y != end.y,
+        )
+    }
+    if !needs_rail {
+      continue
+    }
+    let gap = @cmp.minimum(src_level, dst_level)
+    match spans_by_gap.get(gap) {
+      Some(arr) => arr.push({ start: a0, end: a1, edge_index: e.index })
+      None => spans_by_gap[gap] = [{ start: a0, end: a1, edge_index: e.index }]
+    }
+  }
+  let shift_by_edge : Map[Int, Double] = {}
+  for entry in spans_by_gap {
+    let spans = entry.1
+    let (lane_by_edge, lane_count) = allocate_span_lanes(spans)
+    if lane_count <= 1 {
+      continue
+    }
+    let center = (lane_count - 1).to_double() / 2.0
+    let max_offset = @cmp.maximum(0.0, config.vertical_spacing / 2.0 - 4.0)
+    let mut spacing = track_spacing(config)
+    if center > 0.0 && spacing * center > max_offset {
+      spacing = max_offset / center
+    }
+    for lane_entry in lane_by_edge {
+      let lane = lane_entry.1
+      let offset = (lane.to_double() - center) * spacing
+      shift_by_edge[lane_entry.0] = offset
+    }
+  }
+  shift_by_edge
+}
+
+///|
 fn assign_rail_tracks(
   graph : @graph.GraphInput,
   id_to_idx : Map[String, Int],
@@ -211,6 +358,7 @@ fn route_edge(
   src_level : Int,
   dst_level : Int,
   rail_track : Int,
+  rail_shift : Double,
   boxes : Map[String, @graph.Box],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
@@ -290,7 +438,7 @@ fn route_edge(
     _ => ()
   }
   if span == 1 {
-    let rail = rails[0]
+    let rail = rails[0] + rail_shift
     let points = waypoints_between(start, end, rail, flow)
     waypoints.append(points)
     push_if_new(waypoints, end)

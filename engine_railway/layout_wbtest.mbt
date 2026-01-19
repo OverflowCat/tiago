@@ -182,6 +182,44 @@ test "railway layout offsets overlapping back edges" {
 }
 
 ///|
+test "railway layout offsets overlapping gap rails" {
+  let x1 = @graph.ObjectInput::new("x1")
+  let x2 = @graph.ObjectInput::new("x2")
+  let y1 = @graph.ObjectInput::new("y1")
+  let y2 = @graph.ObjectInput::new("y2")
+  let mut edge_counter = 0
+  fn make_edge_between(
+    src : @graph.ObjectInput,
+    dst : @graph.ObjectInput,
+  ) -> @graph.EdgeInput {
+    edge_counter = edge_counter + 1
+    @graph.EdgeInput::new(edge_counter - 1, src.id, dst.id, false, true)
+  }
+
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([x1, x2, y1, y2])
+  // Two crossing edges between adjacent levels; their horizontal gap segments
+  // would overlap unless we assign distinct lanes (rail_y offsets).
+  let e_x1_y1 = make_edge_between(x1, y1)
+  let e_x2_y2 = make_edge_between(x2, y2)
+  let e_x1_y2 = make_edge_between(x1, y2)
+  let e_x2_y1 = make_edge_between(x2, y1)
+  g.edges.append([e_x1_y1, e_x2_y2, e_x1_y2, e_x2_y1])
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Down)
+  let r_a = patch.edges.get(e_x1_y2.index).unwrap_or([])
+  let r_b = patch.edges.get(e_x2_y1.index).unwrap_or([])
+  assert_true(
+    r_a.length() >= 4 && r_b.length() >= 4,
+    msg="expected gap-routed edges to have rail points",
+  )
+  // The second point is the first rail point: (src.x, rail_y).
+  let rail_y_a = r_a[1].y
+  let rail_y_b = r_b[1].y
+  assert_true(rail_y_a != rail_y_b, msg="gap rails should be offset")
+}
+
+///|
 test "simple DAG" {
   let mut edge_counter = 0
   fn make_edge_between(
