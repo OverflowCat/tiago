@@ -31,6 +31,9 @@ fn layout_graph(
   )
   let levels = make_levels(graph, depths)
   let (boxes, level_heights) = place_nodes(graph, config, direction, levels)
+  let rail_tracks = assign_rail_tracks(
+    graph, id_to_idx, depths, self_loop, direction,
+  )
   for obj in graph.objects {
     match boxes.get(obj.id) {
       Some(b) => patch.nodes[obj.id] = b
@@ -60,6 +63,7 @@ fn layout_graph(
       edge.dst_id,
       du,
       dv,
+      rail_tracks.get(edge.index).unwrap_or(0),
       boxes,
       direction,
       config,
@@ -67,6 +71,113 @@ fn layout_graph(
     )
   }
   patch
+}
+
+///|
+priv struct EdgeInterval {
+  start : Int
+  end : Int
+  edge_index : Int
+} derive(Eq, Show)
+
+///|
+priv struct TrackUsage {
+  end : Int
+  track : Int
+} derive(Eq, Show)
+
+///|
+impl Compare for TrackUsage with compare(a, b) {
+  let c = a.end.compare(b.end)
+  if c != 0 {
+    c
+  } else {
+    a.track.compare(b.track)
+  }
+}
+
+///|
+fn track_spacing(config : @engine_api.LayoutConfig) -> Double {
+  @cmp.maximum(6.0, config.edge_padding / 2.0)
+}
+
+///|
+fn allocate_interval_tracks(intervals : Array[EdgeInterval]) -> Map[Int, Int] {
+  let track_by_edge : Map[Int, Int] = {}
+  if intervals.length() == 0 {
+    return track_by_edge
+  }
+  let ordered = intervals.copy()
+  ordered.sort_by(fn(a, b) {
+    let c = a.start.compare(b.start)
+    if c != 0 {
+      c
+    } else {
+      a.end.compare(b.end)
+    }
+  })
+  let active : @priority_queue.PriorityQueue[@cmp.Reverse[TrackUsage]] = @priority_queue.new()
+  let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+  let mut next_track = 0
+  for it in ordered {
+    // Release tracks whose interval ended before this one begins.
+    while active.peek() is Some(@cmp.Reverse(u)) && u.end <= it.start {
+      ignore(active.pop())
+      free.push(@cmp.Reverse(u.track))
+    }
+    let track = match free.pop() {
+      Some(@cmp.Reverse(t)) => t
+      None => {
+        let t = next_track
+        next_track = next_track + 1
+        t
+      }
+    }
+    track_by_edge[it.edge_index] = track
+    active.push(@cmp.Reverse({ end: it.end, track }))
+  }
+  track_by_edge
+}
+
+///|
+fn assign_rail_tracks(
+  graph : @graph.GraphInput,
+  id_to_idx : Map[String, Int],
+  depths : Array[Int],
+  self_loop : @hashset.HashSet[Int],
+  direction : @engine_api.Direction,
+) -> Map[Int, Int] raise @engine_api.LayoutError {
+  let forward_long : Array[EdgeInterval] = []
+  let back_edges : Array[EdgeInterval] = []
+  for e in graph.edges {
+    if self_loop.contains(e.index) {
+      continue
+    }
+    let su = require_index(id_to_idx, e.src_id)
+    let sv = require_index(id_to_idx, e.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    if src_level == dst_level {
+      continue
+    }
+    let start = @cmp.minimum(src_level, dst_level)
+    let end = @cmp.maximum(src_level, dst_level)
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    let span = end - start
+    if flow != direction {
+      back_edges.push({ start, end, edge_index: e.index })
+    } else if span > 1 {
+      forward_long.push({ start, end, edge_index: e.index })
+    }
+  }
+  let tracks : Map[Int, Int] = {}
+  for entry in allocate_interval_tracks(back_edges) {
+    tracks[entry.0] = entry.1
+  }
+  for entry in allocate_interval_tracks(forward_long) {
+    tracks[entry.0] = entry.1
+  }
+  tracks
 }
 
 ///|
@@ -99,6 +210,7 @@ fn route_edge(
   dst_id : String,
   src_level : Int,
   dst_level : Int,
+  rail_track : Int,
   boxes : Map[String, @graph.Box],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
@@ -151,7 +263,8 @@ fn route_edge(
   match (direction, flow) {
     (Down, Up) => {
       let rail_x = global_backward_rail_anchor(boxes, level_heights.length()) +
-        config.edge_padding
+        config.edge_padding +
+        track_spacing(config) * rail_track.to_double()
       let start_on_rail = @graph.Point::new(rail_x, start.y)
       // Leave the rail just below the destination, then enter vertically so the
       // arrowhead direction is correct.
@@ -164,7 +277,8 @@ fn route_edge(
     }
     (Up, Down) => {
       let rail_x = global_backward_rail_anchor(boxes, level_heights.length()) +
-        config.edge_padding
+        config.edge_padding +
+        track_spacing(config) * rail_track.to_double()
       let start_on_rail = @graph.Point::new(rail_x, start.y)
       let last_rail = rails[rails.length() - 1]
       push_if_new(waypoints, start_on_rail)
@@ -197,6 +311,10 @@ fn route_edge(
   let anchor = match flow {
     Down | Up => anchor_box.x + anchor_box.width / 2.0
     Right | Left => anchor_box.y + anchor_box.height / 2.0
+  }
+  let anchor = match direction {
+    Down | Up => anchor - track_spacing(config) * rail_track.to_double()
+    Right | Left => anchor - track_spacing(config) * rail_track.to_double()
   }
 
   // Go from src exit to the first rail.

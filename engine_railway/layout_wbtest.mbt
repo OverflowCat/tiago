@@ -127,6 +127,61 @@ test "railway layout back edge avoids per-level waypoints" {
 }
 
 ///|
+test "railway layout offsets overlapping back edges" {
+  // Two disjoint directed cycles => at least two back edges after MFAS.
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let c = @graph.ObjectInput::new("c")
+  let d = @graph.ObjectInput::new("d")
+  let e = @graph.ObjectInput::new("e")
+  let f = @graph.ObjectInput::new("f")
+  let mut edge_counter = 0
+  fn make_edge_between(
+    src : @graph.ObjectInput,
+    dst : @graph.ObjectInput,
+  ) -> @graph.EdgeInput {
+    edge_counter = edge_counter + 1
+    @graph.EdgeInput::new(edge_counter - 1, src.id, dst.id, false, true)
+  }
+
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b, c, d, e, f])
+  // Cycle 1: a -> b -> c -> a
+  let e_ab = make_edge_between(a, b)
+  let e_bc = make_edge_between(b, c)
+  let e_ca = make_edge_between(c, a)
+  // Cycle 2: d -> e -> f -> d
+  let e_de = make_edge_between(d, e)
+  let e_ef = make_edge_between(e, f)
+  let e_fd = make_edge_between(f, d)
+  g.edges.append([e_ab, e_bc, e_ca, e_de, e_ef, e_fd])
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Down)
+  let plan = els_tarjan_plan(g)
+  let (_self_loop, reversed) = dag_edge_index_sets(plan)
+  let reversed_edges : Array[Int] = []
+  for edge in g.edges {
+    if reversed.contains(edge.index) {
+      reversed_edges.push(edge.index)
+    }
+  }
+  assert_true(reversed_edges.length() >= 2, msg="expected >=2 reversed edges")
+  let r1 = patch.edges.get(reversed_edges[0]).unwrap_or([])
+  let r2 = patch.edges.get(reversed_edges[1]).unwrap_or([])
+  fn max_x(points : Array[@graph.Point]) -> Double {
+    let mut mx = 0.0
+    for p in points {
+      if p.x > mx {
+        mx = p.x
+      }
+    }
+    mx
+  }
+  // Each back edge should get a different outer rail x coordinate.
+  assert_true(max_x(r1) != max_x(r2), msg="back edges share the same rail x")
+}
+
+///|
 test "simple DAG" {
   let mut edge_counter = 0
   fn make_edge_between(
