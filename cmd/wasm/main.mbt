@@ -147,7 +147,7 @@ fn bytes_to_string(bytes : Array[Byte]) -> String {
 /// Encode string to UTF-8 bytes
 fn string_to_bytes(s : String, out : Array[Byte]) -> Unit {
   out.clear()
-  let bytes = @encoding/utf8.encode(s[:])
+  let bytes = @utf8.encode(s[:])
   for i in 0..<bytes.length() {
     out.push(bytes[i])
   }

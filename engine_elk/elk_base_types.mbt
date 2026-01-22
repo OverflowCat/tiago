@@ -81,6 +81,7 @@ enum ElkPortSide {
 } derive(Show, Eq)
 
 ///|
+#warnings("-unused_value")
 fn ElkPortSide::opposite(self : ElkPortSide) -> ElkPortSide {
   match self {
     Undefined => Undefined
@@ -92,6 +93,7 @@ fn ElkPortSide::opposite(self : ElkPortSide) -> ElkPortSide {
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkPortSide::is_vertical(self : ElkPortSide) -> Bool {
   match self {
     North | South => true
@@ -100,6 +102,7 @@ fn ElkPortSide::is_vertical(self : ElkPortSide) -> Bool {
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkPortSide::is_horizontal(self : ElkPortSide) -> Bool {
   match self {
     East | West => true
@@ -113,6 +116,7 @@ fn ElkPortSide::is_horizontal(self : ElkPortSide) -> Bool {
 
 ///|
 /// Type-safe property values for ELK configuration
+#warnings("-unused_constructor")
 enum PropertyValue {
   Bool(Bool)
   Int(Int)
@@ -146,6 +150,7 @@ fn ElkProperties::set(
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkProperties::get(self : ElkProperties, key : String) -> PropertyValue? {
   self.values.get(key)
 }
@@ -222,6 +227,7 @@ fn ElkProperties::get_array(
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkProperties::get_map(
   self : ElkProperties,
   key : String,
@@ -260,6 +266,7 @@ fn ElkProperties::get_double_or(
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkProperties::get_string_or(
   self : ElkProperties,
   key : String,
@@ -325,6 +332,7 @@ struct ElkPort {
 } derive(Show, Eq)
 
 ///|
+#warnings("-unused_value")
 fn ElkPort::new(id : String) -> ElkPort {
   {
     id,
@@ -420,6 +428,7 @@ fn ElkEdge::new(id : String, source : String, target : String) -> ElkEdge {
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkEdge::hyperedge(
   id : String,
   sources : Array[String],
@@ -518,6 +527,7 @@ fn ElkNode::new(id : String) -> ElkNode {
 }
 
 ///|
+#warnings("-unused_value")
 fn ElkNode::with_size(id : String, width : Double, height : Double) -> ElkNode {
   {
     id,
@@ -535,12 +545,14 @@ fn ElkNode::with_size(id : String, width : Double, height : Double) -> ElkNode {
 
 ///|
 /// Check if this node is a leaf (no children)
+#warnings("-unused_value")
 fn ElkNode::is_leaf(self : ElkNode) -> Bool {
   self.children.is_empty()
 }
 
 ///|
 /// Check if this node is a compound node (has children)
+#warnings("-unused_value")
 fn ElkNode::is_compound(self : ElkNode) -> Bool {
   !self.children.is_empty()
 }
@@ -571,6 +583,7 @@ fn ElkNode::add_label(self : ElkNode, label : ElkLabel) -> Unit {
 
 ///|
 /// Find a child node by ID (non-recursive)
+#warnings("-unused_value")
 fn ElkNode::find_child(self : ElkNode, id : String) -> ElkNode? {
   for child in self.children {
     if child.id == id {
@@ -597,6 +610,7 @@ fn ElkNode::find_node(self : ElkNode, id : String) -> ElkNode? {
 
 ///|
 /// Find a port by ID (recursive search)
+#warnings("-unused_value")
 fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
   for port in self.ports {
     if port.id == id {
@@ -614,6 +628,7 @@ fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
 
 ///|
 /// Get all nodes in the graph (flattened)
+#warnings("-unused_value")
 fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
   let result : Array[ElkNode] = [self]
   for child in self.children {
@@ -624,6 +639,7 @@ fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
 
 ///|
 /// Get all edges in the graph (recursive)
+#warnings("-unused_value")
 fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
   let result : Array[ElkEdge] = []
   result.append(self.edges)
@@ -635,6 +651,7 @@ fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
 
 ///|
 /// Calculate bounding box considering all children
+#warnings("-unused_value")
 fn ElkNode::calculate_bounds(self : ElkNode) -> (Double, Double) {
   let mut max_x = self.width
   let mut max_y = self.height

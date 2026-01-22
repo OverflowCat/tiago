@@ -2,6 +2,12 @@
   "import": [
     "Milky2018/diago/engine_api",
     "Milky2018/diago/text_metrics",
-    { "path": "Milky2018/diago/graph", "alias": "graph" }
-  ]
+    "Milky2018/diago/graph",
+    "moonbitlang/core/cmp",
+    "moonbitlang/core/priority_queue",
+    "moonbitlang/core/int",
+    "moonbitlang/core/double",
+    "moonbitlang/core/math"
+  ],
+  "warn-list": "-6-1"
 }

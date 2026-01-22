@@ -384,16 +384,6 @@ fn Graph::set_legend(self : Graph, legend : Legend) -> Unit {
 }
 
 ///|
-fn Graph::find_object(self : Graph, id : String) -> Object? {
-  for obj in self.objects {
-    if obj.id == id {
-      return Some(obj)
-    }
-  }
-  None
-}
-
-///|
 fn style_to_input(style : Style) -> @graph.StyleInput {
   @graph.StyleInput::from_parts(
     @graph.StyleValue::from_double_opt(style.opacity),

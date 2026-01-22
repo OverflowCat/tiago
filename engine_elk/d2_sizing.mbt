@@ -105,6 +105,7 @@ const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
 const CLOUD_SQUARE_INNER_HEIGHT : Double = 0.663
 
 ///|
+#warnings("-unused_value")
 priv struct Size {
   width : Double
   height : Double

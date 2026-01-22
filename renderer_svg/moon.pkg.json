@@ -6,6 +6,8 @@
     "Milky2018/diago/svg",
     "Milky2018/diago/text_metrics",
     "Milky2018/diago/themes",
-    "Milky2018/diago/render_api"
+    "Milky2018/diago/render_api",
+    "moonbitlang/core/cmp",
+    "moonbitlang/core/hashset"
   ]
 }

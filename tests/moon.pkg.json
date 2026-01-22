@@ -11,6 +11,7 @@
     "Milky2018/diago/renderer_svg",
     "Milky2018/diago/renderer_ascii",
     "Milky2018/xml",
-    "moonbitlang/x/fs"
+    "moonbitlang/x/fs",
+    "moonbitlang/core/strconv"
   ]
 }

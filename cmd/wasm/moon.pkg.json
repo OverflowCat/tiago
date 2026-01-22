@@ -10,7 +10,8 @@
     "Milky2018/diago/diagram",
     "Milky2018/diago/renderer_svg",
     "Milky2018/diago/renderer_ascii",
-    "Milky2018/diago/renderer_unicode"
+    "Milky2018/diago/renderer_unicode",
+    "moonbitlang/core/encoding/utf8"
   ],
   "link": {
     "wasm": {

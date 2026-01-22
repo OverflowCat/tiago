@@ -122,6 +122,7 @@ fn EdgeRouting::from_string(s : String) -> EdgeRouting? {
 
 ///|
 /// Edge type for differentiating edge kinds
+#warnings("-unused_constructor")
 enum EdgeType {
   Undefined
   Directed
@@ -235,6 +236,7 @@ fn CrossingMinimizationStrategy::from_string(
 
 ///|
 /// Greedy switch type for crossing minimization
+#warnings("-unused_constructor")
 enum GreedySwitchType {
   Off
   OneSided
@@ -285,6 +287,7 @@ fn BKNodePlacementMode::from_string(s : String) -> BKNodePlacementMode? {
 
 ///|
 /// Edge straightening strategy for Brandes-Koepf
+#warnings("-unused_constructor")
 enum EdgeStraighteningStrategy {
   None
   ImproveStraightness
@@ -292,6 +295,7 @@ enum EdgeStraighteningStrategy {
 
 ///|
 /// Node flexibility for network simplex placement
+#warnings("-unused_constructor")
 enum NodeFlexibility {
   None
   NodeSize
@@ -376,6 +380,7 @@ fn PortLabelPlacement::from_string(s : String) -> PortLabelPlacement? {
 
 ///|
 /// Port sort order
+#warnings("-unused_constructor")
 enum PortSortingStrategy {
   InputOrder
   PortDegree
@@ -413,6 +418,7 @@ fn NodeSizeConstraints::from_string(s : String) -> NodeSizeConstraints? {
 
 ///|
 /// Node size options (bit flags combined)
+#warnings("-unused_constructor")
 enum NodeSizeOptions {
   DefaultMinimumSize
   MinimumSizeAccountsForPadding
@@ -429,6 +435,7 @@ enum NodeSizeOptions {
 /// Node label placement
 ///
 /// This is a simplified representation of ELK's `NodeLabelPlacement` EnumSet.
+#warnings("-unused_constructor")
 enum NodeLabelPlacement {
   Inside
   Outside
@@ -592,6 +599,7 @@ fn ContentAlignment::from_string(s : String) -> ContentAlignment? {
 
 ///|
 /// Compaction strategy
+#warnings("-unused_constructor")
 enum CompactionStrategy {
   None
   Polyomino
@@ -600,6 +608,7 @@ enum CompactionStrategy {
 
 ///|
 /// Graph compaction strategy
+#warnings("-unused_constructor")
 enum GraphCompactionStrategy {
   None
   LeftToRight
@@ -614,6 +623,7 @@ enum GraphCompactionStrategy {
 
 ///|
 /// Self-loop distribution strategy
+#warnings("-unused_constructor")
 enum SelfLoopDistribution {
   North
   NorthSouth
@@ -622,6 +632,7 @@ enum SelfLoopDistribution {
 
 ///|
 /// Self-loop ordering strategy
+#warnings("-unused_constructor")
 enum SelfLoopOrdering {
   Stacked
   Sequenced
@@ -633,6 +644,7 @@ enum SelfLoopOrdering {
 
 ///|
 /// Force model type
+#warnings("-unused_constructor")
 enum ForceModelType {
   Eades
   FruchtermanReingold
@@ -907,6 +919,7 @@ fn LayoutOptions::layered() -> LayoutOptions {
 
 ///|
 /// Create default options for force algorithm
+#warnings("-unused_value")
 fn LayoutOptions::force() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
@@ -924,6 +937,7 @@ fn LayoutOptions::force() -> LayoutOptions {
 
 ///|
 /// Create default options for stress algorithm
+#warnings("-unused_value")
 fn LayoutOptions::stress() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
@@ -935,6 +949,7 @@ fn LayoutOptions::stress() -> LayoutOptions {
 
 ///|
 /// Create default options for radial algorithm
+#warnings("-unused_value")
 fn LayoutOptions::radial() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
@@ -946,6 +961,7 @@ fn LayoutOptions::radial() -> LayoutOptions {
 
 ///|
 /// Create default options for tree algorithm
+#warnings("-unused_value")
 fn LayoutOptions::tree() -> LayoutOptions {
   {
     ..LayoutOptions::new(),
@@ -1018,6 +1034,7 @@ fn LayoutOptions::with_padding(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_uniform_padding(
   self : LayoutOptions,
   value : Double,
@@ -1026,6 +1043,7 @@ fn LayoutOptions::with_uniform_padding(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_port_constraints(
   self : LayoutOptions,
   constraints : PortConstraints,
@@ -1034,6 +1052,7 @@ fn LayoutOptions::with_port_constraints(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_thoroughness(
   self : LayoutOptions,
   value : Int,
@@ -1042,6 +1061,7 @@ fn LayoutOptions::with_thoroughness(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_aspect_ratio(
   self : LayoutOptions,
   ratio : Double,
@@ -1050,11 +1070,13 @@ fn LayoutOptions::with_aspect_ratio(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::interactive(self : LayoutOptions) -> LayoutOptions {
   { ..self, interactive: Some(true) }
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_cycle_breaking(
   self : LayoutOptions,
   strategy : CycleBreakingStrategy,
@@ -1063,6 +1085,7 @@ fn LayoutOptions::with_cycle_breaking(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_layering(
   self : LayoutOptions,
   strategy : LayeringStrategy,
@@ -1071,6 +1094,7 @@ fn LayoutOptions::with_layering(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_crossing_min(
   self : LayoutOptions,
   strategy : CrossingMinimizationStrategy,
@@ -1079,6 +1103,7 @@ fn LayoutOptions::with_crossing_min(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_node_placement(
   self : LayoutOptions,
   strategy : NodePlacementStrategy,
@@ -1087,6 +1112,7 @@ fn LayoutOptions::with_node_placement(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayoutOptions::with_custom(
   self : LayoutOptions,
   key : String,
