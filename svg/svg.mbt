@@ -22,6 +22,10 @@
 pub struct Svg {
   width : Double
   height : Double
+  mut viewbox_x : Double
+  mut viewbox_y : Double
+  mut viewbox_width : Double
+  mut viewbox_height : Double
   elements : Array[String]
   defs : Array[String]
   scripts : Array[String]
@@ -30,7 +34,17 @@ pub struct Svg {
 ///|
 /// Create a new SVG document
 pub fn Svg::new(width : Double, height : Double) -> Svg {
-  { width, height, elements: [], defs: [], scripts: [] }
+  {
+    width,
+    height,
+    viewbox_x: 0.0,
+    viewbox_y: 0.0,
+    viewbox_width: width,
+    viewbox_height: height,
+    elements: [],
+    defs: [],
+    scripts: [],
+  }
 }
 
 ///|
@@ -43,6 +57,21 @@ pub fn Svg::add(self : Svg, element : String) -> Unit {
 /// Add a definition (marker, gradient, etc.)
 pub fn Svg::add_def(self : Svg, def : String) -> Unit {
   self.defs.push(def)
+}
+
+///|
+/// Set the viewBox bounds.
+pub fn Svg::set_viewbox(
+  self : Svg,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+) -> Unit {
+  self.viewbox_x = x
+  self.viewbox_y = y
+  self.viewbox_width = width
+  self.viewbox_height = height
 }
 
 ///|
@@ -121,7 +150,9 @@ pub fn Svg::to_string(self : Svg) -> String {
   sb.write_string("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
   sb.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\" ")
   sb.write_string("width=\"\{self.width}\" height=\"\{self.height}\" ")
-  sb.write_string("viewBox=\"0 0 \{self.width} \{self.height}\">\n")
+  sb.write_string(
+    "viewBox=\"\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}\">\n",
+  )
   // Defs
   if self.defs.length() > 0 {
     sb.write_string("<defs>\n")

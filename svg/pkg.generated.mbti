@@ -80,6 +80,10 @@ pub fn PathBuilder::v_to(Self, Double) -> Self
 pub struct Svg {
   width : Double
   height : Double
+  mut viewbox_x : Double
+  mut viewbox_y : Double
+  mut viewbox_width : Double
+  mut viewbox_height : Double
   elements : Array[String]
   defs : Array[String]
   scripts : Array[String]
@@ -94,6 +98,7 @@ pub fn Svg::open_group_with_filter(Self, String) -> Unit
 pub fn Svg::open_group_with_id(Self, String, String) -> Unit
 pub fn Svg::open_group_with_id_style(Self, String, String, String) -> Unit
 pub fn Svg::open_group_with_tooltip(Self, String) -> Unit
+pub fn Svg::set_viewbox(Self, Double, Double, Double, Double) -> Unit
 pub fn Svg::to_string(Self) -> String
 pub impl Show for Svg
 

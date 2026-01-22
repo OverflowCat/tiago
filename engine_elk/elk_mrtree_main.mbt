@@ -32,11 +32,6 @@ fn elk_mrtree_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   for child in graph.children {
     if child.children.length() > 0 {
       elk_mrtree_layout(child, resolved_options)
-      let (child_w, child_h) = child.calculate_bounds()
-      let child_options = resolve_options_for_node(resolved_options, child)
-      let padding = child_options.padding.unwrap_or(ElkPadding::uniform(12.0))
-      child.width = child_w + padding.left + padding.right
-      child.height = child_h + padding.top + padding.bottom
     }
   }
   let direction = match resolved_options.direction {

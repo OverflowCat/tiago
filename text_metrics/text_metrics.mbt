@@ -44,8 +44,90 @@ pub struct MeasuredText {
 const CODE_LINE_HEIGHT : Double = 1.3
 
 ///|
-/// D2's default line height factor (from textmeasure.Ruler initialization)
-const DEFAULT_LINE_HEIGHT_FACTOR : Double = 1.0
+/// D2's TAB_SIZE constant (from lib/textmeasure/textmeasure.go:19)
+const TAB_SIZE : Double = 4.0
+
+///|
+/// D2 space advances (from lib/textmeasure via ruler.Measure at font size 16)
+const SPACE_WIDTH_SANS : Int = 3
+
+///|
+const SPACE_WIDTH_MONO : Int = 10
+
+///|
+priv enum FontKind {
+  SansRegular
+  SansBold
+  SansItalic
+  MonoRegular
+}
+
+///|
+fn select_font_kind(
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> FontKind {
+  if is_mono {
+    MonoRegular
+  } else if is_bold {
+    SansBold
+  } else if is_italic {
+    SansItalic
+  } else {
+    SansRegular
+  }
+}
+
+///|
+fn lookup_width(kind : FontKind, codepoint : Int) -> Int {
+  if codepoint >= 0 && codepoint < 256 {
+    match kind {
+      SansRegular => widths_sans_regular[codepoint]
+      SansBold => widths_sans_bold[codepoint]
+      SansItalic => widths_sans_italic[codepoint]
+      MonoRegular => widths_mono_regular[codepoint]
+    }
+  } else if codepoint >= GEO_START && codepoint <= GEO_END {
+    let idx = codepoint - GEO_START
+    match kind {
+      SansRegular => widths_sans_regular_geo[idx]
+      SansBold => widths_sans_bold_geo[idx]
+      SansItalic => widths_sans_italic_geo[idx]
+      MonoRegular => widths_mono_regular_geo[idx]
+    }
+  } else {
+    0
+  }
+}
+
+///|
+fn fallback_width(kind : FontKind) -> Int {
+  // Use "M" as a conservative fallback for unknown glyphs.
+  lookup_width(kind, 'M'.to_int())
+}
+
+///|
+fn space_width_for(kind : FontKind) -> Int {
+  match kind {
+    MonoRegular => SPACE_WIDTH_MONO
+    _ => SPACE_WIDTH_SANS
+  }
+}
+
+///|
+fn line_height_for(font_size : Int, is_mono : Bool) -> Double {
+  let base = if is_mono {
+    BASE_MONO_LINE_HEIGHT.to_double()
+  } else {
+    BASE_LINE_HEIGHT.to_double()
+  }
+  let mut height = base * font_size.to_double() / BASE_FONT_SIZE.to_double()
+  if is_mono {
+    height = height * CODE_LINE_HEIGHT
+  }
+  height
+}
 
 ///|
 /// Calculate text dimensions following D2's approach (from d2graph.GetTextDimensionsWithMono)
@@ -62,15 +144,10 @@ pub fn measure_text(
   is_bold : Bool,
   is_italic : Bool,
 ) -> MeasuredText {
-  let line_height_factor = if is_mono {
-    CODE_LINE_HEIGHT
-  } else {
-    DEFAULT_LINE_HEIGHT_FACTOR
-  }
-  let base_char_width = 6.0 // Simplified estimation (D2 uses actual font glyph advance)
-  let bold_factor = if is_bold { 1.1 } else { 1.0 }
-  let italic_factor = if is_italic { 1.05 } else { 1.0 }
-  let effective_char_width = base_char_width * bold_factor * italic_factor
+  let kind = select_font_kind(is_mono, is_bold, is_italic)
+  let scale = font_size.to_double() / BASE_FONT_SIZE.to_double()
+  let space_width = space_width_for(kind)
+  let tab_width = space_width.to_double() * scale * TAB_SIZE
   let mut max_line_width = 0.0
   let mut line_count = 0
   let mut current_line_width = 0.0
@@ -88,9 +165,23 @@ pub fn measure_text(
         current_line_width = 0.0
         line_count = line_count + 1
       }
-      Some(_) =>
-        // Add character width (simplified from D2's glyph.advance)
-        current_line_width = current_line_width + effective_char_width
+      Some('\r') =>
+        // Carriage return moves to line origin without advancing lines.
+        current_line_width = 0.0
+      Some('\t') => {
+        let rem = current_line_width % tab_width
+        let advance = if rem == 0.0 { tab_width } else { tab_width - rem }
+        current_line_width = current_line_width + advance
+      }
+      Some(' ') =>
+        current_line_width = current_line_width +
+          space_width.to_double() * scale
+      Some(c) => {
+        let cp = c.to_int()
+        let w = lookup_width(kind, cp)
+        let base = if w == 0 { fallback_width(kind) } else { w }
+        current_line_width = current_line_width + base.to_double() * scale
+      }
       None => ()
     }
     i = i + 1
@@ -134,24 +225,25 @@ pub fn measure_text(
 
   // Calculate height following D2's formula
   let base_height = font_size.to_double()
-  let line_height = base_height * line_height_factor
+  let line_height = line_height_for(font_size, is_mono)
   let mut total_height = (line_count + 1).to_double() * line_height
+  if is_mono {
+    // D2: if hasLeading && numTrailing < len(lines) { h += t.FontSize }
+    if has_leading {
+      total_height = total_height + base_height
+    }
 
-  // D2: if hasLeading && numTrailing < len(lines) { h += t.FontSize }
-  if has_leading {
-    total_height = total_height + base_height
+    // D2: h += int(math.Ceil(textmeasure.CODE_LINE_HEIGHT * float64(t.FontSize*numTrailing)))
+    let trailing_height = CODE_LINE_HEIGHT *
+      base_height *
+      num_trailing.to_double()
+    total_height = total_height + trailing_height
   }
 
-  // D2: h += int(math.Ceil(textmeasure.CODE_LINE_HEIGHT * float64(t.FontSize*numTrailing)))
-  let trailing_height = CODE_LINE_HEIGHT *
-    base_height *
-    num_trailing.to_double()
-  total_height = total_height + trailing_height
-
-  // Calculate width with padding (D2 uses padding in shape rendering)
-  let padding = 20.0
-  let width = max_line_width + padding * 2.0
-  let height = total_height + padding * 2.0
+  // D2 text measurement returns raw text dimensions.
+  // Shape padding / size-to-fit is applied later by the shape sizing layer.
+  let width = max_line_width
+  let height = total_height
   { dimensions: { width, height }, line_count, max_line_width }
 }
 

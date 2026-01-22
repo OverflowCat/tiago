@@ -1,0 +1,1828 @@
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/cmd/wasm/main.mbt:150:15 ]
+     │
+ 150 │   let bytes = @encoding/utf8.encode(s[:])
+     │               ──────────┬──────────  
+     │                         ╰──────────── Warning (core_package_not_imported): Package `encoding/utf8` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/d2_sizing.mbt:111:10 ]
+     │
+ 111 │ } derive(Eq, Show)
+     │          ─┬  
+     │           ╰── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/d2_sizing.mbt:111:14 ]
+     │
+ 111 │ } derive(Eq, Show)
+     │              ──┬─  
+     │                ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/d2_sizing.mbt:211:19 ]
+     │
+ 211 │       let theta = @math.atan2(content_h, content_w)
+     │                   ─────┬─────  
+     │                        ╰─────── Warning (core_package_not_imported): Package `math` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/d2_sizing.mbt:212:42 ]
+     │
+ 212 │       let padded_w = content_w + pad_x * @math.cos(theta)
+     │                                          ────┬────  
+     │                                              ╰────── Warning (core_package_not_imported): Package `math` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/d2_sizing.mbt:213:42 ]
+     │
+ 213 │       let padded_h = content_h + pad_y * @math.sin(theta)
+     │                                          ────┬────  
+     │                                              ╰────── Warning (core_package_not_imported): Package `math` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/edge_routing_wbtest.mbt:178:4 ]
+     │
+ 178 │ fn apply_layout_result_for_routing(
+     │    ───────────────┬───────────────  
+     │                   ╰───────────────── Warning (unused_value): Unused function 'apply_layout_result_for_routing'
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:126:3 ]
+     │
+ 126 │   Undefined
+     │   ────┬────  
+     │       ╰────── Warning (unused_constructor): Variant 'Undefined' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:127:3 ]
+     │
+ 127 │   Directed
+     │   ────┬───  
+     │       ╰───── Warning (unused_constructor): Variant 'Directed' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:128:3 ]
+     │
+ 128 │   Undirected
+     │   ─────┬────  
+     │        ╰────── Warning (unused_constructor): Variant 'Undirected' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:129:3 ]
+     │
+ 129 │   Association
+     │   ─────┬─────  
+     │        ╰─────── Warning (unused_constructor): Variant 'Association' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:130:3 ]
+     │
+ 130 │   Generalization
+     │   ───────┬──────  
+     │          ╰──────── Warning (unused_constructor): Variant 'Generalization' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:131:3 ]
+     │
+ 131 │   Dependency
+     │   ─────┬────  
+     │        ╰────── Warning (unused_constructor): Variant 'Dependency' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:239:3 ]
+     │
+ 239 │   Off
+     │   ─┬─  
+     │    ╰─── Warning (unused_constructor): Variant 'Off' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:240:3 ]
+     │
+ 240 │   OneSided
+     │   ────┬───  
+     │       ╰───── Warning (unused_constructor): Variant 'OneSided' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:289:3 ]
+     │
+ 289 │   None
+     │   ──┬─  
+     │     ╰─── Warning (unused_constructor): Variant 'None' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:290:3 ]
+     │
+ 290 │   ImproveStraightness
+     │   ─────────┬─────────  
+     │            ╰─────────── Warning (unused_constructor): Variant 'ImproveStraightness' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:296:3 ]
+     │
+ 296 │   None
+     │   ──┬─  
+     │     ╰─── Warning (unused_constructor): Variant 'None' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:297:3 ]
+     │
+ 297 │   NodeSize
+     │   ────┬───  
+     │       ╰───── Warning (unused_constructor): Variant 'NodeSize' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:298:3 ]
+     │
+ 298 │   NodeSizeWhereSpacePermits
+     │   ────────────┬────────────  
+     │               ╰────────────── Warning (unused_constructor): Variant 'NodeSizeWhereSpacePermits' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:381:3 ]
+     │
+ 381 │   PortDegree
+     │   ─────┬────  
+     │        ╰────── Warning (unused_constructor): Variant 'PortDegree' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:417:3 ]
+     │
+ 417 │   DefaultMinimumSize
+     │   ─────────┬────────  
+     │            ╰────────── Warning (unused_constructor): Variant 'DefaultMinimumSize' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:418:3 ]
+     │
+ 418 │   MinimumSizeAccountsForPadding
+     │   ──────────────┬──────────────  
+     │                 ╰──────────────── Warning (unused_constructor): Variant 'MinimumSizeAccountsForPadding' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:419:3 ]
+     │
+ 419 │   ComputePadding
+     │   ───────┬──────  
+     │          ╰──────── Warning (unused_constructor): Variant 'ComputePadding' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:420:3 ]
+     │
+ 420 │   OutsidePortLabelsOverhang
+     │   ────────────┬────────────  
+     │               ╰────────────── Warning (unused_constructor): Variant 'OutsidePortLabelsOverhang' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:421:3 ]
+     │
+ 421 │   PortsOverhang
+     │   ──────┬──────  
+     │         ╰──────── Warning (unused_constructor): Variant 'PortsOverhang' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:422:3 ]
+     │
+ 422 │   UniformPortSpacing
+     │   ─────────┬────────  
+     │            ╰────────── Warning (unused_constructor): Variant 'UniformPortSpacing' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:423:3 ]
+     │
+ 423 │   SpaceEfficientPortLabels
+     │   ────────────┬───────────  
+     │               ╰───────────── Warning (unused_constructor): Variant 'SpaceEfficientPortLabels' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:424:3 ]
+     │
+ 424 │   ForceTabularNodeLabels
+     │   ───────────┬──────────  
+     │              ╰──────────── Warning (unused_constructor): Variant 'ForceTabularNodeLabels' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:425:3 ]
+     │
+ 425 │   AsymmetricalSpacing
+     │   ─────────┬─────────  
+     │            ╰─────────── Warning (unused_constructor): Variant 'AsymmetricalSpacing' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:436:3 ]
+     │
+ 436 │   Vertical
+     │   ────┬───  
+     │       ╰───── Warning (unused_constructor): Variant 'Vertical' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:596:3 ]
+     │
+ 596 │   None
+     │   ──┬─  
+     │     ╰─── Warning (unused_constructor): Variant 'None' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:597:3 ]
+     │
+ 597 │   Polyomino
+     │   ────┬────  
+     │       ╰────── Warning (unused_constructor): Variant 'Polyomino' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:598:3 ]
+     │
+ 598 │   Rectangle
+     │   ────┬────  
+     │       ╰────── Warning (unused_constructor): Variant 'Rectangle' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:604:3 ]
+     │
+ 604 │   None
+     │   ──┬─  
+     │     ╰─── Warning (unused_constructor): Variant 'None' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:605:3 ]
+     │
+ 605 │   LeftToRight
+     │   ─────┬─────  
+     │        ╰─────── Warning (unused_constructor): Variant 'LeftToRight' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:606:3 ]
+     │
+ 606 │   RightToLeft
+     │   ─────┬─────  
+     │        ╰─────── Warning (unused_constructor): Variant 'RightToLeft' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:607:3 ]
+     │
+ 607 │   TopToBottom
+     │   ─────┬─────  
+     │        ╰─────── Warning (unused_constructor): Variant 'TopToBottom' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:608:3 ]
+     │
+ 608 │   BottomToTop
+     │   ─────┬─────  
+     │        ╰─────── Warning (unused_constructor): Variant 'BottomToTop' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:618:3 ]
+     │
+ 618 │   North
+     │   ──┬──  
+     │     ╰──── Warning (unused_constructor): Variant 'North' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:619:3 ]
+     │
+ 619 │   NorthSouth
+     │   ─────┬────  
+     │        ╰────── Warning (unused_constructor): Variant 'NorthSouth' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:620:3 ]
+     │
+ 620 │   Equally
+     │   ───┬───  
+     │      ╰───── Warning (unused_constructor): Variant 'Equally' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:626:3 ]
+     │
+ 626 │   Stacked
+     │   ───┬───  
+     │      ╰───── Warning (unused_constructor): Variant 'Stacked' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:627:3 ]
+     │
+ 627 │   Sequenced
+     │   ────┬────  
+     │       ╰────── Warning (unused_constructor): Variant 'Sequenced' is never constructed
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:637:3 ]
+     │
+ 637 │   Eades
+     │   ──┬──  
+     │     ╰──── Warning (unused_constructor): Variant 'Eades' is never constructed
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:910:19 ]
+     │
+ 910 │ fn LayoutOptions::force() -> LayoutOptions {
+     │                   ──┬──  
+     │                     ╰──── Warning (unused_value): Unused function 'force'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:927:19 ]
+     │
+ 927 │ fn LayoutOptions::stress() -> LayoutOptions {
+     │                   ───┬──  
+     │                      ╰──── Warning (unused_value): Unused function 'stress'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:938:19 ]
+     │
+ 938 │ fn LayoutOptions::radial() -> LayoutOptions {
+     │                   ───┬──  
+     │                      ╰──── Warning (unused_value): Unused function 'radial'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:949:19 ]
+     │
+ 949 │ fn LayoutOptions::tree() -> LayoutOptions {
+     │                   ──┬─  
+     │                     ╰─── Warning (unused_value): Unused function 'tree'
+─────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1021:19 ]
+      │
+ 1021 │ fn LayoutOptions::with_uniform_padding(
+      │                   ──────────┬─────────  
+      │                             ╰─────────── Warning (unused_value): Unused function 'with_uniform_padding'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1029:19 ]
+      │
+ 1029 │ fn LayoutOptions::with_port_constraints(
+      │                   ──────────┬──────────  
+      │                             ╰──────────── Warning (unused_value): Unused function 'with_port_constraints'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1037:19 ]
+      │
+ 1037 │ fn LayoutOptions::with_thoroughness(
+      │                   ────────┬────────  
+      │                           ╰────────── Warning (unused_value): Unused function 'with_thoroughness'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1045:19 ]
+      │
+ 1045 │ fn LayoutOptions::with_aspect_ratio(
+      │                   ────────┬────────  
+      │                           ╰────────── Warning (unused_value): Unused function 'with_aspect_ratio'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1053:19 ]
+      │
+ 1053 │ fn LayoutOptions::interactive(self : LayoutOptions) -> LayoutOptions {
+      │                   ─────┬─────  
+      │                        ╰─────── Warning (unused_value): Unused function 'interactive'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1058:19 ]
+      │
+ 1058 │ fn LayoutOptions::with_cycle_breaking(
+      │                   ─────────┬─────────  
+      │                            ╰─────────── Warning (unused_value): Unused function 'with_cycle_breaking'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1066:19 ]
+      │
+ 1066 │ fn LayoutOptions::with_layering(
+      │                   ──────┬──────  
+      │                         ╰──────── Warning (unused_value): Unused function 'with_layering'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1074:19 ]
+      │
+ 1074 │ fn LayoutOptions::with_crossing_min(
+      │                   ────────┬────────  
+      │                           ╰────────── Warning (unused_value): Unused function 'with_crossing_min'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1082:19 ]
+      │
+ 1082 │ fn LayoutOptions::with_node_placement(
+      │                   ─────────┬─────────  
+      │                            ╰─────────── Warning (unused_value): Unused function 'with_node_placement'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_options.mbt:1090:19 ]
+      │
+ 1090 │ fn LayoutOptions::with_custom(
+      │                   ─────┬─────  
+      │                        ╰─────── Warning (unused_value): Unused function 'with_custom'
+──────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:84:17 ]
+    │
+ 84 │ fn ElkPortSide::opposite(self : ElkPortSide) -> ElkPortSide {
+    │                 ────┬───  
+    │                     ╰───── Warning (unused_value): Unused function 'opposite'
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:95:17 ]
+    │
+ 95 │ fn ElkPortSide::is_vertical(self : ElkPortSide) -> Bool {
+    │                 ─────┬─────  
+    │                      ╰─────── Warning (unused_value): Unused function 'is_vertical'
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:103:17 ]
+     │
+ 103 │ fn ElkPortSide::is_horizontal(self : ElkPortSide) -> Bool {
+     │                 ──────┬──────  
+     │                       ╰──────── Warning (unused_value): Unused function 'is_horizontal'
+─────╯
+Warning: [0006]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:125:3 ]
+     │
+ 125 │   Map(Map[String, PropertyValue])
+     │   ─┬─  
+     │    ╰─── Warning (unused_constructor): Variant 'Map' is never constructed
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:149:19 ]
+     │
+ 149 │ fn ElkProperties::get(self : ElkProperties, key : String) -> PropertyValue? {
+     │                   ─┬─  
+     │                    ╰─── Warning (unused_value): Unused function 'get'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:225:19 ]
+     │
+ 225 │ fn ElkProperties::get_map(
+     │                   ───┬───  
+     │                      ╰───── Warning (unused_value): Unused function 'get_map'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:263:19 ]
+     │
+ 263 │ fn ElkProperties::get_string_or(
+     │                   ──────┬──────  
+     │                         ╰──────── Warning (unused_value): Unused function 'get_string_or'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:328:13 ]
+     │
+ 328 │ fn ElkPort::new(id : String) -> ElkPort {
+     │             ─┬─  
+     │              ╰─── Warning (unused_value): Unused function 'new'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:423:13 ]
+     │
+ 423 │ fn ElkEdge::hyperedge(
+     │             ────┬────  
+     │                 ╰────── Warning (unused_value): Unused function 'hyperedge'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:521:13 ]
+     │
+ 521 │ fn ElkNode::with_size(id : String, width : Double, height : Double) -> ElkNode {
+     │             ────┬────  
+     │                 ╰────── Warning (unused_value): Unused function 'with_size'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:538:13 ]
+     │
+ 538 │ fn ElkNode::is_leaf(self : ElkNode) -> Bool {
+     │             ───┬───  
+     │                ╰───── Warning (unused_value): Unused function 'is_leaf'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:544:13 ]
+     │
+ 544 │ fn ElkNode::is_compound(self : ElkNode) -> Bool {
+     │             ─────┬─────  
+     │                  ╰─────── Warning (unused_value): Unused function 'is_compound'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:574:13 ]
+     │
+ 574 │ fn ElkNode::find_child(self : ElkNode, id : String) -> ElkNode? {
+     │             ─────┬────  
+     │                  ╰────── Warning (unused_value): Unused function 'find_child'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:600:13 ]
+     │
+ 600 │ fn ElkNode::find_port(self : ElkNode, id : String) -> ElkPort? {
+     │             ────┬────  
+     │                 ╰────── Warning (unused_value): Unused function 'find_port'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:617:13 ]
+     │
+ 617 │ fn ElkNode::all_nodes(self : ElkNode) -> Array[ElkNode] {
+     │             ────┬────  
+     │                 ╰────── Warning (unused_value): Unused function 'all_nodes'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:627:13 ]
+     │
+ 627 │ fn ElkNode::all_edges(self : ElkNode) -> Array[ElkEdge] {
+     │             ────┬────  
+     │                 ╰────── Warning (unused_value): Unused function 'all_edges'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_base_types.mbt:638:13 ]
+     │
+ 638 │ fn ElkNode::calculate_bounds(self : ElkNode) -> (Double, Double) {
+     │             ────────┬───────  
+     │                     ╰───────── Warning (unused_value): Unused function 'calculate_bounds'
+─────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_bridge.mbt:67:4 ]
+    │
+ 67 │ fn endpoint_matches(obj_id : String, node_id : String) -> Bool {
+    │    ────────┬───────  
+    │            ╰───────── Warning (unused_value): Unused function 'endpoint_matches'
+────╯
+Warning: [0002]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_bridge.mbt:459:3 ]
+     │
+ 459 │   config : LayoutConfig,
+     │   ───┬──  
+     │      ╰──── Warning (unused_value): Unused variable 'config'
+─────╯
+Warning: [0004]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:44:8 ]
+    │
+ 44 │ struct NeighborRef {
+    │        ─────┬─────  
+    │             ╰─────── Warning (missing_priv): The type 'NeighborRef' does not occur in public signature of current package, consider marking it as `priv`.
+────╯
+Warning: [0004]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:50:8 ]
+    │
+ 50 │ struct NeighborInfo {
+    │        ──────┬─────  
+    │              ╰─────── Warning (missing_priv): The type 'NeighborInfo' does not occur in public signature of current package, consider marking it as `priv`.
+────╯
+Warning: [0004]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:57:8 ]
+    │
+ 57 │ struct ClassEdge {
+    │        ────┬────  
+    │            ╰────── Warning (missing_priv): The type 'ClassEdge' does not occur in public signature of current package, consider marking it as `priv`.
+────╯
+Warning: [0004]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:63:8 ]
+    │
+ 63 │ struct ClassNode {
+    │        ────┬────  
+    │            ╰────── Warning (missing_priv): The type 'ClassNode' does not occur in public signature of current package, consider marking it as `priv`.
+────╯
+Warning: [0007]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:64:3 ]
+    │
+ 64 │   node_id : String
+    │   ───┬───  
+    │      ╰───── Warning (unused_field): Field 'node_id' is never read
+────╯
+Warning: [0004]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:71:8 ]
+    │
+ 71 │ struct BKLayout {
+    │        ────┬───  
+    │            ╰───── Warning (missing_priv): The type 'BKLayout' does not occur in public signature of current package, consider marking it as `priv`.
+────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:376:7 ]
+     │
+ 376 │       @double.neg_infinity
+     │       ──────────┬─────────  
+     │                 ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:378:7 ]
+     │
+ 378 │       @double.infinity
+     │       ────────┬───────  
+     │               ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0004]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:845:8 ]
+     │
+ 845 │ struct Postprocessable {
+     │        ───────┬───────  
+     │               ╰───────── Warning (missing_priv): The type 'Postprocessable' does not occur in public signature of current package, consider marking it as `priv`.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:909:5 ]
+     │
+ 909 │     @double.infinity
+     │     ────────┬───────  
+     │             ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:911:5 ]
+     │
+ 911 │     @double.neg_infinity
+     │     ──────────┬─────────  
+     │               ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:984:7 ]
+     │
+ 984 │       @double.infinity
+     │       ────────┬───────  
+     │               ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:986:7 ]
+     │
+ 986 │       @double.neg_infinity
+     │       ──────────┬─────────  
+     │                 ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1016:14 ]
+      │
+ 1016 │     if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      │              ────────┬───────  
+      │                      ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1016:39 ]
+      │
+ 1016 │     if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      │                                       ──────────┬─────────  
+      │                                                 ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1046:14 ]
+      │
+ 1046 │     if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      │              ────────┬───────  
+      │                      ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1046:39 ]
+      │
+ 1046 │     if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      │                                       ──────────┬─────────  
+      │                                                 ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1082:19 ]
+      │
+ 1082 │   let threshold = @double.infinity
+      │                   ────────┬───────  
+      │                           ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1196:7 ]
+      │
+ 1196 │       @double.neg_infinity
+      │       ──────────┬─────────  
+      │                 ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1198:7 ]
+      │
+ 1198 │       @double.infinity
+      │       ────────┬───────  
+      │               ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1349:15 ]
+      │
+ 1349 │               @double.neg_infinity
+      │               ──────────┬─────────  
+      │                         ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1351:15 ]
+      │
+ 1351 │               @double.infinity
+      │               ────────┬───────  
+      │                       ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1354:47 ]
+      │
+ 1354 │         if (layout.vdir == Up && sink_shift > @double.neg_infinity) ||
+      │                                               ──────────┬─────────  
+      │                                                         ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1355:48 ]
+      │
+ 1355 │           (layout.vdir == Down && sink_shift < @double.infinity) {
+      │                                                ────────┬───────  
+      │                                                        ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1387:21 ]
+      │
+ 1387 │   let mut min_pos = @double.infinity
+      │                     ────────┬───────  
+      │                             ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1388:21 ]
+      │
+ 1388 │   let mut max_pos = @double.neg_infinity
+      │                     ──────────┬─────────  
+      │                               ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1402:17 ]
+      │
+ 1402 │   if min_pos == @double.infinity {
+      │                 ────────┬───────  
+      │                         ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1417:19 ]
+      │
+ 1417 │     let mut pos = @double.neg_infinity
+      │                   ──────────┬─────────  
+      │                             ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1476:21 ]
+      │
+ 1476 │   let mut min_pos = @double.infinity
+      │                     ────────┬───────  
+      │                             ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1483:17 ]
+      │
+ 1483 │   if min_pos == @double.infinity || min_pos == 0.0 {
+      │                 ────────┬───────  
+      │                         ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1507:19 ]
+      │
+ 1507 │     min_vals.push(@double.infinity)
+      │                   ────────┬───────  
+      │                           ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1508:19 ]
+      │
+ 1508 │     max_vals.push(@double.neg_infinity)
+      │                   ──────────┬─────────  
+      │                             ╰─────────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1596:4 ]
+      │
+ 1596 │ fn select_smallest_layout(
+      │    ───────────┬──────────  
+      │               ╰──────────── Warning (unused_value): Unused function 'select_smallest_layout'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1614:4 ]
+      │
+ 1614 │ fn select_favor_straight_layout(
+      │    ──────────────┬─────────────  
+      │                  ╰─────────────── Warning (unused_value): Unused function 'select_favor_straight_layout'
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_brandes_koepf.mbt:1788:25 ]
+      │
+ 1788 │     let mut best_span = @double.infinity
+      │                         ────────┬───────  
+      │                                 ╰───────── Warning (core_package_not_imported): Package `double` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:34:10 ]
+    │
+ 34 │ } derive(Show, Eq)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:34:16 ]
+    │
+ 34 │ } derive(Show, Eq)
+    │                ─┬  
+    │                 ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:40:10 ]
+    │
+ 40 │ } derive(Show, Eq)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:40:16 ]
+    │
+ 40 │ } derive(Show, Eq)
+    │                ─┬  
+    │                 ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:48:10 ]
+    │
+ 48 │ } derive(Show, Eq)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:48:16 ]
+    │
+ 48 │ } derive(Show, Eq)
+    │                ─┬  
+    │                 ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_components.mbt:200:4 ]
+     │
+ 200 │ fn component_bounds_edge(edge : ElkEdge, b : Bounds) -> Bounds {
+     │    ──────────┬──────────  
+     │              ╰──────────── Warning (unused_value): Unused function 'component_bounds_edge'
+─────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:40:10 ]
+    │
+ 40 │ } derive(Show)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:83:16 ]
+    │
+ 83 │ } derive(Show, Eq)
+    │                ─┬  
+    │                 ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:91:10 ]
+    │
+ 91 │ } derive(Show)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:111:10 ]
+     │
+ 111 │ } derive(Show)
+     │          ──┬─  
+     │            ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:157:10 ]
+     │
+ 157 │ } derive(Show)
+     │          ──┬─  
+     │            ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:163:10 ]
+     │
+ 163 │ } derive(Show)
+     │          ──┬─  
+     │            ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:176:4 ]
+     │
+ 176 │ fn segment_is_dummy(seg : HyperEdgeSegment) -> Bool {
+     │    ────────┬───────  
+     │            ╰───────── Warning (unused_value): Unused function 'segment_is_dummy'
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:341:18 ]
+     │
+ 341 │         let lo = @cmp.minimum(src.layer, tgt.layer)
+     │                  ──────┬─────  
+     │                        ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:342:18 ]
+     │
+ 342 │         let hi = @cmp.maximum(src.layer, tgt.layer)
+     │                  ──────┬─────  
+     │                        ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:659:20 ]
+     │
+ 659 │           let lo = @cmp.minimum(a.layer, b.layer)
+     │                    ──────┬─────  
+     │                          ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:660:20 ]
+     │
+ 660 │           let hi = @cmp.maximum(a.layer, b.layer)
+     │                    ──────┬─────  
+     │                          ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:1228:11 ]
+      │
+ 1228 │           @cmp.minimum(crossings_s1_left, crossings_s2_left)
+      │           ──────┬─────  
+      │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:1593:20 ]
+      │
+ 1593 │         max_rank = @cmp.maximum(max_rank, segments[target].routing_slot)
+      │                    ──────┬─────  
+      │                          ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:2319:4 ]
+      │
+ 2319 │ fn assign_routing_slots(
+      │    ──────────┬─────────  
+      │              ╰─────────── Warning (unused_value): Unused function 'assign_routing_slots'
+──────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_edge_routing.mbt:2452:4 ]
+      │
+ 2452 │ fn route_self_loops(graph : LGraph, direction : LayoutDirection) -> Unit {
+      │    ────────┬───────  
+      │            ╰───────── Warning (unused_value): Unused function 'route_self_loops'
+──────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:29:4 ]
+    │
+ 29 │ fn find_node_index(nodes : Array[LNode], id : String) -> Int {
+    │    ───────┬───────  
+    │           ╰───────── Warning (unused_value): Unused function 'find_node_index'
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:86:4 ]
+    │
+ 86 │ fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
+    │    ─────────┬────────  
+    │             ╰────────── Warning (unused_value): Unused function 'elk_layered_layout'
+────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:263:29 ]
+     │
+ 263 │       let mut max_outflow = @int.min_value
+     │                             ───────┬──────  
+     │                                    ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:281:24 ]
+     │
+ 281 │         let mut best = @int.max_value
+     │                        ───────┬──────  
+     │                               ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:283:55 ]
+     │
+ 283 │           let ord = node_order.get(node.id).unwrap_or(@int.max_value)
+     │                                                       ───────┬──────  
+     │                                                              ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:636:22 ]
+     │
+ 636 │       let port_pos = @math.floor(thickness / 2.0)
+     │                      ─────┬─────  
+     │                           ╰─────── Warning (core_package_not_imported): Package `math` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:1087:4 ]
+      │
+ 1087 │ fn remove_dummy_nodes(
+      │    ─────────┬────────  
+      │             ╰────────── Warning (unused_value): Unused function 'remove_dummy_nodes'
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:1257:26 ]
+      │
+ 1257 │               .unwrap_or(@int.max_value)
+      │                          ───────┬──────  
+      │                                 ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0002]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:1800:11 ]
+      │
+ 1800 │       let n1_target_port = first_outgoing_target_port(graph, n1)
+      │           ───────┬──────  
+      │                  ╰──────── Warning (unused_value): Unused variable 'n1_target_port'
+──────╯
+Warning: [0002]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:1804:11 ]
+      │
+ 1804 │       let n2_target_port = first_outgoing_target_port(graph, n2)
+      │           ───────┬──────  
+      │                  ╰──────── Warning (unused_value): Unused variable 'n2_target_port'
+──────╯
+Warning: [0027]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_main.mbt:1895:6 ]
+      │
+ 1895 │   fn compare_nodes(
+      │      ──────┬──────  
+      │            ╰──────── Warning (deprecated_syntax): The syntax fn f(a,b) { ... }; fn g(a,b) { ... } for mutually recursive functions is deprecated. Use letrec f = fn (a, b) { ... } and g = fn (...) { ... } instead.
+──────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_network_simplex.mbt:250:27 ]
+     │
+ 250 │       let mut min_slack = @int.max_value
+     │                           ───────┬──────  
+     │                                  ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_network_simplex.mbt:421:23 ]
+     │
+ 421 │   let mut min_slack = @int.max_value
+     │                       ───────┬──────  
+     │                              ╰──────── Warning (core_package_not_imported): Package `int` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_pipeline.mbt:34:10 ]
+    │
+ 34 │ } derive(Eq, Show)
+    │          ─┬  
+    │           ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_pipeline.mbt:34:14 ]
+    │
+ 34 │ } derive(Eq, Show)
+    │              ──┬─  
+    │                ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0007]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_pipeline.mbt:67:3 ]
+    │
+ 67 │   id : String
+    │   ─┬  
+    │    ╰── Warning (unused_field): Field 'id' is never read
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:28:3 ]
+    │
+ 28 │   NorthSouthPort // Virtual node for north/south ports
+    │   ───────┬──────  
+    │          ╰──────── Warning (unused_constructor): Variant 'NorthSouthPort' is never constructed
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:29:3 ]
+    │
+ 29 │   ExternalPort // Virtual node for external ports
+    │   ──────┬─────  
+    │         ╰─────── Warning (unused_constructor): Variant 'ExternalPort' is never constructed
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:31:3 ]
+    │
+ 31 │   BreakPoint // Virtual node for edge breaks
+    │   ─────┬────  
+    │        ╰────── Warning (unused_constructor): Variant 'BreakPoint' is never constructed
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:112:11 ]
+     │
+ 112 │ fn LNode::degree(self : LNode) -> Int {
+     │           ───┬──  
+     │              ╰──── Warning (unused_value): Unused function 'degree'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:124:11 ]
+     │
+ 124 │ fn LNode::out_degree(self : LNode) -> Int {
+     │           ─────┬────  
+     │                ╰────── Warning (unused_value): Unused function 'out_degree'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:194:12 ]
+     │
+ 194 │ fn LLabel::new(id : String, text : String) -> LLabel {
+     │            ─┬─  
+     │             ╰─── Warning (unused_value): Unused function 'new'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:295:11 ]
+     │
+ 295 │ fn LEdge::get_source(self : LEdge, graph : LGraph) -> LNode? {
+     │           ─────┬────  
+     │                ╰────── Warning (unused_value): Unused function 'get_source'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:301:11 ]
+     │
+ 301 │ fn LEdge::get_target(self : LEdge, graph : LGraph) -> LNode? {
+     │           ─────┬────  
+     │                ╰────── Warning (unused_value): Unused function 'get_target'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:322:12 ]
+     │
+ 322 │ fn LLayer::add_node(self : LLayer, node : LNode) -> Unit {
+     │            ────┬───  
+     │                ╰───── Warning (unused_value): Unused function 'add_node'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/elk_layered_types.mbt:989:12 ]
+     │
+ 989 │ fn LGraph::get_layer_nodes(self : LGraph, layer_index : Int) -> Array[LNode] {
+     │            ───────┬───────  
+     │                   ╰───────── Warning (unused_value): Unused function 'get_layer_nodes'
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/layout_wbtest.mbt:258:4 ]
+     │
+ 258 │ fn apply_layout_result_for_layout(
+     │    ───────────────┬──────────────  
+     │                   ╰──────────────── Warning (unused_value): Unused function 'apply_layout_result_for_layout'
+─────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:22:3 ]
+    │
+ 22 │   BeforePhase1
+    │   ──────┬─────  
+    │         ╰─────── Warning (unused_constructor): Variant 'BeforePhase1' is never constructed
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:23:3 ]
+    │
+ 23 │   BeforePhase2
+    │   ──────┬─────  
+    │         ╰─────── Warning (unused_constructor): Variant 'BeforePhase2' is never constructed
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:24:3 ]
+    │
+ 24 │   BeforePhase3
+    │   ──────┬─────  
+    │         ╰─────── Warning (unused_constructor): Variant 'BeforePhase3' is never constructed
+────╯
+Warning: [0006]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:25:3 ]
+    │
+ 25 │   BeforePhase4
+    │   ──────┬─────  
+    │         ╰─────── Warning (unused_constructor): Variant 'BeforePhase4' is never constructed
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:28:10 ]
+    │
+ 28 │ } derive(Eq, Show)
+    │          ─┬  
+    │           ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:28:14 ]
+    │
+ 28 │ } derive(Eq, Show)
+    │              ──┬─  
+    │                ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:46:10 ]
+    │
+ 46 │ } derive(Show)
+    │          ──┬─  
+    │            ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0007]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:55:3 ]
+    │
+ 55 │   id : String
+    │   ─┬  
+    │    ╰── Warning (unused_field): Field 'id' is never read
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/processor_framework.mbt:125:28 ]
+     │
+ 125 │ fn LayeredPipelineBuilder::add_when(
+     │                            ────┬───  
+     │                                ╰───── Warning (unused_value): Unused function 'add_when'
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:899:14 ]
+     │
+ 899 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarEntry]] = @priority_queue.new()
+     │              ───────────────────────────┬───────────────────────────  
+     │                                         ╰───────────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:899:44 ]
+     │
+ 899 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarEntry]] = @priority_queue.new()
+     │                                            ────────────┬───────────  
+     │                                                        ╰───────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:899:72 ]
+     │
+ 899 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarEntry]] = @priority_queue.new()
+     │                                                                        ─────────┬─────────  
+     │                                                                                 ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:901:5 ]
+     │
+ 901 │     @cmp.Reverse({
+     │     ──────┬─────  
+     │           ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:909:28 ]
+     │
+ 909 │   while open.pop() is Some(@cmp.Reverse(entry)) {
+     │                            ──────┬─────  
+     │                                  ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/routing.mbt:958:19 ]
+     │
+ 958 │         open.push(@cmp.Reverse({ f, g: tentative, state: nstate }))
+     │                   ──────┬─────  
+     │                         ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:526:14 ]
+     │
+ 526 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarState]] = @priority_queue.new()
+     │              ───────────────────────────┬───────────────────────────  
+     │                                         ╰───────────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:526:44 ]
+     │
+ 526 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarState]] = @priority_queue.new()
+     │                                            ────────────┬───────────  
+     │                                                        ╰───────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:526:72 ]
+     │
+ 526 │   let open : @priority_queue.PriorityQueue[@cmp.Reverse[AStarState]] = @priority_queue.new()
+     │                                                                        ─────────┬─────────  
+     │                                                                                 ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:530:13 ]
+     │
+ 530 │   open.push(@cmp.Reverse({ f: initial_h, g: 0.0, state: start_state }))
+     │             ──────┬─────  
+     │                   ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:535:28 ]
+     │
+ 535 │   while open.pop() is Some(@cmp.Reverse(entry)) {
+     │                            ──────┬─────  
+     │                                  ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:581:11 ]
+     │
+ 581 │           @cmp.Reverse({ f: tentative + h, g: tentative, state: nstate }),
+     │           ──────┬─────  
+     │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/engine_elk/unified_router.mbt:1203:4 ]
+      │
+ 1203 │ fn route_all_edges(
+      │    ───────┬───────  
+      │           ╰───────── Warning (unused_value): Unused function 'route_all_edges'
+──────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:97:10 ]
+    │
+ 97 │ } derive(Eq, Show)
+    │          ─┬  
+    │           ╰── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0001]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:97:14 ]
+    │
+ 97 │ } derive(Eq, Show)
+    │              ──┬─  
+    │                ╰─── Warning (unused_value): Unused trait implementation
+────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:113:14 ]
+     │
+ 113 │   let base = @cmp.maximum(6.0, config.edge_padding / 2.0)
+     │              ──────┬─────  
+     │                    ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:115:18 ]
+     │
+ 115 │     Down | Up => @cmp.maximum(0.0, @cmp.minimum(base, box.width / 2.0 - 1.0))
+     │                  ──────┬─────  
+     │                        ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:115:36 ]
+     │
+ 115 │     Down | Up => @cmp.maximum(0.0, @cmp.minimum(base, box.width / 2.0 - 1.0))
+     │                                    ──────┬─────  
+     │                                          ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:117:7 ]
+     │
+ 117 │       @cmp.maximum(0.0, @cmp.minimum(base, box.height / 2.0 - 1.0))
+     │       ──────┬─────  
+     │             ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:117:25 ]
+     │
+ 117 │       @cmp.maximum(0.0, @cmp.minimum(base, box.height / 2.0 - 1.0))
+     │                         ──────┬─────  
+     │                               ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:182:15 ]
+     │
+ 182 │   self_loop : @hashset.HashSet[Int],
+     │               ──────────┬──────────  
+     │                         ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:306:19 ]
+     │
+ 306 │     let min_sep = @cmp.minimum(track_spacing(config), max_sep)
+     │                   ──────┬─────  
+     │                         ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:310:16 ]
+     │
+ 310 │       let v1 = @cmp.maximum(lo, @cmp.minimum(v0, hi))
+     │                ──────┬─────  
+     │                      ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:310:33 ]
+     │
+ 310 │       let v1 = @cmp.maximum(lo, @cmp.minimum(v0, hi))
+     │                                 ──────┬─────  
+     │                                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:314:16 ]
+     │
+ 314 │       pos[i] = @cmp.maximum(pos[i], pos[i - 1] + min_sep)
+     │                ──────┬─────  
+     │                      ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:316:18 ]
+     │
+ 316 │     pos[k - 1] = @cmp.minimum(pos[k - 1], hi)
+     │                  ──────┬─────  
+     │                        ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:318:16 ]
+     │
+ 318 │       pos[i] = @cmp.minimum(pos[i], pos[i + 1] - min_sep)
+     │                ──────┬─────  
+     │                      ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:320:14 ]
+     │
+ 320 │     pos[0] = @cmp.maximum(pos[0], lo)
+     │              ──────┬─────  
+     │                    ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:387:10 ]
+     │
+ 387 │ } derive(Eq, Show)
+     │          ─┬  
+     │           ╰── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:387:14 ]
+     │
+ 387 │ } derive(Eq, Show)
+     │              ──┬─  
+     │                ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:393:14 ]
+     │
+ 393 │ } derive(Eq, Show)
+     │              ──┬─  
+     │                ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:407:3 ]
+     │
+ 407 │   @cmp.maximum(6.0, config.edge_padding / 2.0)
+     │   ──────┬─────  
+     │         ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:425:16 ]
+     │
+ 425 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[TrackUsage]] = @priority_queue.new()
+     │                ───────────────────────────┬───────────────────────────  
+     │                                           ╰───────────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:425:46 ]
+     │
+ 425 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[TrackUsage]] = @priority_queue.new()
+     │                                              ────────────┬───────────  
+     │                                                          ╰───────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:425:74 ]
+     │
+ 425 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[TrackUsage]] = @priority_queue.new()
+     │                                                                          ─────────┬─────────  
+     │                                                                                   ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:426:14 ]
+     │
+ 426 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │              ────────────────────────┬───────────────────────  
+     │                                      ╰───────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:426:44 ]
+     │
+ 426 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │                                            ────────┬────────  
+     │                                                    ╰────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:426:65 ]
+     │
+ 426 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │                                                                 ─────────┬─────────  
+     │                                                                          ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:430:33 ]
+     │
+ 430 │     while active.peek() is Some(@cmp.Reverse(u)) && u.end <= it.start {
+     │                                 ──────┬─────  
+     │                                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:432:17 ]
+     │
+ 432 │       free.push(@cmp.Reverse(u.track))
+     │                 ──────┬─────  
+     │                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:435:12 ]
+     │
+ 435 │       Some(@cmp.Reverse(t)) => t
+     │            ──────┬─────  
+     │                  ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:443:17 ]
+     │
+ 443 │     active.push(@cmp.Reverse({ end: it.end, track }))
+     │                 ──────┬─────  
+     │                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:453:10 ]
+     │
+ 453 │ } derive(Eq, Show)
+     │          ─┬  
+     │           ╰── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:453:14 ]
+     │
+ 453 │ } derive(Eq, Show)
+     │              ──┬─  
+     │                ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:459:14 ]
+     │
+ 459 │ } derive(Eq, Show)
+     │              ──┬─  
+     │                ╰─── Warning (unused_value): Unused trait implementation
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:486:16 ]
+     │
+ 486 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[LaneUsage]] = @priority_queue.new()
+     │                ───────────────────────────┬──────────────────────────  
+     │                                           ╰──────────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:486:46 ]
+     │
+ 486 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[LaneUsage]] = @priority_queue.new()
+     │                                              ───────────┬───────────  
+     │                                                         ╰───────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:486:73 ]
+     │
+ 486 │   let active : @priority_queue.PriorityQueue[@cmp.Reverse[LaneUsage]] = @priority_queue.new()
+     │                                                                         ─────────┬─────────  
+     │                                                                                  ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:487:14 ]
+     │
+ 487 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │              ────────────────────────┬───────────────────────  
+     │                                      ╰───────────────────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:487:44 ]
+     │
+ 487 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │                                            ────────┬────────  
+     │                                                    ╰────────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:487:65 ]
+     │
+ 487 │   let free : @priority_queue.PriorityQueue[@cmp.Reverse[Int]] = @priority_queue.new()
+     │                                                                 ─────────┬─────────  
+     │                                                                          ╰─────────── Warning (core_package_not_imported): Package `priority_queue` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:490:33 ]
+     │
+ 490 │     while active.peek() is Some(@cmp.Reverse(u)) && u.end <= it.start {
+     │                                 ──────┬─────  
+     │                                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:492:17 ]
+     │
+ 492 │       free.push(@cmp.Reverse(u.lane))
+     │                 ──────┬─────  
+     │                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:495:12 ]
+     │
+ 495 │       Some(@cmp.Reverse(t)) => t
+     │            ──────┬─────  
+     │                  ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:503:17 ]
+     │
+ 503 │     active.push(@cmp.Reverse({ end: it.end, lane }))
+     │                 ──────┬─────  
+     │                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:513:15 ]
+     │
+ 513 │   self_loop : @hashset.HashSet[Int],
+     │               ──────────┬──────────  
+     │                         ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:548:11 ]
+     │
+ 548 │           @cmp.minimum(start.x, end.x),
+     │           ──────┬─────  
+     │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:549:11 ]
+     │
+ 549 │           @cmp.maximum(start.x, end.x),
+     │           ──────┬─────  
+     │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:554:11 ]
+     │
+ 554 │           @cmp.minimum(start.y, end.y),
+     │           ──────┬─────  
+     │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:555:11 ]
+     │
+ 555 │           @cmp.maximum(start.y, end.y),
+     │           ──────┬─────  
+     │                 ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:562:15 ]
+     │
+ 562 │     let gap = @cmp.minimum(src_level, dst_level)
+     │               ──────┬─────  
+     │                     ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:578:21 ]
+     │
+ 578 │     let min_clear = @cmp.maximum(12.0, config.edge_padding / 2.0)
+     │                     ──────┬─────  
+     │                           ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:579:22 ]
+     │
+ 579 │     let max_offset = @cmp.maximum(
+     │                      ──────┬─────  
+     │                            ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:601:15 ]
+     │
+ 601 │   self_loop : @hashset.HashSet[Int],
+     │               ──────────┬──────────  
+     │                         ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:617:17 ]
+     │
+ 617 │     let start = @cmp.minimum(src_level, dst_level)
+     │                 ──────┬─────  
+     │                       ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:618:15 ]
+     │
+ 618 │     let end = @cmp.maximum(src_level, dst_level)
+     │               ──────┬─────  
+     │                     ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:940:14 ]
+     │
+ 940 │         mw = @cmp.maximum(w, mw)
+     │              ──────┬─────  
+     │                    ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:941:14 ]
+     │
+ 941 │         mh = @cmp.maximum(h, mh)
+     │              ──────┬─────  
+     │                    ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/layout.mbt:950:19 ]
+     │
+ 950 │     global_span = @cmp.maximum(global_span, span)
+     │                   ──────┬─────  
+     │                         ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:18:7 ]
+    │
+ 18 │ ) -> (@hashset.HashSet[Int], @hashset.HashSet[Int]) {
+    │       ──────────┬──────────  
+    │                 ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:18:30 ]
+    │
+ 18 │ ) -> (@hashset.HashSet[Int], @hashset.HashSet[Int]) {
+    │                              ──────────┬──────────  
+    │                                        ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:19:19 ]
+    │
+ 19 │   let self_loop : @hashset.HashSet[Int] = @hashset.HashSet::new(
+    │                   ──────────┬──────────  
+    │                             ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:19:43 ]
+    │
+ 19 │   let self_loop : @hashset.HashSet[Int] = @hashset.HashSet::new(
+    │                                           ────────┬───────  
+    │                                                   ╰───────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:25:18 ]
+    │
+ 25 │   let reversed : @hashset.HashSet[Int] = @hashset.HashSet::new(
+    │                  ──────────┬──────────  
+    │                            ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:25:42 ]
+    │
+ 25 │   let reversed : @hashset.HashSet[Int] = @hashset.HashSet::new(
+    │                                          ────────┬───────  
+    │                                                  ╰───────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:40:15 ]
+    │
+ 40 │   self_loop : @hashset.HashSet[Int],
+    │               ──────────┬──────────  
+    │                         ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/engine_railway/level.mbt:41:14 ]
+    │
+ 41 │   reversed : @hashset.HashSet[Int],
+    │              ──────────┬──────────  
+    │                        ╰──────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Warning: [0001]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/exporter/compile.mbt:387:11 ]
+     │
+ 387 │ fn Graph::find_object(self : Graph, id : String) -> Object? {
+     │           ─────┬─────  
+     │                ╰─────── Warning (unused_value): Unused function 'find_object'
+─────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/exporter/compile.mbt:1814:7 ]
+      │
+ 1814 │   try @strconv.parse_double(s) catch {
+      │       ──────────┬──────────  
+      │                 ╰──────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/exporter/compile.mbt:1901:7 ]
+      │
+ 1901 │   try @strconv.parse_int(s) catch {
+      │       ─────────┬────────  
+      │                ╰────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/graph/input.mbt:475:8 ]
+     │
+ 475 │   Some(@strconv.parse_int(self.value)) catch {
+     │        ─────────┬────────  
+     │                 ╰────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/graph/input.mbt:482:8 ]
+     │
+ 482 │   Some(@strconv.parse_double(self.value)) catch {
+     │        ──────────┬──────────  
+     │                  ╰──────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/ir/ir.mbt:550:35 ]
+     │
+ 550 │     Number(n) | String(n) => Some(@strconv.parse_int(n)) catch { _ => None }
+     │                                   ─────────┬────────  
+     │                                            ╰────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/ir/ir.mbt:558:35 ]
+     │
+ 558 │     Number(n) | String(n) => Some(@strconv.parse_double(n)) catch { _ => None }
+     │                                   ──────────┬──────────  
+     │                                             ╰──────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/parser/parser.mbt:610:11 ]
+     │
+ 610 │       try @strconv.parse_int(num_str) catch {
+     │           ─────────┬────────  
+     │                    ╰────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/renderer_svg/svg_render.mbt:792:23 ]
+     │
+ 792 │   let patterns_used : @hashset.HashSet[String] = @hashset.new()
+     │                       ────────────┬───────────  
+     │                                   ╰───────────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+     ╭─[ /Users/zhengyu/Documents/projects/diago/renderer_svg/svg_render.mbt:792:50 ]
+     │
+ 792 │   let patterns_used : @hashset.HashSet[String] = @hashset.new()
+     │                                                  ──────┬─────  
+     │                                                        ╰─────── Warning (core_package_not_imported): Package `hashset` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+─────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/renderer_svg/svg_render.mbt:2347:24 ]
+      │
+ 2347 │       let max_radius = @cmp.minimum(len1, len2) / 2.0
+      │                        ──────┬─────  
+      │                              ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+      ╭─[ /Users/zhengyu/Documents/projects/diago/renderer_svg/svg_render.mbt:2348:15 ]
+      │
+ 2348 │       let r = @cmp.minimum(radius, max_radius)
+      │               ──────┬─────  
+      │                     ╰─────── Warning (core_package_not_imported): Package `cmp` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+──────╯
+Warning: [0071]
+    ╭─[ /Users/zhengyu/Documents/projects/diago/tests/examples_svg_e2e_test.mbt:66:8 ]
+    │
+ 66 │   Some(@strconv.parse_double(s)) catch {
+    │        ──────────┬──────────  
+    │                  ╰──────────── Warning (core_package_not_imported): Package `strconv` from `moonbitlang/core/` is used without import. This is deprecated. Please add it to the imports in the moon.pkg file.
+────╯
+Finished. moon: ran 13 tasks, now up to date (261 warnings, 0 errors)

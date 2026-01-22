@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/sugiyama"
 
-import(
-  "Milky2018/diago/graph"
-)
+import {
+  "Milky2018/diago/graph",
+}
 
 // Values
 pub fn adjust_cross_rank_spacing(CoordinateResult, Array[Array[String]], Map[String, Double], Double, Bool) -> Unit

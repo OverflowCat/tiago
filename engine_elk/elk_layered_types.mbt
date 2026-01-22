@@ -89,9 +89,11 @@ fn LNode::from_elk_node(elk_node : ElkNode) -> LNode {
   for label in elk_node.labels {
     node.labels.push(LLabel::from_elk_label(label))
   }
-  // Convert ports
-  for port in elk_node.ports {
-    node.ports.push(LPort::from_elk_port(port))
+  // Convert ports (preserve input order for model order processing)
+  for i, port in elk_node.ports {
+    let lport = LPort::from_elk_port(port)
+    lport.properties.set("diago.layered.modelOrder", Int(i))
+    node.ports.push(lport)
   }
   node
 }
@@ -379,9 +381,10 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
   graph.height = elk_node.height
   graph.properties.copy_from(elk_node.properties)
 
-  // Convert all children to LNodes
-  for child in elk_node.children {
+  // Convert all children to LNodes (preserve input order for model order)
+  for i, child in elk_node.children {
     let lnode = LNode::from_elk_node(child)
+    lnode.properties.set("diago.layered.modelOrder", Int(i))
     graph.add_node(lnode)
 
     // Handle nested graphs recursively
@@ -403,7 +406,7 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
   }
 
   // Convert all edges - now using IDs instead of node references
-  for elk_edge in elk_node.edges {
+  for i, elk_edge in elk_node.edges {
     // Handle hyperedges - for now, assume simple edges
     if elk_edge.sources.length() > 0 && elk_edge.targets.length() > 0 {
       let original_source_id = elk_edge.sources[0]
@@ -431,6 +434,7 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
         ledge.source_port_id = elk_edge.source_port_id()
         ledge.target_port_id = elk_edge.target_port_id()
         ledge.properties.copy_from(elk_edge.properties)
+        ledge.properties.set("diago.layered.modelOrder", Int(i))
         ledge.properties.set(
           "diago.layered.originalSourceId",
           String(original_source_id),
@@ -1049,9 +1053,11 @@ fn LGraph::initialize_layers(self : LGraph) -> Unit {
     for i, node in layer.nodes {
       node.position = i
       if enable_model_order &&
+        node.node_type is Normal &&
         !node.properties.get_bool_or(
           "org.eclipse.elk.alg.layered.considerModelOrder.noModelOrder", false,
-        ) {
+        ) &&
+        node.properties.get_int("diago.layered.modelOrder") is None {
         node.properties.set("diago.layered.modelOrder", Int(i))
       }
     }

@@ -51,19 +51,13 @@ fn find_edge_index(edges : Array[LEdge], id : String) -> Int {
 
 ///|
 /// Execute the layered layout algorithm
-fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
+fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
   let resolved_options = resolve_options_for_graph(options, graph)
   ensure_sizes(graph, resolved_options)
   // First, recursively layout compound nodes (children with their own children)
   for child in graph.children {
     if child.children.length() > 0 {
-      elk_layered_layout(child, resolved_options)
-      // Update child size to contain its children
-      let (child_w, child_h) = child.calculate_bounds()
-      let child_options = resolve_options_for_node(resolved_options, child)
-      let padding = child_options.padding.unwrap_or(ElkPadding::uniform(12.0))
-      child.width = child_w + padding.left + padding.right
-      child.height = child_h + padding.top + padding.bottom
+      elk_layered_layout_impl(child, resolved_options)
     }
   }
 
@@ -87,6 +81,12 @@ fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   lgraph.to_elk_node(graph, direction, resolved_options)
 }
 
+///|
+/// Execute the layered layout algorithm
+fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
+  elk_layered_layout_with_components(graph, options)
+}
+
 // ============================================================================
 // Phase 1: Cycle Breaking
 // ============================================================================
@@ -95,91 +95,216 @@ fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
 /// Break cycles in the graph by reversing certain edges
 fn break_cycles(graph : LGraph, strategy : CycleBreakingStrategy) -> Unit {
   match strategy {
-    GreedyCycleBreaker | GreedyModelOrder => greedy_cycle_breaker(graph)
+    GreedyCycleBreaker => greedy_cycle_breaker(graph, false)
+    GreedyModelOrder => greedy_cycle_breaker(graph, true)
     DepthFirst => dfs_cycle_breaker(graph)
-    InteractiveCycleBreaker | ModelOrder => greedy_cycle_breaker(graph)
+    InteractiveCycleBreaker => greedy_cycle_breaker(graph, false)
+    ModelOrder => greedy_cycle_breaker(graph, true)
   }
 }
 
 ///|
 /// Greedy cycle breaker - based on ELK's GreedyCycleBreaker
 /// Uses out-degree vs in-degree heuristic to select edges to reverse
-fn greedy_cycle_breaker(graph : LGraph) -> Unit {
-  // Create working copies of degree counts
-  let in_degree : Map[String, Int] = {}
-  let out_degree : Map[String, Int] = {}
-  let remaining_nodes : Array[LNode] = []
-  for node in graph.nodes {
-    in_degree[node.id] = node.in_degree()
-    out_degree[node.id] = node.out_degree()
-    remaining_nodes.push(node)
+fn greedy_cycle_breaker(graph : LGraph, use_model_order : Bool) -> Unit {
+  let nodes = graph.nodes
+  if nodes.is_empty() {
+    return
   }
-
-  // Track node order (for determining edge direction)
   let node_order : Map[String, Int] = {}
-  let mut order_index = 0
-
-  // Process nodes until all are ordered
-  while remaining_nodes.length() > 0 {
-    // Find sinks (nodes with out_degree == 0 in remaining graph)
-    let sinks = remaining_nodes.filter(fn(n) {
-      out_degree.get(n.id).unwrap_or(0) == 0
-    })
-
-    // Find sources (nodes with in_degree == 0 in remaining graph)
-    let sources = remaining_nodes.filter(fn(n) {
-      in_degree.get(n.id).unwrap_or(0) == 0
-    })
-
-    // Prefer sources, then sinks, then highest out-in difference
-    let node = if sources.length() > 0 {
-      sources[0]
-    } else if sinks.length() > 0 {
-      sinks[0]
-    } else {
-      // Find node with maximum out_degree - in_degree
-      let mut best_node : LNode? = None
-      let mut best_diff = @int.min_value
-      for n in remaining_nodes {
-        let diff = out_degree.get(n.id).unwrap_or(0) -
-          in_degree.get(n.id).unwrap_or(0)
-        if diff > best_diff {
-          best_diff = diff
-          best_node = Some(n)
+  for i, node in nodes {
+    node_order[node.id] = i
+  }
+  let indeg : Map[String, Int] = {}
+  let outdeg : Map[String, Int] = {}
+  let mark : Map[String, Int] = {}
+  for node in nodes {
+    indeg[node.id] = 0
+    outdeg[node.id] = 0
+    mark[node.id] = 0
+  }
+  for edge in graph.edges {
+    if edge.source_id == edge.target_id {
+      continue
+    }
+    let mut prio = edge.priority
+    if prio < 0 {
+      prio = 0
+    }
+    let w = prio + 1
+    outdeg[edge.source_id] = outdeg.get(edge.source_id).unwrap_or(0) + w
+    indeg[edge.target_id] = indeg.get(edge.target_id).unwrap_or(0) + w
+  }
+  let sources : Array[LNode] = []
+  let sinks : Array[LNode] = []
+  for node in nodes {
+    let outd = outdeg.get(node.id).unwrap_or(0)
+    let ind = indeg.get(node.id).unwrap_or(0)
+    if outd == 0 {
+      sinks.push(node)
+    } else if ind == 0 {
+      sources.push(node)
+    }
+  }
+  let mut next_right = -1
+  let mut next_left = 1
+  let mut remaining = nodes.length()
+  fn reverse_edge_in_graph(graph : LGraph, edge : LEdge) -> Unit {
+    let old_src = edge.source_id
+    let old_tgt = edge.target_id
+    match graph.get_node(old_src) {
+      Some(node) => {
+        let idx = find_edge_index(node.outgoing_edges, edge.id)
+        if idx >= 0 {
+          node.outgoing_edges.remove(idx) |> ignore
         }
       }
-      match best_node {
-        Some(n) => n
-        None => remaining_nodes[0]
+      None => ()
+    }
+    match graph.get_node(old_tgt) {
+      Some(node) => {
+        let idx = find_edge_index(node.incoming_edges, edge.id)
+        if idx >= 0 {
+          node.incoming_edges.remove(idx) |> ignore
+        }
       }
+      None => ()
     }
-
-    // Assign order to this node
-    node_order[node.id] = order_index
-    order_index += 1
-
-    // Remove node from remaining and update degrees
-    let idx = find_node_index(remaining_nodes, node.id)
-    if idx >= 0 {
-      remaining_nodes.remove(idx) |> ignore
+    edge.reverse()
+    match graph.get_node(edge.source_id) {
+      Some(node) => node.outgoing_edges.push(edge)
+      None => ()
     }
-
-    // Update degrees of neighbors
-    for edge in node.outgoing_edges {
-      in_degree[edge.target_id] = in_degree.get(edge.target_id).unwrap_or(1) - 1
-    }
-    for edge in node.incoming_edges {
-      out_degree[edge.source_id] = out_degree.get(edge.source_id).unwrap_or(1) -
-        1
+    match graph.get_node(edge.target_id) {
+      Some(node) => node.incoming_edges.push(edge)
+      None => ()
     }
   }
 
-  // Reverse edges that go against the order (back edges)
+  fn update_neighbors(
+    graph : LGraph,
+    indeg : Map[String, Int],
+    outdeg : Map[String, Int],
+    mark : Map[String, Int],
+    sources : Array[LNode],
+    sinks : Array[LNode],
+    node : LNode,
+  ) -> Unit {
+    for edge in node.outgoing_edges {
+      if edge.source_id == edge.target_id {
+        continue
+      }
+      let other_id = edge.target_id
+      if mark.get(other_id).unwrap_or(0) != 0 {
+        continue
+      }
+      let mut prio = edge.priority
+      if prio < 0 {
+        prio = 0
+      }
+      let w = prio + 1
+      indeg[other_id] = indeg.get(other_id).unwrap_or(0) - w
+      if indeg.get(other_id).unwrap_or(0) <= 0 &&
+        outdeg.get(other_id).unwrap_or(0) > 0 {
+        match graph.get_node(other_id) {
+          Some(n) => sources.push(n)
+          None => ()
+        }
+      }
+    }
+    for edge in node.incoming_edges {
+      if edge.source_id == edge.target_id {
+        continue
+      }
+      let other_id = edge.source_id
+      if mark.get(other_id).unwrap_or(0) != 0 {
+        continue
+      }
+      let mut prio = edge.priority
+      if prio < 0 {
+        prio = 0
+      }
+      let w = prio + 1
+      outdeg[other_id] = outdeg.get(other_id).unwrap_or(0) - w
+      if outdeg.get(other_id).unwrap_or(0) <= 0 &&
+        indeg.get(other_id).unwrap_or(0) > 0 {
+        match graph.get_node(other_id) {
+          Some(n) => sinks.push(n)
+          None => ()
+        }
+      }
+    }
+  }
+
+  while remaining > 0 {
+    while !sinks.is_empty() {
+      let sink = sinks[0]
+      sinks.remove(0) |> ignore
+      if mark.get(sink.id).unwrap_or(0) != 0 {
+        continue
+      }
+      mark[sink.id] = next_right
+      next_right = next_right - 1
+      update_neighbors(graph, indeg, outdeg, mark, sources, sinks, sink)
+      remaining = remaining - 1
+    }
+    while !sources.is_empty() {
+      let source = sources[0]
+      sources.remove(0) |> ignore
+      if mark.get(source.id).unwrap_or(0) != 0 {
+        continue
+      }
+      mark[source.id] = next_left
+      next_left = next_left + 1
+      update_neighbors(graph, indeg, outdeg, mark, sources, sinks, source)
+      remaining = remaining - 1
+    }
+    if remaining > 0 {
+      let mut max_outflow = @int.min_value
+      let candidates : Array[LNode] = []
+      for node in nodes {
+        if mark.get(node.id).unwrap_or(0) != 0 {
+          continue
+        }
+        let outflow = outdeg.get(node.id).unwrap_or(0) -
+          indeg.get(node.id).unwrap_or(0)
+        if outflow > max_outflow {
+          max_outflow = outflow
+          candidates.clear()
+          candidates.push(node)
+        } else if outflow == max_outflow {
+          candidates.push(node)
+        }
+      }
+      let mut chosen = candidates[0]
+      if use_model_order {
+        let mut best = @int.max_value
+        for node in candidates {
+          let ord = node_order.get(node.id).unwrap_or(@int.max_value)
+          if ord < best {
+            best = ord
+            chosen = node
+          }
+        }
+      }
+      mark[chosen.id] = next_left
+      next_left = next_left + 1
+      update_neighbors(graph, indeg, outdeg, mark, sources, sinks, chosen)
+      remaining = remaining - 1
+    }
+  }
+  let shift_base = nodes.length() + 1
+  for node in nodes {
+    let v = mark.get(node.id).unwrap_or(0)
+    if v < 0 {
+      mark[node.id] = v + shift_base
+    }
+  }
   for edge in graph.edges {
-    let source_order = node_order.get(edge.source_id).unwrap_or(0)
-    let target_order = node_order.get(edge.target_id).unwrap_or(0)
-    if source_order > target_order {
-      edge.reverse()
+    let source_mark = mark.get(edge.source_id).unwrap_or(0)
+    let target_mark = mark.get(edge.target_id).unwrap_or(0)
+    if source_mark > target_mark {
+      reverse_edge_in_graph(graph, edge)
     }
   }
 }
@@ -416,6 +541,7 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       dummy_id,
     )
     edge_to_dummy.original_id = Some(origin)
+    edge_to_dummy.properties.copy_from(edge.properties)
     edge_to_dummy.priority = edge.priority
     edge_to_dummy.source_port_id = edge.source_port_id
     match graph.get_node(edge.source_id) {
@@ -432,6 +558,7 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       edge.target_id,
     )
     edge_from_dummy.original_id = Some(origin)
+    edge_from_dummy.properties.copy_from(edge.properties)
     edge_from_dummy.priority = edge.priority
     edge_from_dummy.target_port_id = edge.target_port_id
     dummy.outgoing_edges.push(edge_from_dummy)
@@ -453,6 +580,22 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
 ///|
 /// Insert dummy nodes for edges spanning multiple layers.
 fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
+  fn edge_thickness(edge : LEdge) -> Double {
+    let mut thickness = match edge.properties.get_double("elk.edge.thickness") {
+      Some(v) => v
+      None =>
+        match edge.properties.get_double("org.eclipse.elk.edge.thickness") {
+          Some(v) => v
+          None => 1.0
+        }
+    }
+    if thickness < 0.0 {
+      thickness = 0.0
+      edge.properties.set("elk.edge.thickness", Double(thickness))
+    }
+    thickness
+  }
+
   // Collect long edges
   let long_edges = graph.get_long_edges()
   for edge in long_edges {
@@ -478,6 +621,7 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       None => edge.id
     }
     let mut prev_node_id = edge.source_id
+    let mut prev_port_id = edge.source_port_id
     let direction = if target_layer > source_layer { 1 } else { -1 }
     let mut layer_idx = source_layer + direction
     while layer_idx != target_layer {
@@ -485,8 +629,21 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       let dummy = LNode::new(dummy_id, LongEdgeDummy)
       dummy.layer = layer_idx
       dummy.origin_edge = Some(origin)
-      dummy.width = 1.0
-      dummy.height = 1.0
+      let thickness = edge_thickness(edge)
+      dummy.width = 0.0
+      dummy.height = thickness
+      dummy.properties.set("elk.portConstraints", Enum("FIXED_POS"))
+      let port_pos = @math.floor(thickness / 2.0)
+      let input_port_id = dummy_id + "_in"
+      let output_port_id = dummy_id + "_out"
+      let input_port = { ..LPort::new(input_port_id), side: West, y: port_pos }
+      let output_port = {
+        ..LPort::new(output_port_id),
+        side: East,
+        y: port_pos,
+      }
+      dummy.ports.push(input_port)
+      dummy.ports.push(output_port)
       graph.add_node(dummy)
       let edge_to_dummy = LEdge::new(
         "e_" + prev_node_id + "_" + dummy_id,
@@ -494,10 +651,10 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
         dummy_id,
       )
       edge_to_dummy.original_id = Some(origin)
+      edge_to_dummy.properties.copy_from(edge.properties)
       edge_to_dummy.priority = edge.priority
-      if prev_node_id == edge.source_id {
-        edge_to_dummy.source_port_id = edge.source_port_id
-      }
+      edge_to_dummy.source_port_id = prev_port_id
+      edge_to_dummy.target_port_id = Some(input_port_id)
       match graph.get_node(prev_node_id) {
         Some(prev) => prev.outgoing_edges.push(edge_to_dummy)
         None => ()
@@ -505,6 +662,7 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       dummy.incoming_edges.push(edge_to_dummy)
       graph.edges.push(edge_to_dummy)
       prev_node_id = dummy_id
+      prev_port_id = Some(output_port_id)
       layer_idx = layer_idx + direction
     }
     let final_edge = LEdge::new(
@@ -513,7 +671,9 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       edge.target_id,
     )
     final_edge.original_id = Some(origin)
+    final_edge.properties.copy_from(edge.properties)
     final_edge.priority = edge.priority
+    final_edge.source_port_id = prev_port_id
     final_edge.target_port_id = edge.target_port_id
     match graph.get_node(prev_node_id) {
       Some(prev) => prev.outgoing_edges.push(final_edge)
@@ -938,17 +1098,1015 @@ fn remove_dummy_nodes(
 // ============================================================================
 
 ///|
-fn sort_layers_by_input_order(graph : LGraph) -> Unit {
-  let order : Map[String, Int] = {}
-  for i, node in graph.nodes {
-    order[node.id] = i
+fn sort_layers_by_input_order(
+  graph : LGraph,
+  options : LayoutOptions,
+  _direction : LayoutDirection,
+) -> Unit {
+  let strategy = options.consider_model_order_strategy.unwrap_or(None)
+  if strategy is None {
+    return
   }
-  for layer in graph.layers {
-    layer.nodes.sort_by(fn(a, b) {
-      let ia = order.get(a.id).unwrap_or(0)
-      let ib = order.get(b.id).unwrap_or(0)
-      ia - ib
-    })
+  fn port_model_order_enabled(graph : LGraph) -> Bool {
+    graph.properties.get_bool_or(
+      "elk.layered.considerModelOrder.portModelOrder", false,
+    ) ||
+    graph.properties.get_bool_or(
+      "org.eclipse.elk.alg.layered.considerModelOrder.portModelOrder", false,
+    )
+  }
+
+  fn node_model_order(node : LNode) -> Int? {
+    if node.node_type is Normal {
+      node.properties.get_int("diago.layered.modelOrder")
+    } else {
+      None
+    }
+  }
+
+  fn edge_model_order(edge : LEdge) -> Int {
+    edge.properties.get_int("diago.layered.modelOrder").unwrap_or(0)
+  }
+
+  fn port_model_order(port : LPort) -> Int? {
+    port.properties.get_int("diago.layered.modelOrder")
+  }
+
+  fn port_side_order(side : ElkPortSide) -> Int {
+    match side {
+      North => 0
+      East => 1
+      South => 2
+      West => 3
+      Undefined => 4
+    }
+  }
+
+  let incoming_by_port : Map[String, Array[LEdge]] = {}
+  let outgoing_by_port : Map[String, Array[LEdge]] = {}
+  for edge in graph.edges {
+    match edge.source_port_id {
+      Some(pid) => {
+        let arr = outgoing_by_port.get(pid).unwrap_or([])
+        arr.push(edge)
+        outgoing_by_port[pid] = arr
+      }
+      None => ()
+    }
+    match edge.target_port_id {
+      Some(pid) => {
+        let arr = incoming_by_port.get(pid).unwrap_or([])
+        arr.push(edge)
+        incoming_by_port[pid] = arr
+      }
+      None => ()
+    }
+  }
+  fn incoming_edges_for_port(
+    incoming_by_port : Map[String, Array[LEdge]],
+    port_id : String,
+  ) -> Array[LEdge] {
+    incoming_by_port.get(port_id).unwrap_or([])
+  }
+
+  fn outgoing_edges_for_port(
+    outgoing_by_port : Map[String, Array[LEdge]],
+    port_id : String,
+  ) -> Array[LEdge] {
+    outgoing_by_port.get(port_id).unwrap_or([])
+  }
+
+  fn first_incoming_edge(
+    node : LNode,
+    incoming_by_port : Map[String, Array[LEdge]],
+  ) -> LEdge? {
+    if node.ports.is_empty() {
+      if !node.incoming_edges.is_empty() {
+        return Some(node.incoming_edges[0])
+      }
+      return None
+    }
+    for port in node.ports {
+      let incoming = incoming_edges_for_port(incoming_by_port, port.id)
+      if !incoming.is_empty() {
+        return Some(incoming[0])
+      }
+    }
+    None
+  }
+
+  fn first_outgoing_edge(
+    node : LNode,
+    outgoing_by_port : Map[String, Array[LEdge]],
+  ) -> LEdge? {
+    if node.ports.is_empty() {
+      if !node.outgoing_edges.is_empty() {
+        return Some(node.outgoing_edges[0])
+      }
+      return None
+    }
+    for port in node.ports {
+      let outgoing = outgoing_edges_for_port(outgoing_by_port, port.id)
+      if !outgoing.is_empty() {
+        return Some(outgoing[0])
+      }
+    }
+    None
+  }
+
+  fn get_long_edge_target_node(graph : LGraph, edge : LEdge) -> LNode? {
+    let mut current = edge
+    while true {
+      match graph.get_node(current.target_id) {
+        Some(node) =>
+          if node.node_type is Normal {
+            return Some(node)
+          } else {
+            match first_outgoing_edge(node, outgoing_by_port) {
+              Some(next) => current = next
+              None => return None
+            }
+          }
+        None => return None
+      }
+    }
+    None
+  }
+
+  fn long_edge_target_node_preprocessing(
+    graph : LGraph,
+    node : LNode,
+    outgoing_by_port : Map[String, Array[LEdge]],
+  ) -> Map[String, Int] {
+    let target_node_model_order : Map[String, Int] = {}
+    for port in node.ports {
+      let outgoing = outgoing_edges_for_port(outgoing_by_port, port.id)
+      if outgoing.is_empty() {
+        continue
+      }
+      let edge = outgoing[0]
+      match get_long_edge_target_node(graph, edge) {
+        Some(target_node) => {
+          port.properties.set(
+            "diago.layered.longEdgeTargetNodeId",
+            String(target_node.id),
+          )
+          if !edge.reversed {
+            let previous = target_node_model_order
+              .get(target_node.id)
+              .unwrap_or(@int.max_value)
+            let order = edge_model_order(edge)
+            if order < previous {
+              target_node_model_order[target_node.id] = order
+            }
+          }
+        }
+        None => ()
+      }
+    }
+    target_node_model_order
+  }
+
+  let mut node_bigger_than : Map[String, Map[String, Bool]] = {}
+  let mut node_smaller_than : Map[String, Map[String, Bool]] = {}
+  let mut port_bigger_than : Map[String, Map[String, Bool]] = {}
+  let mut port_smaller_than : Map[String, Map[String, Bool]] = {}
+  fn node_set_has(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    value : String,
+  ) -> Bool {
+    match sets.get(key) {
+      Some(set) => set.get(value).unwrap_or(false)
+      None => false
+    }
+  }
+
+  fn node_set_add(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    value : String,
+  ) -> Unit {
+    let set = sets.get(key).unwrap_or({})
+    set[value] = true
+    sets[key] = set
+  }
+
+  fn node_set_add_all(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    other : Map[String, Bool],
+  ) -> Unit {
+    let set = sets.get(key).unwrap_or({})
+    for k, v in other {
+      if v {
+        set[k] = true
+      }
+    }
+    sets[key] = set
+  }
+
+  fn update_node_order(bigger : LNode, smaller : LNode) -> Unit {
+    node_set_add(node_bigger_than, bigger.id, smaller.id)
+    node_set_add(node_smaller_than, smaller.id, bigger.id)
+    let smaller_bigger = node_bigger_than.get(smaller.id).unwrap_or({})
+    let bigger_smaller = node_smaller_than.get(bigger.id).unwrap_or({})
+    for very_small, flag in smaller_bigger {
+      if flag {
+        node_set_add(node_bigger_than, bigger.id, very_small)
+        node_set_add(node_smaller_than, very_small, bigger.id)
+        node_set_add_all(node_smaller_than, very_small, bigger_smaller)
+      }
+    }
+    for very_big, flag in bigger_smaller {
+      if flag {
+        node_set_add(node_smaller_than, smaller.id, very_big)
+        node_set_add(node_bigger_than, very_big, smaller.id)
+        node_set_add_all(node_bigger_than, very_big, smaller_bigger)
+      }
+    }
+  }
+
+  fn model_order_from_connected_edges(
+    node : LNode,
+    incoming_by_port : Map[String, Array[LEdge]],
+  ) -> Int {
+    match first_incoming_edge(node, incoming_by_port) {
+      Some(edge) => edge_model_order(edge)
+      None => 0
+    }
+  }
+
+  fn first_incoming_from_prev(
+    graph : LGraph,
+    node : LNode,
+    prev_layer : Int,
+  ) -> (LNode?, LPort?, LEdge?) {
+    if node.ports.is_empty() {
+      for edge in node.incoming_edges {
+        match graph.get_node(edge.source_id) {
+          Some(src) =>
+            if src.layer == prev_layer {
+              return (Some(src), None, Some(edge))
+            }
+          None => ()
+        }
+      }
+      return (None, None, None)
+    }
+    for port in node.ports {
+      let incoming = incoming_edges_for_port(incoming_by_port, port.id)
+      if incoming.is_empty() {
+        continue
+      }
+      let edge = incoming[0]
+      match graph.get_node(edge.source_id) {
+        Some(src) =>
+          if src.layer == prev_layer {
+            let src_port = match edge.source_port_id {
+              Some(pid) => find_port_for_id(src, pid)
+              None => None
+            }
+            return (Some(src), src_port, Some(edge))
+          }
+        None => ()
+      }
+    }
+    (None, None, None)
+  }
+
+  fn first_incoming_source_port(graph : LGraph, node : LNode) -> LPort? {
+    match first_incoming_edge(node, incoming_by_port) {
+      Some(edge) =>
+        match graph.get_node(edge.source_id) {
+          Some(src) =>
+            match edge.source_port_id {
+              Some(pid) => find_port_for_id(src, pid)
+              None => None
+            }
+          None => None
+        }
+      None => None
+    }
+  }
+
+  fn first_incoming_source_node(graph : LGraph, node : LNode) -> LNode? {
+    match first_incoming_edge(node, incoming_by_port) {
+      Some(edge) => graph.get_node(edge.source_id)
+      None => None
+    }
+  }
+
+  fn first_outgoing_target_port(graph : LGraph, node : LNode) -> LPort? {
+    match first_outgoing_edge(node, outgoing_by_port) {
+      Some(edge) =>
+        match graph.get_node(edge.target_id) {
+          Some(tgt) =>
+            match edge.target_port_id {
+              Some(pid) => find_port_for_id(tgt, pid)
+              None => None
+            }
+          None => None
+        }
+      None => None
+    }
+  }
+
+  fn first_outgoing_target_node(graph : LGraph, node : LNode) -> LNode? {
+    match first_outgoing_edge(node, outgoing_by_port) {
+      Some(edge) => graph.get_node(edge.target_id)
+      None => None
+    }
+  }
+
+  fn port_set_has(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    value : String,
+  ) -> Bool {
+    match sets.get(key) {
+      Some(set) => set.get(value).unwrap_or(false)
+      None => false
+    }
+  }
+
+  fn port_set_add(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    value : String,
+  ) -> Unit {
+    let set = sets.get(key).unwrap_or({})
+    set[value] = true
+    sets[key] = set
+  }
+
+  fn port_set_add_all(
+    sets : Map[String, Map[String, Bool]],
+    key : String,
+    other : Map[String, Bool],
+  ) -> Unit {
+    let set = sets.get(key).unwrap_or({})
+    for k, v in other {
+      if v {
+        set[k] = true
+      }
+    }
+    sets[key] = set
+  }
+
+  fn update_port_order(
+    bigger_ori : LPort,
+    smaller_ori : LPort,
+    reverse_order : Int,
+  ) -> Unit {
+    let bigger = if reverse_order < 0 { smaller_ori } else { bigger_ori }
+    let smaller = if reverse_order < 0 { bigger_ori } else { smaller_ori }
+    port_set_add(port_bigger_than, bigger.id, smaller.id)
+    port_set_add(port_smaller_than, smaller.id, bigger.id)
+    let smaller_bigger = port_bigger_than.get(smaller.id).unwrap_or({})
+    let bigger_smaller = port_smaller_than.get(bigger.id).unwrap_or({})
+    for very_small, flag in smaller_bigger {
+      if flag {
+        port_set_add(port_bigger_than, bigger.id, very_small)
+        port_set_add(port_smaller_than, very_small, bigger.id)
+        port_set_add_all(port_smaller_than, very_small, bigger_smaller)
+      }
+    }
+    for very_big, flag in bigger_smaller {
+      if flag {
+        port_set_add(port_smaller_than, smaller.id, very_big)
+        port_set_add(port_bigger_than, very_big, smaller.id)
+        port_set_add_all(port_bigger_than, very_big, smaller_bigger)
+      }
+    }
+  }
+
+  fn check_reference_layer(
+    layer_nodes : Array[LNode],
+    n1 : LNode,
+    n2 : LNode,
+  ) -> Int {
+    for node in layer_nodes {
+      if node.id == n1.id {
+        return -1
+      } else if node.id == n2.id {
+        return 1
+      }
+    }
+    0
+  }
+
+  fn check_port_model_order(p1 : LPort, p2 : LPort) -> Int {
+    match (port_model_order(p1), port_model_order(p2)) {
+      (Some(a), Some(b)) => a.compare(b)
+      _ => 0
+    }
+  }
+
+  fn compare_ports(
+    graph : LGraph,
+    owner : LNode,
+    p1 : LPort,
+    p2 : LPort,
+    previous_layer : Array[LNode],
+    target_node_model_order : Map[String, Int]?,
+    port_model_order_enabled : Bool,
+  ) -> Int {
+    fn port_compare(original_p1 : LPort, original_p2 : LPort) -> Int {
+      let p1 = original_p1
+      let p2 = original_p2
+      if port_set_has(port_bigger_than, p1.id, p2.id) {
+        return 1
+      }
+      if port_set_has(port_bigger_than, p2.id, p1.id) {
+        return -1
+      }
+      if port_set_has(port_smaller_than, p1.id, p2.id) {
+        return -1
+      }
+      if port_set_has(port_smaller_than, p2.id, p1.id) {
+        return 1
+      }
+      if p1.side != p2.side {
+        let result = port_side_order(p1.side) - port_side_order(p2.side)
+        if result > 0 {
+          update_port_order(p1, p2, 1)
+        } else {
+          update_port_order(p2, p1, 1)
+        }
+        return result
+      }
+      let mut reverse_order = 1
+      let in1 = incoming_edges_for_port(incoming_by_port, p1.id)
+      let in2 = incoming_edges_for_port(incoming_by_port, p2.id)
+      let out1 = outgoing_edges_for_port(outgoing_by_port, p1.id)
+      let out2 = outgoing_edges_for_port(outgoing_by_port, p2.id)
+      if !in1.is_empty() && !in2.is_empty() {
+        if p1.side == West || p1.side == North || p1.side == South {
+          reverse_order = -reverse_order
+        }
+        let e1 = in1[0]
+        let e2 = in2[0]
+        match (graph.get_node(e1.source_id), graph.get_node(e2.source_id)) {
+          (Some(n1), Some(n2)) =>
+            if n1.id == n2.id {
+              for port in n1.ports {
+                if port.id == e1.source_port_id.unwrap_or("") {
+                  update_port_order(p2, p1, reverse_order)
+                  return -reverse_order
+                } else if port.id == e2.source_port_id.unwrap_or("") {
+                  update_port_order(p1, p2, reverse_order)
+                  return reverse_order
+                }
+              }
+              let order1 = edge_model_order(e1)
+              let order2 = edge_model_order(e2)
+              if order1 > order2 {
+                update_port_order(p1, p2, reverse_order)
+                return reverse_order
+              } else {
+                update_port_order(p2, p1, reverse_order)
+                return -reverse_order
+              }
+            }
+          _ => ()
+        }
+        match (graph.get_node(e1.source_id), graph.get_node(e2.source_id)) {
+          (Some(n1), Some(n2)) =>
+            if n1.node_type is LongEdgeDummy &&
+              n2.node_type is LongEdgeDummy &&
+              n1.layer == n2.layer &&
+              n1.layer == owner.layer {
+              let layer_nodes = graph.layers[n1.layer].nodes
+              if p1.side == East && p2.side == East {
+                reverse_order = -reverse_order
+              }
+              let in_prev = check_reference_layer(layer_nodes, n1, n2)
+              if in_prev != 0 {
+                if in_prev > 0 {
+                  update_port_order(p1, p2, reverse_order)
+                  return reverse_order
+                } else {
+                  update_port_order(p2, p1, reverse_order)
+                  return -reverse_order
+                }
+              }
+            }
+          _ => ()
+        }
+        match (graph.get_node(e1.source_id), graph.get_node(e2.source_id)) {
+          (Some(n1), Some(n2)) => {
+            let in_prev = check_reference_layer(previous_layer, n1, n2)
+            if in_prev != 0 {
+              if in_prev > 0 {
+                update_port_order(p1, p2, reverse_order)
+                return reverse_order
+              } else {
+                update_port_order(p2, p1, reverse_order)
+                return -reverse_order
+              }
+            }
+          }
+          _ => ()
+        }
+        if port_model_order_enabled {
+          let result = check_port_model_order(p1, p2)
+          if result != 0 {
+            if result > 0 {
+              update_port_order(p1, p2, reverse_order)
+              return reverse_order
+            } else {
+              update_port_order(p2, p1, reverse_order)
+              return -reverse_order
+            }
+          }
+        }
+      }
+      if !out1.is_empty() && !out2.is_empty() {
+        if p1.side == West || p1.side == South {
+          reverse_order = -reverse_order
+        }
+        let e1 = out1[0]
+        let e2 = out2[0]
+        let target1 = match
+          p1.properties.get_string("diago.layered.longEdgeTargetNodeId") {
+          Some(id) => graph.get_node(id)
+          None => get_long_edge_target_node(graph, e1)
+        }
+        let target2 = match
+          p2.properties.get_string("diago.layered.longEdgeTargetNodeId") {
+          Some(id) => graph.get_node(id)
+          None => get_long_edge_target_node(graph, e2)
+        }
+        if strategy == PreferNodes {
+          match (target1, target2) {
+            (Some(t1), Some(t2)) =>
+              match (node_model_order(t1), node_model_order(t2)) {
+                (Some(m1), Some(m2)) =>
+                  if m1 != m2 {
+                    if m1 > m2 {
+                      update_port_order(p1, p2, reverse_order)
+                      return reverse_order
+                    } else {
+                      update_port_order(p2, p1, reverse_order)
+                      return -reverse_order
+                    }
+                  }
+                _ => ()
+              }
+            _ => ()
+          }
+        }
+        if port_model_order_enabled {
+          let result = check_port_model_order(p1, p2)
+          if result != 0 {
+            if result > 0 {
+              update_port_order(p1, p2, reverse_order)
+              return reverse_order
+            } else {
+              update_port_order(p2, p1, reverse_order)
+              return -reverse_order
+            }
+          }
+        }
+        let mut order1 = edge_model_order(e1)
+        let mut order2 = edge_model_order(e2)
+        match (target1, target2) {
+          (Some(t1), Some(t2)) =>
+            if t1.id == t2.id {
+              if order1 > order2 {
+                update_port_order(p1, p2, reverse_order)
+                return reverse_order
+              } else {
+                update_port_order(p2, p1, reverse_order)
+                return -reverse_order
+              }
+            }
+          _ => ()
+        }
+        match target_node_model_order {
+          Some(target_order) => {
+            match target1 {
+              Some(t1) =>
+                if target_order.contains(t1.id) {
+                  order1 = target_order.get(t1.id).unwrap_or(order1)
+                }
+              None => ()
+            }
+            match target2 {
+              Some(t2) =>
+                if target_order.contains(t2.id) {
+                  order2 = target_order.get(t2.id).unwrap_or(order2)
+                }
+              None => ()
+            }
+          }
+          None => ()
+        }
+        if order1 > order2 {
+          update_port_order(p1, p2, reverse_order)
+          return reverse_order
+        } else {
+          update_port_order(p2, p1, reverse_order)
+          return -reverse_order
+        }
+      }
+      if !in1.is_empty() && !out2.is_empty() {
+        update_port_order(p1, p2, reverse_order)
+        return 1
+      }
+      if !out1.is_empty() && !in2.is_empty() {
+        update_port_order(p2, p1, reverse_order)
+        return -1
+      }
+      match (port_model_order(p1), port_model_order(p2)) {
+        (Some(m1), Some(m2)) => {
+          if p1.side == West || p1.side == South {
+            reverse_order = -reverse_order
+          }
+          if m1 > m2 {
+            update_port_order(p1, p2, reverse_order)
+            return reverse_order
+          } else {
+            update_port_order(p2, p1, reverse_order)
+            return -reverse_order
+          }
+        }
+        _ => ()
+      }
+      update_port_order(p2, p1, reverse_order)
+      -1
+    }
+
+    let result = port_compare(p1, p2)
+    result
+  }
+
+  fn handle_helper_dummy_nodes(
+    graph : LGraph,
+    n1 : LNode,
+    n2 : LNode,
+    previous_layer : Array[LNode],
+    before_ports : Bool,
+  ) -> Int {
+    if n1.node_type is LongEdgeDummy && n2.node_type is Normal {
+      let dummy_source_node = first_incoming_source_node(graph, n1)
+      let dummy_target_node = first_outgoing_target_node(graph, n1)
+      let dummy_layer = n1.layer
+      match (dummy_source_node, dummy_target_node) {
+        (Some(src_node), Some(tgt_node)) => {
+          if src_node.layer != dummy_layer && tgt_node.layer != dummy_layer {
+            return 0
+          }
+          if src_node.id == n2.id {
+            update_node_order(n1, n2)
+            return 1
+          } else if tgt_node.id == n2.id {
+            update_node_order(n1, n2)
+            return 1
+          } else {
+            return compare_nodes(
+              graph, src_node, n2, previous_layer, before_ports,
+            )
+          }
+        }
+        _ => return 0
+      }
+    } else if n1.node_type is Normal && n2.node_type is LongEdgeDummy {
+      let dummy_source_node = first_incoming_source_node(graph, n2)
+      let dummy_target_node = first_outgoing_target_node(graph, n2)
+      let dummy_layer = n1.layer
+      match (dummy_source_node, dummy_target_node) {
+        (Some(src_node), Some(tgt_node)) => {
+          if src_node.layer != dummy_layer && tgt_node.layer != dummy_layer {
+            return 0
+          }
+          if src_node.id == n1.id {
+            update_node_order(n2, n1)
+            return -1
+          } else if tgt_node.id == n1.id {
+            update_node_order(n2, n1)
+            return -1
+          } else {
+            return compare_nodes(
+              graph, n1, src_node, previous_layer, before_ports,
+            )
+          }
+        }
+        _ => return 0
+      }
+    } else if n1.node_type is LongEdgeDummy && n2.node_type is LongEdgeDummy {
+      let n1_source_port = first_incoming_source_port(graph, n1)
+      let n1_target_port = first_outgoing_target_port(graph, n1)
+      let n1_source_node = first_incoming_source_node(graph, n1)
+      let n1_target_node = first_outgoing_target_node(graph, n1)
+      let n2_source_port = first_incoming_source_port(graph, n2)
+      let n2_target_port = first_outgoing_target_port(graph, n2)
+      let n2_source_node = first_incoming_source_node(graph, n2)
+      let n2_target_node = first_outgoing_target_node(graph, n2)
+      let n1_layer = n1.layer
+      let n2_layer = n2.layer
+      let mut n1_source_feedback = false
+      let mut n1_target_feedback = false
+      let mut n2_source_feedback = false
+      let mut n2_target_feedback = false
+      let mut n1_ref = n1
+      let mut n2_ref = n2
+      match (n1_source_node, n1_target_node) {
+        (Some(src), Some(tgt)) =>
+          if src.layer == n1_layer {
+            n1_source_feedback = true
+            n1_ref = src
+          } else if tgt.layer == n1_layer {
+            n1_target_feedback = true
+            n1_ref = tgt
+          }
+        _ => ()
+      }
+      match (n2_source_node, n2_target_node) {
+        (Some(src), Some(tgt)) =>
+          if src.layer == n2_layer {
+            n2_source_feedback = true
+            n2_ref = src
+          } else if tgt.layer == n2_layer {
+            n2_target_feedback = true
+            n2_ref = tgt
+          }
+        _ => ()
+      }
+      if n1_ref.id == n2_ref.id {
+        if before_ports {
+          if n1_source_feedback && n2_source_feedback {
+            match (n1_source_port, n2_source_port) {
+              (Some(p1), Some(p2)) => {
+                port_bigger_than = {}
+                port_smaller_than = {}
+                let result = compare_ports(
+                  graph,
+                  n1_ref,
+                  p1,
+                  p2,
+                  previous_layer,
+                  None,
+                  n2_target_feedback,
+                )
+                port_bigger_than = {}
+                port_smaller_than = {}
+                if result > 0 {
+                  update_node_order(n2, n1)
+                  return 1
+                } else {
+                  update_node_order(n1, n2)
+                  return -1
+                }
+              }
+              _ => ()
+            }
+          } else if n1_source_feedback && n2_target_feedback {
+            update_node_order(n2, n1)
+            return 1
+          } else if n1_target_feedback && n2_source_feedback {
+            update_node_order(n1, n2)
+            return -1
+          } else if n1_target_feedback && n2_target_feedback {
+            return 0
+          }
+        } else {
+          match (n1_source_port, n2_source_port) {
+            (Some(p1), Some(p2)) =>
+              for port in n1_ref.ports {
+                if port.id == p1.id {
+                  update_node_order(n2, n1)
+                  return -1
+                } else if port.id == p2.id {
+                  update_node_order(n1, n2)
+                  return 1
+                }
+              }
+            _ => ()
+          }
+        }
+      }
+      return compare_nodes(graph, n1_ref, n2_ref, previous_layer, before_ports)
+    }
+    0
+  }
+
+  fn compare_nodes(
+    graph : LGraph,
+    n1 : LNode,
+    n2 : LNode,
+    previous_layer : Array[LNode],
+    before_ports : Bool,
+  ) -> Int {
+    if node_set_has(node_bigger_than, n1.id, n2.id) {
+      return 1
+    }
+    if node_set_has(node_bigger_than, n2.id, n1.id) {
+      return -1
+    }
+    if node_set_has(node_smaller_than, n1.id, n2.id) {
+      return -1
+    }
+    if node_set_has(node_smaller_than, n2.id, n1.id) {
+      return 1
+    }
+    let use_edge_order = strategy == PreferEdges ||
+      node_model_order(n1) is None ||
+      node_model_order(n2) is None
+    if use_edge_order {
+      let prev_layer = if n1.layer > 0 { n1.layer - 1 } else { 0 }
+      let (src1, src_port1, _) = first_incoming_from_prev(graph, n1, prev_layer)
+      let (src2, src_port2, _) = first_incoming_from_prev(graph, n2, prev_layer)
+      if src1 is Some(_) && src2 is Some(_) {
+        let s1 = src1.unwrap()
+        let s2 = src2.unwrap()
+        if s1.id == s2.id {
+          if src_port1 is Some(_) && src_port2 is Some(_) {
+            let p1 = src_port1.unwrap()
+            let p2 = src_port2.unwrap()
+            for port in s1.ports {
+              if port.id == p1.id {
+                update_node_order(n2, n1)
+                return -1
+              } else if port.id == p2.id {
+                update_node_order(n1, n2)
+                return 1
+              }
+            }
+          }
+          let order1 = model_order_from_connected_edges(n1, incoming_by_port)
+          let order2 = model_order_from_connected_edges(n2, incoming_by_port)
+          if order1 > order2 {
+            update_node_order(n1, n2)
+            return 1
+          } else {
+            update_node_order(n2, n1)
+            return -1
+          }
+        }
+        for prev in previous_layer {
+          if prev.id == s1.id {
+            update_node_order(n2, n1)
+            return -1
+          } else if prev.id == s2.id {
+            update_node_order(n1, n2)
+            return 1
+          }
+        }
+      }
+      if (src_port1 is Some(_) && src_port2 is None) ||
+        (src_port1 is None && src_port2 is Some(_)) {
+        let cmp = handle_helper_dummy_nodes(
+          graph, n1, n2, previous_layer, before_ports,
+        )
+        if cmp != 0 {
+          if cmp > 0 {
+            update_node_order(n1, n2)
+          } else {
+            update_node_order(n2, n1)
+          }
+          return cmp
+        }
+        if node_model_order(n1) is None || node_model_order(n2) is None {
+          let order1 = model_order_from_connected_edges(n1, incoming_by_port)
+          let order2 = model_order_from_connected_edges(n2, incoming_by_port)
+          if order1 > order2 {
+            update_node_order(n1, n2)
+            return 1
+          } else {
+            update_node_order(n2, n1)
+            return -1
+          }
+        }
+      }
+      if src_port1 is None && src_port2 is None {
+        let cmp = handle_helper_dummy_nodes(
+          graph, n1, n2, previous_layer, before_ports,
+        )
+        if cmp != 0 {
+          if cmp > 0 {
+            update_node_order(n1, n2)
+          } else {
+            update_node_order(n2, n1)
+          }
+          return cmp
+        }
+      }
+    }
+    match (node_model_order(n1), node_model_order(n2)) {
+      (Some(m1), Some(m2)) =>
+        if m1 > m2 {
+          update_node_order(n1, n2)
+          1
+        } else {
+          update_node_order(n2, n1)
+          -1
+        }
+      _ => {
+        update_node_order(n2, n1)
+        -1
+      }
+    }
+  }
+
+  fn insertion_sort_nodes(
+    nodes : Array[LNode],
+    graph : LGraph,
+    previous_layer : Array[LNode],
+    before_ports : Bool,
+  ) -> Unit {
+    for i = 1; i < nodes.length(); i = i + 1 {
+      let temp = nodes[i]
+      let mut j = i
+      while j > 0 &&
+            compare_nodes(
+              graph,
+              nodes[j - 1],
+              temp,
+              previous_layer,
+              before_ports,
+            ) >
+            0 {
+        nodes[j] = nodes[j - 1]
+        j = j - 1
+      }
+      nodes[j] = temp
+    }
+    node_bigger_than = {}
+    node_smaller_than = {}
+  }
+
+  fn insertion_sort_ports(
+    ports : Array[LPort],
+    graph : LGraph,
+    owner : LNode,
+    previous_layer : Array[LNode],
+    target_node_model_order : Map[String, Int],
+    port_model_order_enabled : Bool,
+  ) -> Unit {
+    port_bigger_than = {}
+    port_smaller_than = {}
+    for i = 1; i < ports.length(); i = i + 1 {
+      let temp = ports[i]
+      let mut j = i
+      while j > 0 &&
+            compare_ports(
+              graph,
+              owner,
+              ports[j - 1],
+              temp,
+              previous_layer,
+              Some(target_node_model_order),
+              port_model_order_enabled,
+            ) >
+            0 {
+        ports[j] = ports[j - 1]
+        j = j - 1
+      }
+      ports[j] = temp
+    }
+    port_bigger_than = {}
+    port_smaller_than = {}
+  }
+
+  for li = 0; li < graph.layers.length(); li = li + 1 {
+    let layer = graph.layers[li]
+    let previous_layer = if li == 0 {
+      graph.layers[0].nodes
+    } else {
+      graph.layers[li - 1].nodes
+    }
+    insertion_sort_nodes(layer.nodes, graph, previous_layer, true)
+    for i, node in layer.nodes {
+      node.position = i
+    }
+    for node in layer.nodes {
+      if node.ports.is_empty() {
+        continue
+      }
+      let node_options = resolve_options_for_lnode(options, node)
+      match node_options.port_constraints {
+        Some(FixedOrder) | Some(FixedPos) => ()
+        _ => {
+          let target_node_model_order = long_edge_target_node_preprocessing(
+            graph, node, outgoing_by_port,
+          )
+          insertion_sort_ports(
+            node.ports,
+            graph,
+            node,
+            previous_layer,
+            target_node_model_order,
+            port_model_order_enabled(graph),
+          )
+        }
+      }
+      for i, port in node.ports {
+        port.properties.set("diago.layered.portIndex", Int(i))
+      }
+    }
+    insertion_sort_nodes(layer.nodes, graph, previous_layer, false)
     for i, node in layer.nodes {
       node.position = i
     }
@@ -1570,6 +2728,7 @@ fn layer_sweep_barycenter_best(
   }
 
   let seed = options.random_seed.unwrap_or(1)
+  let use_perturb = options.random_seed is Some(_)
   let mut best_crossings = total_crossings()
   let mut best_snapshot = snapshot_positions()
   for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
@@ -1582,6 +2741,7 @@ fn layer_sweep_barycenter_best(
         true,
         sweep,
         seed,
+        use_perturb,
         options.crossing_min_force_node_model_order.unwrap_or(false),
         options.consider_model_order_strategy.unwrap_or(None),
       )
@@ -1603,6 +2763,7 @@ fn layer_sweep_barycenter_best(
         false,
         sweep,
         seed,
+        use_perturb,
         options.crossing_min_force_node_model_order.unwrap_or(false),
         options.consider_model_order_strategy.unwrap_or(None),
       )
@@ -1652,9 +2813,16 @@ fn order_layer_by_barycenter(
   forward : Bool,
   sweep : Int,
   seed : Int,
+  use_perturb : Bool,
   force_model_order : Bool,
   consider_model_order : OrderingStrategy,
 ) -> Unit {
+  if force_model_order {
+    for i, node in layer.nodes {
+      node.position = i
+    }
+    return
+  }
   // ELK parity notes:
   // - Nodes with no connections get an "unknown" barycenter, then filled in by
   //   taking the midpoint between previous and next defined barycenter.
@@ -1678,7 +2846,7 @@ fn order_layer_by_barycenter(
     seed : Int,
   ) -> Double {
     // ELK uses RANDOM_AMOUNT=0.07.
-    let amount = 0.07
+    let amount = if use_perturb { 0.07 } else { 0.0 }
     let tag = if forward { "f" } else { "b" }
     let r = hash_u32(
         node_id + ":" + sweep.to_string() + ":" + tag + ":" + seed.to_string(),
@@ -1746,51 +2914,212 @@ fn order_layer_by_barycenter(
     }
   }
   fn model_order(node : LNode) -> Int? {
-    match node.properties.get_int("diago.layered.modelOrder") {
-      Some(v) => Some(v)
-      None => None
+    if node.node_type is Normal {
+      match node.properties.get_int("diago.layered.modelOrder") {
+        Some(v) => Some(v)
+        None => None
+      }
+    } else {
+      None
     }
   }
 
-  // Sort by barycenter; optionally prevent normal nodes from reordering.
-  layer.nodes.sort_by(fn(a, b) {
-    if force_model_order {
-      match (a.node_type, b.node_type) {
-        (Normal, Normal) =>
-          match (model_order(a), model_order(b)) {
-            (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
-            _ => ()
-          }
-        _ => ()
+  let preserve_model_order = match consider_model_order {
+    None => false
+    _ => true
+  }
+  if preserve_model_order && !force_model_order {
+    let bigger_than : Map[String, Map[String, Bool]] = {}
+    let smaller_than : Map[String, Map[String, Bool]] = {}
+    fn set_has(
+      sets : Map[String, Map[String, Bool]],
+      key : String,
+      value : String,
+    ) -> Bool {
+      match sets.get(key) {
+        Some(set) => set.get(value).unwrap_or(false)
+        None => false
       }
     }
-    let bc_a = barycenters.get(a.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
-    let bc_b = barycenters.get(b.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
-    if bc_a < bc_b {
-      -1
-    } else if bc_a > bc_b {
-      1
-    } else {
-      // Barycenter tie-break: if requested, use initial model order.
-      match consider_model_order {
-        NodesAndEdges | PreferEdges | PreferNodes =>
-          match (a.node_type, b.node_type) {
-            (Normal, Normal) =>
-              match (model_order(a), model_order(b)) {
-                (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
-                _ => ()
-              }
-            _ => ()
-          }
-        None => ()
+
+    fn set_add(
+      sets : Map[String, Map[String, Bool]],
+      key : String,
+      value : String,
+    ) -> Unit {
+      let set = sets.get(key).unwrap_or({})
+      set[value] = true
+      sets[key] = set
+    }
+
+    fn set_add_all(
+      sets : Map[String, Map[String, Bool]],
+      key : String,
+      other : Map[String, Bool],
+    ) -> Unit {
+      let set = sets.get(key).unwrap_or({})
+      for k, v in other {
+        if v {
+          set[k] = true
+        }
       }
-      if a.position != b.position {
-        a.position - b.position
+      sets[key] = set
+    }
+
+    fn update_transitive(bigger : LNode, smaller : LNode) -> Unit {
+      set_add(bigger_than, bigger.id, smaller.id)
+      set_add(smaller_than, smaller.id, bigger.id)
+      let smaller_bigger = bigger_than.get(smaller.id).unwrap_or({})
+      let bigger_smaller = smaller_than.get(bigger.id).unwrap_or({})
+      for very_small, flag in smaller_bigger {
+        if flag {
+          set_add(bigger_than, bigger.id, very_small)
+          set_add(smaller_than, very_small, bigger.id)
+          set_add_all(smaller_than, very_small, bigger_smaller)
+        }
+      }
+      for very_big, flag in bigger_smaller {
+        if flag {
+          set_add(smaller_than, smaller.id, very_big)
+          set_add(bigger_than, very_big, smaller.id)
+          set_add_all(bigger_than, very_big, smaller_bigger)
+        }
+      }
+    }
+
+    fn compare_transitive(n1 : LNode, n2 : LNode) -> Int {
+      if set_has(bigger_than, n1.id, n2.id) {
+        return 1
+      }
+      if set_has(bigger_than, n2.id, n1.id) {
+        return -1
+      }
+      if set_has(smaller_than, n1.id, n2.id) {
+        return -1
+      }
+      if set_has(smaller_than, n2.id, n1.id) {
+        return 1
+      }
+      0
+    }
+
+    fn barycenter_value(
+      barycenters : Map[String, Double?],
+      node : LNode,
+    ) -> Double? {
+      barycenters.get(node.id).unwrap_or(None)
+    }
+
+    fn compare_barycenter(
+      barycenters : Map[String, Double?],
+      n1 : LNode,
+      n2 : LNode,
+    ) -> Int {
+      let b1 = barycenter_value(barycenters, n1)
+      let b2 = barycenter_value(barycenters, n2)
+      match (b1, b2) {
+        (Some(v1), Some(v2)) =>
+          if v1 < v2 {
+            update_transitive(n1, n2)
+            -1
+          } else if v1 > v2 {
+            update_transitive(n2, n1)
+            1
+          } else {
+            0
+          }
+        (Some(_), None) => {
+          update_transitive(n1, n2)
+          -1
+        }
+        (None, Some(_)) => {
+          update_transitive(n2, n1)
+          1
+        }
+        (None, None) => 0
+      }
+    }
+
+    fn compare_nodes_with_model_order(
+      barycenters : Map[String, Double?],
+      n1 : LNode,
+      n2 : LNode,
+    ) -> Int {
+      let transitive = compare_transitive(n1, n2)
+      if transitive != 0 {
+        return transitive
+      }
+      match (model_order(n1), model_order(n2)) {
+        (Some(m1), Some(m2)) =>
+          if m1 < m2 {
+            update_transitive(n1, n2)
+            -1
+          } else if m1 > m2 {
+            update_transitive(n2, n1)
+            1
+          } else {
+            0
+          }
+        _ => compare_barycenter(barycenters, n1, n2)
+      }
+    }
+
+    for i = 1; i < layer.nodes.length(); i = i + 1 {
+      let temp = layer.nodes[i]
+      let mut j = i
+      while j > 0 &&
+            compare_nodes_with_model_order(
+              barycenters,
+              layer.nodes[j - 1],
+              temp,
+            ) >
+            0 {
+        layer.nodes[j] = layer.nodes[j - 1]
+        j = j - 1
+      }
+      layer.nodes[j] = temp
+    }
+  } else {
+    // Sort by barycenter; optionally prevent normal nodes from reordering.
+    layer.nodes.sort_by(fn(a, b) {
+      if force_model_order {
+        match (a.node_type, b.node_type) {
+          (Normal, Normal) =>
+            match (model_order(a), model_order(b)) {
+              (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
+              _ => ()
+            }
+          _ => ()
+        }
+      }
+      let bc_a = barycenters.get(a.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      let bc_b = barycenters.get(b.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      if bc_a < bc_b {
+        -1
+      } else if bc_a > bc_b {
+        1
       } else {
-        a.id.compare(b.id)
+        // Barycenter tie-break: if requested, use initial model order.
+        match consider_model_order {
+          NodesAndEdges | PreferEdges | PreferNodes =>
+            match (a.node_type, b.node_type) {
+              (Normal, Normal) =>
+                match (model_order(a), model_order(b)) {
+                  (Some(ma), Some(mb)) => if ma != mb { return ma - mb }
+                  _ => ()
+                }
+              _ => ()
+            }
+          None => ()
+        }
+        if a.position != b.position {
+          a.position - b.position
+        } else {
+          a.id.compare(b.id)
+        }
       }
-    }
-  })
+    })
+  }
   for i, node in layer.nodes {
     node.position = i
   }
@@ -1801,6 +3130,30 @@ fn order_layer_by_barycenter(
 // ============================================================================
 
 ///|
+fn graph_has_compound_child(graph : LGraph) -> Bool {
+  for node in graph.nodes {
+    match node.nested_graph {
+      Some(_) => return true
+      None => ()
+    }
+  }
+  false
+}
+
+///|
+fn effective_graph_padding(
+  graph : LGraph,
+  options : LayoutOptions,
+) -> ElkPadding {
+  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
+  if graph_has_compound_child(graph) {
+    { ..padding, left: 0.0 }
+  } else {
+    padding
+  }
+}
+
+///|
 /// Place nodes with final x,y coordinates
 fn place_nodes(
   graph : LGraph,
@@ -1808,6 +3161,10 @@ fn place_nodes(
   strategy : NodePlacementStrategy,
   direction : LayoutDirection,
 ) -> Unit {
+  if graph.edges.is_empty() {
+    simple_node_placement(graph, options, direction)
+    return
+  }
   match strategy {
     Simple => simple_node_placement(graph, options, direction)
     BrandesKoepf => brandes_koepf_placement(graph, options, direction)
@@ -1824,7 +3181,7 @@ fn simple_node_placement(
 ) -> Unit {
   let node_spacing = options.node_node_spacing.unwrap_or(20.0)
   let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
-  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
+  let padding = effective_graph_padding(graph, options)
 
   // Determine if horizontal or vertical layout
   let is_horizontal = direction.is_horizontal()

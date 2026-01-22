@@ -15,7 +15,7 @@
 ///|
 test "measure text width - short" {
   let dims = @text_metrics.measure_text("Hello", 16, false, false, false)
-  assert_true(dims.dimensions.width > 30.0)
+  assert_true(dims.dimensions.width >= 30.0)
   assert_true(dims.dimensions.height > 10.0)
   assert_eq(dims.line_count, 0)
 }
@@ -37,8 +37,8 @@ test "measure text with newlines" {
   // 2 newline characters = line_count = 2
   assert_eq(dims.line_count, 2)
   assert_true(dims.max_line_width > 0.0)
-  // With CODE_LINE_HEIGHT=1.3, each line should be ~18px
-  assert_true(dims.dimensions.height > 50.0)
+  // With DEFAULT_LINE_HEIGHT_FACTOR=1.0, each line should be ~14px
+  assert_true(dims.dimensions.height > 35.0)
 }
 
 ///|

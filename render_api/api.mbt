@@ -59,7 +59,7 @@ pub fn RenderConfig::new() -> RenderConfig {
   {
     padding: 20.0,
     font_family: "Arial, sans-serif",
-    font_size: 14,
+    font_size: 16,
     background: "",
     dark_mode: false,
   }

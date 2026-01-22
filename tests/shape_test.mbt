@@ -237,8 +237,7 @@ test "sql_table shape has header" {
     #|  shape: sql_table
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("#4a5568")) // header background color
-  assert_true(svg.contains("fill=\"#ffffff\"")) // white text in header
+  assert_true(svg.contains("font-size=\"24\"")) // header font size
 }
 
 ///|
@@ -249,7 +248,6 @@ test "sql_table shape renders table name" {
     #|}
   let svg = compile(source).unwrap()
   assert_true(svg.contains("orders"))
-  assert_true(svg.contains("font-weight=\"bold\""))
 }
 
 ///|

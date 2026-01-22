@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/engine_elk"
 
-import(
-  "Milky2018/diago/engine_api"
-  "Milky2018/diago/graph"
-)
+import {
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/graph",
+}
 
 // Values
 pub fn count_in_layer_crossings_on_side(Array[LNode], ElkPortSide) -> Int
@@ -19,6 +19,8 @@ pub fn layout(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction
 type AStarEntry
 pub impl Eq for AStarEntry
 pub impl Show for AStarEntry
+
+type BKLayout
 
 type BKNodePlacementMode
 pub impl Eq for BKNodePlacementMode
@@ -37,12 +39,13 @@ pub fn BinaryIndexedTree::removeAll(Self, Int) -> Unit
 pub fn BinaryIndexedTree::size(Self) -> Int
 pub impl Show for BinaryIndexedTree
 
-type BlockInfo
-pub impl Show for BlockInfo
-
 type CenterEdgeLabelPlacementStrategy
 pub impl Eq for CenterEdgeLabelPlacementStrategy
 pub impl Show for CenterEdgeLabelPlacementStrategy
+
+type ClassEdge
+
+type ClassNode
 
 type CompactionStrategy
 pub impl Eq for CompactionStrategy
@@ -198,6 +201,10 @@ pub impl Show for NSEdge
 type NSNode
 pub impl Show for NSNode
 
+type NeighborInfo
+
+type NeighborRef
+
 type NodeFlexibility
 pub impl Eq for NodeFlexibility
 pub impl Show for NodeFlexibility
@@ -241,6 +248,8 @@ pub impl Show for PortSortingStrategy
 type PortTag
 pub impl Eq for PortTag
 pub impl Show for PortTag
+
+type Postprocessable
 
 type PropertyValue
 pub impl Eq for PropertyValue

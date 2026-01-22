@@ -73,12 +73,12 @@ pub fn unsupported(message : String) -> LayoutError {
 ///|
 pub fn LayoutConfig::new() -> LayoutConfig {
   {
-    horizontal_spacing: 60.0,
-    vertical_spacing: 60.0,
-    container_padding: 20.0,
+    horizontal_spacing: 20.0,
+    vertical_spacing: 70.0,
+    container_padding: 50.0,
     default_width: 100.0,
     default_height: 60.0,
-    edge_padding: 20.0,
+    edge_padding: 40.0,
   }
 }
 

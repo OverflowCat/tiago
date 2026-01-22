@@ -76,4 +76,20 @@ fn ensure_sizes(node : ElkNode, options : LayoutOptions) -> Unit {
       node.height = max_double(min_h, label_h + padding)
     }
   }
+  let constraints = node_options.node_size_constraints.unwrap_or([])
+  let enforce_min = constraints.contains(MinimumSize) ||
+    constraints.contains(MinimumSizeAccountsForPadding)
+  if enforce_min {
+    match node_options.node_size_minimum {
+      Some((min_w, min_h)) => {
+        if node.width < min_w {
+          node.width = min_w
+        }
+        if node.height < min_h {
+          node.height = min_h
+        }
+      }
+      None => ()
+    }
+  }
 }

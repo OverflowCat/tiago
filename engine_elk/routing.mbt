@@ -623,6 +623,13 @@ fn apply_post_layout_edge_overrides(graph : Graph) -> Unit {
 ///|
 fn apply_sql_table_edge_routes_after_elk(graph : Graph) -> Unit {
   let margin = 12.0
+  let canvas_bounds = compute_all_bounds(graph)
+  let obstacles : Array[@graph.Box] = []
+  for obj in graph.objects {
+    if obj.box is Some(box) {
+      obstacles.push(box)
+    }
+  }
   for edge in graph.edges {
     let is_sql_edge = edge.src_column_index is Some(_) ||
       edge.dst_column_index is Some(_)
@@ -657,6 +664,29 @@ fn apply_sql_table_edge_routes_after_elk(graph : Graph) -> Unit {
     } else {
       let x = if dst_is_left { dst_box.x } else { dst_box.x + dst_box.width }
       @graph.Point::new(x, dst_center.y)
+    }
+    let goal_side = if dst_is_left { "left" } else { "right" }
+    let astar_route = astar_route_orthogonal(
+      src_point,
+      dst_point,
+      if src_is_left {
+        "left"
+      } else {
+        "right"
+      },
+      goal_side,
+      src_box,
+      dst_box,
+      obstacles,
+      canvas_bounds,
+      0.0,
+    )
+    if astar_route is Some(route) && route.length() >= 2 {
+      edge.route.clear()
+      for p in route {
+        edge.route.push(p)
+      }
+      continue
     }
 
     // If the two boxes have a horizontal gap between the connected sides,

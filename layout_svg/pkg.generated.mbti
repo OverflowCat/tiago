@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/layout_svg"
 
-import(
-  "Milky2018/diago/graph"
-)
+import {
+  "Milky2018/diago/graph",
+}
 
 // Values
 pub fn compute_legend_layout(@graph.LegendInput, (Double, Double, Double, Double), LegendLayoutConfig) -> LegendLayout?

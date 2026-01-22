@@ -714,6 +714,14 @@ fn compile_children(
         apply_class(child, inner, classes)
         // Check for special fields (can override class)
         process_special_fields(child, inner)
+        if parent.shape_type == ShapeType::SqlTable {
+          let constraints = extract_sql_constraints(inner)
+          for c in constraints {
+            if c.length() > 0 {
+              child.classes.push("sql_constraint:" + c)
+            }
+          }
+        }
         // Recursively compile children
         compile_children(graph, child, inner, id, classes)
       }
@@ -722,6 +730,31 @@ fn compile_children(
     parent.add_child(child)
     graph.add_object(child)
   }
+}
+
+///|
+fn extract_sql_constraints(ir : @ir.Map) -> Array[String] {
+  let out : Array[String] = []
+  match ir.get_field("constraint") {
+    Some(f) => {
+      match f.primary {
+        Some(s) => out.push(s.to_string())
+        None => ()
+      }
+      match f.composite {
+        Some(@ir.Composite::Array(arr)) =>
+          for v in arr.values {
+            match v {
+              @ir.Value::Scalar(s) => out.push(s.to_string())
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    }
+    None => ()
+  }
+  out
 }
 
 ///|

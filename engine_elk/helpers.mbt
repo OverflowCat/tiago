@@ -22,38 +22,167 @@ fn max(a : Double, b : Double) -> Double {
 }
 
 ///|
+const FONT_SIZE_M : Int = 16
+
+///|
+const FONT_SIZE_L : Int = 20
+
+///|
+const FONT_SIZE_XL : Int = 24
+
+///|
+const FONT_SIZE_XXL : Int = 28
+
+///|
+const HEADER_FONT_ADD : Int = 4
+
+///|
+const SQL_TABLE_NAME_PADDING : Double = 10.0
+
+///|
+const SQL_TABLE_TYPE_PADDING : Double = 20.0
+
+///|
+const SQL_TABLE_CONSTRAINT_PADDING : Double = 20.0
+
+///|
+const SQL_TABLE_HEADER_PADDING : Double = 10.0
+
+///|
+const SQL_TABLE_MIN_SIZE : Double = 12.0
+
+///|
+const SQL_CONSTRAINT_PREFIX : String = "sql_constraint:"
+
+///|
+fn label_size_for_level(level : Int) -> Int {
+  // D2 ContainerLevel.LabelSize: 1->XXL, 2->XL, 3->L, else M.
+  if level == 1 {
+    FONT_SIZE_XXL
+  } else if level == 2 {
+    FONT_SIZE_XL
+  } else if level == 3 {
+    FONT_SIZE_L
+  } else {
+    FONT_SIZE_M
+  }
+}
+
+///|
+fn is_container(obj : Object) -> Bool {
+  obj.children.length() > 0
+}
+
+///|
+fn is_container_for_label_size(obj : Object) -> Bool {
+  let has_grid = obj.grid_rows is Some(_) || obj.grid_columns is Some(_)
+  (obj.children.length() > 0 || has_grid) &&
+  obj.shape_type != @graph.SqlTable &&
+  obj.shape_type != @graph.Class
+}
+
+///|
+fn collect_container_levels(graph : Graph, levels : Map[String, Int]) -> Unit {
+  let roots = if graph.root.children.is_empty() {
+    find_root_objects(graph)
+  } else {
+    graph.root.children
+  }
+  for obj in roots {
+    assign_level_rec(obj, 1, levels)
+  }
+}
+
+///|
+fn assign_level_rec(
+  obj : Object,
+  level : Int,
+  levels : Map[String, Int],
+) -> Unit {
+  levels[obj.id] = level
+  for child in obj.children {
+    assign_level_rec(child, level + 1, levels)
+  }
+}
+
+///|
+fn get_label_font_info(
+  obj : Object,
+  levels : Map[String, Int],
+) -> (Int, Bool, Bool, Bool) {
+  let mut is_bold = !is_container(obj) && obj.shape_type != @graph.Text
+  let mut is_italic = false
+  if obj.style.bold is Some(v) && v.as_bool().unwrap_or(false) {
+    is_bold = true
+  }
+  if obj.style.italic is Some(v) && v.as_bool().unwrap_or(false) {
+    is_italic = true
+  }
+  let mut font_size = FONT_SIZE_M
+  if obj.shape_type == @graph.Class || obj.shape_type == @graph.SqlTable {
+    font_size = FONT_SIZE_L
+  }
+  if is_container_for_label_size(obj) && obj.shape_type != @graph.Text {
+    let level = levels.get(obj.id).unwrap_or(1)
+    font_size = label_size_for_level(level)
+  }
+  if obj.style.font_size is Some(v) {
+    font_size = v.as_int().unwrap_or(font_size)
+  }
+  if obj.shape_type == @graph.Class || obj.shape_type == @graph.SqlTable {
+    font_size = font_size + HEADER_FONT_ADD
+  }
+  if obj.shape_type == @graph.Class || obj.shape_type == @graph.SqlTable {
+    is_bold = false
+  }
+  let is_mono = match obj.style.font {
+    Some(v) => v.get_value().to_lower() == "mono"
+    None => obj.shape_type == @graph.Code
+  }
+  (font_size, is_bold, is_italic, is_mono)
+}
+
+///|
+fn get_edge_label_font_info(edge : Edge) -> (Int, Bool, Bool) {
+  let mut font_size = FONT_SIZE_M
+  if edge.style.font_size is Some(v) {
+    font_size = v.as_int().unwrap_or(font_size)
+  }
+  let is_bold = match edge.style.bold {
+    Some(v) => v.as_bool().unwrap_or(false)
+    None => false
+  }
+  // D2 defaults edge labels to italic.
+  (font_size, is_bold, true)
+}
+
+///|
 fn ensure_text_dimensions(graph : Graph) -> Unit {
+  let levels : Map[String, Int] = {}
+  collect_container_levels(graph, levels)
   for obj in graph.objects {
-    ensure_object_text_dimensions(obj)
+    ensure_object_text_dimensions(obj, levels)
   }
   for child in graph.root.children {
-    ensure_object_text_dimensions(child)
+    ensure_object_text_dimensions(child, levels)
   }
-  ensure_object_text_dimensions(graph.root)
+  ensure_object_text_dimensions(graph.root, levels)
   for edge in graph.edges {
     ensure_edge_text_dimensions(edge)
   }
 }
 
 ///|
-fn ensure_object_text_dimensions(obj : Object) -> Unit {
+fn ensure_object_text_dimensions(
+  obj : Object,
+  levels : Map[String, Int],
+) -> Unit {
   if obj.label.length() > 0 && obj.label_box is None {
-    let font_size = match obj.style.font_size {
-      Some(v) => v.as_int().unwrap_or(16)
-      None => 16
-    }
-    let bold = match obj.style.bold {
-      Some(v) => v.as_bool().unwrap_or(false)
-      None => false
-    }
-    let italic = match obj.style.italic {
-      Some(v) => v.as_bool().unwrap_or(false)
-      None => false
-    }
+    let (font_size, bold, italic, is_mono) = get_label_font_info(obj, levels)
     let label_dims = @text_metrics.measure_label(
       obj.label,
       font_size,
-      false,
+      is_mono,
       bold,
       italic,
     )
@@ -65,55 +194,41 @@ fn ensure_object_text_dimensions(obj : Object) -> Unit {
     Some(_) => ()
     None =>
       if obj.label.length() > 0 {
-        let font_size = match obj.style.font_size {
-          Some(v) => v.as_int().unwrap_or(16)
-          None => 16
-        }
-        let bold = match obj.style.bold {
-          Some(v) => v.as_bool().unwrap_or(false)
-          None => false
-        }
-        let italic = match obj.style.italic {
-          Some(v) => v.as_bool().unwrap_or(false)
-          None => false
-        }
+        let (font_size, bold, italic, is_mono) = get_label_font_info(
+          obj, levels,
+        )
         let label_dims = @text_metrics.measure_label(
           obj.label,
           font_size,
-          false,
+          is_mono,
           bold,
           italic,
         )
-        let min_width = 100.0
-        let min_height = 60.0
-        let width = if label_dims.width > min_width {
-          label_dims.width
-        } else {
-          min_width
-        }
-        let height = if label_dims.height > min_height {
-          label_dims.height
-        } else {
-          min_height
-        }
-        obj.box = Some(@graph.Box::new(0.0, 0.0, width, height))
+        let size = d2_size_object_to_content(obj, {
+          width: label_dims.width,
+          height: label_dims.height,
+        })
+        obj.box = Some(@graph.Box::new(0.0, 0.0, size.width, size.height))
       } else {
         obj.box = Some(@graph.Box::new(0.0, 0.0, 100.0, 60.0))
       }
   }
   for child in obj.children {
-    ensure_object_text_dimensions(child)
+    ensure_object_text_dimensions(child, levels)
   }
 }
 
 ///|
 fn ensure_edge_text_dimensions(edge : Edge) -> Unit {
   if edge.label.length() > 0 && edge.label_box is None {
-    let font_size = match edge.style.font_size {
-      Some(v) => v.as_int().unwrap_or(14)
-      None => 14
-    }
-    let label_dims = @text_metrics.measure_edge_label(edge.label, font_size)
+    let (font_size, bold, italic) = get_edge_label_font_info(edge)
+    let label_dims = @text_metrics.measure_label(
+      edge.label,
+      font_size,
+      false,
+      bold,
+      italic,
+    )
     edge.label_box = Some(
       @graph.Box::new(0.0, 0.0, label_dims.width, label_dims.height),
     )
@@ -131,76 +246,82 @@ fn compute_sizes(graph : Graph, config : LayoutConfig) -> Unit {
 fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
   // SQL tables use compact row-based sizing (not container spacing)
   if obj.shape_type == @graph.SqlTable {
-    let line_height = 18.0 // font_size (14) + 4
-    let padding = 8.0
-    let header_height = line_height + padding // 26
-    let columns_height = obj.children.length().to_double() * line_height +
-      padding
-    let total_height = header_height + columns_height
-    // Width: max of label and column labels (use precomputed label boxes)
-    let mut max_width = match obj.label_box {
-      Some(b) => b.width
-      None =>
-        abort(
-          "Sql table '\{obj.id}' has no label_box; sizes must be precomputed",
+    let (font_size, _bold, _italic, _is_mono) = get_label_font_info(obj, {})
+    let label_dims : Size = match obj.label_box {
+      Some(b) => { width: b.width, height: b.height }
+      None => {
+        let dims = @text_metrics.measure_label(
+          obj.label,
+          font_size,
+          false,
+          false,
+          false,
         )
-    }
-    for child in obj.children {
-      match child.label_box {
-        Some(b) => if b.width > max_width { max_width = b.width }
-        None =>
-          abort(
-            "Sql table column '\{child.id}' has no label_box; sizes must be precomputed",
-          )
+        obj.label_box = Some(@graph.Box::new(0.0, 0.0, dims.width, dims.height))
+        { width: dims.width, height: dims.height }
       }
     }
-    obj.box = Some(@graph.Box::new(0.0, 0.0, max_width, total_height))
-  } else if obj.is_container() {
-    // Container: compute based on children
-    let mut max_width = 0.0
-    let mut total_height = 0.0
+
+    // Column font size follows D2: L unless overridden.
+    let col_font_size = match obj.style.font_size {
+      Some(v) => v.as_int().unwrap_or(FONT_SIZE_L)
+      None => FONT_SIZE_L
+    }
+    let mut max_name_width = 0.0
+    let mut max_type_width = 0.0
+    let mut max_constraint_width = 0.0
+    for child in obj.children {
+      let name = get_short_name_from_id(child.id)
+      let name_dims = @text_metrics.measure_label(
+        name, col_font_size, false, false, false,
+      )
+      if name_dims.width > max_name_width {
+        max_name_width = name_dims.width
+      }
+      let type_dims = @text_metrics.measure_label(
+        child.label,
+        col_font_size,
+        false,
+        false,
+        false,
+      )
+      if type_dims.width > max_type_width {
+        max_type_width = type_dims.width
+      }
+      let constraint = sql_table_constraint_abbr(child)
+      if constraint.length() > 0 {
+        let constraint_dims = @text_metrics.measure_label(
+          constraint, col_font_size, false, false, false,
+        )
+        if constraint_dims.width > max_constraint_width {
+          max_constraint_width = constraint_dims.width
+        }
+      }
+    }
+    let header_width = SQL_TABLE_HEADER_PADDING * 2.0 + label_dims.width
+    let mut rows_width = SQL_TABLE_NAME_PADDING +
+      max_name_width +
+      SQL_TABLE_TYPE_PADDING +
+      max_type_width +
+      SQL_TABLE_TYPE_PADDING +
+      max_constraint_width
+    if max_constraint_width > 0.0 {
+      rows_width = rows_width + SQL_TABLE_CONSTRAINT_PADDING
+    }
+    let width = max(SQL_TABLE_MIN_SIZE, max(header_width, rows_width))
+    let total_height = max(
+      SQL_TABLE_MIN_SIZE,
+      label_dims.height * (obj.children.length() + 1).to_double(),
+    )
+    obj.box = Some(@graph.Box::new(0.0, 0.0, width, total_height))
+  } else {
+    // For all non-sql_table objects, use the precomputed size. Compound nodes
+    // (containers) are expanded later by the ELK layered algorithm itself.
     for child in obj.children {
       compute_object_size(child, config)
-      match child.box {
-        Some(b) => {
-          if b.width > max_width {
-            max_width = b.width
-          }
-          total_height = total_height + b.height + config.vertical_spacing
-        }
-        None =>
-          abort(
-            "Container child '\{child.id}' has no box; sizes must be precomputed",
-          )
-      }
     }
-    // Remove last spacing
-    if total_height > 0.0 {
-      total_height = total_height - config.vertical_spacing
-    }
-    // Add padding
-    let width = max_width + config.container_padding * 2.0
-    let height = total_height + config.container_padding * 2.0
-    obj.box = Some(
-      @graph.Box::new(
-        0.0,
-        0.0,
-        max(width, config.default_width),
-        max(height, config.default_height),
-      ),
-    )
-  } else {
-    // Leaf node: use precomputed size
     match obj.box {
-      Some(b) =>
-        obj.box = Some(
-          @graph.Box::new(
-            0.0,
-            0.0,
-            max(b.width, config.default_width),
-            max(b.height, config.default_height),
-          ),
-        )
+      Some(_) => ()
       None => abort("Object '\{obj.id}' has no box; sizes must be precomputed")
     }
   }
@@ -267,40 +388,95 @@ fn get_parent_id_from_field(id : String) -> String? {
 }
 
 ///|
+fn get_short_name_from_id(id : String) -> String {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot >= 0 && last_dot < id.length() - 1 {
+    let buf = StringBuilder::new()
+    for i = last_dot + 1; i < id.length(); i = i + 1 {
+      match id[i].to_char() {
+        Some(c) => buf.write_char(c)
+        None => ()
+      }
+    }
+    buf.to_string()
+  } else {
+    id
+  }
+}
+
+///|
+fn strip_prefix(s : String, prefix : String) -> String? {
+  if !s.has_prefix(prefix) {
+    return None
+  }
+  let start = prefix.length()
+  let buf = StringBuilder::new()
+  for i = start; i < s.length(); i = i + 1 {
+    match s[i].to_char() {
+      Some(c) => buf.write_char(c)
+      None => ()
+    }
+  }
+  Some(buf.to_string())
+}
+
+///|
+fn sql_table_constraint_abbr(child : Object) -> String {
+  let constraints : Array[String] = []
+  for cls in child.classes {
+    match strip_prefix(cls, SQL_CONSTRAINT_PREFIX) {
+      Some(v) => constraints.push(v)
+      None => ()
+    }
+  }
+  let abbrs : Array[String] = []
+  for c in constraints {
+    let abbr = match c {
+      "primary_key" => "PK"
+      "foreign_key" => "FK"
+      "unique" => "UNQ"
+      _ => c
+    }
+    abbrs.push(abbr)
+  }
+  abbrs.join(", ")
+}
+
+///|
 fn get_sql_row_anchor_point(
   table_box : @graph.Box,
   column_index : Int,
-  _num_columns : Int,
+  num_columns : Int,
   is_left_side : Bool,
 ) -> @graph.Point {
-  let line_height = 18.0
-  let header_height = 26.0
+  let row_height = table_box.height / (num_columns + 1).to_double()
   let row_center_y = table_box.y +
-    header_height +
-    line_height * (column_index.to_double() + 0.7)
+    row_height * (column_index.to_double() + 1.0) +
+    row_height / 2.0
   let x = if is_left_side { table_box.x } else { table_box.x + table_box.width }
   @graph.Point::new(x, row_center_y)
 }
 
 ///|
 fn position_sql_table_children(graph : Graph) -> Unit {
-  let line_height = 18.0
-  let header_height = 26.0
   for obj in graph.objects {
     if obj.shape_type != @graph.SqlTable {
       continue
     }
     guard obj.box is Some(table_box) else { continue }
+    let row_height = table_box.height / (obj.children.length() + 1).to_double()
     for i, child in obj.children {
-      let row_center_y = table_box.y +
-        header_height +
-        line_height * (i.to_double() + 0.7)
       child.box = Some(
         @graph.Box::new(
           table_box.x,
-          row_center_y - line_height / 2.0,
+          table_box.y + row_height * (i.to_double() + 1.0),
           table_box.width,
-          line_height,
+          row_height,
         ),
       )
     }

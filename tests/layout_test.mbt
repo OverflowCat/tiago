@@ -291,19 +291,26 @@ test "sql_table edges connect to correct rows" {
   let users_box = graph.find_object("users").unwrap().get_box().unwrap()
   let posts_box = graph.find_object("posts").unwrap().get_box().unwrap()
   let comments_box = graph.find_object("comments").unwrap().get_box().unwrap()
+  let users_cols = 4
+  let posts_cols = 5
+  let comments_cols = 4
 
-  // Height: header (26) + rows*18 + bottom padding (8)
+  // Height: header font height * (rows + 1)
   let eps = 1.0e-6
   assert_true(
-    (users_box.get_height() - 106.0).abs() <= eps,
+    (users_box.get_height() - sql_table_expected_height("users", users_cols)).abs() <=
+    eps,
     msg="users table height",
   )
   assert_true(
-    (posts_box.get_height() - 124.0).abs() <= eps,
+    (posts_box.get_height() - sql_table_expected_height("posts", posts_cols)).abs() <=
+    eps,
     msg="posts table height",
   )
   assert_true(
-    (comments_box.get_height() - 106.0).abs() <= eps,
+    (comments_box.get_height() -
+    sql_table_expected_height("comments", comments_cols)).abs() <=
+    eps,
     msg="comments table height",
   )
   assert_eq(graph.get_edges().length(), 3)
@@ -319,8 +326,12 @@ test "sql_table edges connect to correct rows" {
     let end = route[route.length() - 1]
     if src == "users.id" && dst == "posts.user_id" {
       found_users_posts = true
-      let exp_start = sql_edge_row_anchor_point(users_box, posts_box, 0, true)
-      let exp_end = sql_edge_row_anchor_point(users_box, posts_box, 1, false)
+      let exp_start = sql_edge_row_anchor_point(
+        users_box, users_cols, posts_box, posts_cols, 0, true,
+      )
+      let exp_end = sql_edge_row_anchor_point(
+        users_box, users_cols, posts_box, posts_cols, 1, false,
+      )
       assert_true(
         (start.get_x() - exp_start.get_x()).abs() <= eps,
         msg="users.id start x",
@@ -340,9 +351,11 @@ test "sql_table edges connect to correct rows" {
     } else if src == "posts.id" && dst == "comments.post_id" {
       found_posts_comments = true
       let exp_start = sql_edge_row_anchor_point(
-        posts_box, comments_box, 0, true,
+        posts_box, posts_cols, comments_box, comments_cols, 0, true,
       )
-      let exp_end = sql_edge_row_anchor_point(posts_box, comments_box, 1, false)
+      let exp_end = sql_edge_row_anchor_point(
+        posts_box, posts_cols, comments_box, comments_cols, 1, false,
+      )
       assert_true(
         (start.get_x() - exp_start.get_x()).abs() <= eps,
         msg="posts.id start x",
@@ -362,9 +375,11 @@ test "sql_table edges connect to correct rows" {
     } else if src == "users.id" && dst == "comments.user_id" {
       found_users_comments = true
       let exp_start = sql_edge_row_anchor_point(
-        users_box, comments_box, 0, true,
+        users_box, users_cols, comments_box, comments_cols, 0, true,
       )
-      let exp_end = sql_edge_row_anchor_point(users_box, comments_box, 2, false)
+      let exp_end = sql_edge_row_anchor_point(
+        users_box, users_cols, comments_box, comments_cols, 2, false,
+      )
       assert_true(
         (start.get_x() - exp_start.get_x()).abs() <= eps,
         msg="users.id start (to comments) x",
@@ -423,25 +438,20 @@ test "sql_table edges are clipped to boxes" {
     #|posts.id <-> comments.post_id
     #|users.id <-> comments.user_id
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
-  let header_height = 26.0
-  let line_height = 18.0
-  let bottom_padding = 8.0
   let sql_table_ids = ["users", "posts", "comments"]
   let sql_row_boxes : Array[(String, Int, @graph.Box)] = []
   for table_id in sql_table_ids {
     let table_box = graph.find_object(table_id).unwrap().get_box().unwrap()
-    let rows_f = (table_box.get_height() - header_height - bottom_padding) /
-      line_height
-    let row_count = (rows_f + 0.5).to_int()
-    for row_idx in 0..<row_count {
-      let y = table_box.get_y() +
-        header_height +
-        line_height * row_idx.to_double()
+    let num_cols = sql_table_column_count(table_id)
+    let row_height = table_box.get_height() / (num_cols + 1).to_double()
+    let inset = 1.0
+    for row_idx in 0..<num_cols {
+      let y = table_box.get_y() + row_height * (row_idx.to_double() + 1.0)
       let row_box = @graph.Box::new(
-        table_box.get_x(),
+        table_box.get_x() + inset,
         y,
-        table_box.get_width(),
-        line_height,
+        table_box.get_width() - 2.0 * inset,
+        row_height,
       )
       sql_row_boxes.push((table_id, row_idx, row_box))
     }
@@ -464,23 +474,55 @@ test "sql_table edges are clipped to boxes" {
 }
 
 ///|
-fn sql_row_center_y(table_box : @graph.Box, col_idx : Int) -> Double {
-  let line_height = 18.0
-  let header_height = 26.0
-  table_box.get_y() + header_height + line_height * (col_idx.to_double() + 0.7)
+const SQL_TABLE_FONT_SIZE_L : Int = 20
+
+///|
+const SQL_TABLE_HEADER_FONT_ADD : Int = 4
+
+///|
+fn sql_table_column_count(table_id : String) -> Int {
+  match table_id {
+    "users" => 4
+    "posts" => 5
+    "comments" => 4
+    _ => 0
+  }
+}
+
+///|
+fn sql_table_expected_height(label : String, num_cols : Int) -> Double {
+  let header_font_size = SQL_TABLE_FONT_SIZE_L + SQL_TABLE_HEADER_FONT_ADD
+  let dims = @text_metrics.measure_label(
+    label, header_font_size, false, false, false,
+  )
+  dims.height * (num_cols + 1).to_double()
+}
+
+///|
+fn sql_row_center_y(
+  table_box : @graph.Box,
+  num_cols : Int,
+  col_idx : Int,
+) -> Double {
+  let row_height = table_box.get_height() / (num_cols + 1).to_double()
+  table_box.get_y() +
+  row_height * (col_idx.to_double() + 1.0) +
+  row_height / 2.0
 }
 
 ///|
 fn sql_edge_row_anchor_point(
   src_box : @graph.Box,
+  src_cols : Int,
   dst_box : @graph.Box,
+  dst_cols : Int,
   col_idx : Int,
   is_source : Bool,
 ) -> @graph.Point {
   let y = if is_source {
-    sql_row_center_y(src_box, col_idx)
+    sql_row_center_y(src_box, src_cols, col_idx)
   } else {
-    sql_row_center_y(dst_box, col_idx)
+    sql_row_center_y(dst_box, dst_cols, col_idx)
   }
   let dx = dst_box.center().get_x() - src_box.center().get_x()
   let x = if is_source {

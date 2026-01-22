@@ -31,7 +31,7 @@ priv struct FenwickTree {
 /// Create a new Fenwick tree with given size
 fn FenwickTree::new(size : Int) -> FenwickTree {
   let tree : Array[Double] = []
-  for _ in 0..=size {
+  for _ in 0..<=size {
     tree.push(0.0)
   }
   { tree, size }

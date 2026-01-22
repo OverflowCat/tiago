@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/renderer_ascii"
 
-import(
-  "Milky2018/diago/ascii"
-  "Milky2018/diago/diagram"
-  "Milky2018/diago/render_api"
-)
+import {
+  "Milky2018/diago/ascii",
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/render_api",
+}
 
 // Values
 pub fn render(@diagram.Diagram, AsciiConfig) -> String

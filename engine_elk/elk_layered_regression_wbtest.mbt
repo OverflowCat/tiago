@@ -277,14 +277,14 @@ test "layered regression: chain" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(84, 224) bounds=(84, 224)
+      #|root size=(84, 184) bounds=(84, 184)
       #|nodes:
       #|  - a: (12, 12) (60, 40)
-      #|  - b: (12, 92) (60, 40)
-      #|  - c: (12, 172) (60, 40)
+      #|  - b: (12, 72) (60, 40)
+      #|  - c: (12, 132) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (42, 52) (42, 92)
-      #|  - [root] e2 b->c: (42, 132) (42, 172)
+      #|  - [root] e1 a->b: (42, 52) (42, 72)
+      #|  - [root] e2 b->c: (42, 112) (42, 132)
       #|
     ),
   )
@@ -298,17 +298,17 @@ test "layered regression: diamond" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(164, 224) bounds=(164, 224)
+      #|root size=(164, 184) bounds=(164, 184)
       #|nodes:
-      #|  - a: (12, 12) (60, 40)
-      #|  - b: (12, 92) (60, 40)
-      #|  - c: (92, 92) (60, 40)
-      #|  - d: (12, 172) (60, 40)
+      #|  - a: (52, 12) (60, 40)
+      #|  - b: (12, 72) (60, 40)
+      #|  - c: (92, 72) (60, 40)
+      #|  - d: (52, 132) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (42, 52) (42, 92)
-      #|  - [root] e2 a->c: (42, 52) (42, 62) (122, 62) (122, 92)
-      #|  - [root] e3 b->d: (42, 132) (42, 172)
-      #|  - [root] e4 c->d: (122, 132) (122, 142) (42, 142) (42, 172)
+      #|  - [root] e1 a->b: (82, 52) (82, 62) (42, 62) (42, 72)
+      #|  - [root] e2 a->c: (82, 52) (82, 62) (122, 62) (122, 72)
+      #|  - [root] e3 b->d: (42, 112) (42, 122) (82, 122) (82, 132)
+      #|  - [root] e4 c->d: (122, 112) (122, 122) (82, 122) (82, 132)
       #|
     ),
   )
@@ -322,13 +322,13 @@ test "layered regression: parallel edges" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(84, 144) bounds=(84, 144)
+      #|root size=(84, 124) bounds=(84, 124)
       #|nodes:
       #|  - a: (12, 12) (60, 40)
-      #|  - b: (12, 92) (60, 40)
+      #|  - b: (12, 72) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (39.5, 52) (39.5, 92)
-      #|  - [root] e2 a->b: (44.5, 52) (44.5, 92)
+      #|  - [root] e1 a->b: (39.5, 52) (39.5, 72)
+      #|  - [root] e2 a->b: (44.5, 52) (44.5, 72)
       #|
     ),
   )
@@ -342,17 +342,17 @@ test "layered regression: long edge" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(164, 224) bounds=(164, 224)
+      #|root size=(104, 244) bounds=(104, 244)
       #|nodes:
-      #|  - a: (12, 92) (60, 40)
-      #|  - b: (92, 12) (60, 40)
-      #|  - c: (92, 92) (60, 40)
-      #|  - d: (12, 172) (60, 40)
+      #|  - a: (32, 12) (60, 40)
+      #|  - b: (12, 72) (60, 40)
+      #|  - c: (12, 132) (60, 40)
+      #|  - d: (32, 192) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (42, 132) (42, 62) (122, 62) (122, 12)
-      #|  - [root] e2 b->c: (122, 52) (122, 92)
-      #|  - [root] e3 c->d: (122, 132) (122, 142) (42, 142) (42, 172)
-      #|  - [root] e4 a->d: (42, 132) (42, 172)
+      #|  - [root] e1 a->b: (62, 52) (62, 62) (42, 62) (42, 72)
+      #|  - [root] e2 b->c: (42, 112) (42, 132)
+      #|  - [root] e3 c->d: (42, 172) (42, 182) (62, 182) (62, 192)
+      #|  - [root] e4 a->d: (62, 52) (82, 72.5) (82, 132.5) (62, 192)
       #|
     ),
   )
@@ -366,15 +366,15 @@ test "layered regression: cycle breaking" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(164, 144) bounds=(164, 144)
+      #|root size=(104, 184) bounds=(104, 184)
       #|nodes:
-      #|  - a: (12, 12) (60, 40)
-      #|  - b: (92, 12) (60, 40)
-      #|  - c: (92, 92) (60, 40)
+      #|  - a: (32, 12) (60, 40)
+      #|  - b: (12, 72) (60, 40)
+      #|  - c: (32, 132) (60, 40)
       #|edges:
-      #|  - [root] e1 a->b: (42, 52) (122, 12)
-      #|  - [root] e2 b->c: (122, 52) (122, 92)
-      #|  - [root] e3 c->a: (122, 132) (122, 62) (42, 62) (42, 12)
+      #|  - [root] e1 a->b: (62, 52) (62, 62) (42, 62) (42, 72)
+      #|  - [root] e2 b->c: (42, 112) (42, 122) (62, 122) (62, 132)
+      #|  - [root] e3 c->a: (62, 172) (82, 72.5) (62, 12)
       #|
     ),
   )
@@ -388,15 +388,15 @@ test "layered regression: compound" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(108, 192) bounds=(108, 192)
+      #|root size=(96, 208) bounds=(96, 208)
       #|nodes:
-      #|  - group: (-12, 12) (108, 168)
-      #|  - outside: (12, 140) (60, 40)
+      #|  - group: (0, 12) (84, 124)
+      #|  - outside: (12, 156) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
-      #|  - group/g2: (12, 92) (60, 40)
+      #|  - group/g2: (12, 72) (60, 40)
       #|edges:
-      #|  - [root] e1 group->outside: (42, 180) (42, 140)
-      #|  - [group] ge1 g1->g2: (42, 52) (42, 92)
+      #|  - [root] e1 group->outside: (42, 136) (42, 156)
+      #|  - [group] ge1 g1->g2: (42, 52) (42, 72)
       #|
     ),
   )
@@ -410,13 +410,13 @@ test "layered regression: cross-hierarchy edge mapping" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(108, 192) bounds=(108, 192)
+      #|root size=(96, 148) bounds=(96, 148)
       #|nodes:
-      #|  - group: (-12, 12) (108, 88)
-      #|  - outside: (12, 140) (60, 40)
+      #|  - group: (0, 12) (84, 64)
+      #|  - outside: (12, 96) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|edges:
-      #|  - [root] e1 g1->outside: (30, 64) (30, 102) (42, 102) (42, 140)
+      #|  - [root] e1 g1->outside: (42, 64) (42, 96)
       #|
     ),
   )

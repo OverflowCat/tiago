@@ -64,23 +64,36 @@ fn is_sql_table_child(obj : Object, graph : Graph) -> Bool {
 }
 
 ///|
-/// Convert a diago Graph to an ELK ElkNode for layout
-fn graph_to_elk(graph : Graph, config : LayoutConfig) -> ElkNode {
-  let root = ElkNode::new("root")
+fn endpoint_matches(obj_id : String, node_id : String) -> Bool {
+  node_id == obj_id || node_id.has_prefix(obj_id + ".")
+}
 
-  // Convert all objects to ELK nodes
-  for obj in graph.objects {
-    // sql_table fields are rendered inline; exclude them from ELK layout
-    if is_sql_table_child(obj, graph) {
-      continue
-    }
-    let elk_node = object_to_elk_node(obj, config)
-    root.add_child(elk_node)
+///|
+const PORT_SPACING : Double = 40.0
+
+///|
+fn sql_src_port_id(table_id : String, column : String) -> String {
+  table_id + "." + column + ".src"
+}
+
+///|
+fn sql_dst_port_id(table_id : String, column : String) -> String {
+  table_id + "." + column + ".dst"
+}
+
+///|
+fn sql_port_sides(direction : Direction) -> (ElkPortSide, ElkPortSide) {
+  match direction {
+    Left => (West, East)
+    _ => (East, West)
   }
+}
 
-  // Convert all edges
-  for i, edge in graph.edges {
-    // For sql_table field-level connections, ELK should connect the parent tables
+///|
+fn apply_port_spacing(graph : Graph, direction : Direction) -> Unit {
+  let incoming : Map[String, Int] = {}
+  let outgoing : Map[String, Int] = {}
+  for edge in graph.edges {
     let src_id = if edge.src_column_index is Some(_) {
       match get_parent_id_from_dotted_id(edge.src_id) {
         Some(p) => p
@@ -97,7 +110,202 @@ fn graph_to_elk(graph : Graph, config : LayoutConfig) -> ElkNode {
     } else {
       edge.dst_id
     }
-    let elk_edge = ElkEdge::new("e" + i.to_string(), src_id, dst_id)
+    outgoing[src_id] = outgoing.get(src_id).unwrap_or(0) + 1
+    incoming[dst_id] = incoming.get(dst_id).unwrap_or(0) + 1
+  }
+  for obj in graph.objects {
+    let inc = incoming.get(obj.id).unwrap_or(0)
+    let out = outgoing.get(obj.id).unwrap_or(0)
+    let max_ports = if inc > out { inc } else { out }
+    if max_ports < 2 {
+      continue
+    }
+    guard obj.box is Some(b) else { continue }
+    let min_span = max_ports.to_double() * PORT_SPACING
+    let (new_w, new_h) = if direction is Left || direction is Right {
+      (b.width, if b.height < min_span { min_span } else { b.height })
+    } else {
+      (if b.width < min_span { min_span } else { b.width }, b.height)
+    }
+    if new_w != b.width || new_h != b.height {
+      obj.box = Some(@graph.Box::new(b.x, b.y, new_w, new_h))
+    }
+  }
+}
+
+///|
+fn port_group_key(node_id : String, side : ElkPortSide) -> String {
+  node_id + "|" + side.to_string()
+}
+
+///|
+fn push_port_group(
+  groups : Map[String, Array[String]],
+  node_id : String,
+  side : ElkPortSide,
+  port_id : String,
+) -> Unit {
+  let key = port_group_key(node_id, side)
+  let ports = groups.get(key).unwrap_or([])
+  ports.push(port_id)
+  groups[key] = ports
+}
+
+///|
+fn add_port_to_tree(node : ElkNode, target_id : String, port : ElkPort) -> Bool {
+  if node.id == target_id {
+    node.add_port(port)
+    return true
+  }
+  for i = 0; i < node.children.length(); i = i + 1 {
+    if add_port_to_tree(node.children[i], target_id, port) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn set_port_x_positions(node : ElkNode, port_ids : Array[String]) -> Unit {
+  if port_ids.is_empty() {
+    return
+  }
+  let spacing = node.width / (port_ids.length() + 1).to_double()
+  for i, port_id in port_ids {
+    let x = spacing * (i.to_double() + 1.0)
+    for j = 0; j < node.ports.length(); j = j + 1 {
+      if node.ports[j].id == port_id {
+        node.ports[j] = { ..node.ports[j], x, }
+        break
+      }
+    }
+  }
+}
+
+///|
+fn apply_port_group_positions(
+  node : ElkNode,
+  groups : Map[String, Array[String]],
+) -> Unit {
+  for side in [ElkPortSide::North, ElkPortSide::South] {
+    let key = port_group_key(node.id, side)
+    match groups.get(key) {
+      Some(port_ids) => set_port_x_positions(node, port_ids)
+      None => ()
+    }
+  }
+  for i = 0; i < node.children.length(); i = i + 1 {
+    apply_port_group_positions(node.children[i], groups)
+  }
+}
+
+///|
+/// Convert a diago Graph to an ELK ElkNode for layout
+fn graph_to_elk(
+  graph : Graph,
+  config : LayoutConfig,
+  direction : Direction,
+) -> ElkNode {
+  apply_port_spacing(graph, direction)
+  let root = ElkNode::new("root")
+
+  // Convert only top-level objects to ELK nodes (children are added recursively).
+  //
+  // Prefer `graph.root.children` if it's populated (GraphInput-derived graphs).
+  // Fall back to `graph.objects` + child filtering for legacy whitebox tests.
+  let top_level : Array[Object] = if graph.root.children.is_empty() {
+    let is_child : Map[String, Bool] = {}
+    for obj in graph.objects {
+      for child in obj.children {
+        is_child[child.id] = true
+      }
+    }
+    let out : Array[Object] = []
+    for obj in graph.objects {
+      if is_child.contains(obj.id) {
+        continue
+      }
+      out.push(obj)
+    }
+    out
+  } else {
+    graph.root.children
+  }
+  for obj in top_level {
+    if is_sql_table_child(obj, graph) {
+      continue
+    }
+    let elk_node = object_to_elk_node(obj, config, direction)
+    root.add_child(elk_node)
+  }
+  let port_groups : Map[String, Array[String]] = {}
+  let (table_src_side, table_dst_side) = match direction {
+    Up => (ElkPortSide::North, ElkPortSide::South)
+    _ => (ElkPortSide::South, ElkPortSide::North)
+  }
+
+  // Convert all edges
+  for i, edge in graph.edges {
+    // For sql_table field-level connections, ELK should connect the parent tables
+    let mut src_id = edge.src_id
+    let mut src_port : String? = None
+    if edge.src_column_index is Some(_) {
+      match get_parent_id_from_dotted_id(edge.src_id) {
+        Some(p) => {
+          src_id = p
+          src_port = Some(
+            sql_src_port_id(p, get_short_name_from_id(edge.src_id)),
+          )
+        }
+        None => ()
+      }
+    } else if {
+        let is_sql_table = match graph.find_object(edge.src_id) {
+          Some(obj) => obj.shape_type == @graph.SqlTable
+          None => false
+        }
+        is_sql_table
+      } {
+      let port_id = sql_src_port_id(edge.src_id, "__root__") +
+        "." +
+        i.to_string()
+      let port = ElkPort::with_side(port_id, table_src_side)
+      add_port_to_tree(root, edge.src_id, port) |> ignore
+      push_port_group(port_groups, edge.src_id, table_src_side, port_id)
+      src_port = Some(port_id)
+    }
+    let mut dst_id = edge.dst_id
+    let mut dst_port : String? = None
+    if edge.dst_column_index is Some(_) {
+      match get_parent_id_from_dotted_id(edge.dst_id) {
+        Some(p) => {
+          dst_id = p
+          dst_port = Some(
+            sql_dst_port_id(p, get_short_name_from_id(edge.dst_id)),
+          )
+        }
+        None => ()
+      }
+    } else if {
+        let is_sql_table = match graph.find_object(edge.dst_id) {
+          Some(obj) => obj.shape_type == @graph.SqlTable
+          None => false
+        }
+        is_sql_table
+      } {
+      let port_id = sql_dst_port_id(edge.dst_id, "__root__") +
+        "." +
+        i.to_string()
+      let port = ElkPort::with_side(port_id, table_dst_side)
+      add_port_to_tree(root, edge.dst_id, port) |> ignore
+      push_port_group(port_groups, edge.dst_id, table_dst_side, port_id)
+      dst_port = Some(port_id)
+    }
+    let elk_edge = {
+      ..ElkEdge::new("e" + i.to_string(), src_id, dst_id),
+      source_port: src_port,
+      target_port: dst_port,
+    }
     // Add label if present
     if edge.label.length() > 0 {
       match edge.label_box {
@@ -115,12 +323,17 @@ fn graph_to_elk(graph : Graph, config : LayoutConfig) -> ElkNode {
     }
     root.add_edge(elk_edge)
   }
+  apply_port_group_positions(root, port_groups)
   root
 }
 
 ///|
 /// Convert a diago Object to an ELK node
-fn object_to_elk_node(obj : Object, config : LayoutConfig) -> ElkNode {
+fn object_to_elk_node(
+  obj : Object,
+  config : LayoutConfig,
+  direction : Direction,
+) -> ElkNode {
   let elk_node = ElkNode::new(obj.id)
 
   // Set size from existing box
@@ -154,11 +367,84 @@ fn object_to_elk_node(obj : Object, config : LayoutConfig) -> ElkNode {
     }
   }
 
+  // SQL table ports: fixed column anchors for row-level edges.
+  if obj.shape_type == @graph.SqlTable {
+    elk_node.properties.set("elk.portConstraints", Enum("FIXED_POS"))
+    let (src_side, dst_side) = sql_port_sides(direction)
+    let row_count = obj.children.length() + 1
+    if row_count > 0 {
+      let row_height = elk_node.height / row_count.to_double()
+      for i, child in obj.children {
+        let col_name = get_short_name_from_id(child.id)
+        let y = row_height * (i.to_double() + 1.0) + row_height / 2.0
+        let src_port = {
+          ..ElkPort::with_side(sql_src_port_id(obj.id, col_name), src_side),
+          y,
+        }
+        elk_node.add_port(src_port)
+        let dst_port = {
+          ..ElkPort::with_side(sql_dst_port_id(obj.id, col_name), dst_side),
+          y,
+        }
+        elk_node.add_port(dst_port)
+      }
+    }
+  }
+  let is_container = obj.children.length() > 0 &&
+    obj.shape_type != @graph.SqlTable
+  if is_container {
+    let base_padding = ElkPadding::uniform(config.container_padding)
+    let padding = if obj.label.length() > 0 {
+      match obj.label_box {
+        Some(b) => {
+          let label_padding = 5.0
+          let extra_top = b.height + label_padding * 2.0
+          let top = if extra_top > base_padding.top {
+            extra_top
+          } else {
+            base_padding.top
+          }
+          ElkPadding::new(
+            top,
+            base_padding.right,
+            base_padding.bottom,
+            base_padding.left,
+          )
+        }
+        None => base_padding
+      }
+    } else {
+      base_padding
+    }
+    let (min_w, min_h) = match direction {
+      Down | Up => (elk_node.height.ceil(), elk_node.width.ceil())
+      Right | Left => (elk_node.width.ceil(), elk_node.height.ceil())
+    }
+    let container_options = {
+      ..LayoutOptions::new(),
+      crossing_min_force_node_model_order: Some(true),
+      thoroughness: Some(8),
+      edge_edge_between_layers_spacing: Some(50.0),
+      hierarchy_handling: Some(Include),
+      bk_fixed_alignment: Some(Average),
+      edge_node_spacing: Some(40.0),
+      consider_model_order_strategy: Some(NodesAndEdges),
+      cycle_breaking_strategy: Some(GreedyModelOrder),
+      node_size_constraints: Some([MinimumSize]),
+      content_alignment: Some(HorizontalVertical),
+      node_node_between_layers_spacing: Some(config.vertical_spacing),
+      edge_node_between_layers_spacing: Some(config.edge_padding),
+      padding: Some(padding),
+      node_size_minimum: Some((min_w, min_h)),
+    }
+    elk_node.properties.copy_from(container_options.to_properties())
+  }
+
   // Handle children for containers
   // sql_table renders children as rows, not nested boxes - keep it as a leaf in ELK.
   if obj.shape_type != @graph.SqlTable {
     for child in obj.children {
-      let elk_child = object_to_elk_node(child, config)
+      let elk_child = object_to_elk_node(child, config, direction)
       elk_node.add_child(elk_child)
     }
   }
@@ -170,7 +456,7 @@ fn object_to_elk_node(obj : Object, config : LayoutConfig) -> ElkNode {
 fn elk_to_graph(
   elk_root : ElkNode,
   graph : Graph,
-  _config : LayoutConfig,
+  config : LayoutConfig,
   direction : Direction,
 ) -> Unit {
   // Create map of ELK nodes by ID
@@ -252,36 +538,41 @@ fn apply_edge_routes(
           // Get source and target boxes for perpendicularity adjustment
           let src_box = elk_map.get(elk_edge.sources[0])
           let tgt_box = elk_map.get(elk_edge.targets[0])
-
-          // Adjust start point for perpendicularity
-          let start_point = match src_box {
-            Some(src) =>
-              adjust_start_point_perpendicular(
-                section.start_point.x,
-                section.start_point.y,
-                src,
-                section.bend_points,
-                section.end_point.x,
-                section.end_point.y,
-                direction,
-              )
-            None =>
-              @graph.Point::new(section.start_point.x, section.start_point.y)
+          let start_point = if elk_edge.source_port_id() is Some(_) {
+            @graph.Point::new(section.start_point.x, section.start_point.y)
+          } else {
+            match src_box {
+              Some(src) =>
+                adjust_start_point_perpendicular(
+                  section.start_point.x,
+                  section.start_point.y,
+                  src,
+                  section.bend_points,
+                  section.end_point.x,
+                  section.end_point.y,
+                  direction,
+                )
+              None =>
+                @graph.Point::new(section.start_point.x, section.start_point.y)
+            }
           }
-
-          // Adjust end point for perpendicularity
-          let end_point = match tgt_box {
-            Some(tgt) =>
-              adjust_end_point_perpendicular(
-                section.end_point.x,
-                section.end_point.y,
-                tgt,
-                section.bend_points,
-                section.start_point.x,
-                section.start_point.y,
-                direction,
-              )
-            None => @graph.Point::new(section.end_point.x, section.end_point.y)
+          let end_point = if elk_edge.target_port_id() is Some(_) {
+            @graph.Point::new(section.end_point.x, section.end_point.y)
+          } else {
+            match tgt_box {
+              Some(tgt) =>
+                adjust_end_point_perpendicular(
+                  section.end_point.x,
+                  section.end_point.y,
+                  tgt,
+                  section.bend_points,
+                  section.start_point.x,
+                  section.start_point.y,
+                  direction,
+                )
+              None =>
+                @graph.Point::new(section.end_point.x, section.end_point.y)
+            }
           }
           edge.route.push(start_point)
           // Bend points
@@ -516,7 +807,7 @@ fn run_elk_layout(
   direction : Direction,
 ) -> Unit {
   // Convert to ELK format
-  let elk_root = graph_to_elk(graph, config)
+  let elk_root = graph_to_elk(graph, config, direction)
 
   // Create layout options using builder pattern
   let elk_direction = match direction {
@@ -538,6 +829,22 @@ fn run_elk_layout(
       ),
     )
     .with_edge_routing(EdgeRouting::Orthogonal)
+  // D2 uses these defaults for ELK layered layout.
+  let options = {
+    ..options,
+    consider_model_order_strategy: Some(NodesAndEdges),
+    separate_connected_components: Some(false),
+    // Match D2 default: `fixedAlignment = BALANCED` for BK placement.
+    bk_fixed_alignment: Some(Average),
+    thoroughness: Some(8),
+    edge_edge_between_layers_spacing: Some(50.0),
+    edge_node_spacing: Some(40.0),
+    edge_node_between_layers_spacing: Some(config.edge_padding),
+    hierarchy_handling: Some(Include),
+    content_alignment: Some(HorizontalVertical),
+    node_size_constraints: Some([MinimumSize]),
+    cycle_breaking_strategy: Some(GreedyModelOrder),
+  }
   // Keep options also attached as ELK properties for future property-driven resolution.
   elk_root.properties.copy_from(options.to_properties())
   let algorithm = match options.algorithm {
@@ -547,7 +854,7 @@ fn run_elk_layout(
 
   // Dispatch to the selected algorithm implementation.
   match algorithm {
-    Layered => elk_layered_layout(elk_root, options)
+    Layered => elk_layered_layout_with_components(elk_root, options)
     MrTree => elk_mrtree_layout(elk_root, options)
     Force => elk_force_layout(elk_root, options)
     Stress => elk_stress_layout(elk_root, options)

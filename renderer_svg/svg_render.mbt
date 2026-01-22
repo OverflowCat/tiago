@@ -53,9 +53,9 @@ pub struct SvgConfig {
 pub fn SvgConfig::new() -> SvgConfig {
   let theme = @themes.get_theme(0)
   {
-    padding: 20.0,
+    padding: 100.0,
     font_family: "Arial, sans-serif",
-    font_size: 14,
+    font_size: 16,
     background: theme.background_color(),
     default_stroke: theme.stroke_color(),
     default_fill: theme.fill_color(),
@@ -71,9 +71,9 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
   let theme = @themes.get_theme(theme_id)
   let font = if theme.rules.mono { "monospace" } else { "Arial, sans-serif" }
   {
-    padding: 20.0,
+    padding: 100.0,
     font_family: font,
-    font_size: 14,
+    font_size: 16,
     background: theme.background_color(),
     default_stroke: theme.stroke_color(),
     default_fill: theme.fill_color(),
@@ -203,11 +203,11 @@ pub fn render_svg(
   let content_height = max_y - min_y
   let width = content_width + config.padding * 2.0
   let height = content_height + config.padding * 2.0 + control_height
-  // Calculate offset to shift content into positive coordinate space
-  let offset_x = config.padding - min_x
-  let offset_y = config.padding + control_height - min_y
+  let viewbox_x = min_x - config.padding
+  let viewbox_y = min_y - config.padding - control_height
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
+  svg.set_viewbox(viewbox_x, viewbox_y, width, height)
   // Get theme for special rules
   let theme = @themes.get_theme(config.theme_id)
   // Add arrow markers for all arrowhead types
@@ -227,7 +227,7 @@ pub fn render_svg(
     render_step_controls(svg, graph, config)
   }
   // Main content group with offset to shift content into positive coordinate space
-  svg.open_group_with_id("base-layer", "translate(\{offset_x},\{offset_y})")
+  svg.open_group_with_id("base-layer", "")
   // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
   // Lifelines are rendered as dashed edges, activation boxes as regular objects
   let sorted_objects = sort_objects_by_depth(graph.shapes)
@@ -256,11 +256,7 @@ pub fn render_svg(
   for i, layer in graph.layers {
     let layer_id = "layer-\{i}"
     // Hidden by default (display: none)
-    svg.open_group_with_id_style(
-      layer_id,
-      "translate(\{offset_x},\{offset_y})",
-      "display: none",
-    )
+    svg.open_group_with_id_style(layer_id, "", "display: none")
     // Render layer edges
     for edge in layer.connections {
       render_svg_edge(svg, edge, config, theme)
@@ -275,11 +271,7 @@ pub fn render_svg(
   // Render each scenario as a hidden group
   for i, scenario in graph.scenarios {
     let scenario_id = "scenario-\{i}"
-    svg.open_group_with_id_style(
-      scenario_id,
-      "translate(\{offset_x},\{offset_y})",
-      "display: none",
-    )
+    svg.open_group_with_id_style(scenario_id, "", "display: none")
     for edge in scenario.connections {
       render_svg_edge(svg, edge, config, theme)
     }
@@ -293,11 +285,7 @@ pub fn render_svg(
   // Render each step as a hidden group
   for i, step in graph.steps {
     let step_id = "step-\{i}"
-    svg.open_group_with_id_style(
-      step_id,
-      "translate(\{offset_x},\{offset_y})",
-      "display: none",
-    )
+    svg.open_group_with_id_style(step_id, "", "display: none")
     for edge in step.connections {
       render_svg_edge(svg, edge, config, theme)
     }
@@ -1196,6 +1184,7 @@ fn render_svg_object(
         box,
         obj.label,
         object_children(obj, all_objects),
+        obj.style,
         fill,
         stroke,
         stroke_width,
@@ -1452,13 +1441,17 @@ fn render_svg_object(
       } else {
         cy
       }
+      let font_size = match obj.style.font_size {
+        Some(v) => v.as_int().unwrap_or(config.font_size)
+        None => config.font_size
+      }
       svg.add(
         @svg.styled_text(
           cx,
           label_y,
           obj.label,
           font_family~,
-          font_size=config.font_size,
+          font_size~,
           text_transform~,
         ),
       )
@@ -1475,24 +1468,98 @@ fn render_svg_object(
 }
 
 ///|
+const SQL_TABLE_NAME_PADDING : Double = 10.0
+
+///|
+const SQL_TABLE_TYPE_PADDING : Double = 20.0
+
+///|
+const SQL_TABLE_HEADER_PADDING : Double = 10.0
+
+///|
+const SQL_TABLE_FONT_SIZE_L : Int = 20
+
+///|
+const SQL_TABLE_HEADER_FONT_ADD : Int = 4
+
+///|
+const SQL_CONSTRAINT_PREFIX : String = "sql_constraint:"
+
+///|
+fn strip_prefix(s : String, prefix : String) -> String? {
+  if !s.has_prefix(prefix) {
+    return None
+  }
+  let start = prefix.length()
+  let buf = StringBuilder::new()
+  for i = start; i < s.length(); i = i + 1 {
+    match s[i].to_char() {
+      Some(c) => buf.write_char(c)
+      None => ()
+    }
+  }
+  Some(buf.to_string())
+}
+
+///|
+fn sql_table_constraint_abbr(child : Shape) -> String {
+  let constraints : Array[String] = []
+  for cls in child.classes {
+    match strip_prefix(cls, SQL_CONSTRAINT_PREFIX) {
+      Some(v) => constraints.push(v)
+      None => ()
+    }
+  }
+  let abbrs : Array[String] = []
+  for c in constraints {
+    let abbr = match c {
+      "primary_key" => "PK"
+      "foreign_key" => "FK"
+      "unique" => "UNQ"
+      _ => c
+    }
+    abbrs.push(abbr)
+  }
+  abbrs.join(", ")
+}
+
+///|
 fn render_svg_sql_table(
   svg : @svg.Svg,
   box : Box,
   label : String,
   children : Array[Shape],
+  style : @graph.StyleInput,
   fill : String,
   stroke : String,
   stroke_width : Double,
   pass? : RenderPass = Foreground,
   config : SvgConfig,
 ) -> Unit {
-  let line_height = config.font_size.to_double() + 4.0
-  let padding = 8.0
-  let header_bg = "#4a5568" // Darker header
-  let header_fg = "#ffffff"
-  let table_name = label
-  // Layout is responsible for sizing the table box.
-  let header_height = line_height + padding
+  let row_count = children.length() + 1
+  let row_height = if row_count > 0 {
+    box.height / row_count.to_double()
+  } else {
+    box.height
+  }
+  let base_font_size = match style.font_size {
+    Some(v) => v.as_int().unwrap_or(SQL_TABLE_FONT_SIZE_L)
+    None => SQL_TABLE_FONT_SIZE_L
+  }
+  let header_font_size = base_font_size + SQL_TABLE_HEADER_FONT_ADD
+  let header_dims = @text_metrics.measure_label(
+    label, header_font_size, false, false, false,
+  )
+  let mut longest_name_width = 0.0
+  for child in children {
+    let name = get_short_name(child.id)
+    let dims = @text_metrics.measure_label(
+      name, base_font_size, false, false, false,
+    )
+    if dims.width > longest_name_width {
+      longest_name_width = dims.width
+    }
+  }
   match pass {
     Background => {
       // Background pass: render shapes (rectangles, lines)
@@ -1508,56 +1575,55 @@ fn render_svg_sql_table(
           stroke_width~,
         ),
       )
-      // Draw header background
+      // Draw header background (same fill; D2 uses CSS for header styling)
       svg.add(
         @svg.rect(
           box.x,
           box.y,
           box.width,
-          header_height,
-          fill=header_bg,
+          row_height,
+          fill~,
           stroke~,
           stroke_width~,
         ),
       )
-      // Draw separator line
-      let sep_y = box.y + header_height
-      svg.add(
-        @svg.line(
-          box.x,
-          sep_y,
-          box.x + box.width,
-          sep_y,
-          stroke~,
-          stroke_width~,
-        ),
-      )
+      // Draw row separators
+      let mut y = box.y + row_height
+      for i in 0..<children.length() {
+        svg.add(
+          @svg.line(box.x, y, box.x + box.width, y, stroke~, stroke_width~),
+        )
+        y = y + row_height
+      }
     }
     Foreground => {
       // Foreground pass: render text (table name, column names)
-      // Draw table name (bold, centered, white)
-      let name_y = box.y + header_height / 2.0
+      let header_center_y = box.y + row_height / 2.0
+      let header_text_y = header_center_y + header_dims.height / 4.0
       svg.add(
-        "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{header_fg}\">\{@svg.escape_xml(table_name)}</text>",
+        "<text x=\"\{box.x + SQL_TABLE_HEADER_PADDING}\" y=\"\{header_text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{header_font_size}\">\{@svg.escape_xml(label)}</text>",
       )
-      // Draw columns from children
-      let mut current_y = box.y + header_height + line_height * 0.7
-      for child in children {
-        // Get short name from child ID (e.g., "users.id" -> "id")
+      let name_x = box.x + SQL_TABLE_NAME_PADDING
+      let type_x = name_x + longest_name_width + SQL_TABLE_TYPE_PADDING
+      let constraint_x = box.x + box.width - SQL_TABLE_NAME_PADDING
+      for i, child in children {
+        let row_center_y = box.y +
+          row_height * (i.to_double() + 1.0) +
+          row_height / 2.0
+        let text_y = row_center_y + base_font_size.to_double() / 4.0
         let col_name = get_short_name(child.id)
-        // Format: "name: type" where type is the child's label
-        let col_text = if child.label.length() > 0 {
-          col_name + ": " + child.label
-        } else {
-          col_name
-        }
-        // Check for PK/FK markers in label
-        let is_pk = child.label.contains("PK") || child.label.contains("pk")
-        let font_weight = if is_pk { "font-weight=\"bold\"" } else { "" }
         svg.add(
-          "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\" \{font_weight}>\{@svg.escape_xml(col_text)}</text>",
+          "<text x=\"\{name_x}\" y=\"\{text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(col_name)}</text>",
         )
-        current_y = current_y + line_height
+        svg.add(
+          "<text x=\"\{type_x}\" y=\"\{text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(child.label)}</text>",
+        )
+        let constraint = sql_table_constraint_abbr(child)
+        if constraint.length() > 0 {
+          svg.add(
+            "<text x=\"\{constraint_x}\" y=\"\{text_y}\" text-anchor=\"end\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(constraint)}</text>",
+          )
+        }
       }
     }
   }
@@ -1898,60 +1964,100 @@ fn render_svg_cloud(
   stroke : String,
   stroke_width : Double,
 ) -> Unit {
-  // Cloud shape using bezier curves
-  let sx = box.width / 100.0
-  let sy = box.height / 60.0
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x + 20.0 * sx, box.y + 40.0 * sy)
-    .cubic_to(
-      box.x + 20.0 * sx,
-      box.y + 55.0 * sy,
-      box.x + 35.0 * sx,
-      box.y + 60.0 * sy,
-      box.x + 50.0 * sx,
-      box.y + 55.0 * sy,
-    )
-    .cubic_to(
-      box.x + 65.0 * sx,
-      box.y + 60.0 * sy,
-      box.x + 80.0 * sx,
-      box.y + 55.0 * sy,
-      box.x + 85.0 * sx,
-      box.y + 40.0 * sy,
-    )
-    .cubic_to(
-      box.x + 100.0 * sx,
-      box.y + 35.0 * sy,
-      box.x + 100.0 * sx,
-      box.y + 20.0 * sy,
-      box.x + 85.0 * sx,
-      box.y + 15.0 * sy,
-    )
-    .cubic_to(
-      box.x + 85.0 * sx,
-      box.y + 5.0 * sy,
-      box.x + 70.0 * sx,
-      box.y,
-      box.x + 55.0 * sx,
-      box.y + 10.0 * sy,
-    )
-    .cubic_to(
-      box.x + 45.0 * sx,
-      box.y,
-      box.x + 30.0 * sx,
-      box.y + 5.0 * sy,
-      box.x + 25.0 * sx,
-      box.y + 20.0 * sy,
-    )
-    .cubic_to(
-      box.x + 10.0 * sx,
-      box.y + 20.0 * sy,
-      box.x + 5.0 * sx,
-      box.y + 30.0 * sy,
-      box.x + 20.0 * sx,
-      box.y + 40.0 * sy,
-    )
-    .close()
+  // D2 cloud path (scaled from 834x523 reference box).
+  let sx = box.width / 834.0
+  let sy = box.height / 523.0
+  let mut cur_x = box.x + 137.833 * sx
+  let mut cur_y = box.y + 182.833 * sy
+  let mut pb = @svg.PathBuilder::new().move_to(cur_x, cur_y)
+  fn rel(
+    cur_x : Double,
+    cur_y : Double,
+    dx : Double,
+    dy : Double,
+    sx : Double,
+    sy : Double,
+  ) -> (Double, Double) {
+    (cur_x + dx * sx, cur_y + dy * sy)
+  }
+
+  fn abs(
+    box_x : Double,
+    box_y : Double,
+    x : Double,
+    y : Double,
+    sx : Double,
+    sy : Double,
+  ) -> (Double, Double) {
+    (box_x + x * sx, box_y + y * sy)
+  }
+
+  let (x1, y1) = rel(cur_x, cur_y, 0.0, 5.556, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -5.556, 11.111, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -11.111, 11.111, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -70.833, 6.944, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -126.389, 77.778, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -126.389, 163.889, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, 0.0, 91.667, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, 62.5, 165.278, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, 141.667, 165.278, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  cur_x = cur_x + 537.5 * sx
+  pb = pb.h_to(cur_x)
+  let (x1, y1) = rel(cur_x, cur_y, 84.723, 0.0, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, 154.167, -79.167, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, 154.167, -175.0, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, 0.0, -91.667, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -63.89, -168.056, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -144.444, -173.611, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -5.556, 0.0, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -11.111, -4.167, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -12.5, -11.111, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -18.056, -93.055, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -101.39, -162.5, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -198.611, -162.5, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -63.889, 0.0, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -120.834, 29.167, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -156.944, 75.0, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -4.167, 5.556, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -11.111, 6.945, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -15.278, 5.556, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = rel(cur_x, cur_y, -13.889, -5.556, sx, sy)
+  let (x2, y2) = rel(cur_x, cur_y, -29.166, -8.333, sx, sy)
+  let (x3, y3) = rel(cur_x, cur_y, -45.833, -8.333, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
+  cur_x = x3
+  cur_y = y3
+  let (x1, y1) = abs(box.x, box.y, 196.167, 71.722, sx, sy)
+  let (x2, y2) = abs(box.x, box.y, 143.389, 120.333, sx, sy)
+  let (x3, y3) = abs(box.x, box.y, 137.833, 182.833, sx, sy)
+  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3).close()
   svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
 }
 

@@ -317,12 +317,12 @@ test "simple DAG" {
   let end2 = r2[r2.length() - 1]
   let end3 = r3[r3.length() - 1]
   // Fan-in ports on Storage should be distinct.
-  assert_true(end2.y == 240.0 && end3.y == 240.0)
+  assert_true(end2.y == 260.0 && end3.y == 260.0)
   assert_true(end2.x != end3.x, msg="Storage entry ports should differ")
   inspect(
     patch.nodes,
     content=(
-      #|{"Alice": {x: 160, y: 0, width: 100, height: 60}, "Bob": {x: 320, y: 0, width: 100, height: 60}, "WebServer1": {x: 160, y: 120, width: 100, height: 60}, "WebServer2": {x: 320, y: 120, width: 100, height: 60}, "Storage": {x: 240, y: 240, width: 100, height: 60}}
+      #|{"Alice": {x: 120, y: 0, width: 100, height: 60}, "Bob": {x: 240, y: 0, width: 100, height: 60}, "WebServer1": {x: 120, y: 130, width: 100, height: 60}, "WebServer2": {x: 240, y: 130, width: 100, height: 60}, "Storage": {x: 180, y: 260, width: 100, height: 60}}
     ),
   )
 }
@@ -348,11 +348,11 @@ test "A -> B" {
   // 
   let config = @engine_api.LayoutConfig::new()
   let patch = layout_graph(g, config, @engine_api.Down)
-  inspect(patch.edges, content="{0: [{x: 210, y: 60}, {x: 210, y: 120}]}")
+  inspect(patch.edges, content="{0: [{x: 170, y: 60}, {x: 170, y: 130}]}")
   inspect(
     patch.nodes,
     content=(
-      #|{"A": {x: 160, y: 0, width: 100, height: 60}, "B": {x: 160, y: 120, width: 100, height: 60}}
+      #|{"A": {x: 120, y: 0, width: 100, height: 60}, "B": {x: 120, y: 130, width: 100, height: 60}}
     ),
   )
 }

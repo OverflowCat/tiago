@@ -20,6 +20,7 @@
 /// (UP/DOWN) x (LEFT/RIGHT), then selects the best result.
 ///
 /// Based on "Fast and Simple Horizontal Coordinate Assignment" (2002)
+/// with ELK's extensions (ports, block shifts, compaction classes).
 
 // ============================================================================
 // Block and Root Structures
@@ -40,551 +41,133 @@ enum HDirection {
 } derive(Show, Eq)
 
 ///|
-/// Block information for a node
-struct BlockInfo {
-  mut root : String // Root of the block this node belongs to
-  mut align : String // Next node in the block
-  sink : String // Sink of the block (unused but kept for completeness)
-  shift : Double // Shift value for block positioning (unused but kept for completeness)
-  mut x : Double // X coordinate (used for horizontal compaction)
-} derive(Show)
-
-// ============================================================================
-// Brandes-Koepf Algorithm Implementation
-// ============================================================================
+struct NeighborRef {
+  node_id : String
+  edge_id : String
+}
 
 ///|
-/// Run Brandes-Koepf node placement
-fn run_brandes_koepf(
-  graph : LGraph,
-  options : LayoutOptions,
-  direction : LayoutDirection,
-) -> Unit {
-  if graph.nodes.length() == 0 {
-    return
-  }
-  let node_spacing = options.node_node_spacing.unwrap_or(20.0)
-  let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
-  let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
-  let is_horizontal = direction.is_horizontal()
+struct NeighborInfo {
+  node_index : Map[String, Int]
+  left_neighbors : Map[String, Array[NeighborRef]]
+  right_neighbors : Map[String, Array[NeighborRef]]
+}
 
-  // Determine whether to favor straight edges (ELK default depends on edge routing).
-  let edge_routing = options.edge_routing.unwrap_or(Orthogonal)
-  let favor_straight_edges = edge_routing == Orthogonal
+///|
+struct ClassEdge {
+  target_id : String
+  separation : Double
+}
 
-  // Choose which BK alignment(s) to compute.
-  let requested = options.bk_fixed_alignment
-  let produce_balanced_layout = match requested {
-    Some(Average) => true
-    Some(_) => false
-    None => !favor_straight_edges
-  }
-  let layouts : Array[Map[String, Double]] = []
-  match requested {
-    Some(LeftDown) =>
-      layouts.push(
-        compute_layout(graph, Down, Left, node_spacing, is_horizontal),
-      )
-    Some(LeftUp) =>
-      layouts.push(compute_layout(graph, Up, Left, node_spacing, is_horizontal))
-    Some(RightDown) =>
-      layouts.push(
-        compute_layout(graph, Down, Right, node_spacing, is_horizontal),
-      )
-    Some(RightUp) =>
-      layouts.push(
-        compute_layout(graph, Up, Right, node_spacing, is_horizontal),
-      )
-    Some(Average) | None => {
-      // Try all four direction combinations.
-      let v_dirs : Array[VDirection] = [Up, Down]
-      let h_dirs : Array[HDirection] = [Left, Right]
-      for vdir in v_dirs {
-        for hdir in h_dirs {
-          let positions = compute_layout(
-            graph, vdir, hdir, node_spacing, is_horizontal,
-          )
-          layouts.push(positions)
-        }
-      }
-    }
-  }
+///|
+struct ClassNode {
+  node_id : String
+  mut class_shift : Double?
+  mut indegree : Int
+  outgoing : Array[ClassEdge]
+}
 
-  // Select the final layout.
-  // Reference ELK favors straight edges for orthogonal routing.
-  let chosen_layout = if produce_balanced_layout {
-    create_balanced_layout(layouts, graph, is_horizontal)
-  } else if favor_straight_edges && requested is None {
-    select_favor_straight_layout(layouts, graph, is_horizontal)
+///|
+struct BKLayout {
+  vdir : VDirection
+  hdir : HDirection
+  root : Map[String, String]
+  align : Map[String, String]
+  inner_shift : Map[String, Double]
+  block_size : Map[String, Double]
+  sink : Map[String, String]
+  shift : Map[String, Double]
+  y : Map[String, Double?]
+  od : Map[String, Bool]
+  su : Map[String, Bool]
+}
+
+///|
+fn node_size_cross(node : LNode, is_horizontal : Bool) -> Double {
+  if is_horizontal {
+    node.height
   } else {
-    select_smallest_layout(layouts, graph, is_horizontal)
-  }
-
-  // Apply the selected layout.
-  apply_layout(
-    graph, chosen_layout, layer_spacing, padding, is_horizontal, direction,
-  )
-}
-
-///|
-/// Compute layout for a specific direction combination
-fn compute_layout(
-  graph : LGraph,
-  vdir : VDirection,
-  hdir : HDirection,
-  node_spacing : Double,
-  is_horizontal : Bool,
-) -> Map[String, Double] {
-  // Initialize block info for all nodes
-  let info : Map[String, BlockInfo] = {}
-  for node in graph.nodes {
-    info[node.id] = {
-      root: node.id,
-      align: node.id,
-      sink: node.id,
-      shift: @double.infinity,
-      x: @double.neg_infinity,
-    }
-  }
-
-  // Step 1: Vertical alignment - group nodes into blocks
-  vertical_alignment(graph, info, vdir, hdir)
-
-  // Step 2: Horizontal compaction - assign x coordinates
-  horizontal_compaction(graph, info, hdir, node_spacing)
-
-  // Step 3: shift nodes inside blocks so that their port anchors align.
-  // This helps avoid unnecessary bends for orthogonal routing when node sizes differ.
-  let inner_shift : Map[String, Double] = {}
-  for node in graph.nodes {
-    inner_shift[node.id] = 0.0
-  }
-  fn anchor_cross(node : LNode, port_id : String?) -> Double {
-    match port_id {
-      Some(pid) => {
-        for port in node.ports {
-          if port.id == pid {
-            let has_size = port.width > 0.0 || port.height > 0.0
-            if has_size {
-              return if is_horizontal {
-                port.y + port.height / 2.0
-              } else {
-                port.x + port.width / 2.0
-              }
-            }
-            let has_pos = port.x != 0.0 || port.y != 0.0
-            if is_horizontal {
-              // Horizontal layouts connect via East/West; cross axis is Y.
-              match port.side {
-                West | East =>
-                  return if has_pos { port.y } else { node.height / 2.0 }
-                _ => return if has_pos { port.y } else { node.height / 2.0 }
-              }
-            } else {
-              // Vertical layouts connect via North/South; cross axis is X.
-              match port.side {
-                North | South =>
-                  return if has_pos { port.x } else { node.width / 2.0 }
-                _ => return if has_pos { port.x } else { node.width / 2.0 }
-              }
-            }
-          }
-        }
-        if is_horizontal {
-          node.height / 2.0
-        } else {
-          node.width / 2.0
-        }
-      }
-      None => if is_horizontal { node.height / 2.0 } else { node.width / 2.0 }
-    }
-  }
-
-  fn find_edge_between(graph : LGraph, a : String, b : String) -> LEdge? {
-    for e in graph.edges {
-      if (e.source_id == a && e.target_id == b) ||
-        (e.source_id == b && e.target_id == a) {
-        return Some(e)
-      }
-    }
-    None
-  }
-
-  // Compute inside-block shifts by following alignment pointers.
-  // `align` points to a node in the already-processed adjacent layer.
-  let layer_order : Array[Int] = if vdir == Down {
-    let order : Array[Int] = []
-    for i = 0; i < graph.layers.length(); i = i + 1 {
-      order.push(i)
-    }
-    order
-  } else {
-    let order : Array[Int] = []
-    for i = graph.layers.length() - 1; i >= 0; i = i - 1 {
-      order.push(i)
-    }
-    order
-  }
-  for layer_idx in layer_order {
-    let layer = graph.layers[layer_idx]
-    for node in layer.nodes {
-      let parent_id = info.get(node.id).unwrap().align
-      if parent_id == node.id {
-        continue
-      }
-      match graph.get_node(parent_id) {
-        Some(parent) =>
-          match find_edge_between(graph, node.id, parent_id) {
-            Some(e) => {
-              let (parent_port, node_port) = if e.source_id == parent_id &&
-                e.target_id == node.id {
-                (e.source_port_id, e.target_port_id)
-              } else {
-                (e.target_port_id, e.source_port_id)
-              }
-              let parent_anchor = anchor_cross(parent, parent_port)
-              let node_anchor = anchor_cross(node, node_port)
-              let parent_shift = inner_shift.get(parent_id).unwrap_or(0.0)
-              inner_shift[node.id] = parent_shift +
-                (parent_anchor - node_anchor)
-            }
-            None =>
-              inner_shift[node.id] = inner_shift.get(parent_id).unwrap_or(0.0)
-          }
-        None => ()
-      }
-    }
-  }
-
-  // Resolve overlaps by shifting whole blocks (block roots).
-  // This keeps the relative alignment inside blocks intact.
-  let root_pos : Map[String, Double] = {}
-  for node in graph.nodes {
-    match info.get(node.id) {
-      Some(b) => {
-        let rid = b.root
-        if !root_pos.contains(rid) {
-          let ri = info.get(rid).unwrap_or(b)
-          root_pos[rid] = ri.x
-        }
-      }
-      None => ()
-    }
-  }
-  let max_iters = graph.layers.length() * 4 + 8
-  for _iter = 0; _iter < max_iters; _iter = _iter + 1 {
-    let mut changed = false
-    for layer in graph.layers {
-      let layer_nodes = layer.nodes.copy()
-      layer_nodes.sort_by(fn(a, b) {
-        let a_pos = match info.get(a.id) {
-          Some(ai) =>
-            root_pos.get(ai.root).unwrap_or(0.0) +
-            inner_shift.get(a.id).unwrap_or(0.0)
-          None => inner_shift.get(a.id).unwrap_or(0.0)
-        }
-        let b_pos = match info.get(b.id) {
-          Some(bi) =>
-            root_pos.get(bi.root).unwrap_or(0.0) +
-            inner_shift.get(b.id).unwrap_or(0.0)
-          None => inner_shift.get(b.id).unwrap_or(0.0)
-        }
-        if a_pos < b_pos {
-          -1
-        } else if a_pos > b_pos {
-          1
-        } else {
-          a.id.compare(b.id)
-        }
-      })
-      for i = 1; i < layer_nodes.length(); i = i + 1 {
-        let prev = layer_nodes[i - 1]
-        let curr = layer_nodes[i]
-        let prev_info = info.get(prev.id)
-        let curr_info = info.get(curr.id)
-        guard prev_info is Some(pi) && curr_info is Some(ci) else { continue }
-        if pi.root == ci.root {
-          continue
-        }
-        let prev_root_pos = root_pos.get(pi.root).unwrap_or(0.0)
-        let curr_root_pos = root_pos.get(ci.root).unwrap_or(0.0)
-        let prev_pos = prev_root_pos + inner_shift.get(prev.id).unwrap_or(0.0)
-        let curr_pos = curr_root_pos + inner_shift.get(curr.id).unwrap_or(0.0)
-        let prev_size = if is_horizontal { prev.height } else { prev.width }
-        let required = prev_pos + prev_size + node_spacing
-        if curr_pos < required {
-          root_pos[ci.root] = curr_root_pos + (required - curr_pos)
-          changed = true
-        }
-      }
-    }
-    if !changed {
-      break
-    }
-  }
-
-  // Extract final positions (block root position + per-node inner shift).
-  let positions : Map[String, Double] = {}
-  for node in graph.nodes {
-    match info.get(node.id) {
-      Some(block_info) => {
-        let shift = inner_shift.get(node.id).unwrap_or(0.0)
-        positions[node.id] = root_pos.get(block_info.root).unwrap_or(0.0) +
-          shift
-      }
-      None => positions[node.id] = 0.0
-    }
-  }
-  positions
-}
-
-///|
-/// Vertical alignment phase - create blocks of aligned nodes
-fn vertical_alignment(
-  graph : LGraph,
-  info : Map[String, BlockInfo],
-  vdir : VDirection,
-  hdir : HDirection,
-) -> Unit {
-  // Process layers in order based on vertical direction
-  let layer_order = if vdir == Up {
-    // Process from bottom to top
-    let order : Array[Int] = []
-    for i = graph.layers.length() - 1; i >= 0; i = i - 1 {
-      order.push(i)
-    }
-    order
-  } else {
-    // Process from top to bottom
-    let order : Array[Int] = []
-    for i = 0; i < graph.layers.length(); i = i + 1 {
-      order.push(i)
-    }
-    order
-  }
-  for layer_idx in layer_order {
-    let layer = graph.layers[layer_idx]
-
-    // Process nodes in order based on horizontal direction
-    let node_order = if hdir == Left {
-      // Left to right
-      let order : Array[Int] = []
-      for i = 0; i < layer.nodes.length(); i = i + 1 {
-        order.push(i)
-      }
-      order
-    } else {
-      // Right to left
-      let order : Array[Int] = []
-      for i = layer.nodes.length() - 1; i >= 0; i = i - 1 {
-        order.push(i)
-      }
-      order
-    }
-    let mut r = -1 // Rightmost position of aligned neighbor
-    for pos in node_order {
-      let node = layer.nodes[pos]
-
-      // Find neighbors in adjacent layer
-      let neighbors = get_neighbors(graph, node, vdir)
-      if neighbors.length() > 0 {
-        // Get median neighbor(s)
-        let medians = get_medians(neighbors, hdir)
-        for median in medians {
-          match info.get(node.id) {
-            Some(node_info) =>
-              if node_info.align == node.id {
-                // Node not yet aligned
-                let median_pos = median.position
-                if (hdir == Left && median_pos > r) ||
-                  (hdir == Right && median_pos < r) ||
-                  r < 0 {
-                  // Align with median
-                  match info.get(median.id) {
-                    Some(median_info) => {
-                      // Align this node with the median neighbor.
-                      node_info.align = median.id
-                      node_info.root = median_info.root
-                      r = median_pos
-                      // Put modified values back in map
-                      info[median.id] = median_info
-                      info[node.id] = node_info
-                    }
-                    None => ()
-                  }
-                }
-              }
-            None => ()
-          }
-        }
-      }
-    }
+    node.width
   }
 }
 
 ///|
-/// Get neighbors in the adjacent layer based on direction
-fn get_neighbors(
-  graph : LGraph,
-  node : LNode,
-  vdir : VDirection,
-) -> Array[LNode] {
-  let neighbors : Array[LNode] = []
-  if vdir == Down {
-    // Down sweep (top -> bottom): look at incoming edges from previous layer.
-    for edge in node.incoming_edges {
-      match graph.get_node(edge.source_id) {
-        Some(source) =>
-          if source.layer == node.layer - 1 {
-            neighbors.push(source)
-          }
-        None => ()
-      }
-    }
-  } else {
-    // Up sweep (bottom -> top): look at outgoing edges to next layer.
-    for edge in node.outgoing_edges {
-      match graph.get_node(edge.target_id) {
-        Some(target) =>
-          if target.layer == node.layer + 1 {
-            neighbors.push(target)
-          }
-        None => ()
-      }
-    }
-  }
-
-  // Sort by position
-  neighbors.sort_by(fn(a, b) { a.position - b.position })
-  neighbors
-}
-
-///|
-/// Get median neighbor(s) from sorted list
-fn get_medians(neighbors : Array[LNode], hdir : HDirection) -> Array[LNode] {
-  let n = neighbors.length()
-  if n == 0 {
-    return []
-  }
-  let mid = n / 2
-  if n % 2 == 1 {
-    // Odd number - single median
-    [neighbors[mid]]
-  } else if hdir == Left {
-    // Even number - left median
-    [neighbors[mid - 1]]
-  } else {
-    // Even number - right median
-    [neighbors[mid]]
+fn resolve_spacings(options : LayoutOptions) -> SpacingOptions {
+  let defaults = SpacingOptions::default()
+  {
+    ..defaults,
+    node_node: options.node_node_spacing.unwrap_or(defaults.node_node),
+    node_node_between_layers: options.node_node_between_layers_spacing.unwrap_or(
+      defaults.node_node_between_layers,
+    ),
+    edge_node: options.edge_node_spacing.unwrap_or(defaults.edge_node),
+    edge_node_between_layers: options.edge_node_between_layers_spacing.unwrap_or(
+      defaults.edge_node_between_layers,
+    ),
+    edge_edge: options.edge_edge_spacing.unwrap_or(defaults.edge_edge),
+    edge_edge_between_layers: options.edge_edge_between_layers_spacing.unwrap_or(
+      defaults.edge_edge_between_layers,
+    ),
+    edge_label: options.edge_label_spacing.unwrap_or(defaults.edge_label),
+    label_node: options.label_node_spacing.unwrap_or(defaults.label_node),
+    label_port_horizontal: options.label_port_horizontal_spacing.unwrap_or(
+      defaults.label_port_horizontal,
+    ),
+    label_port_vertical: options.label_port_vertical_spacing.unwrap_or(
+      defaults.label_port_vertical,
+    ),
+    label_label: options.label_label_spacing.unwrap_or(defaults.label_label),
+    port_port: options.port_port_spacing.unwrap_or(defaults.port_port),
+    component_component: options.component_component_spacing.unwrap_or(
+      defaults.component_component,
+    ),
   }
 }
 
 ///|
-/// Horizontal compaction phase - assign x coordinates to blocks
-fn horizontal_compaction(
-  graph : LGraph,
-  info : Map[String, BlockInfo],
-  hdir : HDirection,
-  node_spacing : Double,
-) -> Unit {
-  // Find all root nodes (nodes where root == self)
-  let roots : Array[LNode] = []
-  for node in graph.nodes {
-    match info.get(node.id) {
-      Some(block_info) => if block_info.root == node.id { roots.push(node) }
-      None => ()
-    }
-  }
-
-  // Sort roots by layer and position
-  roots.sort_by(fn(a, b) {
-    if a.layer != b.layer {
-      a.layer - b.layer
-    } else {
-      a.position - b.position
-    }
-  })
-
-  // Assign x coordinates to roots
-  // Process layer by layer
-  let layer_x : Map[Int, Double] = {}
-  for root in roots {
-    match info.get(root.id) {
-      Some(root_info) => {
-        // Get minimum x based on previous nodes in same layer
-        let min_x = layer_x.get(root.layer).unwrap_or(0.0)
-
-        // Set x coordinate and put back in map
-        root_info.x = min_x
-        info[root.id] = root_info
-
-        // Update layer_x for next node
-        let node_size = if root.width > 0.0 { root.width } else { 60.0 }
-        layer_x[root.layer] = min_x + node_size + node_spacing
-      }
-      None => ()
-    }
-  }
-
-  // If processing right-to-left, we need to flip coordinates
-  if hdir == Right {
-    let mut max_x = 0.0
-    for node in graph.nodes {
-      match info.get(node.id) {
-        Some(block_info) => {
-          let root_info = info.get(block_info.root).unwrap_or(block_info)
-          if root_info.x > max_x {
-            max_x = root_info.x + node.width
-          }
-        }
-        None => ()
-      }
-    }
-
-    // Flip all coordinates
-    for root in roots {
-      match info.get(root.id) {
-        Some(root_info) => {
-          root_info.x = max_x - root_info.x - root.width
-          info[root.id] = root_info
-        }
-        None => ()
-      }
-    }
-  }
-}
-
-///|
-fn layout_span(
-  positions : Map[String, Double],
-  graph : LGraph,
-  is_horizontal : Bool,
-) -> (Double, Double, Double) {
-  let mut min_pos = @double.infinity
-  let mut max_pos = @double.neg_infinity
-  for node in graph.nodes {
-    let p = positions.get(node.id).unwrap_or(0.0)
-    let size = if is_horizontal { node.height } else { node.width }
-    if p < min_pos {
-      min_pos = p
-    }
-    if p + size > max_pos {
-      max_pos = p + size
-    }
-  }
-  if min_pos == @double.infinity {
-    (0.0, 0.0, 0.0)
-  } else {
-    (min_pos, max_pos, max_pos - min_pos)
-  }
-}
-
-///|
-fn anchor_cross_for_straightness(
-  node : LNode,
-  port_id : String?,
-  is_horizontal : Bool,
+fn spacing_for_types(
+  spacings : SpacingOptions,
+  a : LNodeType,
+  b : LNodeType,
 ) -> Double {
+  match (a, b) {
+    (Normal, Normal) => spacings.node_node
+    (Normal, LongEdgeDummy) | (LongEdgeDummy, Normal) => spacings.edge_node
+    (Normal, NorthSouthPort) | (NorthSouthPort, Normal) => spacings.edge_node
+    (Normal, ExternalPort) | (ExternalPort, Normal) => spacings.edge_node
+    (Normal, LabelDummy) | (LabelDummy, Normal) => spacings.node_node
+    (LongEdgeDummy, LongEdgeDummy) => spacings.edge_edge
+    (LongEdgeDummy, NorthSouthPort) | (NorthSouthPort, LongEdgeDummy) =>
+      spacings.edge_edge
+    (LongEdgeDummy, ExternalPort) | (ExternalPort, LongEdgeDummy) =>
+      spacings.edge_edge
+    (LongEdgeDummy, LabelDummy) | (LabelDummy, LongEdgeDummy) =>
+      spacings.edge_node
+    (NorthSouthPort, NorthSouthPort) => spacings.edge_edge
+    (NorthSouthPort, ExternalPort) | (ExternalPort, NorthSouthPort) =>
+      spacings.edge_edge
+    (NorthSouthPort, LabelDummy) | (LabelDummy, NorthSouthPort) =>
+      spacings.label_node
+    (ExternalPort, ExternalPort) => spacings.port_port
+    (ExternalPort, LabelDummy) | (LabelDummy, ExternalPort) =>
+      spacings.label_port_vertical
+    (LabelDummy, LabelDummy) => spacings.edge_edge
+    (BreakPoint, BreakPoint) => spacings.edge_edge
+    (BreakPoint, Normal) | (Normal, BreakPoint) => spacings.edge_node
+    (BreakPoint, LabelDummy) | (LabelDummy, BreakPoint) => spacings.edge_node
+    (BreakPoint, LongEdgeDummy) | (LongEdgeDummy, BreakPoint) =>
+      spacings.edge_node
+    _ => spacings.node_node
+  }
+}
+
+///|
+fn vertical_spacing(spacings : SpacingOptions, a : LNode, b : LNode) -> Double {
+  spacing_for_types(spacings, a.node_type, b.node_type)
+}
+
+///|
+fn port_cross(node : LNode, port_id : String?, is_horizontal : Bool) -> Double {
   match port_id {
     Some(pid) => {
       for port in node.ports {
@@ -615,6 +198,1367 @@ fn anchor_cross_for_straightness(
 }
 
 ///|
+fn edge_priority(edge : LEdge) -> Int {
+  edge.priority
+}
+
+///|
+fn is_in_layer_edge(graph : LGraph, edge : LEdge) -> Bool {
+  let source = graph.get_node(edge.source_id)
+  let target = graph.get_node(edge.target_id)
+  match (source, target) {
+    (Some(src), Some(tgt)) => src.layer == tgt.layer
+    _ => false
+  }
+}
+
+///|
+fn build_neighbor_info(graph : LGraph) -> NeighborInfo {
+  let node_index : Map[String, Int] = {}
+  for layer in graph.layers {
+    for i, node in layer.nodes {
+      node_index[node.id] = i
+    }
+  }
+  let left_neighbors : Map[String, Array[NeighborRef]] = {}
+  let right_neighbors : Map[String, Array[NeighborRef]] = {}
+  for layer in graph.layers {
+    for node in layer.nodes {
+      // Left neighbors (incoming)
+      let mut max_prio = -0x7fffffff
+      let incoming : Array[NeighborRef] = []
+      for edge in node.incoming_edges {
+        if edge.is_self_loop() || is_in_layer_edge(graph, edge) {
+          continue
+        }
+        let prio = edge_priority(edge)
+        if prio > max_prio {
+          max_prio = prio
+          incoming.clear()
+        }
+        if prio == max_prio {
+          incoming.push({ node_id: edge.source_id, edge_id: edge.id })
+        }
+      }
+      incoming.sort_by(fn(a, b) {
+        let ai = node_index.get(a.node_id).unwrap_or(0)
+        let bi = node_index.get(b.node_id).unwrap_or(0)
+        ai - bi
+      })
+      left_neighbors[node.id] = incoming
+
+      // Right neighbors (outgoing)
+      max_prio = -0x7fffffff
+      let outgoing : Array[NeighborRef] = []
+      for edge in node.outgoing_edges {
+        if edge.is_self_loop() || is_in_layer_edge(graph, edge) {
+          continue
+        }
+        let prio = edge_priority(edge)
+        if prio > max_prio {
+          max_prio = prio
+          outgoing.clear()
+        }
+        if prio == max_prio {
+          outgoing.push({ node_id: edge.target_id, edge_id: edge.id })
+        }
+      }
+      outgoing.sort_by(fn(a, b) {
+        let ai = node_index.get(a.node_id).unwrap_or(0)
+        let bi = node_index.get(b.node_id).unwrap_or(0)
+        ai - bi
+      })
+      right_neighbors[node.id] = outgoing
+    }
+  }
+  { node_index, left_neighbors, right_neighbors }
+}
+
+///|
+fn incident_to_inner_segment(
+  graph : LGraph,
+  node : LNode,
+  layer1 : Int,
+  layer2 : Int,
+) -> Bool {
+  if node.node_type != LongEdgeDummy {
+    return false
+  }
+  for edge in node.incoming_edges {
+    let source = graph.get_node(edge.source_id)
+    match source {
+      Some(src) =>
+        if src.node_type == LongEdgeDummy &&
+          src.layer == layer2 &&
+          node.layer == layer1 {
+          return true
+        }
+      None => ()
+    }
+  }
+  false
+}
+
+///|
+fn mark_conflicts(graph : LGraph, ni : NeighborInfo) -> Map[String, Bool] {
+  let marked : Map[String, Bool] = {}
+  let number_of_layers = graph.layers.length()
+  if number_of_layers < 3 {
+    return marked
+  }
+  let layer_sizes : Array[Int] = []
+  for layer in graph.layers {
+    layer_sizes.push(layer.nodes.length())
+  }
+  for i = 1; i < number_of_layers - 1; i = i + 1 {
+    let current_layer = graph.layers[i + 1]
+    let mut k_0 = 0
+    let mut l = 0
+    for l_1 = 0; l_1 < layer_sizes[i + 1]; l_1 = l_1 + 1 {
+      let v_l_i = current_layer.nodes[l_1]
+      if l_1 == layer_sizes[i + 1] - 1 ||
+        incident_to_inner_segment(graph, v_l_i, i + 1, i) {
+        let mut k_1 = layer_sizes[i] - 1
+        if incident_to_inner_segment(graph, v_l_i, i + 1, i) {
+          match ni.left_neighbors.get(v_l_i.id) {
+            Some(neighbors) =>
+              if neighbors.length() > 0 {
+                let first = neighbors[0]
+                k_1 = ni.node_index.get(first.node_id).unwrap_or(k_1)
+              }
+            None => ()
+          }
+        }
+        while l <= l_1 {
+          let v_l = current_layer.nodes[l]
+          if !incident_to_inner_segment(graph, v_l, i + 1, i) {
+            match ni.left_neighbors.get(v_l.id) {
+              Some(neighbors) =>
+                for upper in neighbors {
+                  let k = ni.node_index.get(upper.node_id).unwrap_or(0)
+                  if k < k_0 || k > k_1 {
+                    marked[upper.edge_id] = true
+                  }
+                }
+              None => ()
+            }
+          }
+          l = l + 1
+        }
+        k_0 = k_1
+      }
+    }
+  }
+  marked
+}
+
+///|
+fn init_layout(
+  graph : LGraph,
+  vdir : VDirection,
+  hdir : HDirection,
+) -> BKLayout {
+  let root : Map[String, String] = {}
+  let align : Map[String, String] = {}
+  let inner_shift : Map[String, Double] = {}
+  let block_size : Map[String, Double] = {}
+  let sink : Map[String, String] = {}
+  let shift : Map[String, Double] = {}
+  let y : Map[String, Double?] = {}
+  let od : Map[String, Bool] = {}
+  let su : Map[String, Bool] = {}
+  for node in graph.nodes {
+    root[node.id] = node.id
+    align[node.id] = node.id
+    inner_shift[node.id] = 0.0
+    sink[node.id] = node.id
+    shift[node.id] = if vdir == Up {
+      @double.neg_infinity
+    } else {
+      @double.infinity
+    }
+    y[node.id] = None
+    od[node.id] = true
+    su[node.id] = false
+  }
+  { vdir, hdir, root, align, inner_shift, block_size, sink, shift, y, od, su }
+}
+
+///|
+fn vertical_alignment(
+  graph : LGraph,
+  ni : NeighborInfo,
+  marked : Map[String, Bool],
+  layout : BKLayout,
+) -> Unit {
+  let layers : Array[LLayer] = []
+  if layout.hdir == Left {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      let idx = graph.layers.length() - 1 - i
+      layers.push(graph.layers[idx])
+    }
+  } else {
+    layers.append(graph.layers)
+  }
+  for layer in layers {
+    let mut r = -1
+    let nodes : Array[LNode] = []
+    if layout.vdir == Up {
+      r = 0x7fffffff
+      for i = 0; i < layer.nodes.length(); i = i + 1 {
+        let idx = layer.nodes.length() - 1 - i
+        nodes.push(layer.nodes[idx])
+      }
+    } else {
+      nodes.append(layer.nodes)
+    }
+    for node in nodes {
+      let neighbors = if layout.hdir == Left {
+        ni.right_neighbors.get(node.id).unwrap_or([])
+      } else {
+        ni.left_neighbors.get(node.id).unwrap_or([])
+      }
+      if neighbors.length() == 0 {
+        continue
+      }
+      let d = neighbors.length()
+      let low = (d + 1) / 2 - 1
+      let high = (d + 2) / 2 - 1
+      let indices : Array[Int] = []
+      if layout.vdir == Up {
+        for m = high; m >= low; m = m - 1 {
+          indices.push(m)
+        }
+      } else {
+        for m = low; m <= high; m = m + 1 {
+          indices.push(m)
+        }
+      }
+      for m in indices {
+        let median = neighbors[m]
+        if layout.align.get(node.id).unwrap_or(node.id) != node.id {
+          break
+        }
+        let median_index = ni.node_index.get(median.node_id).unwrap_or(0)
+        let allow = if layout.vdir == Up {
+          r > median_index
+        } else {
+          r < median_index || r < 0
+        }
+        if !allow {
+          continue
+        }
+        if marked.get(median.edge_id).unwrap_or(false) {
+          continue
+        }
+        let median_root = layout.root
+          .get(median.node_id)
+          .unwrap_or(median.node_id)
+        layout.align[median.node_id] = node.id
+        layout.root[node.id] = median_root
+        layout.align[node.id] = median_root
+        let is_dummy = node.node_type == LongEdgeDummy
+        let od_root = layout.od.get(median_root).unwrap_or(true)
+        layout.od[median_root] = od_root && is_dummy
+        r = median_index
+      }
+    }
+  }
+}
+
+///|
+fn find_edge_between(graph : LGraph, a : String, b : String) -> LEdge? {
+  for e in graph.edges {
+    if (e.source_id == a && e.target_id == b) ||
+      (e.source_id == b && e.target_id == a) {
+      return Some(e)
+    }
+  }
+  None
+}
+
+///|
+fn inside_block_shift(
+  graph : LGraph,
+  layout : BKLayout,
+  is_horizontal : Bool,
+) -> Unit {
+  let blocks : Map[String, Array[String]] = {}
+  for layer in graph.layers {
+    for node in layer.nodes {
+      let rid = layout.root.get(node.id).unwrap_or(node.id)
+      let nodes = blocks.get(rid).unwrap_or([])
+      nodes.push(node.id)
+      blocks[rid] = nodes
+    }
+  }
+  for pair in blocks.iter() {
+    let (root_id, _) = pair
+    let root_node = graph.get_node(root_id)
+    guard root_node is Some(root_node) else { continue }
+    let mut space_above = 0.0
+    let mut space_below = node_size_cross(root_node, is_horizontal)
+    layout.inner_shift[root_id] = 0.0
+    let mut current_id = root_id
+    while true {
+      let next_id = layout.align.get(current_id).unwrap_or(root_id)
+      if next_id == root_id {
+        break
+      }
+      match find_edge_between(graph, current_id, next_id) {
+        Some(edge) => {
+          let source = graph.get_node(edge.source_id)
+          let target = graph.get_node(edge.target_id)
+          guard source is Some(src) && target is Some(tgt) else { () }
+          let src_cross = port_cross(src, edge.source_port_id, is_horizontal)
+          let tgt_cross = port_cross(tgt, edge.target_port_id, is_horizontal)
+          let port_diff = if layout.hdir == Left {
+            tgt_cross - src_cross
+          } else {
+            src_cross - tgt_cross
+          }
+          let current_shift = layout.inner_shift.get(current_id).unwrap_or(0.0)
+          let next_shift = current_shift + port_diff
+          layout.inner_shift[next_id] = next_shift
+          let next_node = graph.get_node(next_id)
+          match next_node {
+            Some(nn) => {
+              let size = node_size_cross(nn, is_horizontal)
+              if -next_shift > space_above {
+                space_above = -next_shift
+              }
+              if next_shift + size > space_below {
+                space_below = next_shift + size
+              }
+            }
+            None => ()
+          }
+        }
+        None => ()
+      }
+      current_id = next_id
+    }
+    let mut current = root_id
+    while true {
+      let shift = layout.inner_shift.get(current).unwrap_or(0.0)
+      layout.inner_shift[current] = shift + space_above
+      let next = layout.align.get(current).unwrap_or(root_id)
+      current = next
+      if current == root_id {
+        break
+      }
+    }
+    layout.block_size[root_id] = space_above + space_below
+  }
+}
+
+///|
+fn get_or_create_class_node(
+  class_nodes : Map[String, ClassNode],
+  node_id : String,
+) -> ClassNode {
+  match class_nodes.get(node_id) {
+    Some(n) => n
+    None => {
+      let n = { node_id, class_shift: None, indegree: 0, outgoing: [] }
+      class_nodes[node_id] = n
+      n
+    }
+  }
+}
+
+///|
+fn add_class_edge(
+  class_nodes : Map[String, ClassNode],
+  from_id : String,
+  to_id : String,
+  separation : Double,
+) -> Unit {
+  let from = get_or_create_class_node(class_nodes, from_id)
+  let to = get_or_create_class_node(class_nodes, to_id)
+  from.outgoing.push({ target_id: to_id, separation })
+  to.indegree = to.indegree + 1
+  class_nodes[from_id] = from
+  class_nodes[to_id] = to
+}
+
+///|
+fn place_classes(
+  class_nodes : Map[String, ClassNode],
+  layout : BKLayout,
+) -> Unit {
+  let queue : Array[String] = []
+  for pair in class_nodes.iter() {
+    let (id, node) = pair
+    if node.indegree == 0 {
+      queue.push(id.to_string())
+    }
+  }
+  let mut idx = 0
+  while idx < queue.length() {
+    let id = queue[idx]
+    idx = idx + 1
+    let node = class_nodes.get(id).unwrap()
+    if node.class_shift is None {
+      node.class_shift = Some(0.0)
+    }
+    let base = node.class_shift.unwrap_or(0.0)
+    for edge in node.outgoing {
+      let target = class_nodes.get(edge.target_id).unwrap()
+      match target.class_shift {
+        Some(v) =>
+          if layout.vdir == Down {
+            if base + edge.separation < v {
+              target.class_shift = Some(base + edge.separation)
+            }
+          } else if base + edge.separation > v {
+            target.class_shift = Some(base + edge.separation)
+          }
+        None => target.class_shift = Some(base + edge.separation)
+      }
+      target.indegree = target.indegree - 1
+      class_nodes[edge.target_id] = target
+      if target.indegree == 0 {
+        queue.push(edge.target_id)
+      }
+    }
+    class_nodes[id] = node
+  }
+  for pair in class_nodes.iter() {
+    let (id, node) = pair
+    match node.class_shift {
+      Some(v) => layout.shift[id.to_string()] = v
+      None => ()
+    }
+  }
+}
+
+///|
+fn get_other_node(edge : LEdge, node_id : String) -> String? {
+  if edge.source_id == node_id {
+    Some(edge.target_id)
+  } else if edge.target_id == node_id {
+    Some(edge.source_id)
+  } else {
+    None
+  }
+}
+
+///|
+fn calculate_delta(
+  graph : LGraph,
+  layout : BKLayout,
+  fix_node_id : String,
+  fix_port_id : String?,
+  block_node_id : String,
+  block_port_id : String?,
+  is_horizontal : Bool,
+) -> Double {
+  let fix_node = graph.get_node(fix_node_id)
+  let block_node = graph.get_node(block_node_id)
+  guard fix_node is Some(fix_node) && block_node is Some(block_node) else {
+    return 0.0
+  }
+  let fix_y = layout.y.get(fix_node_id).unwrap_or(None).unwrap_or(0.0)
+  let block_y = layout.y.get(block_node_id).unwrap_or(None).unwrap_or(0.0)
+  let fix_shift = layout.inner_shift.get(fix_node_id).unwrap_or(0.0)
+  let block_shift = layout.inner_shift.get(block_node_id).unwrap_or(0.0)
+  let fix_pos = fix_y +
+    fix_shift +
+    port_cross(fix_node, fix_port_id, is_horizontal)
+  let block_pos = block_y +
+    block_shift +
+    port_cross(block_node, block_port_id, is_horizontal)
+  block_pos - fix_pos
+}
+
+///|
+fn shift_block(layout : BKLayout, start_id : String, delta : Double) -> Unit {
+  let mut current = start_id
+  while true {
+    let y = layout.y.get(current).unwrap_or(Some(0.0)).unwrap_or(0.0)
+    layout.y[current] = Some(y + delta)
+    let next = layout.align.get(current).unwrap_or(start_id)
+    current = next
+    if current == start_id {
+      break
+    }
+  }
+}
+
+///|
+fn get_min_pos(graph : LGraph, layout : BKLayout, node_id : String) -> Double {
+  match graph.get_node(node_id) {
+    Some(_) => ()
+    None => return 0.0
+  }
+  let y = layout.y.get(node_id).unwrap_or(None).unwrap_or(0.0)
+  let shift = layout.inner_shift.get(node_id).unwrap_or(0.0)
+  y + shift
+}
+
+///|
+fn get_max_pos(
+  graph : LGraph,
+  layout : BKLayout,
+  node_id : String,
+  is_horizontal : Bool,
+) -> Double {
+  let node = graph.get_node(node_id)
+  guard node is Some(node) else { return 0.0 }
+  let y = layout.y.get(node_id).unwrap_or(None).unwrap_or(0.0)
+  let shift = layout.inner_shift.get(node_id).unwrap_or(0.0)
+  let size = node_size_cross(node, is_horizontal)
+  y + shift + size
+}
+
+///|
+fn node_layer_nodes(graph : LGraph, node : LNode) -> Array[LNode] {
+  if node.layer >= 0 && node.layer < graph.layers.length() {
+    graph.layers[node.layer].nodes
+  } else {
+    []
+  }
+}
+
+///|
+fn get_upper_neighbor(
+  graph : LGraph,
+  ni : NeighborInfo,
+  node : LNode,
+) -> LNode? {
+  let idx = ni.node_index.get(node.id).unwrap_or(0)
+  let layer = node_layer_nodes(graph, node)
+  if idx > 0 && idx - 1 < layer.length() {
+    Some(layer[idx - 1])
+  } else {
+    None
+  }
+}
+
+///|
+fn get_lower_neighbor(
+  graph : LGraph,
+  ni : NeighborInfo,
+  node : LNode,
+) -> LNode? {
+  let idx = ni.node_index.get(node.id).unwrap_or(0)
+  let layer = node_layer_nodes(graph, node)
+  if idx < layer.length() - 1 {
+    Some(layer[idx + 1])
+  } else {
+    None
+  }
+}
+
+///|
+fn get_edge_by_id(graph : LGraph, edge_id : String) -> LEdge? {
+  for edge in graph.edges {
+    if edge.id == edge_id {
+      return Some(edge)
+    }
+  }
+  None
+}
+
+///|
+fn check_space_above(
+  graph : LGraph,
+  layout : BKLayout,
+  ni : NeighborInfo,
+  spacings : SpacingOptions,
+  start_id : String,
+  delta : Double,
+  is_horizontal : Bool,
+) -> Double {
+  let mut available = delta
+  let root_id = start_id
+  let mut current = root_id
+  while true {
+    let next = layout.align.get(current).unwrap_or(root_id)
+    current = next
+    let min_y = get_min_pos(graph, layout, current)
+    let node = graph.get_node(current)
+    match node {
+      Some(n) =>
+        match get_upper_neighbor(graph, ni, n) {
+          Some(neighbor) => {
+            let max_y = get_max_pos(graph, layout, neighbor.id, is_horizontal)
+            let spacing = vertical_spacing(spacings, n, neighbor)
+            let space = min_y - (max_y + spacing)
+            if space < available {
+              available = space
+            }
+          }
+          None => ()
+        }
+      None => ()
+    }
+    if current == root_id {
+      break
+    }
+  }
+  available
+}
+
+///|
+fn check_space_below(
+  graph : LGraph,
+  layout : BKLayout,
+  ni : NeighborInfo,
+  spacings : SpacingOptions,
+  start_id : String,
+  delta : Double,
+  is_horizontal : Bool,
+) -> Double {
+  let mut available = delta
+  let root_id = start_id
+  let mut current = root_id
+  while true {
+    let next = layout.align.get(current).unwrap_or(root_id)
+    current = next
+    let max_y = get_max_pos(graph, layout, current, is_horizontal)
+    let node = graph.get_node(current)
+    match node {
+      Some(n) =>
+        match get_lower_neighbor(graph, ni, n) {
+          Some(neighbor) => {
+            let min_y = get_min_pos(graph, layout, neighbor.id)
+            let spacing = vertical_spacing(spacings, n, neighbor)
+            let space = min_y - (max_y + spacing)
+            if space < available {
+              available = space
+            }
+          }
+          None => ()
+        }
+      None => ()
+    }
+    if current == root_id {
+      break
+    }
+  }
+  available
+}
+
+///|
+struct Postprocessable {
+  free_id : String
+  is_root : Bool
+  has_edges : Bool
+  edge_id : String?
+}
+
+///|
+fn pick_edge(
+  graph : LGraph,
+  layout : BKLayout,
+  block_finished : Map[String, Bool],
+  pp : Postprocessable,
+) -> Postprocessable {
+  let edges : Array[LEdge] = []
+  let node = graph.get_node(pp.free_id)
+  guard node is Some(node) else { return pp }
+  if pp.is_root {
+    if layout.hdir == Right {
+      edges.append(node.incoming_edges)
+    } else {
+      edges.append(node.outgoing_edges)
+    }
+  } else if layout.hdir == Left {
+    edges.append(node.incoming_edges)
+  } else {
+    edges.append(node.outgoing_edges)
+  }
+  let mut has_edges = false
+  for edge in edges {
+    let root_id = layout.root.get(pp.free_id).unwrap_or(pp.free_id)
+    let only_dummies = layout.od.get(root_id).unwrap_or(false)
+    if !only_dummies && is_in_layer_edge(graph, edge) {
+      continue
+    }
+    let other_id = get_other_node(edge, pp.free_id)
+    match other_id {
+      Some(oid) => {
+        let other_root = layout.root.get(oid).unwrap_or(oid)
+        if layout.su.get(root_id).unwrap_or(false) {
+          continue
+        }
+        has_edges = true
+        if block_finished.get(other_root).unwrap_or(false) {
+          let out = { ..pp, has_edges: true, edge_id: Some(edge.id) }
+          return out
+        }
+      }
+      None => ()
+    }
+  }
+  { ..pp, has_edges, edge_id: None }
+}
+
+///|
+fn get_threshold_bound(
+  graph : LGraph,
+  layout : BKLayout,
+  block_finished : Map[String, Bool],
+  pp : Postprocessable,
+  queue : Array[Postprocessable],
+  is_horizontal : Bool,
+) -> (Double, Array[Postprocessable]) {
+  let invalid = if layout.vdir == Up {
+    @double.infinity
+  } else {
+    @double.neg_infinity
+  }
+  let pick = pick_edge(graph, layout, block_finished, pp)
+  if pick.edge_id is None && pick.has_edges {
+    queue.push(pick)
+    return (invalid, queue)
+  } else if pick.edge_id is Some(edge_id) {
+    let edge = get_edge_by_id(graph, edge_id)
+    guard edge is Some(edge) else { return (invalid, queue) }
+    let left_id = edge.source_id
+    let right_id = edge.target_id
+    let left_port = edge.source_port_id
+    let right_port = edge.target_port_id
+    let mut threshold = invalid
+    if pick.is_root {
+      let (root_id, root_port, other_id, other_port) = if layout.hdir == Right {
+        (right_id, right_port, left_id, left_port)
+      } else {
+        (left_id, left_port, right_id, right_port)
+      }
+      let other_root = layout.root.get(other_id).unwrap_or(other_id)
+      let other_y = layout.y.get(other_root).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      match (graph.get_node(other_id), graph.get_node(root_id)) {
+        (Some(other_node), Some(root_node)) =>
+          threshold = other_y +
+            layout.inner_shift.get(other_id).unwrap_or(0.0) +
+            port_cross(other_node, other_port, is_horizontal) -
+            layout.inner_shift.get(root_id).unwrap_or(0.0) -
+            port_cross(root_node, root_port, is_horizontal)
+        _ => threshold = invalid
+      }
+    } else {
+      let (root_id, root_port, other_id, other_port) = if layout.hdir == Left {
+        (right_id, right_port, left_id, left_port)
+      } else {
+        (left_id, left_port, right_id, right_port)
+      }
+      let other_root = layout.root.get(other_id).unwrap_or(other_id)
+      let other_y = layout.y.get(other_root).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      match (graph.get_node(other_id), graph.get_node(root_id)) {
+        (Some(other_node), Some(root_node)) =>
+          threshold = other_y +
+            layout.inner_shift.get(other_id).unwrap_or(0.0) +
+            port_cross(other_node, other_port, is_horizontal) -
+            layout.inner_shift.get(root_id).unwrap_or(0.0) -
+            port_cross(root_node, root_port, is_horizontal)
+        _ => threshold = invalid
+      }
+    }
+    let left_root = layout.root.get(left_id).unwrap_or(left_id)
+    let right_root = layout.root.get(right_id).unwrap_or(right_id)
+    layout.su[left_root] = true
+    layout.su[right_root] = true
+    (threshold, queue)
+  } else {
+    (invalid, queue)
+  }
+}
+
+///|
+fn calculate_threshold(
+  graph : LGraph,
+  layout : BKLayout,
+  block_finished : Map[String, Bool],
+  old_thresh : Double,
+  block_root_id : String,
+  current_id : String,
+  queue : Array[Postprocessable],
+  is_horizontal : Bool,
+  use_threshold : Bool,
+) -> (Double, Array[Postprocessable]) {
+  if !use_threshold {
+    let val = if layout.vdir == Up {
+      @double.infinity
+    } else {
+      @double.neg_infinity
+    }
+    return (val, queue)
+  }
+  let mut out_queue = queue
+  let is_root = block_root_id == current_id
+  let is_last = layout.align.get(current_id).unwrap_or(block_root_id) ==
+    block_root_id
+  if !(is_root || is_last) {
+    return (old_thresh, out_queue)
+  }
+  let mut t = old_thresh
+  if layout.hdir == Right {
+    if is_root {
+      let (bound, q) = get_threshold_bound(
+        graph,
+        layout,
+        block_finished,
+        {
+          free_id: block_root_id,
+          is_root: true,
+          has_edges: false,
+          edge_id: None,
+        },
+        out_queue,
+        is_horizontal,
+      )
+      t = bound
+      out_queue = q
+    }
+    if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      let (bound, q) = get_threshold_bound(
+        graph,
+        layout,
+        block_finished,
+        { free_id: current_id, is_root: false, has_edges: false, edge_id: None },
+        out_queue,
+        is_horizontal,
+      )
+      t = bound
+      out_queue = q
+    }
+  } else {
+    if is_root {
+      let (bound, q) = get_threshold_bound(
+        graph,
+        layout,
+        block_finished,
+        {
+          free_id: block_root_id,
+          is_root: true,
+          has_edges: false,
+          edge_id: None,
+        },
+        out_queue,
+        is_horizontal,
+      )
+      t = bound
+      out_queue = q
+    }
+    if (t == @double.infinity || t == @double.neg_infinity) && is_last {
+      let (bound, q) = get_threshold_bound(
+        graph,
+        layout,
+        block_finished,
+        { free_id: current_id, is_root: false, has_edges: false, edge_id: None },
+        out_queue,
+        is_horizontal,
+      )
+      t = bound
+      out_queue = q
+    }
+  }
+  (t, out_queue)
+}
+
+///|
+fn process_postprocessable(
+  graph : LGraph,
+  layout : BKLayout,
+  ni : NeighborInfo,
+  spacings : SpacingOptions,
+  pp : Postprocessable,
+  is_horizontal : Bool,
+) -> Bool {
+  guard pp.edge_id is Some(edge_id) else { return false }
+  let edge = get_edge_by_id(graph, edge_id)
+  guard edge is Some(edge) else { return false }
+  let (fix_id, fix_port, block_id, block_port) = if edge.source_id == pp.free_id {
+    (edge.target_id, edge.target_port_id, edge.source_id, edge.source_port_id)
+  } else {
+    (edge.source_id, edge.source_port_id, edge.target_id, edge.target_port_id)
+  }
+  let delta = calculate_delta(
+    graph, layout, fix_id, fix_port, block_id, block_port, is_horizontal,
+  )
+  let threshold = @double.infinity
+  if delta > 0.0 && delta < threshold {
+    let available = check_space_above(
+      graph, layout, ni, spacings, block_id, delta, is_horizontal,
+    )
+    shift_block(layout, block_id, -available)
+    return available > 0.0
+  } else if delta < 0.0 && -delta < threshold {
+    let available = check_space_below(
+      graph,
+      layout,
+      ni,
+      spacings,
+      block_id,
+      -delta,
+      is_horizontal,
+    )
+    shift_block(layout, block_id, available)
+    return available > 0.0
+  }
+  false
+}
+
+///|
+fn post_process_thresholds(
+  graph : LGraph,
+  layout : BKLayout,
+  ni : NeighborInfo,
+  block_finished : Map[String, Bool],
+  queue : Array[Postprocessable],
+  spacings : SpacingOptions,
+  is_horizontal : Bool,
+) -> Unit {
+  let stack : Array[Postprocessable] = []
+  let mut idx = 0
+  while idx < queue.length() {
+    let pp = queue[idx]
+    idx = idx + 1
+    let pick = pick_edge(graph, layout, block_finished, pp)
+    if pick.edge_id is None {
+      continue
+    }
+    let edge = get_edge_by_id(graph, pick.edge_id.unwrap())
+    guard edge is Some(edge) else { continue }
+    let root_id = layout.root.get(pp.free_id).unwrap_or(pp.free_id)
+    let only_dummies = layout.od.get(root_id).unwrap_or(false)
+    if !only_dummies && is_in_layer_edge(graph, edge) {
+      continue
+    }
+    let moved = process_postprocessable(
+      graph, layout, ni, spacings, pick, is_horizontal,
+    )
+    if !moved {
+      stack.push(pick)
+    }
+  }
+  for i = stack.length() - 1; i >= 0; i = i - 1 {
+    process_postprocessable(
+      graph,
+      layout,
+      ni,
+      spacings,
+      stack[i],
+      is_horizontal,
+    )
+    |> ignore
+  }
+}
+
+///|
+fn horizontal_compaction(
+  graph : LGraph,
+  layout : BKLayout,
+  ni : NeighborInfo,
+  spacings : SpacingOptions,
+  is_horizontal : Bool,
+  use_threshold : Bool,
+) -> Unit {
+  let class_nodes : Map[String, ClassNode] = {}
+  let block_finished : Map[String, Bool] = {}
+  let mut queue : Array[Postprocessable] = []
+  let layers : Array[LLayer] = []
+  if layout.hdir == Left {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      let idx = graph.layers.length() - 1 - i
+      layers.push(graph.layers[idx])
+    }
+  } else {
+    layers.append(graph.layers)
+  }
+  fn place_block(
+    graph : LGraph,
+    layout : BKLayout,
+    ni : NeighborInfo,
+    spacings : SpacingOptions,
+    is_horizontal : Bool,
+    use_threshold : Bool,
+    class_nodes : Map[String, ClassNode],
+    block_finished : Map[String, Bool],
+    queue : Array[Postprocessable],
+    root_id : String,
+  ) -> Array[Postprocessable] {
+    let mut queue = queue
+    let placed = match layout.y.get(root_id) {
+      Some(Some(_)) => true
+      _ => false
+    }
+    if placed {
+      return queue
+    }
+    layout.y[root_id] = Some(0.0)
+    let mut is_initial = true
+    let mut current_id = root_id
+    let mut thresh = if layout.vdir == Down {
+      @double.neg_infinity
+    } else {
+      @double.infinity
+    }
+    while true {
+      let current_opt = graph.get_node(current_id)
+      if current_opt is None {
+        break
+      }
+      let current = current_opt.unwrap()
+      let current_index = ni.node_index.get(current_id).unwrap_or(0)
+      let layer_nodes = node_layer_nodes(graph, current)
+      if (layout.vdir == Down && current_index > 0) ||
+        (layout.vdir == Up && current_index < layer_nodes.length() - 1) {
+        let neighbor = if layout.vdir == Up {
+          layer_nodes[current_index + 1]
+        } else {
+          layer_nodes[current_index - 1]
+        }
+        let neighbor_root = layout.root.get(neighbor.id).unwrap_or(neighbor.id)
+        queue = place_block(
+          graph, layout, ni, spacings, is_horizontal, use_threshold, class_nodes,
+          block_finished, queue, neighbor_root,
+        )
+        let (new_thresh, q2) = calculate_threshold(
+          graph, layout, block_finished, thresh, root_id, current_id, queue, is_horizontal,
+          use_threshold,
+        )
+        thresh = new_thresh
+        queue = q2
+        if layout.sink.get(root_id).unwrap_or(root_id) == root_id {
+          let neigh_sink = layout.sink
+            .get(neighbor_root)
+            .unwrap_or(neighbor_root)
+          layout.sink[root_id] = neigh_sink
+        }
+        let root_sink = layout.sink.get(root_id).unwrap_or(root_id)
+        let neighbor_sink = layout.sink
+          .get(neighbor_root)
+          .unwrap_or(neighbor_root)
+        if root_sink == neighbor_sink {
+          let spacing = vertical_spacing(spacings, current, neighbor)
+          if layout.vdir == Up {
+            let new_pos = layout.y
+              .get(neighbor_root)
+              .unwrap_or(Some(0.0))
+              .unwrap_or(0.0) +
+              layout.inner_shift.get(neighbor.id).unwrap_or(0.0) -
+              spacing -
+              node_size_cross(current, is_horizontal) -
+              layout.inner_shift.get(current_id).unwrap_or(0.0)
+            let cur = layout.y.get(root_id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+            let next = if is_initial { new_pos } else { bk_min(cur, new_pos) }
+            layout.y[root_id] = Some(bk_min(next, thresh))
+            is_initial = false
+          } else {
+            let new_pos = layout.y
+              .get(neighbor_root)
+              .unwrap_or(Some(0.0))
+              .unwrap_or(0.0) +
+              layout.inner_shift.get(neighbor.id).unwrap_or(0.0) +
+              node_size_cross(neighbor, is_horizontal) +
+              spacing -
+              layout.inner_shift.get(current_id).unwrap_or(0.0)
+            let cur = layout.y.get(root_id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+            let next = if is_initial { new_pos } else { bk_max(cur, new_pos) }
+            layout.y[root_id] = Some(bk_max(next, thresh))
+            is_initial = false
+          }
+        } else {
+          let spacing = vertical_spacing(spacings, current, neighbor)
+          if layout.vdir == Up {
+            let required = layout.y
+              .get(root_id)
+              .unwrap_or(Some(0.0))
+              .unwrap_or(0.0) +
+              layout.inner_shift.get(current_id).unwrap_or(0.0) +
+              node_size_cross(current, is_horizontal) +
+              spacing -
+              (
+                layout.y.get(neighbor_root).unwrap_or(Some(0.0)).unwrap_or(0.0) +
+                layout.inner_shift.get(neighbor.id).unwrap_or(0.0)
+              )
+            add_class_edge(class_nodes, root_sink, neighbor_sink, required)
+          } else {
+            let required = layout.y
+              .get(root_id)
+              .unwrap_or(Some(0.0))
+              .unwrap_or(0.0) +
+              layout.inner_shift.get(current_id).unwrap_or(0.0) -
+              layout.y.get(neighbor_root).unwrap_or(Some(0.0)).unwrap_or(0.0) -
+              layout.inner_shift.get(neighbor.id).unwrap_or(0.0) -
+              node_size_cross(neighbor, is_horizontal) -
+              spacing
+            add_class_edge(class_nodes, root_sink, neighbor_sink, required)
+          }
+        }
+      } else {
+        let (new_thresh, q2) = calculate_threshold(
+          graph, layout, block_finished, thresh, root_id, current_id, queue, is_horizontal,
+          use_threshold,
+        )
+        thresh = new_thresh
+        queue = q2
+      }
+      current_id = layout.align.get(current_id).unwrap_or(root_id)
+      if current_id == root_id {
+        break
+      }
+    }
+    block_finished[root_id] = true
+    queue
+  }
+
+  for layer in layers {
+    let nodes : Array[LNode] = []
+    if layout.vdir == Up {
+      for i = 0; i < layer.nodes.length(); i = i + 1 {
+        let idx = layer.nodes.length() - 1 - i
+        nodes.push(layer.nodes[idx])
+      }
+    } else {
+      nodes.append(layer.nodes)
+    }
+    for node in nodes {
+      let rid = layout.root.get(node.id).unwrap_or(node.id)
+      if rid == node.id {
+        queue = place_block(
+          graph,
+          layout,
+          ni,
+          spacings,
+          is_horizontal,
+          use_threshold,
+          class_nodes,
+          block_finished,
+          queue,
+          node.id,
+        )
+      }
+    }
+  }
+  place_classes(class_nodes, layout)
+  for layer in layers {
+    for node in layer.nodes {
+      let root_id = layout.root.get(node.id).unwrap_or(node.id)
+      let mut y = layout.y.get(root_id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      if node.id == root_id {
+        let sink_id = layout.sink.get(root_id).unwrap_or(root_id)
+        let sink_shift = layout.shift
+          .get(sink_id)
+          .unwrap_or(
+            if layout.vdir == Up {
+              @double.neg_infinity
+            } else {
+              @double.infinity
+            },
+          )
+        if (layout.vdir == Up && sink_shift > @double.neg_infinity) ||
+          (layout.vdir == Down && sink_shift < @double.infinity) {
+          y = y + sink_shift
+          layout.y[root_id] = Some(y)
+        }
+      }
+      layout.y[node.id] = Some(y)
+    }
+  }
+  if use_threshold {
+    post_process_thresholds(
+      graph, layout, ni, block_finished, queue, spacings, is_horizontal,
+    )
+  }
+}
+
+///|
+fn layout_positions(graph : LGraph, layout : BKLayout) -> Map[String, Double] {
+  let positions : Map[String, Double] = {}
+  for node in graph.nodes {
+    let base = layout.y.get(node.id).unwrap_or(None).unwrap_or(0.0)
+    let shift = layout.inner_shift.get(node.id).unwrap_or(0.0)
+    positions[node.id] = base + shift
+  }
+  positions
+}
+
+///|
+fn layout_size(
+  graph : LGraph,
+  layout : BKLayout,
+  is_horizontal : Bool,
+) -> Double {
+  let mut min_pos = @double.infinity
+  let mut max_pos = @double.neg_infinity
+  for node in graph.nodes {
+    let root_id = layout.root.get(node.id).unwrap_or(node.id)
+    let base = layout.y.get(node.id).unwrap_or(None).unwrap_or(0.0)
+    let size = layout.block_size
+      .get(root_id)
+      .unwrap_or(node_size_cross(node, is_horizontal))
+    if base < min_pos {
+      min_pos = base
+    }
+    if base + size > max_pos {
+      max_pos = base + size
+    }
+  }
+  if min_pos == @double.infinity {
+    0.0
+  } else {
+    max_pos - min_pos
+  }
+}
+
+///|
+fn check_order_constraint(
+  graph : LGraph,
+  positions : Map[String, Double],
+  is_horizontal : Bool,
+) -> Bool {
+  let mut feasible = true
+  for layer in graph.layers {
+    let mut pos = @double.neg_infinity
+    for node in layer.nodes {
+      let top = positions.get(node.id).unwrap_or(0.0)
+      let bottom = top + node_size_cross(node, is_horizontal)
+      if top > pos && bottom > pos {
+        pos = bottom
+      } else {
+        feasible = false
+        break
+      }
+    }
+    if !feasible {
+      break
+    }
+  }
+  feasible
+}
+
+///|
+fn enforce_layer_spacing(
+  graph : LGraph,
+  positions : Map[String, Double],
+  spacings : SpacingOptions,
+  is_horizontal : Bool,
+) -> Map[String, Double] {
+  let out : Map[String, Double] = {}
+  for node in graph.nodes {
+    out[node.id] = positions.get(node.id).unwrap_or(0.0)
+  }
+  for layer in graph.layers {
+    let mut prev_node : LNode? = None
+    let mut prev_pos = 0.0
+    for node in layer.nodes {
+      let mut pos = out.get(node.id).unwrap_or(0.0)
+      match prev_node {
+        Some(prev) => {
+          let spacing = vertical_spacing(spacings, prev, node)
+          let min_pos = prev_pos +
+            node_size_cross(prev, is_horizontal) +
+            spacing
+          if pos < min_pos {
+            pos = min_pos
+            out[node.id] = pos
+          }
+          prev_pos = pos
+        }
+        None => prev_pos = pos
+      }
+      prev_node = Some(node)
+    }
+  }
+  out
+}
+
+///|
+fn normalize_positions(
+  graph : LGraph,
+  positions : Map[String, Double],
+) -> Map[String, Double] {
+  let mut min_pos = @double.infinity
+  for node in graph.nodes {
+    let pos = positions.get(node.id).unwrap_or(0.0)
+    if pos < min_pos {
+      min_pos = pos
+    }
+  }
+  if min_pos == @double.infinity || min_pos == 0.0 {
+    return positions
+  }
+  let out : Map[String, Double] = {}
+  for node in graph.nodes {
+    out[node.id] = positions.get(node.id).unwrap_or(0.0) - min_pos
+  }
+  out
+}
+
+///|
+fn create_balanced_layout(
+  graph : LGraph,
+  layouts : Array[BKLayout],
+  is_horizontal : Bool,
+) -> Map[String, Double] {
+  if layouts.length() == 0 {
+    return {}
+  }
+  let no_layouts = layouts.length()
+  let min_vals : Array[Double] = []
+  let max_vals : Array[Double] = []
+  let widths : Array[Double] = []
+  for _ in 0..<no_layouts {
+    min_vals.push(@double.infinity)
+    max_vals.push(@double.neg_infinity)
+    widths.push(0.0)
+  }
+  let mut min_idx = 0
+  for i = 0; i < no_layouts; i = i + 1 {
+    let layout = layouts[i]
+    widths[i] = layout_size(graph, layout, is_horizontal)
+    if widths[i] < widths[min_idx] {
+      min_idx = i
+    }
+    for node in graph.nodes {
+      let base = layout.y.get(node.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      let shift = layout.inner_shift.get(node.id).unwrap_or(0.0)
+      let pos = base + shift
+      let size = node_size_cross(node, is_horizontal)
+      if pos < min_vals[i] {
+        min_vals[i] = pos
+      }
+      if pos + size > max_vals[i] {
+        max_vals[i] = pos + size
+      }
+    }
+  }
+  let shifts : Array[Double] = []
+  for i = 0; i < no_layouts; i = i + 1 {
+    let layout = layouts[i]
+    if layout.vdir == Down {
+      shifts.push(min_vals[min_idx] - min_vals[i])
+    } else {
+      shifts.push(max_vals[min_idx] - max_vals[i])
+    }
+  }
+  let balanced : Map[String, Double] = {}
+  for node in graph.nodes {
+    let values : Array[Double] = []
+    for i = 0; i < no_layouts; i = i + 1 {
+      let layout = layouts[i]
+      let base = layout.y.get(node.id).unwrap_or(Some(0.0)).unwrap_or(0.0)
+      let shift = layout.inner_shift.get(node.id).unwrap_or(0.0)
+      values.push(base + shift + shifts[i])
+    }
+    values.sort_by(fn(a, b) { if a < b { -1 } else if a > b { 1 } else { 0 } })
+    if values.length() >= 4 {
+      balanced[node.id] = (values[1] + values[2]) / 2.0
+    } else if values.length() > 0 {
+      balanced[node.id] = values[values.length() / 2]
+    } else {
+      balanced[node.id] = 0.0
+    }
+  }
+  balanced
+}
+
+///|
 fn straight_edge_score(
   positions : Map[String, Double],
   graph : LGraph,
@@ -637,16 +1581,8 @@ fn straight_edge_score(
     }
     let src_pos = positions.get(src.id).unwrap_or(0.0)
     let tgt_pos = positions.get(tgt.id).unwrap_or(0.0)
-    let src_anchor = anchor_cross_for_straightness(
-      src,
-      edge.source_port_id,
-      is_horizontal,
-    )
-    let tgt_anchor = anchor_cross_for_straightness(
-      tgt,
-      edge.target_port_id,
-      is_horizontal,
-    )
+    let src_anchor = port_cross(src, edge.source_port_id, is_horizontal)
+    let tgt_anchor = port_cross(tgt, edge.target_port_id, is_horizontal)
     let src_center = src_pos + src_anchor
     let tgt_center = tgt_pos + tgt_anchor
     if (src_center - tgt_center).abs() <= eps {
@@ -657,21 +1593,37 @@ fn straight_edge_score(
 }
 
 ///|
-/// Select the layout that maximizes straight edges.
-fn select_favor_straight_layout(
-  layouts : Array[Map[String, Double]],
+fn select_smallest_layout(
   graph : LGraph,
+  layouts : Array[BKLayout],
   is_horizontal : Bool,
-) -> Map[String, Double] {
-  if layouts.length() == 0 {
-    return {}
-  }
+) -> BKLayout {
   let mut best = layouts[0]
-  let mut best_score = straight_edge_score(best, graph, is_horizontal)
-  let mut best_span = layout_span(best, graph, is_horizontal).2
+  let mut best_span = layout_size(graph, best, is_horizontal)
   for i = 1; i < layouts.length(); i = i + 1 {
-    let score = straight_edge_score(layouts[i], graph, is_horizontal)
-    let span = layout_span(layouts[i], graph, is_horizontal).2
+    let span = layout_size(graph, layouts[i], is_horizontal)
+    if span < best_span {
+      best = layouts[i]
+      best_span = span
+    }
+  }
+  best
+}
+
+///|
+fn select_favor_straight_layout(
+  graph : LGraph,
+  layouts : Array[BKLayout],
+  is_horizontal : Bool,
+) -> BKLayout {
+  let mut best = layouts[0]
+  let best_positions = layout_positions(graph, best)
+  let mut best_score = straight_edge_score(best_positions, graph, is_horizontal)
+  let mut best_span = layout_size(graph, best, is_horizontal)
+  for i = 1; i < layouts.length(); i = i + 1 {
+    let positions = layout_positions(graph, layouts[i])
+    let score = straight_edge_score(positions, graph, is_horizontal)
+    let span = layout_size(graph, layouts[i], is_horizontal)
     if score > best_score || (score == best_score && span < best_span) {
       best = layouts[i]
       best_score = score
@@ -682,75 +1634,6 @@ fn select_favor_straight_layout(
 }
 
 ///|
-/// Select the smallest of the computed layouts.
-fn select_smallest_layout(
-  layouts : Array[Map[String, Double]],
-  graph : LGraph,
-  is_horizontal : Bool,
-) -> Map[String, Double] {
-  if layouts.length() == 0 {
-    return {}
-  }
-  let mut best = layouts[0]
-  let mut best_span = layout_span(best, graph, is_horizontal).2
-  for i = 1; i < layouts.length(); i = i + 1 {
-    let span = layout_span(layouts[i], graph, is_horizontal).2
-    if span < best_span {
-      best = layouts[i]
-      best_span = span
-    }
-  }
-  best
-}
-
-///|
-/// Create a balanced (median) layout across the computed layouts.
-fn create_balanced_layout(
-  layouts : Array[Map[String, Double]],
-  graph : LGraph,
-  is_horizontal : Bool,
-) -> Map[String, Double] {
-  if layouts.length() == 0 {
-    return {}
-  }
-
-  // Use the smallest layout as baseline and shift others to match its minimum.
-  let mut min_idx = 0
-  let mut min_span = layout_span(layouts[0], graph, is_horizontal).2
-  for i = 1; i < layouts.length(); i = i + 1 {
-    let span = layout_span(layouts[i], graph, is_horizontal).2
-    if span < min_span {
-      min_span = span
-      min_idx = i
-    }
-  }
-  let (base_min, _, _) = layout_span(layouts[min_idx], graph, is_horizontal)
-  let mins : Array[Double] = []
-  for layout in layouts {
-    let (mn, _, _) = layout_span(layout, graph, is_horizontal)
-    mins.push(mn)
-  }
-  let balanced : Map[String, Double] = {}
-  for node in graph.nodes {
-    let values : Array[Double] = []
-    for i = 0; i < layouts.length(); i = i + 1 {
-      let p = layouts[i].get(node.id).unwrap_or(0.0)
-      values.push(p + (base_min - mins[i]))
-    }
-    values.sort_by(fn(a, b) { if a < b { -1 } else if a > b { 1 } else { 0 } })
-    if values.length() == 0 {
-      balanced[node.id] = 0.0
-    } else if values.length() == 4 {
-      balanced[node.id] = (values[1] + values[2]) / 2.0
-    } else {
-      balanced[node.id] = values[values.length() / 2]
-    }
-  }
-  balanced
-}
-
-///|
-/// Apply the computed layout to the graph
 fn apply_layout(
   graph : LGraph,
   positions : Map[String, Double],
@@ -759,7 +1642,6 @@ fn apply_layout(
   is_horizontal : Bool,
   direction : LayoutDirection,
 ) -> Unit {
-  // Calculate layer positions
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let reverse_layers = match direction {
     Up => !is_horizontal
@@ -776,17 +1658,14 @@ fn apply_layout(
     layers.append(graph.layers)
   }
   for layer in layers {
-    // Calculate layer size
     let mut layer_size = 0.0
     for node in layer.nodes {
       layer_size = if is_horizontal {
-        bk_max(layer_size, node.height)
-      } else {
         bk_max(layer_size, node.width)
+      } else {
+        bk_max(layer_size, node.height)
       }
     }
-
-    // Position nodes within layer
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
       if is_horizontal {
@@ -799,8 +1678,6 @@ fn apply_layout(
     }
     layer_offset = layer_offset + layer_size + layer_spacing
   }
-
-  // Update graph size
   let mut max_x = 0.0
   let mut max_y = 0.0
   for node in graph.nodes {
@@ -809,6 +1686,137 @@ fn apply_layout(
   }
   graph.width = max_x + padding.right
   graph.height = max_y + padding.bottom
+}
+
+// ============================================================================
+// Brandes-Koepf Algorithm Implementation
+// ============================================================================
+
+///|
+/// Run Brandes-Koepf node placement
+fn run_brandes_koepf(
+  graph : LGraph,
+  options : LayoutOptions,
+  direction : LayoutDirection,
+) -> Unit {
+  if graph.nodes.length() == 0 {
+    return
+  }
+  let spacings = resolve_spacings(options)
+  let layer_spacing = options.node_node_between_layers_spacing.unwrap_or(40.0)
+  let padding = effective_graph_padding(graph, options)
+  let is_horizontal = direction.is_horizontal()
+  let edge_routing = options.edge_routing.unwrap_or(Orthogonal)
+  let favor_straight_edges = edge_routing == Orthogonal
+  let requested = options.bk_fixed_alignment
+  let produce_balanced = match requested {
+    Some(Average) => true
+    Some(_) => false
+    None => !favor_straight_edges
+  }
+  let use_threshold = match options.bk_edge_straightening {
+    Some(ImproveStraightness) | None => true
+    _ => false
+  }
+  let ni = build_neighbor_info(graph)
+  let marked = mark_conflicts(graph, ni)
+  let layouts : Array[BKLayout] = []
+  match requested {
+    Some(LeftDown) => {
+      let layout = init_layout(graph, Down, Left)
+      vertical_alignment(graph, ni, marked, layout)
+      inside_block_shift(graph, layout, is_horizontal)
+      horizontal_compaction(
+        graph, layout, ni, spacings, is_horizontal, use_threshold,
+      )
+      layouts.push(layout)
+    }
+    Some(LeftUp) => {
+      let layout = init_layout(graph, Up, Left)
+      vertical_alignment(graph, ni, marked, layout)
+      inside_block_shift(graph, layout, is_horizontal)
+      horizontal_compaction(
+        graph, layout, ni, spacings, is_horizontal, use_threshold,
+      )
+      layouts.push(layout)
+    }
+    Some(RightDown) => {
+      let layout = init_layout(graph, Down, Right)
+      vertical_alignment(graph, ni, marked, layout)
+      inside_block_shift(graph, layout, is_horizontal)
+      horizontal_compaction(
+        graph, layout, ni, spacings, is_horizontal, use_threshold,
+      )
+      layouts.push(layout)
+    }
+    Some(RightUp) => {
+      let layout = init_layout(graph, Up, Right)
+      vertical_alignment(graph, ni, marked, layout)
+      inside_block_shift(graph, layout, is_horizontal)
+      horizontal_compaction(
+        graph, layout, ni, spacings, is_horizontal, use_threshold,
+      )
+      layouts.push(layout)
+    }
+    Some(Average) | None => {
+      let combos : Array[(VDirection, HDirection)] = [
+        (Down, Right),
+        (Up, Right),
+        (Down, Left),
+        (Up, Left),
+      ]
+      for pair in combos {
+        let (vdir, hdir) = pair
+        let layout = init_layout(graph, vdir, hdir)
+        vertical_alignment(graph, ni, marked, layout)
+        inside_block_shift(graph, layout, is_horizontal)
+        horizontal_compaction(
+          graph, layout, ni, spacings, is_horizontal, use_threshold,
+        )
+        layouts.push(layout)
+      }
+    }
+  }
+  let mut positions : Map[String, Double]? = None
+  if produce_balanced {
+    let balanced = create_balanced_layout(graph, layouts, is_horizontal)
+    if check_order_constraint(graph, balanced, is_horizontal) {
+      positions = Some(balanced)
+    }
+  }
+  if positions is None {
+    let mut best_span = @double.infinity
+    for layout in layouts {
+      let candidate = layout_positions(graph, layout)
+      if check_order_constraint(graph, candidate, is_horizontal) {
+        let span = layout_size(graph, layout, is_horizontal)
+        if span < best_span {
+          best_span = span
+          positions = Some(candidate)
+        }
+      }
+    }
+  }
+  if positions is None {
+    positions = Some(layout_positions(graph, layouts[0]))
+  }
+  let mut positions = positions.unwrap_or({})
+  if !check_order_constraint(graph, positions, is_horizontal) {
+    positions = enforce_layer_spacing(graph, positions, spacings, is_horizontal)
+  }
+  positions = normalize_positions(graph, positions)
+  apply_layout(
+    graph, positions, layer_spacing, padding, is_horizontal, direction,
+  )
+}
+
+///|
+fn bk_min(a : Double, b : Double) -> Double {
+  if a < b {
+    a
+  } else {
+    b
+  }
 }
 
 ///|

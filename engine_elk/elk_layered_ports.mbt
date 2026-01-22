@@ -450,8 +450,17 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       None => Undefined
     }
 
-    // If port positions are fixed, don't synthesize positions.
+    // Fixed positions still need to snap to the node boundary based on side.
     if constraints is FixedPos {
+      for port in node.ports {
+        match port.side {
+          East => port.x = node.width
+          West => port.x = 0.0
+          North => port.y = 0.0
+          South => port.y = node.height
+          Undefined => ()
+        }
+      }
       continue
     }
     let node_border = node_options.port_border_offset.unwrap_or(0.0)

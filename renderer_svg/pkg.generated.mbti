@@ -1,13 +1,13 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/renderer_svg"
 
-import(
-  "Milky2018/diago/diagram"
-  "Milky2018/diago/graph"
-  "Milky2018/diago/layout_svg"
-  "Milky2018/diago/render_api"
-  "Milky2018/diago/svg"
-)
+import {
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/graph",
+  "Milky2018/diago/layout_svg",
+  "Milky2018/diago/render_api",
+  "Milky2018/diago/svg",
+}
 
 // Values
 pub fn add_arrowhead_markers_to_svg(@svg.Svg, Double, String) -> Unit

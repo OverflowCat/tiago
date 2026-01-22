@@ -10,6 +10,8 @@ pub fn escape(String) -> String
 
 pub fn escape_attr(String) -> String
 
+pub fn parse(String) -> Result[XmlElement, String]
+
 pub fn text_element(String, String, Array[(String, String)]) -> String
 
 // Errors
@@ -49,6 +51,21 @@ pub fn Element::raw(Self, String) -> Self
 pub fn Element::self_close(Self) -> Self
 pub fn Element::text(Self, String) -> Self
 pub impl Show for Element
+
+pub struct XmlElement {
+  name : String
+  attrs : Map[String, String]
+  children : Array[XmlNode]
+}
+pub impl Eq for XmlElement
+pub impl Show for XmlElement
+
+pub enum XmlNode {
+  NodeElement(XmlElement)
+  NodeText(String)
+}
+pub impl Eq for XmlNode
+pub impl Show for XmlNode
 
 // Type aliases
 

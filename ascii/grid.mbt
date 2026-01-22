@@ -84,7 +84,7 @@ pub fn Grid::text(self : Grid, x : Int, y : Int, text : String) -> Unit {
 pub fn Grid::hline(self : Grid, x1 : Int, x2 : Int, y : Int, ch : Char) -> Unit {
   let start = if x1 < x2 { x1 } else { x2 }
   let end = if x1 < x2 { x2 } else { x1 }
-  for x in start..=end {
+  for x in start..<=end {
     self.set(x, y, ch)
   }
 }
@@ -94,7 +94,7 @@ pub fn Grid::hline(self : Grid, x1 : Int, x2 : Int, y : Int, ch : Char) -> Unit 
 pub fn Grid::vline(self : Grid, x : Int, y1 : Int, y2 : Int, ch : Char) -> Unit {
   let start = if y1 < y2 { y1 } else { y2 }
   let end = if y1 < y2 { y2 } else { y1 }
-  for y in start..=end {
+  for y in start..<=end {
     self.set(x, y, ch)
   }
 }
@@ -231,8 +231,8 @@ pub fn Grid::fill(
   let end_x = if x1 < x2 { x2 } else { x1 }
   let start_y = if y1 < y2 { y1 } else { y2 }
   let end_y = if y1 < y2 { y2 } else { y1 }
-  for y in start_y..=end_y {
-    for x in start_x..=end_x {
+  for y in start_y..<=end_y {
+    for x in start_x..<=end_x {
       self.set(x, y, ch)
     }
   }

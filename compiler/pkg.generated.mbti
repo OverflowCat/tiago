@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/compiler"
 
-import(
-  "Milky2018/diago/ast"
-  "Milky2018/diago/parser"
-)
+import {
+  "Milky2018/diago/ast",
+  "Milky2018/diago/parser",
+}
 
 // Values
 pub fn parse(String) -> (@ast.Map, @parser.ParseErrors)

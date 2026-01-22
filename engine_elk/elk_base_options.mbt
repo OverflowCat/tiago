@@ -272,6 +272,18 @@ enum BKNodePlacementMode {
 } derive(Show, Eq)
 
 ///|
+fn BKNodePlacementMode::from_string(s : String) -> BKNodePlacementMode? {
+  match s.to_upper() {
+    "BALANCED" | "AVERAGE" => Some(Average)
+    "LEFTUP" | "LEFT_UP" => Some(LeftUp)
+    "LEFTDOWN" | "LEFT_DOWN" => Some(LeftDown)
+    "RIGHTUP" | "RIGHT_UP" => Some(RightUp)
+    "RIGHTDOWN" | "RIGHT_DOWN" => Some(RightDown)
+    _ => None
+  }
+}
+
+///|
 /// Edge straightening strategy for Brandes-Koepf
 enum EdgeStraighteningStrategy {
   None
@@ -383,6 +395,21 @@ enum NodeSizeConstraints {
   MinimumSize
   MinimumSizeAccountsForPadding
 } derive(Show, Eq)
+
+///|
+fn NodeSizeConstraints::from_string(s : String) -> NodeSizeConstraints? {
+  match s.to_upper() {
+    "NONE" => Some(None)
+    "PORTS" => Some(Ports)
+    "PORT_LABELS" | "PORTLABELS" => Some(PortLabels)
+    "NODE_LABELS" | "NODELABELS" => Some(NodeLabels)
+    "MINIMUM_SIZE" | "MINIMUMSIZE" => Some(MinimumSize)
+    "MINIMUM_SIZE_ACCOUNTS_FOR_PADDING"
+    | "MINIMUMSIZEACCOUNTSFORPADDING"
+    | "MINIMUMSIZEACCOUNTSPADDING" => Some(MinimumSizeAccountsForPadding)
+    _ => None
+  }
+}
 
 ///|
 /// Node size options (bit flags combined)
@@ -525,6 +552,16 @@ enum HierarchyHandling {
 } derive(Show, Eq)
 
 ///|
+fn HierarchyHandling::from_string(s : String) -> HierarchyHandling? {
+  match s.to_upper() {
+    "INHERIT" => Some(Inherit)
+    "INCLUDE" | "INCLUDE_CHILDREN" | "INCLUDECHILDREN" => Some(Include)
+    "SEPARATE" | "SEPARATE_CHILDREN" | "SEPARATECHILDREN" => Some(Separate)
+    _ => None
+  }
+}
+
+///|
 /// Content alignment within compound nodes
 enum ContentAlignment {
   None
@@ -532,6 +569,22 @@ enum ContentAlignment {
   Vertical
   HorizontalVertical
 } derive(Show, Eq)
+
+///|
+fn ContentAlignment::from_string(s : String) -> ContentAlignment? {
+  let upper = s.to_upper()
+  if upper.contains("H_CENTER") && upper.contains("V_CENTER") {
+    Some(HorizontalVertical)
+  } else if upper.contains("H_CENTER") {
+    Some(Horizontal)
+  } else if upper.contains("V_CENTER") {
+    Some(Vertical)
+  } else if upper == "NONE" {
+    Some(None)
+  } else {
+    None
+  }
+}
 
 // ============================================================================
 // Compaction Options
@@ -845,7 +898,9 @@ fn LayoutOptions::layered() -> LayoutOptions {
     layering_strategy: Some(NetworkSimplex),
     crossing_min_strategy: Some(LayerSweep),
     crossing_min_force_node_model_order: Some(false),
+    consider_model_order_strategy: Some(NodesAndEdges),
     node_placement_strategy: Some(BrandesKoepf),
+    bk_fixed_alignment: Some(Average),
     thoroughness: Some(7),
   }
 }
@@ -1352,7 +1407,10 @@ fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
     None => ()
   }
   match self.edge_edge_between_layers_spacing {
-    Some(v) => props.set("elk.spacing.edgeEdgeBetweenLayers", Double(v))
+    Some(v) => {
+      props.set("elk.spacing.edgeEdgeBetweenLayers", Double(v))
+      props.set("elk.layered.spacing.edgeEdgeBetweenLayers", Double(v))
+    }
     None => ()
   }
   match self.component_component_spacing {
@@ -1388,9 +1446,78 @@ fn LayoutOptions::to_properties(self : LayoutOptions) -> ElkProperties {
       )
     None => ()
   }
+  match self.crossing_min_force_node_model_order {
+    Some(v) =>
+      props.set("elk.layered.crossingMinimization.forceNodeModelOrder", Bool(v))
+    None => ()
+  }
   match self.node_placement_strategy {
     Some(v) =>
       props.set("elk.layered.nodePlacement.strategy", Enum(v.to_string()))
+    None => ()
+  }
+  match self.bk_fixed_alignment {
+    Some(v) => {
+      let value = match v {
+        Average => "BALANCED"
+        LeftUp => "LEFT_UP"
+        LeftDown => "LEFT_DOWN"
+        RightUp => "RIGHT_UP"
+        RightDown => "RIGHT_DOWN"
+      }
+      props.set("elk.layered.nodePlacement.bk.fixedAlignment", Enum(value))
+    }
+    None => ()
+  }
+  match self.consider_model_order_strategy {
+    Some(v) =>
+      props.set("elk.layered.considerModelOrder.strategy", Enum(v.to_string()))
+    None => ()
+  }
+  match self.hierarchy_handling {
+    Some(v) => {
+      let value = match v {
+        Inherit => "INHERIT"
+        Include => "INCLUDE_CHILDREN"
+        Separate => "SEPARATE_CHILDREN"
+      }
+      props.set("elk.hierarchyHandling", Enum(value))
+    }
+    None => ()
+  }
+  match self.content_alignment {
+    Some(v) => {
+      let value = match v {
+        None => "NONE"
+        Horizontal => "H_CENTER"
+        Vertical => "V_CENTER"
+        HorizontalVertical => "H_CENTER V_CENTER"
+      }
+      props.set("elk.contentAlignment", Enum(value))
+    }
+    None => ()
+  }
+  match self.node_size_constraints {
+    Some(values) => {
+      let raw : Array[PropertyValue] = []
+      for v in values {
+        let value = match v {
+          None => "NONE"
+          Ports => "PORTS"
+          PortLabels => "PORT_LABELS"
+          NodeLabels => "NODE_LABELS"
+          MinimumSize => "MINIMUM_SIZE"
+          MinimumSizeAccountsForPadding => "MINIMUM_SIZE_ACCOUNTS_FOR_PADDING"
+        }
+        raw.push(Enum(value))
+      }
+      props.set("elk.nodeSize.constraints", Array(raw))
+    }
+    None => ()
+  }
+  match self.node_size_minimum {
+    Some((w, h)) =>
+      props.set("elk.nodeSize.minimum", Point(ElkPoint::new(w, h)))
     None => ()
   }
   props
@@ -1461,6 +1588,16 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
     None
   }
 
+  fn get_point_any(props : ElkProperties, keys : Array[String]) -> ElkPoint? {
+    for key in keys {
+      match props.get_point(key) {
+        Some(v) => return Some(v)
+        None => ()
+      }
+    }
+    None
+  }
+
   fn get_array_any(
     props : ElkProperties,
     keys : Array[String],
@@ -1523,6 +1660,7 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
   match
     get_double_any(props, [
       "elk.spacing.edgeEdgeBetweenLayers", "org.eclipse.elk.spacing.edgeEdgeBetweenLayers",
+      "elk.layered.spacing.edgeEdgeBetweenLayers", "org.eclipse.elk.layered.spacing.edgeEdgeBetweenLayers",
     ]) {
     Some(v) =>
       options = { ..options, edge_edge_between_layers_spacing: Some(v) }
@@ -1538,6 +1676,7 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
   match
     get_double_any(props, [
       "elk.spacing.edgeNodeBetweenLayers", "org.eclipse.elk.spacing.edgeNodeBetweenLayers",
+      "elk.layered.spacing.edgeNodeBetweenLayers", "org.eclipse.elk.layered.spacing.edgeNodeBetweenLayers",
     ]) {
     Some(v) =>
       options = { ..options, edge_node_between_layers_spacing: Some(v) }
@@ -1668,6 +1807,74 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
       "elk.port.borderOffset", "org.eclipse.elk.port.borderOffset",
     ]) {
     Some(v) => options = { ..options, port_border_offset: Some(v) }
+    None => ()
+  }
+  fn parse_node_size_constraints(
+    raw : Array[PropertyValue],
+  ) -> Array[NodeSizeConstraints] {
+    let out : Array[NodeSizeConstraints] = []
+    for v in raw {
+      match v {
+        String(s) | Enum(s) =>
+          match NodeSizeConstraints::from_string(s) {
+            Some(e) => out.push(e)
+            None => ()
+          }
+        _ => ()
+      }
+    }
+    out
+  }
+
+  match
+    get_array_any(props, [
+      "elk.nodeSize.constraints", "org.eclipse.elk.nodeSize.constraints",
+    ]) {
+    Some(raw) =>
+      options = {
+        ..options,
+        node_size_constraints: Some(parse_node_size_constraints(raw)),
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.nodeSize.constraints", "org.eclipse.elk.nodeSize.constraints",
+    ]) {
+    Some(s) =>
+      match NodeSizeConstraints::from_string(s) {
+        Some(v) => options = { ..options, node_size_constraints: Some([v]) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_point_any(props, [
+      "elk.nodeSize.minimum", "org.eclipse.elk.nodeSize.minimum",
+    ]) {
+    Some(p) => options = { ..options, node_size_minimum: Some((p.x, p.y)) }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.hierarchyHandling", "org.eclipse.elk.hierarchyHandling",
+    ]) {
+    Some(s) =>
+      match HierarchyHandling::from_string(s) {
+        Some(v) => options = { ..options, hierarchy_handling: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.contentAlignment", "org.eclipse.elk.contentAlignment",
+    ]) {
+    Some(s) =>
+      match ContentAlignment::from_string(s) {
+        Some(v) => options = { ..options, content_alignment: Some(v) }
+        None => ()
+      }
     None => ()
   }
   fn parse_node_label_placements(
@@ -1835,6 +2042,17 @@ fn LayoutOptions::from_properties(props : ElkProperties) -> LayoutOptions {
     Some(s) =>
       match NodePlacementStrategy::from_string(s) {
         Some(v) => options = { ..options, node_placement_strategy: Some(v) }
+        None => ()
+      }
+    None => ()
+  }
+  match
+    get_string_any(props, [
+      "elk.layered.nodePlacement.bk.fixedAlignment", "org.eclipse.elk.layered.nodePlacement.bk.fixedAlignment",
+    ]) {
+    Some(s) =>
+      match BKNodePlacementMode::from_string(s) {
+        Some(v) => options = { ..options, bk_fixed_alignment: Some(v) }
         None => ()
       }
     None => ()

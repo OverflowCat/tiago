@@ -518,7 +518,7 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
     return
   }
 
-  // Handle graphs with no edges - assign layers by definition order
+  // Handle graphs with no edges - place each node on its own layer.
   if graph.edges.length() == 0 {
     for i, node in graph.nodes {
       node.layer = i
@@ -528,4 +528,21 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
   let ns = NetworkSimplex::from_lgraph(graph)
   ns.execute()
   ns.apply_to_lgraph(graph)
+  let mut valid = true
+  for edge in graph.edges {
+    if edge.source_id == edge.target_id {
+      continue
+    }
+    match (graph.get_node(edge.source_id), graph.get_node(edge.target_id)) {
+      (Some(src), Some(tgt)) =>
+        if tgt.layer < src.layer + 1 {
+          valid = false
+          break
+        }
+      _ => ()
+    }
+  }
+  if !valid {
+    longest_path_layering(graph)
+  }
 }
