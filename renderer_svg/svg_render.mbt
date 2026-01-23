@@ -1456,11 +1456,7 @@ fn render_svg_object(
       }
       let label_text = transform_label_text(obj.label, text_transform)
       let label_dims = @text_metrics.measure_label(
-        label_text,
-        font_size,
-        false,
-        false,
-        false,
+        label_text, font_size, false, false, false,
       )
       let label_overflows = label_dims.width > box.width ||
         label_dims.height > box.height
@@ -1871,25 +1867,10 @@ fn render_svg_cylinder(
   let h = box.height
   let top_y = y0 + arc_height
   let bottom_y = y0 + h - arc_height
-
   let outer = @svg.PathBuilder::new()
     .move_to(x0, top_y)
-    .cubic_to(
-      x0,
-      y0,
-      x0 + w * multiplier,
-      y0,
-      x0 + w / 2.0,
-      y0,
-    )
-    .cubic_to(
-      x0 + w - w * multiplier,
-      y0,
-      x0 + w,
-      y0,
-      x0 + w,
-      top_y,
-    )
+    .cubic_to(x0, y0, x0 + w * multiplier, y0, x0 + w / 2.0, y0)
+    .cubic_to(x0 + w - w * multiplier, y0, x0 + w, y0, x0 + w, top_y)
     .line_to(x0 + w, bottom_y)
     .cubic_to(
       x0 + w,
@@ -1899,14 +1880,7 @@ fn render_svg_cylinder(
       x0 + w / 2.0,
       y0 + h,
     )
-    .cubic_to(
-      x0 + w * multiplier,
-      y0 + h,
-      x0,
-      y0 + h,
-      x0,
-      bottom_y,
-    )
+    .cubic_to(x0 + w * multiplier, y0 + h, x0, y0 + h, x0, bottom_y)
     .line_to(x0, top_y)
     .close()
     .build()
@@ -1925,7 +1899,6 @@ fn render_svg_cylinder(
       stroke_width=0.0,
     ),
   )
-
   let inner = @svg.PathBuilder::new()
     .move_to(x0, top_y)
     .cubic_to(

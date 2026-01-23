@@ -1684,24 +1684,29 @@ fn apply_layout(
   // the D2 sizing pipeline). The layered placement expands graphs to fit
   // children, but should not shrink them below their declared minimum.
   let title_w = graph.properties.get_double_or(
-    "diago.layered.rootLabelWidth",
-    0.0,
+    "diago.layered.rootLabelWidth", 0.0,
   )
   let title_h = graph.properties.get_double_or(
-    "diago.layered.rootLabelHeight",
-    0.0,
+    "diago.layered.rootLabelHeight", 0.0,
   )
   let min_width = {
     let want = title_w + padding.left + padding.right
-    if graph.width > want { graph.width } else { want }
+    if graph.width > want {
+      graph.width
+    } else {
+      want
+    }
   }
   let min_height = {
     // The container top padding already accounts for the title height when
     // coming from the diago->ELK bridge.
     let want = title_h + padding.top + padding.bottom
-    if graph.height > want { graph.height } else { want }
+    if graph.height > want {
+      graph.height
+    } else {
+      want
+    }
   }
-
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let reverse_layers = match direction {
     Up => !is_horizontal
@@ -1772,7 +1777,6 @@ fn apply_layout(
     }
     layer_offset = layer_offset + layer_size + layer_spacing
   }
-
   let mut max_x = 0.0
   let mut max_y = 0.0
   for node in graph.nodes {
@@ -1904,13 +1908,7 @@ fn run_brandes_koepf(
   }
   positions = normalize_positions(graph, positions)
   apply_layout(
-    graph,
-    positions,
-    layer_spacing,
-    padding,
-    is_horizontal,
-    direction,
-    content_alignment,
+    graph, positions, layer_spacing, padding, is_horizontal, direction, content_alignment,
   )
 }
 

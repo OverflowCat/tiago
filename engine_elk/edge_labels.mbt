@@ -74,7 +74,8 @@ fn position_edge_labels(graph : Graph, config : LayoutConfig) -> Unit {
           // Heuristic: only nudge paired edges between similarly-sized nodes.
           // This avoids perturbing cases like server<->db where the reference
           // labels already naturally associate with the larger endpoint.
-          match (graph.find_object(edge.src_id), graph.find_object(edge.dst_id)) {
+          match
+            (graph.find_object(edge.src_id), graph.find_object(edge.dst_id)) {
             (Some(src), Some(dst)) =>
               match (src.box, dst.box) {
                 (Some(sb), Some(db)) =>

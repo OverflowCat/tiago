@@ -132,6 +132,7 @@ fn SequenceNote::new(
 
 ///|
 /// Result of sequence diagram layout including activation boxes and notes
+#warnings("-unused_field")
 priv struct SequenceLayoutResult {
   /// Notes attached to actors
   notes : Array[SequenceNote]
@@ -147,12 +148,10 @@ fn layout_sequence_with_activations(
   // Whitebox tests call this helper directly; ensure all nodes/edge labels have
   // precomputed sizes (the main pipeline does this before dispatching).
   ensure_text_dimensions(graph)
-
   let children = container.children
   if children.length() == 0 {
     return { notes: [] }
   }
-
   let container_id = container.id
 
   // Collect actors (objects connected by messages) and fragment-groups.
@@ -203,11 +202,7 @@ fn layout_sequence_with_activations(
   place_sequence_actors(actors, actor_x_step, max_actor_height)
   let message_offset = max_actor_height + y_step
   let (message_end_y, activation_boxes, message_positions) = route_messages_with_positions(
-    messages,
-    actors,
-    container_id,
-    message_offset,
-    y_step,
+    messages, actors, container_id, message_offset, y_step,
   )
 
   // Place edge labels for sequence messages (the generic layered pipeline does this
@@ -247,8 +242,7 @@ fn layout_sequence_with_activations(
   // Shift everything inside the container (actors, groups, messages, notes) by
   // GROUP_CONTAINER_PADDING so the diagram has the same insets as D2.
   shift_sequence_container(graph, container_id, group_container_padding)
-
-  { notes }
+  { notes, }
 }
 
 ///|
@@ -278,7 +272,9 @@ fn apply_sequence_label_bias(messages : Array[Edge]) -> Unit {
     }
     match e.label_box {
       Some(lb) =>
-        e.label_box = Some(@graph.Box::new(lb.x - 1.0, lb.y, lb.width, lb.height))
+        e.label_box = Some(
+          @graph.Box::new(lb.x - 1.0, lb.y, lb.width, lb.height),
+        )
       None => ()
     }
   }
@@ -313,7 +309,10 @@ fn has_explicit_label(obj : Object) -> Bool {
 }
 
 ///|
-fn compute_max_actor_height(container : Object, actors : Array[Object]) -> Double {
+fn compute_max_actor_height(
+  container : Object,
+  actors : Array[Object],
+) -> Double {
   let mut max_h = 0.0
   for actor in actors {
     if actor.box is Some(b) && b.height > max_h {
@@ -429,7 +428,6 @@ fn compute_actor_x_step(
       }
     }
   }
-
   steps
 }
 
@@ -450,10 +448,7 @@ fn compute_max_note_width(
     i = i + 1
     if is_sequence_note(child, graph, container_id) {
       match child.box {
-        Some(b) =>
-          if b.width > max_w {
-            max_w = b.width
-          }
+        Some(b) => if b.width > max_w { max_w = b.width }
         None => ()
       }
     }
@@ -465,7 +460,10 @@ fn compute_max_note_width(
 }
 
 ///|
-fn compute_sequence_width(messages : Array[Edge], actors : Array[Object]) -> Double {
+fn compute_sequence_width(
+  messages : Array[Edge],
+  actors : Array[Object],
+) -> Double {
   let mut rightmost = 0.0
   if actors.length() > 0 {
     let last = actors[actors.length() - 1]
@@ -528,7 +526,10 @@ fn compute_sequence_height(
 }
 
 ///|
-fn adjust_message_endpoints_x(start_x : Double, end_x : Double) -> (Double, Double) {
+fn adjust_message_endpoints_x(
+  start_x : Double,
+  end_x : Double,
+) -> (Double, Double) {
   if end_x > start_x {
     (start_x + message_src_inset, end_x - message_dst_inset)
   } else if end_x < start_x {
@@ -548,7 +549,9 @@ fn shift_sequence_container(
     if is_child_of_container(obj.id, container_id) {
       match obj.box {
         Some(b) =>
-          obj.box = Some(@graph.Box::new(b.x + delta, b.y + delta, b.width, b.height))
+          obj.box = Some(
+            @graph.Box::new(b.x + delta, b.y + delta, b.width, b.height),
+          )
         None => ()
       }
     }
@@ -562,7 +565,9 @@ fn shift_sequence_container(
       }
       match edge.label_box {
         Some(b) =>
-          edge.label_box = Some(@graph.Box::new(b.x + delta, b.y + delta, b.width, b.height))
+          edge.label_box = Some(
+            @graph.Box::new(b.x + delta, b.y + delta, b.width, b.height),
+          )
         None => ()
       }
     }
@@ -571,7 +576,9 @@ fn shift_sequence_container(
     let frag = graph.sequence_fragments[i]
     match frag.bbox {
       Some(b) =>
-        frag.bbox = Some(@graph.Box::new(b.x + delta, b.y + delta, b.width, b.height))
+        frag.bbox = Some(
+          @graph.Box::new(b.x + delta, b.y + delta, b.width, b.height),
+        )
       None => ()
     }
   }
@@ -650,7 +657,6 @@ fn route_messages_with_positions(
   for actor in actors {
     active_stacks[actor.id] = []
   }
-
   for i, edge in messages {
     let src_actor = find_actor_for_node_id(actors, edge.src_id, container_id)
     let dst_actor = find_actor_for_node_id(actors, edge.dst_id, container_id)
@@ -659,17 +665,14 @@ fn route_messages_with_positions(
     }
     let src = src_actor.unwrap()
     let dst = dst_actor.unwrap()
-
     guard src.box is Some(src_box) else { continue }
     guard dst.box is Some(dst_box) else { continue }
     let start_x = src_box.x + src_box.width / 2.0
     let end_x = dst_box.x + dst_box.width / 2.0
-
     let (label_w, label_h) = match edge.label_box {
       Some(b) => (b.width, b.height)
       None => (0.0, 0.0)
     }
-
     let is_to_descendant = edge.dst_id.has_prefix(edge.src_id + ".")
     let is_from_descendant = edge.src_id.has_prefix(edge.dst_id + ".")
     let is_self_message = edge.src_id == edge.dst_id
@@ -678,13 +681,9 @@ fn route_messages_with_positions(
       is_to_descendant ||
       is_from_descendant ||
       is_to_sibling
-
     if needs_loop {
       let mid_x = start_x +
-        max(
-          self_message_horizontal_travel,
-          label_w / 2.0 + label_padding * 2.0,
-        )
+        max(self_message_horizontal_travel, label_w / 2.0 + label_padding * 2.0)
       let start_y = message_offset
       let end_y = start_y + max(label_h, min_message_distance) * 1.5
       edge.route.clear()
@@ -728,7 +727,6 @@ fn route_messages_with_positions(
         }
       None => ()
     }
-
   }
 
   // Close remaining activation boxes.
@@ -740,7 +738,6 @@ fn route_messages_with_positions(
       }
     }
   }
-
   (message_offset, activation_boxes, message_positions)
 }
 
@@ -898,16 +895,11 @@ fn compute_actor_span(actors : Array[Object]) -> (Double, Double) {
 /// - container_id="root", node_id="alice.span1" -> "alice"
 /// - container_id="seq",  node_id="seq.alice.span1" -> "alice"
 fn sequence_direct_child_id(node_id : String, container_id : String) -> String {
-  let rel = if container_id != "root" &&
-      node_id.has_prefix(container_id + ".") {
-      substring(
-        node_id,
-        container_id.length() + 1,
-        node_id.length(),
-      )
-    } else {
-      node_id
-    }
+  let rel = if container_id != "root" && node_id.has_prefix(container_id + ".") {
+    substring(node_id, container_id.length() + 1, node_id.length())
+  } else {
+    node_id
+  }
   let mut dot = -1
   for i in 0..<rel.length() {
     if rel.code_unit_at(i) == '.'.to_int().to_uint16() {
@@ -932,10 +924,10 @@ fn find_actor_for_node_id(
   // (e.g. "seq.opt.alice"). Resolve by scanning path segments until we find a
   // segment that matches one of the known actor IDs.
   let rel = if container_id != "root" && node_id.has_prefix(container_id + ".") {
-      substring(node_id, container_id.length() + 1, node_id.length())
-    } else {
-      node_id
-    }
+    substring(node_id, container_id.length() + 1, node_id.length())
+  } else {
+    node_id
+  }
   let segs = rel.split(".")
   for seg_view in segs {
     let seg = seg_view.to_string()

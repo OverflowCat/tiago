@@ -121,9 +121,12 @@ fn resolve_edge_container_id(
   match lca {
     Some(id) =>
       match object_by_id.get(id) {
-        Some(obj) => if is_container_object(obj) { Some(id) } else {
-          parent_by_id.get(id)
-        }
+        Some(obj) =>
+          if is_container_object(obj) {
+            Some(id)
+          } else {
+            parent_by_id.get(id)
+          }
         None => None
       }
     None => None
@@ -257,10 +260,10 @@ fn compute_container_outgoing_padding(graph : Graph) -> Map[String, Double] {
       match direct_child_id(obj, src_id) {
         Some(child_id) =>
           if !is_descendant(obj, dst_id) {
-            outgoing_counts[child_id] = outgoing_counts.get(child_id).unwrap_or(
-              0,
-            ) +
-            1
+            outgoing_counts[child_id] = outgoing_counts
+              .get(child_id)
+              .unwrap_or(0) +
+              1
           }
         None => ()
       }
@@ -384,10 +387,7 @@ fn graph_to_elk(
       continue
     }
     let elk_node = object_to_elk_node(
-      obj,
-      config,
-      direction,
-      container_outgoing_padding,
+      obj, config, direction, container_outgoing_padding,
     )
     root.add_child(elk_node)
   }
@@ -457,10 +457,7 @@ fn graph_to_elk(
       dst_port = Some(port_id)
     }
     let container_id = resolve_edge_container_id(
-      parent_by_id,
-      object_by_id,
-      src_id,
-      dst_id,
+      parent_by_id, object_by_id, src_id, dst_id,
     )
     let elk_edge = {
       ..ElkEdge::new("e" + i.to_string(), src_id, dst_id),
@@ -591,10 +588,10 @@ fn object_to_elk_node(
         base_padding.bottom + extra_bottom,
         base_padding.left,
       )
-	    }
-	    let (min_w, min_h) = (elk_node.width.ceil(), elk_node.height.ceil())
-	    let container_options = {
-	      ..LayoutOptions::new(),
+    }
+    let (min_w, min_h) = (elk_node.width.ceil(), elk_node.height.ceil())
+    let container_options = {
+      ..LayoutOptions::new(),
       crossing_min_force_node_model_order: Some(true),
       thoroughness: Some(8),
       edge_edge_between_layers_spacing: Some(50.0),
@@ -609,12 +606,12 @@ fn object_to_elk_node(
       edge_node_between_layers_spacing: Some(config.edge_padding),
       padding: Some(padding),
       node_size_minimum: Some((min_w, min_h)),
-	    }
-	    elk_node.properties.copy_from(container_options.to_properties())
-	    // For compound nodes with no internal edges, D2/ELK keeps all children in
-	    // a single layer and packs them within that layer.
-	    elk_node.properties.set("diago.layered.keepSingleLayerNoEdges", Bool(true))
-	  }
+    }
+    elk_node.properties.copy_from(container_options.to_properties())
+    // For compound nodes with no internal edges, D2/ELK keeps all children in
+    // a single layer and packs them within that layer.
+    elk_node.properties.set("diago.layered.keepSingleLayerNoEdges", Bool(true))
+  }
 
   // Handle children for containers
   // sql_table renders children as rows, not nested boxes - keep it as a leaf in ELK.
@@ -623,10 +620,7 @@ fn object_to_elk_node(
   if obj.shape_type != @graph.SqlTable && !is_grid {
     for child in obj.children {
       let elk_child = object_to_elk_node(
-        child,
-        config,
-        direction,
-        container_outgoing_padding,
+        child, config, direction, container_outgoing_padding,
       )
       elk_node.add_child(elk_child)
     }
@@ -717,7 +711,7 @@ fn apply_children_positions(obj : Object, elk_node : ElkNode) -> Unit {
     let parent_box = obj.box.unwrap_or(@graph.Box::zero())
     for child in obj.children {
       match child.box {
-        Some(b) => {
+        Some(b) =>
           child.box = Some(
             @graph.Box::new(
               parent_box.x + b.x,
@@ -726,7 +720,6 @@ fn apply_children_positions(obj : Object, elk_node : ElkNode) -> Unit {
               b.height,
             ),
           )
-        }
         None => ()
       }
     }
@@ -758,7 +751,7 @@ fn apply_edge_routes(
   elk_edges : Map[String, ElkEdge],
   graph : Graph,
   elk_abs : Map[String, @graph.Box],
-  direction : Direction,
+  _direction : Direction,
 ) -> Unit {
   for edge in graph.edges {
     let edge_id = "e" + edge.index.to_string()
@@ -801,7 +794,6 @@ fn apply_edge_routes(
               let src_cy = src.y + src.height / 2.0
               let tgt_cx = tgt.x + tgt.width / 2.0
               let tgt_cy = tgt.y + tgt.height / 2.0
-
               let dx = (tgt_cx - src_cx).abs()
               let dy = (tgt_cy - src_cy).abs()
               if dy > dx {
@@ -825,7 +817,6 @@ fn apply_edge_routes(
             _ => ()
           }
         }
-
       }
       None => ()
     }
@@ -834,6 +825,7 @@ fn apply_edge_routes(
 
 ///|
 /// Adjust start point to be perpendicular to first segment
+#warnings("-unused_value")
 fn adjust_start_point_perpendicular(
   elk_start_x : Double,
   elk_start_y : Double,
@@ -913,6 +905,7 @@ fn adjust_start_point_perpendicular(
 
 ///|
 /// Adjust end point to be perpendicular to last segment
+#warnings("-unused_value")
 fn adjust_end_point_perpendicular(
   elk_end_x : Double,
   elk_end_y : Double,
@@ -1015,13 +1008,13 @@ fn run_elk_layout(
     .with_padding(ElkPadding::uniform(12.0))
     .with_edge_routing(EdgeRouting::Orthogonal)
   // D2 uses these defaults for ELK layered layout.
-	  let options = {
-	    ..options,
-	    consider_model_order_strategy: Some(NodesAndEdges),
-	    separate_connected_components: Some(false),
-	    // Match D2 default: `fixedAlignment = BALANCED` for BK placement.
-	    bk_fixed_alignment: Some(Average),
-	    thoroughness: Some(8),
+  let options = {
+    ..options,
+    consider_model_order_strategy: Some(NodesAndEdges),
+    separate_connected_components: Some(false),
+    // Match D2 default: `fixedAlignment = BALANCED` for BK placement.
+    bk_fixed_alignment: Some(Average),
+    thoroughness: Some(8),
     edge_edge_between_layers_spacing: Some(50.0),
     edge_node_spacing: Some(40.0),
     edge_node_between_layers_spacing: Some(config.edge_padding),
@@ -1044,7 +1037,10 @@ fn run_elk_layout(
       }
     }
     if has_grid {
-      elk_root.properties.set("diago.layered.keepSingleLayerNoEdges", Bool(true))
+      elk_root.properties.set(
+        "diago.layered.keepSingleLayerNoEdges",
+        Bool(true),
+      )
     }
   }
   let algorithm = match options.algorithm {

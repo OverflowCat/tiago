@@ -86,6 +86,7 @@ fn layout_graph(
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
       let _ = layout_sequence_with_activations(obj, graph, config)
+
     } else if obj.is_grid_diagram() && obj.is_container() {
       layout_grid(obj, config)
     }

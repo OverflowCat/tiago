@@ -121,7 +121,10 @@ fn collect_elements_by_name(
     let ev = Some(reader.read_event()) catch { e => return Err(e.to_string()) }
     match ev.unwrap() {
       Start(el) => {
-        if restrict && !in_base && el.name == "g" && get_attr(el, "id") == Some("base-layer") {
+        if restrict &&
+          !in_base &&
+          el.name == "g" &&
+          get_attr(el, "id") == Some("base-layer") {
           in_base = true
           base_depth = 1
         } else if restrict && in_base {
@@ -163,7 +166,10 @@ fn extract_text_positions(
     let ev = Some(reader.read_event()) catch { e => return Err(e.to_string()) }
     match ev.unwrap() {
       Start(el) => {
-        if restrict && !in_base && el.name == "g" && get_attr(el, "id") == Some("base-layer") {
+        if restrict &&
+          !in_base &&
+          el.name == "g" &&
+          get_attr(el, "id") == Some("base-layer") {
           in_base = true
           base_depth = 1
         } else if restrict && in_base {
@@ -193,8 +199,7 @@ fn extract_text_positions(
             None => ()
           }
           current_text_el = None
-        }
-        else if restrict && in_base {
+        } else if restrict && in_base {
           base_depth = base_depth - 1
           if base_depth <= 0 {
             in_base = false
@@ -764,14 +769,12 @@ fn map_labels_to_boxes(svg : String) -> Result[Map[String, Box], String] {
       j = j - 1
     }
   }
-
   let total_counts : Map[String, Int] = {}
   for pair in positions.iter() {
     let (label, _) = pair
     total_counts[label] = total_counts.get(label).unwrap_or(0) + 1
   }
   let seen : Map[String, Int] = {}
-
   let out : Map[String, Box] = {}
   for pair in positions.iter() {
     let (label, (tx, ty)) = pair
@@ -871,7 +874,9 @@ fn compare_boxes(
   }
   // Some examples exercise lots of hierarchy and compound-layout behavior; allow
   // a slightly larger positional tolerance while we converge on ELK parity.
-  let tol_pos = if name == "architecture" { 120.0 } else if name == "containers" {
+  let tol_pos = if name == "architecture" {
+    120.0
+  } else if name == "containers" {
     80.0
   } else {
     50.0
@@ -922,16 +927,18 @@ fn compare_boxes(
     ) catch {
       _ => ()
     }
-
     mismatches.sort()
     let limit = if mismatches.length() > 12 { 12 } else { mismatches.length() }
     let buf = StringBuilder::new()
-    buf.write_string(name + ": box mismatches (" + mismatches.length().to_string() + ")\n")
+    buf.write_string(
+      name + ": box mismatches (" + mismatches.length().to_string() + ")\n",
+    )
     if name == "basic" || name == "arrowheads" {
-      for key in [
-        "Web Server", "PostgreSQL", "queries", "HTTP", "a", "b", "c", "d", "user",
-        "orders",
-      ] {
+      for
+        key in [
+          "Web Server", "PostgreSQL", "queries", "HTTP", "a", "b", "c", "d", "user",
+          "orders",
+        ] {
         match (got.get(key), exp.get(key)) {
           (Some(gb), Some(eb)) =>
             buf.write_string(

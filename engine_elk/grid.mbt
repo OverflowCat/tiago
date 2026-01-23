@@ -59,12 +59,14 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   let v_gap = vertical_gap(container)
   // D2 grid diagrams use a larger default container padding (60), but if the
   // user specifies gaps we use those as the padding too.
-  let h_pad = if container.grid_gap is Some(_) || container.horizontal_gap is Some(_) {
+  let h_pad = if container.grid_gap is Some(_) ||
+    container.horizontal_gap is Some(_) {
     h_gap
   } else {
     60.0
   }
-  let v_pad_base = if container.grid_gap is Some(_) || container.vertical_gap is Some(_) {
+  let v_pad_base = if container.grid_gap is Some(_) ||
+    container.vertical_gap is Some(_) {
     v_gap
   } else {
     60.0
@@ -74,7 +76,11 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   let v_pad_top = match container.label_box {
     Some(b) => {
       let want = b.height + 10.0
-      if want > v_pad_base { want } else { v_pad_base }
+      if want > v_pad_base {
+        want
+      } else {
+        v_pad_base
+      }
     }
     None => v_pad_base
   }
@@ -97,14 +103,7 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   )
   // Position children in the grid (with spanning)
   position_grid_children_with_spans(
-    children,
-    cell_positions,
-    col_widths,
-    row_heights,
-    h_gap,
-    v_gap,
-    h_pad,
-    v_pad_top,
+    children, cell_positions, col_widths, row_heights, h_gap, v_gap, h_pad, v_pad_top,
     config,
   )
   // Update container size

@@ -553,7 +553,8 @@ fn segment_lane_for_layer_pair(
               South => (node.x + cx, node.y + node.height)
               West => (node.x, node.y + cy)
               East => (node.x + node.width, node.y + cy)
-              Undefined => (node.x + node.width / 2.0, node.y + node.height / 2.0)
+              Undefined =>
+                (node.x + node.width / 2.0, node.y + node.height / 2.0)
             }
             Some(anchor)
           }
@@ -837,17 +838,14 @@ fn segment_lane_for_layer_pair(
         let orig_tgt = e.properties.get_string("diago.layered.originalTargetId")
         if e.source_port_id is None {
           match orig_src {
-            Some(orig) if orig != e.source_id => {
-              sk = "h:" + orig + ":out"
-            }
+            Some(orig) if orig != e.source_id => sk = "h:" + orig + ":out"
             _ => ()
           }
         }
         if e.target_port_id is None {
           match (orig_src, orig_tgt) {
-            (Some(os), Some(ot)) if ot == e.target_id && os != e.source_id => {
+            (Some(os), Some(ot)) if ot == e.target_id && os != e.source_id =>
               tk = "h:" + os + ":in:" + e.target_id
-            }
             _ => ()
           }
         }
@@ -1718,7 +1716,6 @@ fn segment_lane_for_layer_pair(
         }
       }
     }
-
     let mut max_slot = -1
     for seg in segments {
       if segment_is_straight(seg) {
@@ -1929,11 +1926,19 @@ fn apply_routing_spacing_vertical(
         layer_bottom = b
       }
     }
-    let delta = if layer_top == @double.infinity { 0.0 } else { offset - layer_top }
+    let delta = if layer_top == @double.infinity {
+      0.0
+    } else {
+      offset - layer_top
+    }
     for node in layer.nodes {
       node.y = node.y + delta
     }
-    let layer_size = if layer_top == @double.infinity { 0.0 } else { layer_bottom - layer_top }
+    let layer_size = if layer_top == @double.infinity {
+      0.0
+    } else {
+      layer_bottom - layer_top
+    }
     offset = offset + layer_size
     if i + 1 < indices.length() {
       let next_idx = indices[i + 1]
@@ -2010,11 +2015,19 @@ fn apply_routing_spacing_horizontal(
         layer_right = r
       }
     }
-    let delta = if layer_left == @double.infinity { 0.0 } else { offset - layer_left }
+    let delta = if layer_left == @double.infinity {
+      0.0
+    } else {
+      offset - layer_left
+    }
     for node in layer.nodes {
       node.x = node.x + delta
     }
-    let layer_size = if layer_left == @double.infinity { 0.0 } else { layer_right - layer_left }
+    let layer_size = if layer_left == @double.infinity {
+      0.0
+    } else {
+      layer_right - layer_left
+    }
     offset = offset + layer_size
     if i + 1 < indices.length() {
       let next_idx = indices[i + 1]
@@ -2094,9 +2107,11 @@ fn route_vertical_layout(
         None => None
       }
     }
+
     fn is_sql_table(node : LNode) -> Bool {
       node.properties.get_bool_or("diago.sqlTable", false)
     }
+
     let shifts : Array[Double] = []
     for _ in 0..<layer_count {
       shifts.push(0.0)
@@ -2133,7 +2148,8 @@ fn route_vertical_layout(
         }
         let src_layer = src.layer
         let tgt_layer = tgt.layer
-        if src_layer < 0 || src_layer >= layer_count ||
+        if src_layer < 0 ||
+          src_layer >= layer_count ||
           tgt_layer < 0 ||
           tgt_layer >= layer_count {
           continue
@@ -2166,7 +2182,6 @@ fn route_vertical_layout(
   }
 
   enforce_side_port_layer_separation(graph, direction, edge_node_spacing)
-
   fn fallback_lane(
     graph : LGraph,
     src : LNode,
@@ -2481,8 +2496,12 @@ fn route_vertical_layout(
       // Nodes are aligned and single edge - straight edge, no bend points needed
       // Bend points will be empty, edge goes straight
     } else {
-      let lane_base = fallback_lane(graph, src, tgt, direction, edge_node_spacing)
-      let lane_info = lane_by_edge.get(edge.id).unwrap_or(default_lane_info(lane_base))
+      let lane_base = fallback_lane(
+        graph, src, tgt, direction, edge_node_spacing,
+      )
+      let lane_info = lane_by_edge
+        .get(edge.id)
+        .unwrap_or(default_lane_info(lane_base))
       let lane = lane_info.lane
       if (src_x - tgt_x).abs() < 1.0 {
         edge.bend_points.push(ElkPoint::new(src_x + parallel_offset, src_y))

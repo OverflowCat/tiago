@@ -1244,10 +1244,7 @@ fn compile_edges_in_map(
           prefix + "." + field.name
         }
         next_index = compile_edges_in_map(
-          graph,
-          inner,
-          child_prefix,
-          next_index,
+          graph, inner, child_prefix, next_index,
         )
       }
       _ => ()
@@ -1300,13 +1297,11 @@ fn compile_legend(
   let legend_graph = Graph::new("d2-legend")
   compile_objects(legend_graph, legend_map, "", classes)
   compile_edges(legend_graph, legend_map)
-
   let legend = Legend::new()
   match lf.primary {
     Some(p) => legend.set_title(p.to_string())
     None => ()
   }
-
   let mut have_shapes = false
   for obj in legend_graph.objects {
     match obj.style.opacity {
@@ -1349,6 +1344,7 @@ fn compile_legend(
 }
 
 ///|
+#warnings("-unused_value")
 fn make_legend_with_overrides(
   title : String?,
   position : LegendPosition,
@@ -1396,6 +1392,7 @@ fn parse_bool(s : String) -> Bool? {
 }
 
 ///|
+#warnings("-unused_value")
 fn parse_legend_entries(arr : @ir.IRArray) -> Array[LegendEntry] {
   let entries : Array[LegendEntry] = []
   for v in arr.values {
@@ -1624,6 +1621,7 @@ fn collect_legend_entries_into(
 }
 
 ///|
+#warnings("-unused_value")
 fn auto_generate_legend_entries(graph : Graph) -> Array[LegendEntry] {
   let shapes : Map[String, Bool] = {}
   let conns : Map[String, (ArrowheadType, ArrowheadType)] = {}

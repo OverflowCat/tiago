@@ -405,7 +405,6 @@ fn compile_edges_with_imports(
       edge.src_arrow == "<",
       edge.dst_arrow == ">",
     )
-
     fn next_index_for_group(ir : Map, base_id : EdgeID) -> Int {
       let existing = ir.find_edges(base_id)
       let mut max_idx = -1
@@ -482,8 +481,14 @@ fn compile_edges_with_imports(
         if ei.glob {
           let existing = ir.find_edges(base_id)
           for e in existing {
-            e.references.push(EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true))
-            let (primary, edge_map) = compile_edge_value(Some(e), key.value, resolver)
+            e.references.push(
+              EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+            )
+            let (primary, edge_map) = compile_edge_value(
+              Some(e),
+              key.value,
+              resolver,
+            )
             ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
           }
         } else {
@@ -498,11 +503,19 @@ fn compile_edges_with_imports(
           match find_exact_edge(ir, edge_id) {
             Some(e) => {
               e.references.push(EdgeReference::new(edge.range, idx, true))
-              let (primary, edge_map) = compile_edge_value(Some(e), key.value, resolver)
+              let (primary, edge_map) = compile_edge_value(
+                Some(e),
+                key.value,
+                resolver,
+              )
               ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
             }
             None => {
-              let (primary, edge_map) = compile_edge_value(None, key.value, resolver)
+              let (primary, edge_map) = compile_edge_value(
+                None,
+                key.value,
+                resolver,
+              )
               let new_edge = Edge::new(edge_id, primary, edge_map, [
                 EdgeReference::new(edge.range, idx, true),
               ])

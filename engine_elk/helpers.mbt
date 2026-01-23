@@ -312,7 +312,7 @@ fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
     // D2 uses the header label's measured height (header font) as the base row
     // height for sql_table. Our text metrics are approximate; match D2's
     // row-height behavior by scaling from the header font size.
-    let row_height = (@math.ceil(font_size.to_double() * 1.5))
+    let row_height = @math.ceil(font_size.to_double() * 1.5)
     let total_height = max(
       SQL_TABLE_MIN_SIZE,
       row_height * (obj.children.length() + 1).to_double(),

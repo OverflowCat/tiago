@@ -338,7 +338,6 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
       edge.src_arrow == "<",
       edge.dst_arrow == ">",
     )
-
     fn next_index_for_group(ir : Map, base_id : EdgeID) -> Int {
       let existing = ir.find_edges(base_id)
       let mut max_idx = -1
@@ -419,7 +418,9 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
           // Apply the value block to all edges in the group.
           let existing = ir.find_edges(base_id)
           for e in existing {
-            e.references.push(EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true))
+            e.references.push(
+              EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+            )
             let (primary, edge_map) = compile_edge_value(Some(e), key.value)
             ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
           }

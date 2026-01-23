@@ -64,7 +64,6 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
 
   let all_edges : Array[ElkEdge] = []
   collect_all_edges(graph, all_edges)
-
   fn layout_rec(
     node : ElkNode,
     inherited : LayoutOptions,
@@ -93,6 +92,7 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
         collect_subtree_ids(child, set)
       }
     }
+
     let subtree_ids : Map[String, Bool] = {}
     collect_subtree_ids(node, subtree_ids)
 
@@ -142,7 +142,6 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
         lgraph.add_node(dummy)
         id
       }
-
       let ledge = LEdge::new("h_" + edge.id + "_" + dummy_id, src_id, dummy_id)
       ledge.original_id = Some(edge.id)
       match lgraph.get_node(src_id) {
@@ -485,8 +484,7 @@ fn longest_path_layering(graph : LGraph) -> Unit {
   // If no edges, either keep a single layer or stack by model order.
   if !has_edges {
     let keep_single = graph.properties.get_bool_or(
-      "diago.layered.keepSingleLayerNoEdges",
-      false,
+      "diago.layered.keepSingleLayerNoEdges", false,
     )
     if keep_single {
       for node in graph.nodes {
@@ -655,7 +653,8 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     // - Horizontal layout stacks labels vertically (width is max; height sums).
     // Always reserve edge-label spacing and edge thickness in the dummy size.
     fn edge_thickness(edge : LEdge) -> Double {
-      let mut thickness = match edge.properties.get_double("elk.edge.thickness") {
+      let mut thickness = match
+        edge.properties.get_double("elk.edge.thickness") {
         Some(v) => v
         None =>
           match edge.properties.get_double("org.eclipse.elk.edge.thickness") {
@@ -669,6 +668,7 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       }
       thickness
     }
+
     let thickness = edge_thickness(edge)
     let n = center_labels.length()
     let gaps = (n - 1).to_double()
@@ -700,7 +700,10 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       // - width is max label width
       // - add edge-label spacing and edge thickness to height
       dummy.width = max_w
-      dummy.height = sum_h + gaps * label_label_spacing + edge_label_spacing + thickness
+      dummy.height = sum_h +
+        gaps * label_label_spacing +
+        edge_label_spacing +
+        thickness
     }
     dummy.properties.set(
       "diago.layered.labelLabelSpacing",
@@ -3023,11 +3026,7 @@ fn order_layer_by_barycenter(
 
   // Compute barycenters.
   let barycenters : Map[String, Double?] = {}
-  fn neighbor_position(
-    node : LNode,
-    edge : LEdge,
-    is_source : Bool,
-  ) -> Double {
+  fn neighbor_position(node : LNode, edge : LEdge, is_source : Bool) -> Double {
     let base = node.position.to_double()
     if !edge.properties.get_bool_or("diago.layered.crossHierarchy", false) {
       return base
@@ -3058,7 +3057,13 @@ fn order_layer_by_barycenter(
             centers.sort_by(fn(a, b) {
               let (_, ca) = a
               let (_, cb) = b
-              if ca < cb { -1 } else if ca > cb { 1 } else { 0 }
+              if ca < cb {
+                -1
+              } else if ca > cb {
+                1
+              } else {
+                0
+              }
             })
             let count = centers.length()
             if count == 0 {
@@ -3084,6 +3089,7 @@ fn order_layer_by_barycenter(
       None => base
     }
   }
+
   for node in layer.nodes {
     let connected_positions : Array[Double] = []
     if forward {
@@ -3091,9 +3097,7 @@ fn order_layer_by_barycenter(
         match graph.get_node(edge.source_id) {
           Some(source) =>
             if source.layer == fixed_layer.index {
-              connected_positions.push(
-                neighbor_position(source, edge, true),
-              )
+              connected_positions.push(neighbor_position(source, edge, true))
             }
           None => ()
         }
@@ -3103,9 +3107,7 @@ fn order_layer_by_barycenter(
         match graph.get_node(edge.target_id) {
           Some(target) =>
             if target.layer == fixed_layer.index {
-              connected_positions.push(
-                neighbor_position(target, edge, false),
-              )
+              connected_positions.push(neighbor_position(target, edge, false))
             }
           None => ()
         }
@@ -3508,12 +3510,7 @@ fn orthogonal_routing(
   // Use improved routing with slot assignment
   let random_seed = options.random_seed.unwrap_or(1)
   route_edges_orthogonal(
-    graph,
-    direction,
-    node_node_spacing,
-    edge_edge_spacing,
-    edge_node_spacing,
-    padding,
+    graph, direction, node_node_spacing, edge_edge_spacing, edge_node_spacing, padding,
     random_seed,
   )
 

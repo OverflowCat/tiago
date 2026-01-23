@@ -441,14 +441,27 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
   fn port_side(dir : String, suffix : String) -> ElkPortSide {
     match dir {
       "UP" =>
-        if suffix == "src" { ElkPortSide::North } else { ElkPortSide::South }
+        if suffix == "src" {
+          ElkPortSide::North
+        } else {
+          ElkPortSide::South
+        }
       "LEFT" =>
-        if suffix == "src" { ElkPortSide::West } else { ElkPortSide::East }
+        if suffix == "src" {
+          ElkPortSide::West
+        } else {
+          ElkPortSide::East
+        }
       "RIGHT" =>
-        if suffix == "src" { ElkPortSide::East } else { ElkPortSide::West }
+        if suffix == "src" {
+          ElkPortSide::East
+        } else {
+          ElkPortSide::West
+        }
       _ => if suffix == "src" { ElkPortSide::South } else { ElkPortSide::North }
     }
   }
+
   fn add_hierarchical_port(
     graph : LGraph,
     container_id : String,
@@ -465,17 +478,14 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
                 // already-laid-out nested graph (ELK's hierarchical port
                 // processors). We approximate this by fixing the port geometry
                 // and snapping it to the requested side during `position_ports`.
-                if container.properties.get_string("elk.portConstraints") is None {
+                if container.properties.get_string("elk.portConstraints")
+                  is None {
                   container.properties.set(
                     "elk.portConstraints",
                     Enum("FIXED_POS"),
                   )
                 }
-                let port_id = container_id +
-                  "|hier|" +
-                  child_id +
-                  "|" +
-                  suffix
+                let port_id = container_id + "|hier|" + child_id + "|" + suffix
                 for p in container.ports {
                   if p.id == port_id {
                     return Some(port_id)
