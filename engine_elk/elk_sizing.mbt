@@ -51,7 +51,8 @@ fn ensure_sizes(node : ElkNode, options : LayoutOptions) -> Unit {
     }
   }
   for child in node.children {
-    ensure_sizes(child, node_options)
+    let child_options = resolve_options_for_graph(options, child)
+    ensure_sizes(child, child_options)
   }
 
   // Auto-size nodes when missing width/height.

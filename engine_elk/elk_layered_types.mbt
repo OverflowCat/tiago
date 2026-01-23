@@ -22,6 +22,7 @@
 
 ///|
 /// Type of node in the layered graph
+#warnings("-unused_constructor")
 enum LNodeType {
   Normal // Regular node from the original graph
   LongEdgeDummy // Virtual node for long edges spanning multiple layers
@@ -109,6 +110,7 @@ fn LNode::is_dummy(self : LNode) -> Bool {
 
 ///|
 /// Get the degree of this node (incoming + outgoing edges)
+#warnings("-unused_value")
 fn LNode::degree(self : LNode) -> Int {
   self.incoming_edges.length() + self.outgoing_edges.length()
 }
@@ -121,6 +123,7 @@ fn LNode::in_degree(self : LNode) -> Int {
 
 ///|
 /// Get out-degree
+#warnings("-unused_value")
 fn LNode::out_degree(self : LNode) -> Int {
   self.outgoing_edges.length()
 }
@@ -191,6 +194,7 @@ struct LLabel {
 } derive(Show)
 
 ///|
+#warnings("-unused_value")
 fn LLabel::new(id : String, text : String) -> LLabel {
   {
     id,
@@ -292,12 +296,14 @@ fn LEdge::is_self_loop(self : LEdge) -> Bool {
 
 ///|
 /// Get the source node from a graph
+#warnings("-unused_value")
 fn LEdge::get_source(self : LEdge, graph : LGraph) -> LNode? {
   graph.node_map.get(self.source_id)
 }
 
 ///|
 /// Get the target node from a graph
+#warnings("-unused_value")
 fn LEdge::get_target(self : LEdge, graph : LGraph) -> LNode? {
   graph.node_map.get(self.target_id)
 }
@@ -319,6 +325,7 @@ fn LLayer::new(index : Int) -> LLayer {
 }
 
 ///|
+#warnings("-unused_value")
 fn LLayer::add_node(self : LLayer, node : LNode) -> Unit {
   node.layer = self.index
   node.position = self.nodes.length()
@@ -381,6 +388,30 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
   graph.height = elk_node.height
   graph.properties.copy_from(elk_node.properties)
 
+  // Preserve the root node's label extents so node placement can enforce a
+  // minimum container size that fits the title (D2 behavior).
+  if !elk_node.labels.is_empty() {
+    let mut max_w = 0.0
+    let mut max_h = 0.0
+    for label in elk_node.labels {
+      let w = if label.width > 0.0 {
+        label.width
+      } else {
+        // Fallback should match `ensure_label_size`'s rough heuristic.
+        label.text.length().to_double() * 8.0
+      }
+      let h = if label.height > 0.0 { label.height } else { 14.0 }
+      if w > max_w {
+        max_w = w
+      }
+      if h > max_h {
+        max_h = h
+      }
+    }
+    graph.properties.set("diago.layered.rootLabelWidth", Double(max_w))
+    graph.properties.set("diago.layered.rootLabelHeight", Double(max_h))
+  }
+
   // Convert all children to LNodes (preserve input order for model order)
   for i, child in elk_node.children {
     let lnode = LNode::from_elk_node(child)
@@ -400,6 +431,127 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
       match child.find_node(id) {
         Some(_) => return Some(child.id)
         None => ()
+      }
+    }
+    None
+  }
+  // Try to infer the direction from graph properties (present when coming from
+  // the diago->ELK bridge). Default to DOWN for whitebox fixtures.
+  let dir = graph.properties.get_enum("elk.direction").unwrap_or("DOWN")
+  fn port_side(dir : String, suffix : String) -> ElkPortSide {
+    match dir {
+      "UP" =>
+        if suffix == "src" { ElkPortSide::North } else { ElkPortSide::South }
+      "LEFT" =>
+        if suffix == "src" { ElkPortSide::West } else { ElkPortSide::East }
+      "RIGHT" =>
+        if suffix == "src" { ElkPortSide::East } else { ElkPortSide::West }
+      _ => if suffix == "src" { ElkPortSide::South } else { ElkPortSide::North }
+    }
+  }
+  fn add_hierarchical_port(
+    graph : LGraph,
+    container_id : String,
+    child_id : String,
+    suffix : String,
+  ) -> String? {
+    match graph.node_map.get(container_id) {
+      Some(container) =>
+        match container.nested_graph {
+          Some(nested) =>
+            match nested.get_node(child_id) {
+              Some(child) => {
+                // Hierarchical ports need stable positions derived from the
+                // already-laid-out nested graph (ELK's hierarchical port
+                // processors). We approximate this by fixing the port geometry
+                // and snapping it to the requested side during `position_ports`.
+                if container.properties.get_string("elk.portConstraints") is None {
+                  container.properties.set(
+                    "elk.portConstraints",
+                    Enum("FIXED_POS"),
+                  )
+                }
+                let port_id = container_id +
+                  "|hier|" +
+                  child_id +
+                  "|" +
+                  suffix
+                for p in container.ports {
+                  if p.id == port_id {
+                    return Some(port_id)
+                  }
+                }
+                let port = LPort::new(port_id)
+                port.side = port_side(dir, suffix)
+                // Use the nested child's center as the port position hint; the
+                // port side determines which border the anchor snaps to.
+                port.x = child.x + child.width / 2.0
+                port.y = child.y + child.height / 2.0
+                container.ports.push(port)
+                Some(port_id)
+              }
+              None => None
+            }
+          None => None
+        }
+      None => None
+    }
+  }
+
+  fn add_edge_port(
+    graph : LGraph,
+    node_id : String,
+    edge_id : String,
+    suffix : String,
+    ratio : Double?,
+  ) -> String? {
+    match graph.node_map.get(node_id) {
+      Some(node) => {
+        let port_id = node_id + "|edge|" + edge_id + "|" + suffix
+        for p in node.ports {
+          if p.id == port_id {
+            return Some(port_id)
+          }
+        }
+        let port = LPort::new(port_id)
+        port.side = port_side(dir, suffix)
+        match ratio {
+          Some(r) => {
+            let rr = if r < 0.0 { 0.0 } else if r > 1.0 { 1.0 } else { r }
+            if dir == "LEFT" || dir == "RIGHT" {
+              port.y = rr * node.height
+              if port.y == 0.0 {
+                port.y = 0.001
+              }
+            } else {
+              port.x = rr * node.width
+              if port.x == 0.0 {
+                port.x = 0.001
+              }
+            }
+          }
+          None => ()
+        }
+        node.ports.push(port)
+        Some(port_id)
+      }
+      None => None
+    }
+  }
+
+  fn port_ratio(node : LNode, port_id : String) -> Double? {
+    for p in node.ports {
+      if p.id == port_id {
+        if dir == "LEFT" || dir == "RIGHT" {
+          if node.height <= 0.0 {
+            return None
+          }
+          return Some(p.y / node.height)
+        }
+        if node.width <= 0.0 {
+          return None
+        }
+        return Some(p.x / node.width)
       }
     }
     None
@@ -426,13 +578,52 @@ fn LGraph::from_elk_node(elk_node : ElkNode) -> LGraph {
           original_target_id,
         )
       }
+      let mut source_port_id = elk_edge.source_port_id()
+      let mut target_port_id = elk_edge.target_port_id()
+      if source_id != original_source_id {
+        match
+          add_hierarchical_port(graph, source_id, original_source_id, "src") {
+          Some(pid) => source_port_id = Some(pid)
+          None => ()
+        }
+      }
+      if target_id != original_target_id {
+        match
+          add_hierarchical_port(graph, target_id, original_target_id, "dst") {
+          Some(pid) => target_port_id = Some(pid)
+          None => ()
+        }
+      }
+      // If one endpoint uses a port (hierarchical or explicit), give the other
+      // endpoint a per-edge port too. We rely on port positioning processors to
+      // turn the per-edge port order into stable geometry for placement/routing.
+      if source_port_id is None && target_port_id is Some(tpid) {
+        let ratio = match graph.node_map.get(target_id) {
+          Some(tgt) => port_ratio(tgt, tpid).unwrap_or(0.5)
+          None => 0.5
+        }
+        match add_edge_port(graph, source_id, elk_edge.id, "src", Some(ratio)) {
+          Some(pid) => source_port_id = Some(pid)
+          None => ()
+        }
+      }
+      if target_port_id is None && source_port_id is Some(spid) {
+        let ratio = match graph.node_map.get(source_id) {
+          Some(src) => port_ratio(src, spid).unwrap_or(0.5)
+          None => 0.5
+        }
+        match add_edge_port(graph, target_id, elk_edge.id, "dst", Some(ratio)) {
+          Some(pid) => target_port_id = Some(pid)
+          None => ()
+        }
+      }
       // Only create edge if both nodes exist
       if graph.node_map.contains(source_id) &&
         graph.node_map.contains(target_id) {
         let ledge = LEdge::new(elk_edge.id, source_id, target_id)
         ledge.original_id = Some(elk_edge.id)
-        ledge.source_port_id = elk_edge.source_port_id()
-        ledge.target_port_id = elk_edge.target_port_id()
+        ledge.source_port_id = source_port_id
+        ledge.target_port_id = target_port_id
         ledge.properties.copy_from(elk_edge.properties)
         ledge.properties.set("diago.layered.modelOrder", Int(i))
         ledge.properties.set(
@@ -986,6 +1177,7 @@ fn LGraph::get_long_edges(self : LGraph) -> Array[LEdge] {
 
 ///|
 /// Get all nodes in a specific layer
+#warnings("-unused_value")
 fn LGraph::get_layer_nodes(self : LGraph, layer_index : Int) -> Array[LNode] {
   let result : Array[LNode] = []
   for node in self.nodes {

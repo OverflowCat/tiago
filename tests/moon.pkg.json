@@ -7,11 +7,11 @@
     "Milky2018/diago/exporter",
     "Milky2018/diago/engine_api",
     "Milky2018/diago/engine_elk",
-    "Milky2018/diago/text_metrics",
     "Milky2018/diago/renderer_svg",
     "Milky2018/diago/renderer_ascii",
     "Milky2018/xml",
     "moonbitlang/x/fs",
+    "moonbitlang/core/math",
     "moonbitlang/core/strconv"
   ]
 }

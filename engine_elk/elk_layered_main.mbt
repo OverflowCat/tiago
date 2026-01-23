@@ -26,6 +26,7 @@
 // ============================================================================
 
 ///|
+#warnings("-unused_value")
 fn find_node_index(nodes : Array[LNode], id : String) -> Int {
   for i, n in nodes {
     if n.id == id {
@@ -52,37 +53,132 @@ fn find_edge_index(edges : Array[LEdge], id : String) -> Int {
 ///|
 /// Execute the layered layout algorithm
 fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
-  let resolved_options = resolve_options_for_graph(options, graph)
-  ensure_sizes(graph, resolved_options)
-  // First, recursively layout compound nodes (children with their own children)
-  for child in graph.children {
-    if child.children.length() > 0 {
-      elk_layered_layout_impl(child, resolved_options)
+  fn collect_all_edges(node : ElkNode, out : Array[ElkEdge]) -> Unit {
+    for edge in node.edges {
+      out.push(edge)
+    }
+    for child in node.children {
+      collect_all_edges(child, out)
     }
   }
 
-  // Convert ElkNode to internal LGraph representation
-  let lgraph = LGraph::from_elk_node(graph)
+  let all_edges : Array[ElkEdge] = []
+  collect_all_edges(graph, all_edges)
 
-  // Get options with defaults
-  let direction = match resolved_options.direction {
-    Some(d) => d
-    None => Down
-  }
-  let thoroughness = match resolved_options.thoroughness {
-    Some(t) => t
-    None => 7
-  }
-  run_layered_internal_pipeline(
-    lgraph, resolved_options, direction, thoroughness,
-  )
+  fn layout_rec(
+    node : ElkNode,
+    inherited : LayoutOptions,
+    all_edges : Array[ElkEdge],
+  ) -> Unit {
+    let resolved_options = resolve_options_for_graph(inherited, node)
+    ensure_sizes(node, resolved_options)
 
-  // Apply results back to ElkNode
-  lgraph.to_elk_node(graph, direction, resolved_options)
+    // First, recursively layout compound nodes.
+    for child in node.children {
+      if child.children.length() > 0 {
+        layout_rec(child, resolved_options, all_edges)
+      }
+    }
+
+    // Convert ElkNode to internal LGraph representation.
+    let lgraph = LGraph::from_elk_node(node)
+
+    // ELK INCLUDE_CHILDREN: internal layout of a compound node needs to "feel"
+    // outgoing hierarchy edges (to outside nodes) so port distribution and
+    // spacing match D2/ELK. We approximate this by injecting ExternalPort
+    // dummies for edges that leave this node's subtree.
+    fn collect_subtree_ids(node : ElkNode, set : Map[String, Bool]) -> Unit {
+      set[node.id] = true
+      for child in node.children {
+        collect_subtree_ids(child, set)
+      }
+    }
+    let subtree_ids : Map[String, Bool] = {}
+    collect_subtree_ids(node, subtree_ids)
+
+    // Merge hierarchy edges per source (ELK: MERGE_HIERARCHY_EDGES default).
+    let dummy_by_src : Map[String, String] = {}
+    for edge in all_edges {
+      if edge.sources.is_empty() || edge.targets.is_empty() {
+        continue
+      }
+      let orig_src = edge.sources[0]
+      let orig_tgt = edge.targets[0]
+      if !subtree_ids.contains(orig_src) || subtree_ids.contains(orig_tgt) {
+        continue
+      }
+      // Only consider outgoing edges from nodes that are direct children of
+      // this graph. Deeper descendants are handled when their parent graphs
+      // are laid out.
+      if !lgraph.node_map.contains(orig_src) {
+        continue
+      }
+      let src_id = orig_src
+      let should_merge = edge.labels.is_empty()
+      let ext_port_w = resolved_options.edge_node_between_layers_spacing.unwrap_or(
+        40.0,
+      )
+      let ext_port_h = resolved_options.node_node_between_layers_spacing.unwrap_or(
+        40.0,
+      )
+      let dummy_id = if should_merge {
+        match dummy_by_src.get(src_id) {
+          Some(id) => id
+          None => {
+            let id = lgraph.alloc_dummy_id()
+            let dummy = LNode::new(id, ExternalPort)
+            dummy.width = 0.0
+            dummy.height = 0.0
+            lgraph.add_node(dummy)
+            dummy_by_src[src_id] = id
+            id
+          }
+        }
+      } else {
+        let id = lgraph.alloc_dummy_id()
+        let dummy = LNode::new(id, ExternalPort)
+        dummy.width = ext_port_w
+        dummy.height = ext_port_h
+        lgraph.add_node(dummy)
+        id
+      }
+
+      let ledge = LEdge::new("h_" + edge.id + "_" + dummy_id, src_id, dummy_id)
+      ledge.original_id = Some(edge.id)
+      match lgraph.get_node(src_id) {
+        Some(src) => src.outgoing_edges.push(ledge)
+        None => ()
+      }
+      match lgraph.get_node(dummy_id) {
+        Some(tgt) => tgt.incoming_edges.push(ledge)
+        None => ()
+      }
+      lgraph.edges.push(ledge)
+    }
+
+    // Get options with defaults.
+    let direction = match resolved_options.direction {
+      Some(d) => d
+      None => Down
+    }
+    let thoroughness = match resolved_options.thoroughness {
+      Some(t) => t
+      None => 7
+    }
+    run_layered_internal_pipeline(
+      lgraph, resolved_options, direction, thoroughness,
+    )
+
+    // Apply results back to ElkNode.
+    lgraph.to_elk_node(node, direction, resolved_options)
+  }
+
+  layout_rec(graph, options, all_edges)
 }
 
 ///|
 /// Execute the layered layout algorithm
+#warnings("-unused_value")
 fn elk_layered_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   elk_layered_layout_with_components(graph, options)
 }
@@ -352,6 +448,32 @@ fn assign_layers(graph : LGraph, strategy : LayeringStrategy) -> Unit {
     NetworkSimplex => network_simplex_layering(graph)
     _ => longest_path_layering(graph) // Default
   }
+  // Our internal label-dummy insertion runs before layering and relies on the
+  // invariant that dummy edges span at least one layer. Some layerers can
+  // still produce invalid assignments involving label dummies; repair those
+  // locally to avoid global drift.
+  let max_iters = graph.nodes.length() + 1
+  for _iter = 0; _iter < max_iters; _iter = _iter + 1 {
+    let mut changed = false
+    for edge in graph.edges {
+      if edge.source_id == edge.target_id {
+        continue
+      }
+      match (graph.get_node(edge.source_id), graph.get_node(edge.target_id)) {
+        (Some(src), Some(tgt)) =>
+          if src.node_type is LabelDummy || tgt.node_type is LabelDummy {
+            if tgt.layer < src.layer + 1 {
+              tgt.layer = src.layer + 1
+              changed = true
+            }
+          }
+        _ => ()
+      }
+    }
+    if !changed {
+      break
+    }
+  }
 }
 
 ///|
@@ -360,10 +482,20 @@ fn longest_path_layering(graph : LGraph) -> Unit {
   // Check if we have any edges
   let has_edges = graph.edges.length() > 0
 
-  // If no edges, put each node in its own layer to respect definition order
+  // If no edges, either keep a single layer or stack by model order.
   if !has_edges {
-    for i, node in graph.nodes {
-      node.layer = i
+    let keep_single = graph.properties.get_bool_or(
+      "diago.layered.keepSingleLayerNoEdges",
+      false,
+    )
+    if keep_single {
+      for node in graph.nodes {
+        node.layer = 0
+      }
+    } else {
+      for i, node in graph.nodes {
+        node.layer = i
+      }
     }
     return
   }
@@ -475,6 +607,7 @@ fn network_simplex_layering(graph : LGraph) -> Unit {
 /// later phases can account for label sizes.
 fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
   let label_label_spacing = options.label_label_spacing.unwrap_or(0.0)
+  let edge_label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let original_edge_count = graph.edges.length()
   for i = 0; i < original_edge_count; i = i + 1 {
     let edge = graph.edges[i]
@@ -517,17 +650,58 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     let dummy_id = graph.alloc_dummy_id()
     let dummy = LNode::new(dummy_id, LabelDummy)
     dummy.origin_edge = Some(origin)
-    let mut max_w = 1.0
+    // Follow ELK's LabelDummyInserter sizing:
+    // - Vertical layout stacks labels horizontally (width sums; height is max).
+    // - Horizontal layout stacks labels vertically (width is max; height sums).
+    // Always reserve edge-label spacing and edge thickness in the dummy size.
+    fn edge_thickness(edge : LEdge) -> Double {
+      let mut thickness = match edge.properties.get_double("elk.edge.thickness") {
+        Some(v) => v
+        None =>
+          match edge.properties.get_double("org.eclipse.elk.edge.thickness") {
+            Some(v) => v
+            None => 1.0
+          }
+      }
+      if thickness < 0.0 {
+        thickness = 0.0
+        edge.properties.set("elk.edge.thickness", Double(thickness))
+      }
+      thickness
+    }
+    let thickness = edge_thickness(edge)
+    let n = center_labels.length()
+    let gaps = (n - 1).to_double()
+    let mut max_w = 0.0
+    let mut max_h = 0.0
+    let mut sum_w = 0.0
     let mut sum_h = 0.0
     for label in center_labels {
       if label.width > max_w {
         max_w = label.width
       }
+      if label.height > max_h {
+        max_h = label.height
+      }
+      sum_w = sum_w + label.width
       sum_h = sum_h + label.height
     }
-    let gaps = (center_labels.length() - 1).to_double()
-    dummy.width = max_w
-    dummy.height = sum_h + gaps * label_label_spacing
+    let dir = options.direction.unwrap_or(Down)
+    if dir.is_vertical() {
+      // ELK LabelDummyInserter:
+      // - stack labels horizontally (sum widths + gaps)
+      // - height is max label height
+      // - add edge-label spacing and edge thickness to height
+      dummy.width = sum_w + gaps * label_label_spacing
+      dummy.height = max_h + edge_label_spacing + thickness
+    } else {
+      // ELK LabelDummyInserter:
+      // - stack labels vertically (sum heights + gaps)
+      // - width is max label width
+      // - add edge-label spacing and edge thickness to height
+      dummy.width = max_w
+      dummy.height = sum_h + gaps * label_label_spacing + edge_label_spacing + thickness
+    }
     dummy.properties.set(
       "diago.layered.labelLabelSpacing",
       Double(label_label_spacing),
@@ -542,6 +716,9 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     )
     edge_to_dummy.original_id = Some(origin)
     edge_to_dummy.properties.copy_from(edge.properties)
+    // The original (carrier) edge is marked as split; the replacement edges must
+    // still participate in later phases (layering/placement/routing).
+    edge_to_dummy.properties.set("diago.layered.longEdgeSplit", Bool(false))
     edge_to_dummy.priority = edge.priority
     edge_to_dummy.source_port_id = edge.source_port_id
     match graph.get_node(edge.source_id) {
@@ -559,6 +736,7 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     )
     edge_from_dummy.original_id = Some(origin)
     edge_from_dummy.properties.copy_from(edge.properties)
+    edge_from_dummy.properties.set("diago.layered.longEdgeSplit", Bool(false))
     edge_from_dummy.priority = edge.priority
     edge_from_dummy.target_port_id = edge.target_port_id
     dummy.outgoing_edges.push(edge_from_dummy)
@@ -652,6 +830,7 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       )
       edge_to_dummy.original_id = Some(origin)
       edge_to_dummy.properties.copy_from(edge.properties)
+      edge_to_dummy.properties.set("diago.layered.longEdgeSplit", Bool(false))
       edge_to_dummy.priority = edge.priority
       edge_to_dummy.source_port_id = prev_port_id
       edge_to_dummy.target_port_id = Some(input_port_id)
@@ -672,6 +851,7 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
     )
     final_edge.original_id = Some(origin)
     final_edge.properties.copy_from(edge.properties)
+    final_edge.properties.set("diago.layered.longEdgeSplit", Bool(false))
     final_edge.priority = edge.priority
     final_edge.source_port_id = prev_port_id
     final_edge.target_port_id = edge.target_port_id
@@ -1084,6 +1264,7 @@ fn remove_label_dummy_nodes(
 
 ///|
 /// Backwards-compatible helper: remove all dummies.
+#warnings("-unused_value")
 fn remove_dummy_nodes(
   graph : LGraph,
   options : LayoutOptions,
@@ -1393,21 +1574,6 @@ fn sort_layers_by_input_order(
   fn first_incoming_source_node(graph : LGraph, node : LNode) -> LNode? {
     match first_incoming_edge(node, incoming_by_port) {
       Some(edge) => graph.get_node(edge.source_id)
-      None => None
-    }
-  }
-
-  fn first_outgoing_target_port(graph : LGraph, node : LNode) -> LPort? {
-    match first_outgoing_edge(node, outgoing_by_port) {
-      Some(edge) =>
-        match graph.get_node(edge.target_id) {
-          Some(tgt) =>
-            match edge.target_port_id {
-              Some(pid) => find_port_for_id(tgt, pid)
-              None => None
-            }
-          None => None
-        }
       None => None
     }
   }
@@ -1742,7 +1908,7 @@ fn sort_layers_by_input_order(
     result
   }
 
-  fn handle_helper_dummy_nodes(
+  letrec handle_helper_dummy_nodes = fn(
     graph : LGraph,
     n1 : LNode,
     n2 : LNode,
@@ -1797,11 +1963,9 @@ fn sort_layers_by_input_order(
       }
     } else if n1.node_type is LongEdgeDummy && n2.node_type is LongEdgeDummy {
       let n1_source_port = first_incoming_source_port(graph, n1)
-      let n1_target_port = first_outgoing_target_port(graph, n1)
       let n1_source_node = first_incoming_source_node(graph, n1)
       let n1_target_node = first_outgoing_target_node(graph, n1)
       let n2_source_port = first_incoming_source_port(graph, n2)
-      let n2_target_port = first_outgoing_target_port(graph, n2)
       let n2_source_node = first_incoming_source_node(graph, n2)
       let n2_target_node = first_outgoing_target_node(graph, n2)
       let n1_layer = n1.layer
@@ -1891,8 +2055,7 @@ fn sort_layers_by_input_order(
     }
     0
   }
-
-  fn compare_nodes(
+  and compare_nodes = fn(
     graph : LGraph,
     n1 : LNode,
     n2 : LNode,
@@ -2729,6 +2892,7 @@ fn layer_sweep_barycenter_best(
 
   let seed = options.random_seed.unwrap_or(1)
   let use_perturb = options.random_seed is Some(_)
+  let is_horizontal = options.direction.unwrap_or(Down).is_horizontal()
   let mut best_crossings = total_crossings()
   let mut best_snapshot = snapshot_positions()
   for sweep = 0; sweep < thoroughness; sweep = sweep + 1 {
@@ -2743,7 +2907,8 @@ fn layer_sweep_barycenter_best(
         seed,
         use_perturb,
         options.crossing_min_force_node_model_order.unwrap_or(false),
-        options.consider_model_order_strategy.unwrap_or(None),
+        None,
+        is_horizontal,
       )
       distribute_ports_node_relative(
         graph,
@@ -2752,6 +2917,11 @@ fn layer_sweep_barycenter_best(
         true,
         options,
       )
+      let crossings = total_crossings()
+      if crossings < best_crossings {
+        best_crossings = crossings
+        best_snapshot = snapshot_positions()
+      }
     }
 
     // Backward sweep (bottom to top)
@@ -2765,7 +2935,8 @@ fn layer_sweep_barycenter_best(
         seed,
         use_perturb,
         options.crossing_min_force_node_model_order.unwrap_or(false),
-        options.consider_model_order_strategy.unwrap_or(None),
+        None,
+        is_horizontal,
       )
       distribute_ports_node_relative(
         graph,
@@ -2774,11 +2945,11 @@ fn layer_sweep_barycenter_best(
         false,
         options,
       )
-    }
-    let crossings = total_crossings()
-    if crossings < best_crossings {
-      best_crossings = crossings
-      best_snapshot = snapshot_positions()
+      let crossings = total_crossings()
+      if crossings < best_crossings {
+        best_crossings = crossings
+        best_snapshot = snapshot_positions()
+      }
     }
   }
   restore_positions(best_snapshot)
@@ -2816,13 +2987,8 @@ fn order_layer_by_barycenter(
   use_perturb : Bool,
   force_model_order : Bool,
   consider_model_order : OrderingStrategy,
+  is_horizontal : Bool,
 ) -> Unit {
-  if force_model_order {
-    for i, node in layer.nodes {
-      node.position = i
-    }
-    return
-  }
   // ELK parity notes:
   // - Nodes with no connections get an "unknown" barycenter, then filled in by
   //   taking the midpoint between previous and next defined barycenter.
@@ -2857,14 +3023,77 @@ fn order_layer_by_barycenter(
 
   // Compute barycenters.
   let barycenters : Map[String, Double?] = {}
+  fn neighbor_position(
+    node : LNode,
+    edge : LEdge,
+    is_source : Bool,
+  ) -> Double {
+    let base = node.position.to_double()
+    if !edge.properties.get_bool_or("diago.layered.crossHierarchy", false) {
+      return base
+    }
+    let key = if is_source {
+      "diago.layered.originalSourceId"
+    } else {
+      "diago.layered.originalTargetId"
+    }
+    let orig_id = edge.properties.get_string(key)
+    guard orig_id is Some(child_id) else { return base }
+    if child_id == node.id {
+      return base
+    }
+    match node.nested_graph {
+      Some(nested) =>
+        match nested.get_node(child_id) {
+          Some(child) => {
+            let centers : Array[(String, Double)] = []
+            for other in nested.nodes {
+              let c = if is_horizontal {
+                other.y + other.height / 2.0
+              } else {
+                other.x + other.width / 2.0
+              }
+              centers.push((other.id, c))
+            }
+            centers.sort_by(fn(a, b) {
+              let (_, ca) = a
+              let (_, cb) = b
+              if ca < cb { -1 } else if ca > cb { 1 } else { 0 }
+            })
+            let count = centers.length()
+            if count == 0 {
+              return base
+            }
+            let mut idx = 0
+            for i = 0; i < count; i = i + 1 {
+              let (id, _) = centers[i]
+              if id == child.id {
+                idx = i
+                break
+              }
+            }
+            // Approximate ELK's port-based crossing minimization by using a small
+            // fractional offset derived from the child order inside the compound node.
+            // This keeps the adjustment within (-0.5, 0.5) so it doesn't dominate
+            // node ordering in the outer graph.
+            let t = (idx.to_double() + 1.0) / (count.to_double() + 1.0)
+            base + (t - 0.5)
+          }
+          None => base
+        }
+      None => base
+    }
+  }
   for node in layer.nodes {
-    let connected_positions : Array[Int] = []
+    let connected_positions : Array[Double] = []
     if forward {
       for edge in node.incoming_edges {
         match graph.get_node(edge.source_id) {
           Some(source) =>
             if source.layer == fixed_layer.index {
-              connected_positions.push(source.position)
+              connected_positions.push(
+                neighbor_position(source, edge, true),
+              )
             }
           None => ()
         }
@@ -2874,15 +3103,17 @@ fn order_layer_by_barycenter(
         match graph.get_node(edge.target_id) {
           Some(target) =>
             if target.layer == fixed_layer.index {
-              connected_positions.push(target.position)
+              connected_positions.push(
+                neighbor_position(target, edge, false),
+              )
             }
           None => ()
         }
       }
     }
     if connected_positions.length() > 0 {
-      let sum = connected_positions.fold(init=0, fn(acc, p) { acc + p })
-      let base = sum.to_double() / connected_positions.length().to_double()
+      let sum = connected_positions.fold(init=0.0, fn(acc, p) { acc + p })
+      let base = sum / connected_positions.length().to_double()
       barycenters[node.id] = Some(base + perturb(node.id, sweep, forward, seed))
     } else {
       barycenters[node.id] = None
@@ -2928,7 +3159,7 @@ fn order_layer_by_barycenter(
     None => false
     _ => true
   }
-  if preserve_model_order && !force_model_order {
+  if preserve_model_order {
     let bigger_than : Map[String, Map[String, Bool]] = {}
     let smaller_than : Map[String, Map[String, Bool]] = {}
     fn set_has(
@@ -3130,27 +3361,12 @@ fn order_layer_by_barycenter(
 // ============================================================================
 
 ///|
-fn graph_has_compound_child(graph : LGraph) -> Bool {
-  for node in graph.nodes {
-    match node.nested_graph {
-      Some(_) => return true
-      None => ()
-    }
-  }
-  false
-}
-
-///|
 fn effective_graph_padding(
-  graph : LGraph,
+  _graph : LGraph,
   options : LayoutOptions,
 ) -> ElkPadding {
   let padding = options.padding.unwrap_or(ElkPadding::uniform(12.0))
-  if graph_has_compound_child(graph) {
-    { ..padding, left: 0.0 }
-  } else {
-    padding
-  }
+  padding
 }
 
 ///|
@@ -3278,17 +3494,27 @@ fn orthogonal_routing(
   options : LayoutOptions,
   direction : LayoutDirection,
 ) -> Unit {
+  let node_node_spacing = options.node_node_between_layers_spacing.unwrap_or(
+    40.0,
+  )
   let edge_edge_spacing = options.edge_edge_between_layers_spacing.unwrap_or(
     10.0,
   )
   let edge_node_spacing = options.edge_node_between_layers_spacing.unwrap_or(
     10.0,
   )
+  let padding = effective_graph_padding(graph, options)
 
   // Use improved routing with slot assignment
   let random_seed = options.random_seed.unwrap_or(1)
   route_edges_orthogonal(
-    graph, direction, edge_edge_spacing, edge_node_spacing, random_seed,
+    graph,
+    direction,
+    node_node_spacing,
+    edge_edge_spacing,
+    edge_node_spacing,
+    padding,
+    random_seed,
   )
 
   // Clean up unnecessary bend points

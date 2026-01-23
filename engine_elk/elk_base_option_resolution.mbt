@@ -28,10 +28,17 @@ fn resolve_options_for_graph(
   inherited : LayoutOptions,
   graph : ElkNode,
 ) -> LayoutOptions {
-  LayoutOptions::merge(
+  let merged = LayoutOptions::merge(
     inherited,
     LayoutOptions::from_properties(graph.properties),
   )
+  // Node size options are node-scoped; don't let them cascade into child graphs.
+  {
+    ..merged,
+    node_size_constraints: inherited.node_size_constraints,
+    node_size_options: inherited.node_size_options,
+    node_size_minimum: inherited.node_size_minimum,
+  }
 }
 
 ///|
@@ -39,7 +46,10 @@ fn resolve_options_for_node(
   inherited : LayoutOptions,
   node : ElkNode,
 ) -> LayoutOptions {
-  resolve_options_for_graph(inherited, node)
+  LayoutOptions::merge(
+    inherited,
+    LayoutOptions::from_properties(node.properties),
+  )
 }
 
 ///|

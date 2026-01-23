@@ -518,10 +518,20 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
     return
   }
 
-  // Handle graphs with no edges - place each node on its own layer.
+  // Handle graphs with no edges - either keep a single layer or stack by model order.
   if graph.edges.length() == 0 {
-    for i, node in graph.nodes {
-      node.layer = i
+    let keep_single = graph.properties.get_bool_or(
+      "diago.layered.keepSingleLayerNoEdges",
+      false,
+    )
+    if keep_single {
+      for node in graph.nodes {
+        node.layer = 0
+      }
+    } else {
+      for i, node in graph.nodes {
+        node.layer = i
+      }
     }
     return
   }

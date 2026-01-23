@@ -388,14 +388,14 @@ test "layered regression: compound" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(96, 208) bounds=(96, 208)
+      #|root size=(108, 208) bounds=(108, 208)
       #|nodes:
-      #|  - group: (0, 12) (84, 124)
-      #|  - outside: (12, 156) (60, 40)
+      #|  - group: (12, 12) (84, 124)
+      #|  - outside: (24, 156) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|  - group/g2: (12, 72) (60, 40)
       #|edges:
-      #|  - [root] e1 group->outside: (42, 136) (42, 156)
+      #|  - [root] e1 group->outside: (54, 136) (54, 156)
       #|  - [group] ge1 g1->g2: (42, 52) (42, 72)
       #|
     ),
@@ -410,13 +410,13 @@ test "layered regression: cross-hierarchy edge mapping" {
   inspect(
     snapshot_layered(root),
     content=(
-      #|root size=(96, 148) bounds=(96, 148)
+      #|root size=(108, 148) bounds=(108, 148)
       #|nodes:
-      #|  - group: (0, 12) (84, 64)
-      #|  - outside: (12, 96) (60, 40)
+      #|  - group: (12, 12) (84, 64)
+      #|  - outside: (24, 96) (60, 40)
       #|  - group/g1: (12, 12) (60, 40)
       #|edges:
-      #|  - [root] e1 g1->outside: (42, 64) (42, 96)
+      #|  - [root] e1 g1->outside: (54, 64) (54, 96)
       #|
     ),
   )

@@ -129,6 +129,21 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
 }
 
 ///|
+const LABEL_PADDING : Double = 5.0
+
+///|
+fn transform_label_text(text : String, text_transform : String) -> String {
+  if text_transform == "" {
+    return text
+  }
+  match text_transform.to_lower() {
+    "uppercase" => text.to_upper()
+    "lowercase" => text.to_lower()
+    _ => text
+  }
+}
+
+///|
 /// Render a graph to SVG string
 pub fn render_svg(
   graph : Diagram,
@@ -1435,19 +1450,36 @@ fn render_svg_object(
       } else {
         style_string(obj.style.text_transform, "")
       }
-      // Adjust label position if icon is present
-      let label_y = if has_icon {
-        cy + 12.0 // Move label down when icon is present
-      } else {
-        cy
-      }
       let font_size = match obj.style.font_size {
         Some(v) => v.as_int().unwrap_or(config.font_size)
         None => config.font_size
       }
+      let label_text = transform_label_text(obj.label, text_transform)
+      let label_dims = @text_metrics.measure_label(
+        label_text,
+        font_size,
+        false,
+        false,
+        false,
+      )
+      let label_overflows = label_dims.width > box.width ||
+        label_dims.height > box.height
+      // D2: containers default to inside-top labels with padding; oversize labels go outside.
+      let (label_x, label_y) = if is_container(obj) {
+        if label_overflows {
+          (cx, box.y - LABEL_PADDING - label_dims.height / 2.0)
+        } else {
+          (cx, box.y + LABEL_PADDING + label_dims.height / 2.0)
+        }
+      } else if label_overflows {
+        (cx, box.y + box.height + LABEL_PADDING + label_dims.height / 2.0)
+      } else {
+        let base_y = if has_icon { cy + 12.0 } else { cy }
+        (cx, base_y)
+      }
       svg.add(
         @svg.styled_text(
-          cx,
+          label_x,
           label_y,
           obj.label,
           font_family~,
@@ -1582,9 +1614,9 @@ fn render_svg_sql_table(
           box.y,
           box.width,
           row_height,
-          fill~,
-          stroke~,
-          stroke_width~,
+          fill=stroke,
+          stroke="none",
+          stroke_width=0.0,
         ),
       )
       // Draw row separators
@@ -1826,28 +1858,94 @@ fn render_svg_cylinder(
   stroke : String,
   stroke_width : Double,
 ) -> Unit {
-  let cap_height = box.height * 0.15
-  // Body path using PathBuilder
-  let body = @svg.PathBuilder::new()
-    .move_to(box.x, box.y + cap_height)
-    .arc_to(box.width / 2.0, cap_height, box.x + box.width, box.y + cap_height)
-    .line_to(box.x + box.width, box.y + box.height - cap_height)
-    .arc_to(box.width / 2.0, cap_height, box.x, box.y + box.height - cap_height)
+  let arc_depth = 24.0
+  let arc_height = if box.height < arc_depth * 2.0 {
+    box.height / 2.0
+  } else {
+    arc_depth
+  }
+  let multiplier = 0.45
+  let x0 = box.x
+  let y0 = box.y
+  let w = box.width
+  let h = box.height
+  let top_y = y0 + arc_height
+  let bottom_y = y0 + h - arc_height
+
+  let outer = @svg.PathBuilder::new()
+    .move_to(x0, top_y)
+    .cubic_to(
+      x0,
+      y0,
+      x0 + w * multiplier,
+      y0,
+      x0 + w / 2.0,
+      y0,
+    )
+    .cubic_to(
+      x0 + w - w * multiplier,
+      y0,
+      x0 + w,
+      y0,
+      x0 + w,
+      top_y,
+    )
+    .line_to(x0 + w, bottom_y)
+    .cubic_to(
+      x0 + w,
+      y0 + h,
+      x0 + w - w * multiplier,
+      y0 + h,
+      x0 + w / 2.0,
+      y0 + h,
+    )
+    .cubic_to(
+      x0 + w * multiplier,
+      y0 + h,
+      x0,
+      y0 + h,
+      x0,
+      bottom_y,
+    )
+    .line_to(x0, top_y)
     .close()
     .build()
-  svg.add(@svg.path(body, fill~, stroke~, stroke_width~))
-  // Top cap
+  svg.add(@svg.path(outer, fill~, stroke~, stroke_width~))
+
+  // Keep an explicit `<ellipse>` element for compatibility with tests and
+  // downstream SVG tooling that expects cylinder tops to be ellipses.
   svg.add(
     @svg.ellipse(
-      box.x + box.width / 2.0,
-      box.y + cap_height,
-      box.width / 2.0,
-      cap_height,
-      fill~,
-      stroke~,
-      stroke_width~,
+      x0 + w / 2.0,
+      y0 + arc_height,
+      w / 2.0,
+      arc_height,
+      fill="none",
+      stroke="none",
+      stroke_width=0.0,
     ),
   )
+
+  let inner = @svg.PathBuilder::new()
+    .move_to(x0, top_y)
+    .cubic_to(
+      x0,
+      y0 + arc_height * 2.0,
+      x0 + w * multiplier,
+      y0 + arc_height * 2.0,
+      x0 + w / 2.0,
+      y0 + arc_height * 2.0,
+    )
+    .cubic_to(
+      x0 + w - w * multiplier,
+      y0 + arc_height * 2.0,
+      x0 + w,
+      y0 + arc_height * 2.0,
+      x0 + w,
+      top_y,
+    )
+    .build()
+  svg.add(@svg.path(inner, fill="none", stroke~, stroke_width~))
 }
 
 ///|
@@ -2441,9 +2539,11 @@ fn render_svg_edge(
     // Use precomputed label_box from the layout pipeline.
     match edge.label_box {
       Some(label_box) => {
-        // Use pre-computed label position
+        // D2's golden SVGs position edge label `y` at the text baseline.
+        // Our layout pipeline stores `label_box` as a top-left box, so render
+        // text at the bottom edge to match the baseline convention used by D2.
         let cx = label_box.x + label_box.width / 2.0
-        let cy = label_box.y + label_box.height / 2.0
+        let baseline_y = label_box.y + label_box.height
         svg.add(
           @svg.rect(
             label_box.x,
@@ -2459,10 +2559,11 @@ fn render_svg_edge(
         svg.add(
           @svg.text(
             cx,
-            cy,
+            baseline_y,
             edge.label,
             font_family=config.font_family,
             font_size=config.font_size - 2,
+            dominant_baseline="alphabetic",
           ),
         )
       }

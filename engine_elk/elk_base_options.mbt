@@ -910,7 +910,7 @@ fn LayoutOptions::layered() -> LayoutOptions {
     layering_strategy: Some(NetworkSimplex),
     crossing_min_strategy: Some(LayerSweep),
     crossing_min_force_node_model_order: Some(false),
-    consider_model_order_strategy: Some(NodesAndEdges),
+    consider_model_order_strategy: None,
     node_placement_strategy: Some(BrandesKoepf),
     bk_fixed_alignment: Some(Average),
     thoroughness: Some(7),

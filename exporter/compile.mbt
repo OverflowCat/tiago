@@ -594,8 +594,8 @@ pub fn compile(
   compile_steps(graph, ir, classes)
   // Handle root-level shape (e.g., shape: sequence_diagram)
   handle_root_shape(graph, ir)
-  // Compile legend configuration (and/or auto-generate legend)
-  compile_legend(graph, ir)
+  // Compile D2 legend (vars.d2-legend)
+  compile_legend(graph, ir, classes)
   graph_to_input(graph)
 }
 
@@ -1089,17 +1089,41 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
 }
 
 ///|
-fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
-  for i, edge in ir.edges {
-    let src_id = edge.id.src_path.join(".")
-    let dst_id = edge.id.dst_path.join(".")
+fn join_path(prefix : String, path : Array[String]) -> String {
+  let buf = StringBuilder::new()
+  if prefix.length() > 0 {
+    buf.write_string(prefix)
+  }
+  let mut first = prefix.length() == 0
+  for segment in path {
+    if !first {
+      buf.write_char('.')
+    }
+    buf.write_string(segment)
+    first = false
+  }
+  buf.to_string()
+}
+
+///|
+fn compile_edges_in_map(
+  graph : Graph,
+  ir : @ir.Map,
+  prefix : String,
+  next_index : Int,
+) -> Int {
+  let mut next_index = next_index
+  for edge in ir.edges {
+    let src_id = join_path(prefix, edge.id.src_path)
+    let dst_id = join_path(prefix, edge.id.dst_path)
     let graph_edge = Edge::new(
-      i,
+      next_index,
       src_id,
       dst_id,
       edge.id.src_arrow,
       edge.id.dst_arrow,
     )
+    next_index = next_index + 1
     // Set reference count from IR edge references
     graph_edge.reference_count = edge.references.length()
     // Set label
@@ -1208,6 +1232,33 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
     }
     graph.add_edge(graph_edge)
   }
+  for field in ir.fields {
+    if is_reserved_keyword(field.name) {
+      continue
+    }
+    match field.composite {
+      Some(@ir.Composite::Map(inner)) => {
+        let child_prefix = if prefix == "" {
+          field.name
+        } else {
+          prefix + "." + field.name
+        }
+        next_index = compile_edges_in_map(
+          graph,
+          inner,
+          child_prefix,
+          next_index,
+        )
+      }
+      _ => ()
+    }
+  }
+  next_index
+}
+
+///|
+fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
+  compile_edges_in_map(graph, ir, "", 0) |> ignore
 }
 
 ///|
@@ -1216,156 +1267,85 @@ fn is_reserved_keyword(name : String) -> Bool {
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
     "direction", "constraint", "class", "classes", "vars", "grid-rows", "grid-columns",
     "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span", "grid-row-span",
-    "layers", "scenarios", "steps", "legend",
+    "layers", "scenarios", "steps",
   ]
   keywords.contains(name.to_lower())
 }
 
 ///|
-/// Compile legend configuration from root IR.
+/// Compile D2 legend from `vars.d2-legend` (see ../d2/d2compiler/compile.go).
 ///
-/// Supported root-level syntaxes:
-/// - `legend: true` (auto)
-/// - `legend: "Title"` (auto with title)
-/// - `legend: { position: ..., title: ..., auto: true, entries: [...] }`
-fn compile_legend(graph : Graph, ir : @ir.Map) -> Unit {
-  let legend_field = ir.get_field("legend")
-  guard legend_field is Some(f) else { return }
-
-  // Parse config from scalar/map/array forms.
-  let mut title : String? = None
-  let mut position = LegendPosition::from_string("bottom-right")
-  let mut auto = true
-  let mut fill : String? = None
-  let mut stroke : String? = None
-  let mut padding : Double? = None
-  let mut entry_gap : Double? = None
-  let mut icon_size : Double? = None
-  let mut explicit_entries : Array[LegendEntry] = []
-  match f.primary {
-    Some(p) => {
-      let s = p.to_string()
-      match s.to_lower() {
-        "false" | "none" | "hidden" => {
-          auto = false
-          position = LegendPosition::from_string("hidden")
-        }
-        "true" => ()
-        _ => title = Some(s)
-      }
-    }
-    None => ()
+/// Note: `legend` is not treated as a reserved keyword; it is compiled as a
+/// normal object to match D2 semantics and the reference SVGs in this repo.
+fn compile_legend(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  let vars_field = ir.get_field("vars")
+  guard vars_field is Some(vf) else { return }
+  let vars_map = match vf.composite {
+    Some(@ir.Composite::Map(m)) => m
+    _ => return
   }
-  match f.composite {
-    Some(@ir.Composite::Array(arr)) => {
-      explicit_entries = parse_legend_entries(arr)
-      auto = false
-    }
-    Some(@ir.Composite::Map(m)) => {
-      // title
-      match m.get_field("title") {
-        Some(tf) =>
-          match tf.primary {
-            Some(t) => title = Some(t.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      // position
-      match m.get_field("position") {
-        Some(pf) =>
-          match pf.primary {
-            Some(p) => position = LegendPosition::from_string(p.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      // auto
-      match m.get_field("auto") {
-        Some(af) =>
-          match af.primary {
-            Some(a) => auto = parse_bool(a.to_string()).unwrap_or(auto)
-            None => ()
-          }
-        None => ()
-      }
-      // fill/stroke
-      match m.get_field("fill") {
-        Some(ff) =>
-          match ff.primary {
-            Some(v) => fill = Some(v.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      match m.get_field("stroke") {
-        Some(sf) =>
-          match sf.primary {
-            Some(v) => stroke = Some(v.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      // padding/entry-gap/icon-size
-      match m.get_field("padding") {
-        Some(pf) =>
-          match pf.primary {
-            Some(v) => padding = parse_double(v.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      match m.get_field("entry-gap") {
-        Some(gf) =>
-          match gf.primary {
-            Some(v) => entry_gap = parse_double(v.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      match m.get_field("icon-size") {
-        Some(isf) =>
-          match isf.primary {
-            Some(v) => icon_size = parse_double(v.to_string())
-            None => ()
-          }
-        None => ()
-      }
-      // entries
-      match m.get_field("entries") {
-        Some(ef) =>
-          match ef.array() {
-            Some(arr) => explicit_entries = parse_legend_entries(arr)
-            None => ()
-          }
-        None => ()
-      }
-    }
+  let legend_field = vars_map.get_field("d2-legend")
+  guard legend_field is Some(lf) else { return }
+  let legend_map = match lf.composite {
+    Some(@ir.Composite::Map(m)) => m
+    _ => return
+  }
+
+  // Compile the legend map as a standalone graph, then turn its objects/edges
+  // into legend entries.
+  let legend_graph = Graph::new("d2-legend")
+  compile_objects(legend_graph, legend_map, "", classes)
+  compile_edges(legend_graph, legend_map)
+
+  let legend = Legend::new()
+  match lf.primary {
+    Some(p) => legend.set_title(p.to_string())
     None => ()
   }
 
-  // Build final legend.
-  let title = if title is None &&
-    position != LegendPosition::from_string("hidden") &&
-    (auto || explicit_entries.is_empty()) {
-    Some("Legend")
-  } else {
-    title
-  }
-  let legend = make_legend_with_overrides(
-    title, position, fill, stroke, padding, entry_gap, icon_size,
-  )
-  if auto || explicit_entries.is_empty() {
-    let entries = auto_generate_legend_entries(graph)
-    for e in entries {
-      legend.add_entry(e)
+  let mut have_shapes = false
+  for obj in legend_graph.objects {
+    match obj.style.opacity {
+      Some(op) => if op == 0.0 { continue }
+      None => ()
     }
-  } else {
-    for e in explicit_entries {
-      legend.add_entry(e)
-    }
+    have_shapes = true
+    legend.add_entry(
+      LegendEntry::shape(obj.shape_type, obj.label, Some(obj.style)),
+    )
   }
-  graph.set_legend(legend)
+  let mut have_edges = false
+  let mut added_sep = false
+  for edge in legend_graph.edges {
+    match edge.style.opacity {
+      Some(op) => if op == 0.0 { continue }
+      None => ()
+    }
+    if have_shapes && !added_sep {
+      legend.add_entry(LegendEntry::separator())
+      added_sep = true
+    }
+    have_edges = true
+    legend.add_entry(
+      LegendEntry::connection(
+        edge.src_arrowhead,
+        edge.dst_arrowhead,
+        if edge.label.length() == 0 {
+          connection_label(edge.src_arrowhead, edge.dst_arrowhead)
+        } else {
+          edge.label
+        },
+        Some(edge.style),
+      ),
+    )
+  }
+  if have_shapes || have_edges {
+    graph.set_legend(legend)
+  }
 }
 
 ///|

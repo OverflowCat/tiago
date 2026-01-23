@@ -18,6 +18,7 @@
 /// This is the foundation for porting ELK layered as a processor pipeline.
 
 ///|
+#warnings("-unused_constructor")
 priv enum LayeredSlot {
   BeforePhase1
   BeforePhase2
@@ -25,7 +26,7 @@ priv enum LayeredSlot {
   BeforePhase4
   BeforePhase5
   AfterPhase5
-} derive(Eq, Show)
+}
 
 ///|
 fn LayeredSlot::order(self : LayeredSlot) -> Int {
@@ -43,7 +44,7 @@ fn LayeredSlot::order(self : LayeredSlot) -> Int {
 priv struct LayeredProcessorContext {
   config : LayoutConfig
   direction : Direction
-} derive(Show)
+}
 
 ///|
 fn always_enabled(_ctx : LayeredProcessorContext) -> Bool {
@@ -51,6 +52,7 @@ fn always_enabled(_ctx : LayeredProcessorContext) -> Bool {
 }
 
 ///|
+#warnings("-unused_field")
 priv struct LayeredProcessor {
   id : String
   slot : LayeredSlot
@@ -122,6 +124,7 @@ fn LayeredPipelineBuilder::add(
 }
 
 ///|
+#warnings("-unused_value")
 fn LayeredPipelineBuilder::add_when(
   self : LayeredPipelineBuilder,
   id : String,

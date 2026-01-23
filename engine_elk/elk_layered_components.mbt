@@ -31,39 +31,13 @@ priv struct ComponentLayout {
   height : Double
   priority : Int
   order_index : Int
-} derive(Show, Eq)
+}
 
 ///|
+#warnings("-unused_field")
 priv struct ComponentPart {
   root : ElkNode
   order_index : Int
-} derive(Show, Eq)
-
-///|
-priv struct Bounds {
-  min_x : Double
-  min_y : Double
-  max_x : Double
-  max_y : Double
-} derive(Show, Eq)
-
-///|
-fn bounds_empty() -> Bounds {
-  { min_x: 1.0e30, min_y: 1.0e30, max_x: -1.0e30, max_y: -1.0e30 }
-}
-
-///|
-fn bounds_is_empty(b : Bounds) -> Bool {
-  b.max_x < b.min_x || b.max_y < b.min_y
-}
-
-///|
-fn cc_min_d(a : Double, b : Double) -> Double {
-  if a < b {
-    a
-  } else {
-    b
-  }
 }
 
 ///|
@@ -73,28 +47,6 @@ fn cc_max_d(a : Double, b : Double) -> Double {
   } else {
     b
   }
-}
-
-///|
-fn bounds_add_point(b : Bounds, x : Double, y : Double) -> Bounds {
-  {
-    min_x: cc_min_d(b.min_x, x),
-    min_y: cc_min_d(b.min_y, y),
-    max_x: cc_max_d(b.max_x, x),
-    max_y: cc_max_d(b.max_y, y),
-  }
-}
-
-///|
-fn bounds_add_rect(
-  b : Bounds,
-  x : Double,
-  y : Double,
-  w : Double,
-  h : Double,
-) -> Bounds {
-  let b = bounds_add_point(b, x, y)
-  bounds_add_point(b, x + w, y + h)
 }
 
 ///|
@@ -188,28 +140,6 @@ fn node_priority_rec(node : ElkNode) -> Int {
 }
 
 ///|
-fn component_bounds(root : ElkNode) -> Bounds {
-  let mut b = bounds_empty()
-  for child in root.children {
-    b = bounds_add_rect(b, child.x, child.y, child.width, child.height)
-  }
-  b
-}
-
-///|
-fn component_bounds_edge(edge : ElkEdge, b : Bounds) -> Bounds {
-  let mut b = b
-  for section in edge.sections {
-    b = bounds_add_point(b, section.start_point.x, section.start_point.y)
-    b = bounds_add_point(b, section.end_point.x, section.end_point.y)
-    for p in section.bend_points {
-      b = bounds_add_point(b, p.x, p.y)
-    }
-  }
-  b
-}
-
-///|
 fn offset_component(root : ElkNode, dx : Double, dy : Double) -> Unit {
   for child in root.children {
     offset_node_shallow(child, dx, dy)
@@ -252,36 +182,8 @@ fn offset_edge(edge : ElkEdge, dx : Double, dy : Double) -> Unit {
 }
 
 ///|
-fn component_size_without_padding(root : ElkNode) -> (Double, Double) {
-  let b = component_bounds(root)
-  if bounds_is_empty(b) {
-    return (0.0, 0.0)
-  }
-  // Normalize the component such that its content bounds start at (0, 0).
-  let shift_x = -b.min_x
-  let shift_y = -b.min_y
-  if shift_x != 0.0 || shift_y != 0.0 {
-    offset_component(root, shift_x, shift_y)
-  }
-  let max_x = b.max_x + shift_x
-  let max_y = b.max_y + shift_y
-  (max_x, max_y)
-}
-
-///|
-fn apply_graph_padding(root : ElkNode, options : LayoutOptions) -> Unit {
-  let padding = options.padding.unwrap_or(ElkPadding::zero())
-  if padding.left == 0.0 && padding.top == 0.0 {
-    return
-  }
-  let dx = padding.left
-  let dy = padding.top
-  for child in root.children {
-    offset_node_shallow(child, dx, dy)
-  }
-  for edge in root.edges {
-    offset_edge(edge, dx, dy)
-  }
+fn component_size(root : ElkNode) -> (Double, Double) {
+  (root.width, root.height)
 }
 
 ///|
@@ -435,7 +337,7 @@ fn elk_layered_layout_with_components(
   root : ElkNode,
   options : LayoutOptions,
 ) -> Unit {
-  let separate = options.separate_connected_components.unwrap_or(true)
+  let separate = options.separate_connected_components.unwrap_or(false)
   if !separate || root.children.length() <= 1 {
     elk_layered_layout_impl(root, options)
     return
@@ -448,7 +350,7 @@ fn elk_layered_layout_with_components(
   let layouts : Array[ComponentLayout] = []
   for i, part in parts {
     elk_layered_layout_impl(part, options)
-    let (w, h) = component_size_without_padding(part)
+    let (w, h) = component_size(part)
     layouts.push({
       root: part,
       width: w,
@@ -469,5 +371,4 @@ fn elk_layered_layout_with_components(
   let target_width = cc_max_d(max_width, total_area.sqrt() * aspect_ratio)
   let (w, h) = pack_components(layouts, target_width, component_spacing)
   combine_components(root, layouts, w, h)
-  apply_graph_padding(root, options)
 }

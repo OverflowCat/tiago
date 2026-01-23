@@ -94,7 +94,7 @@ fn layout_graph(
 priv struct PortItem {
   edge_index : Int
   desired_axis : Double
-} derive(Eq, Show)
+}
 
 ///|
 fn port_axis(p : @graph.Point, flow : @engine_api.Direction) -> Double {
@@ -384,13 +384,13 @@ priv struct EdgeInterval {
   start : Int
   end : Int
   edge_index : Int
-} derive(Eq, Show)
+}
 
 ///|
 priv struct TrackUsage {
   end : Int
   track : Int
-} derive(Eq, Show)
+} derive(Eq)
 
 ///|
 impl Compare for TrackUsage with compare(a, b) {
@@ -450,13 +450,13 @@ priv struct EdgeSpan {
   start : Double
   end : Double
   edge_index : Int
-} derive(Eq, Show)
+}
 
 ///|
 priv struct LaneUsage {
   end : Double
   lane : Int
-} derive(Eq, Show)
+} derive(Eq)
 
 ///|
 impl Compare for LaneUsage with compare(a, b) {

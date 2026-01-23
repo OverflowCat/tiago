@@ -105,11 +105,10 @@ const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
 const CLOUD_SQUARE_INNER_HEIGHT : Double = 0.663
 
 ///|
-#warnings("-unused_value")
 priv struct Size {
   width : Double
   height : Double
-} derive(Eq, Show)
+}
 
 ///|
 fn max_d(a : Double, b : Double) -> Double {
@@ -464,6 +463,11 @@ fn d2_size_object_to_content(obj : Object, label_dims : Size) -> Size {
 
   // d2graph: aspect ratio / limits
   if obj.shape_type == Circle {
+    let side = max_d(width, height)
+    width = side
+    height = side
+  } else if obj.shape_type == Square {
+    // D2 keeps squares square even when sizing to label content.
     let side = max_d(width, height)
     width = side
     height = side

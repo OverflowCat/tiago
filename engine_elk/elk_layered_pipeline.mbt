@@ -31,7 +31,7 @@ priv enum LayeredInternalSlot {
   BeforePhase5
   Phase5
   AfterPhase5
-} derive(Eq, Show)
+}
 
 ///|
 fn LayeredInternalSlot::order(self : LayeredInternalSlot) -> Int {
@@ -63,6 +63,7 @@ fn internal_always_enabled(_ctx : LayeredInternalContext) -> Bool {
 }
 
 ///|
+#warnings("-unused_field")
 priv struct LayeredInternalProcessor {
   id : String
   slot : LayeredInternalSlot

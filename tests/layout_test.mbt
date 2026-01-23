@@ -122,7 +122,7 @@ test "container contains children" {
 }
 
 ///|
-test "nested children are stacked inside parent" {
+test "nested children are packed inside parent" {
   let source =
     #|parent {
     #|  child1
@@ -134,8 +134,8 @@ test "nested children are stacked inside parent" {
   match (child1.get_box(), child2.get_box()) {
     (Some(box1), Some(box2)) =>
       assert_true(
-        box2.get_y() > box1.get_y(),
-        msg="child2 should be below child1",
+        box2.get_x() > box1.get_x(),
+        msg="child2 should be to the right of child1",
       )
     _ => fail("children should have boxes")
   }
@@ -491,11 +491,12 @@ fn sql_table_column_count(table_id : String) -> Int {
 
 ///|
 fn sql_table_expected_height(label : String, num_cols : Int) -> Double {
+  let _ = label
   let header_font_size = SQL_TABLE_FONT_SIZE_L + SQL_TABLE_HEADER_FONT_ADD
-  let dims = @text_metrics.measure_label(
-    label, header_font_size, false, false, false,
-  )
-  dims.height * (num_cols + 1).to_double()
+  // Keep in sync with engine_elk sql_table sizing: row height is derived from
+  // the header font size.
+  let row_height = @math.ceil(header_font_size.to_double() * 1.5)
+  row_height * (num_cols + 1).to_double()
 }
 
 ///|

@@ -37,7 +37,13 @@ priv struct LaneInfo {
   lane : Double
   split_lane : Double?
   split_coord : Double?
-} derive(Show)
+}
+
+///|
+priv struct RoutingLaneAssignment {
+  lane_by_edge : Map[String, LaneInfo]
+  slots_by_pair : Map[String, Int]
+}
 
 ///|
 fn default_lane_info(lane : Double) -> LaneInfo {
@@ -80,7 +86,7 @@ const CRITICAL_CONFLICTS_DETECTED : Int = -1
 priv enum HyperDependencyType {
   Regular
   Critical
-} derive(Show, Eq)
+}
 
 ///|
 priv struct HyperEdgeDependency {
@@ -88,7 +94,7 @@ priv struct HyperEdgeDependency {
   mut source : Int
   mut target : Int
   weight : Int
-} derive(Show)
+}
 
 ///|
 priv struct HyperEdgeSegment {
@@ -108,7 +114,7 @@ priv struct HyperEdgeSegment {
   mut mark : Int
   mut split_partner : Int?
   mut split_by : Int?
-} derive(Show)
+}
 
 ///|
 fn HyperEdgeSegment::new() -> HyperEdgeSegment {
@@ -154,13 +160,13 @@ priv struct FreeArea {
   start_pos : Double
   end_pos : Double
   size : Double
-} derive(Show)
+}
 
 ///|
 priv struct AreaRating {
   mut dependencies : Int
   mut crossings : Int
-} derive(Show)
+}
 
 ///|
 fn segment_length(seg : HyperEdgeSegment) -> Double {
@@ -173,6 +179,7 @@ fn segment_represents_hyperedge(seg : HyperEdgeSegment) -> Bool {
 }
 
 ///|
+#warnings("-unused_value")
 fn segment_is_dummy(seg : HyperEdgeSegment) -> Bool {
   seg.split_partner is Some(_) && seg.split_by is None
 }
@@ -323,7 +330,7 @@ fn segment_lane_for_layer_pair(
   edge_edge_spacing : Double,
   edge_node_spacing : Double,
   random_seed : Int,
-) -> Map[String, LaneInfo] {
+) -> RoutingLaneAssignment {
   // Partial ELK port: build hyperedge segments per layer boundary, create
   // dependencies, break non-critical cycles, then assign routing slots by
   // topological numbering.
@@ -333,8 +340,17 @@ fn segment_lane_for_layer_pair(
   let buckets : Map[String, Array[LEdge]] = {}
   let bucket_keys : Array[String] = []
   for e in edges {
+    // Long-edge split dummies should not influence routing slot allocation.
+    // ELK's orthogonal router operates on the original edges; including these
+    // dummies inflates between-layer spacing (notably for sql_table long edges).
+    if e.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
+      continue
+    }
     match (graph.get_node(e.source_id), graph.get_node(e.target_id)) {
       (Some(src), Some(tgt)) => {
+        if src.node_type is LongEdgeDummy || tgt.node_type is LongEdgeDummy {
+          continue
+        }
         if src.layer == tgt.layer {
           continue
         }
@@ -507,6 +523,46 @@ fn segment_lane_for_layer_pair(
     }
   }
 
+  fn nested_anchor_for_edge(
+    edge : LEdge,
+    node : LNode,
+    is_source : Bool,
+    fallback_side : ElkPortSide,
+  ) -> (Double, Double)? {
+    if !edge.properties.get_bool_or("diago.layered.crossHierarchy", false) {
+      return None
+    }
+    let key = if is_source {
+      "diago.layered.originalSourceId"
+    } else {
+      "diago.layered.originalTargetId"
+    }
+    let orig_id = edge.properties.get_string(key)
+    guard orig_id is Some(child_id) else { return None }
+    if child_id == node.id {
+      return None
+    }
+    match node.nested_graph {
+      Some(nested) =>
+        match nested.get_node(child_id) {
+          Some(child) => {
+            let cx = child.x + child.width / 2.0
+            let cy = child.y + child.height / 2.0
+            let anchor = match fallback_side {
+              North => (node.x + cx, node.y)
+              South => (node.x + cx, node.y + node.height)
+              West => (node.x, node.y + cy)
+              East => (node.x + node.width, node.y + cy)
+              Undefined => (node.x + node.width / 2.0, node.y + node.height / 2.0)
+            }
+            Some(anchor)
+          }
+          None => None
+        }
+      None => None
+    }
+  }
+
   fn sorted_unique(values : Array[Double]) -> Array[Double] {
     values.sort()
     let out : Array[Double] = []
@@ -643,6 +699,7 @@ fn segment_lane_for_layer_pair(
   }
 
   let lane_by_edge : Map[String, LaneInfo] = {}
+  let slots_by_pair : Map[String, Int] = {}
   let is_vertical = direction.is_vertical()
   bucket_keys.sort()
   let mut bucket_index = 0
@@ -741,22 +798,60 @@ fn segment_lane_for_layer_pair(
       let (fallback_src_side, fallback_tgt_side) = infer_for_edge(
         src, tgt, direction,
       )
-      let (sx, sy, s_side) = anchor_with_port_and_side(
+      let (sx0, sy0, s_side) = anchor_with_port_and_side(
         src,
         e.source_port_id,
         direction,
         true,
         fallback_src_side,
       )
-      let (tx, ty, t_side) = anchor_with_port_and_side(
+      let mut sx = sx0
+      let mut sy = sy0
+      match nested_anchor_for_edge(e, src, true, fallback_src_side) {
+        Some((nx, ny)) => {
+          sx = nx
+          sy = ny
+        }
+        None => ()
+      }
+      let (tx0, ty0, t_side) = anchor_with_port_and_side(
         tgt,
         e.target_port_id,
         direction,
         false,
         fallback_tgt_side,
       )
-      let sk = port_key_for_edge(e.source_id, e.source_port_id, true)
-      let tk = port_key_for_edge(e.target_id, e.target_port_id, false)
+      let mut tx = tx0
+      let mut ty = ty0
+      match nested_anchor_for_edge(e, tgt, false, fallback_tgt_side) {
+        Some((nx, ny)) => {
+          tx = nx
+          ty = ny
+        }
+        None => ()
+      }
+      let mut sk = port_key_for_edge(e.source_id, e.source_port_id, true)
+      let mut tk = port_key_for_edge(e.target_id, e.target_port_id, false)
+      if e.properties.get_bool_or("diago.layered.crossHierarchy", false) {
+        let orig_src = e.properties.get_string("diago.layered.originalSourceId")
+        let orig_tgt = e.properties.get_string("diago.layered.originalTargetId")
+        if e.source_port_id is None {
+          match orig_src {
+            Some(orig) if orig != e.source_id => {
+              sk = "h:" + orig + ":out"
+            }
+            _ => ()
+          }
+        }
+        if e.target_port_id is None {
+          match (orig_src, orig_tgt) {
+            (Some(os), Some(ot)) if ot == e.target_id && os != e.source_id => {
+              tk = "h:" + os + ":in:" + e.target_id
+            }
+            _ => ()
+          }
+        }
+      }
       parent[sk] = sk
       parent[tk] = tk
       uf_union(parent, sk, tk)
@@ -1624,6 +1719,46 @@ fn segment_lane_for_layer_pair(
       }
     }
 
+    let mut max_slot = -1
+    for seg in segments {
+      if segment_is_straight(seg) {
+        continue
+      }
+      if seg.routing_slot > max_slot {
+        max_slot = seg.routing_slot
+      }
+    }
+    if max_slot >= 0 {
+      slots_by_pair[layer_key] = max_slot + 1
+    } else {
+      slots_by_pair[layer_key] = 0
+    }
+
+    // Cross-hierarchy edges: ensure enough slots to separate distinct child-to-top edges.
+    let mut min_slots = 0
+    let seen : Map[String, Bool] = {}
+    for e in layer_edges {
+      if !e.properties.get_bool_or("diago.layered.crossHierarchy", false) {
+        continue
+      }
+      let orig_src = e.properties.get_string("diago.layered.originalSourceId")
+      let orig_tgt = e.properties.get_string("diago.layered.originalTargetId")
+      match (orig_src, orig_tgt) {
+        (Some(os), Some(ot)) if ot == e.target_id && os != e.source_id => {
+          let key = os + "->" + ot
+          if !seen.contains(key) {
+            seen[key] = true
+            min_slots = min_slots + 1
+          }
+        }
+        _ => ()
+      }
+    }
+    let current_slots = slots_by_pair.get(layer_key).unwrap_or(0)
+    if min_slots > current_slots {
+      slots_by_pair[layer_key] = min_slots
+    }
+
     // Emit lane per edge.
     let reverse_slots = direction is Up || direction is Left
     for e in layer_edges {
@@ -1659,7 +1794,7 @@ fn segment_lane_for_layer_pair(
     }
     ignore(critical_dep_count)
   }
-  lane_by_edge
+  { lane_by_edge, slots_by_pair }
 }
 
 // ============================================================================
@@ -1671,22 +1806,253 @@ fn segment_lane_for_layer_pair(
 fn route_edges_orthogonal(
   graph : LGraph,
   direction : LayoutDirection,
+  node_node_spacing : Double,
   edge_edge_spacing : Double,
   edge_node_spacing : Double,
+  padding : ElkPadding,
   random_seed : Int,
 ) -> Unit {
   let is_vertical = direction.is_vertical()
+  let slot_info = segment_lane_for_layer_pair(
+    graph.edges,
+    graph,
+    direction,
+    edge_edge_spacing,
+    edge_node_spacing,
+    random_seed,
+  )
+  if is_vertical {
+    apply_routing_spacing_vertical(
+      graph,
+      direction,
+      padding,
+      node_node_spacing,
+      edge_edge_spacing,
+      edge_node_spacing,
+      slot_info.slots_by_pair,
+    )
+  } else {
+    apply_routing_spacing_horizontal(
+      graph,
+      direction,
+      padding,
+      node_node_spacing,
+      edge_edge_spacing,
+      edge_node_spacing,
+      slot_info.slots_by_pair,
+    )
+  }
+  let lane_info = segment_lane_for_layer_pair(
+    graph.edges,
+    graph,
+    direction,
+    edge_edge_spacing,
+    edge_node_spacing,
+    random_seed,
+  )
 
   // Process edges layer by layer
   if is_vertical {
     route_vertical_layout(
-      graph, direction, edge_edge_spacing, edge_node_spacing, random_seed,
+      graph,
+      direction,
+      edge_edge_spacing,
+      edge_node_spacing,
+      lane_info.lane_by_edge,
     )
   } else {
     route_horizontal_layout(
-      graph, direction, edge_edge_spacing, edge_node_spacing, random_seed,
+      graph,
+      direction,
+      edge_edge_spacing,
+      edge_node_spacing,
+      lane_info.lane_by_edge,
     )
   }
+}
+
+///|
+fn layer_is_external(layer : LLayer) -> Bool {
+  if layer.nodes.is_empty() {
+    return true
+  }
+  for node in layer.nodes {
+    if node.node_type != ExternalPort {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn layer_pair_key(a : Int, b : Int) -> String {
+  let lo = @cmp.minimum(a, b)
+  let hi = @cmp.maximum(a, b)
+  lo.to_string() + "-" + hi.to_string()
+}
+
+///|
+fn apply_routing_spacing_vertical(
+  graph : LGraph,
+  direction : LayoutDirection,
+  padding : ElkPadding,
+  node_node_spacing : Double,
+  edge_edge_spacing : Double,
+  edge_node_spacing : Double,
+  slots_by_pair : Map[String, Int],
+) -> Unit {
+  let reverse_layers = direction == Up
+  let indices : Array[Int] = []
+  if reverse_layers {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      indices.push(graph.layers.length() - 1 - i)
+    }
+  } else {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      indices.push(i)
+    }
+  }
+  let mut offset = padding.top
+  for i = 0; i < indices.length(); i = i + 1 {
+    let layer_idx = indices[i]
+    let layer = graph.layers[layer_idx]
+    // Preserve intra-layer offsets (e.g. bottom-aligned mixed-size nodes) by
+    // translating the whole layer, instead of overwriting each node position.
+    let mut layer_top = @double.infinity
+    let mut layer_bottom = -@double.infinity
+    for node in layer.nodes {
+      if node.y < layer_top {
+        layer_top = node.y
+      }
+      let b = node.y + node.height
+      if b > layer_bottom {
+        layer_bottom = b
+      }
+    }
+    let delta = if layer_top == @double.infinity { 0.0 } else { offset - layer_top }
+    for node in layer.nodes {
+      node.y = node.y + delta
+    }
+    let layer_size = if layer_top == @double.infinity { 0.0 } else { layer_bottom - layer_top }
+    offset = offset + layer_size
+    if i + 1 < indices.length() {
+      let next_idx = indices[i + 1]
+      let next_layer = graph.layers[next_idx]
+      let key = layer_pair_key(layer.index, next_layer.index)
+      let slots = slots_by_pair.get(key).unwrap_or(0)
+      let left_external = layer_is_external(layer)
+      let right_external = layer_is_external(next_layer)
+      let mut spacing = 0.0
+      if slots > 0 {
+        spacing = (slots - 1).to_double() * edge_edge_spacing
+        if !layer.nodes.is_empty() {
+          spacing = spacing + edge_node_spacing
+        }
+        if !next_layer.nodes.is_empty() {
+          spacing = spacing + edge_node_spacing
+        }
+        if spacing < node_node_spacing && !left_external && !right_external {
+          spacing = node_node_spacing
+        }
+      } else if !left_external && !right_external {
+        spacing = node_node_spacing
+      }
+      offset = offset + spacing
+    }
+  }
+  let mut max_y = 0.0
+  let mut max_x = 0.0
+  for node in graph.nodes {
+    if node.y + node.height > max_y {
+      max_y = node.y + node.height
+    }
+    if node.x + node.width > max_x {
+      max_x = node.x + node.width
+    }
+  }
+  graph.height = max_y + padding.bottom
+  graph.width = max_x + padding.right
+}
+
+///|
+fn apply_routing_spacing_horizontal(
+  graph : LGraph,
+  direction : LayoutDirection,
+  padding : ElkPadding,
+  node_node_spacing : Double,
+  edge_edge_spacing : Double,
+  edge_node_spacing : Double,
+  slots_by_pair : Map[String, Int],
+) -> Unit {
+  let reverse_layers = direction == Left
+  let indices : Array[Int] = []
+  if reverse_layers {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      indices.push(graph.layers.length() - 1 - i)
+    }
+  } else {
+    for i = 0; i < graph.layers.length(); i = i + 1 {
+      indices.push(i)
+    }
+  }
+  let mut offset = padding.left
+  for i = 0; i < indices.length(); i = i + 1 {
+    let layer_idx = indices[i]
+    let layer = graph.layers[layer_idx]
+    let mut layer_left = @double.infinity
+    let mut layer_right = -@double.infinity
+    for node in layer.nodes {
+      if node.x < layer_left {
+        layer_left = node.x
+      }
+      let r = node.x + node.width
+      if r > layer_right {
+        layer_right = r
+      }
+    }
+    let delta = if layer_left == @double.infinity { 0.0 } else { offset - layer_left }
+    for node in layer.nodes {
+      node.x = node.x + delta
+    }
+    let layer_size = if layer_left == @double.infinity { 0.0 } else { layer_right - layer_left }
+    offset = offset + layer_size
+    if i + 1 < indices.length() {
+      let next_idx = indices[i + 1]
+      let next_layer = graph.layers[next_idx]
+      let key = layer_pair_key(layer.index, next_layer.index)
+      let slots = slots_by_pair.get(key).unwrap_or(0)
+      let left_external = layer_is_external(layer)
+      let right_external = layer_is_external(next_layer)
+      let mut spacing = 0.0
+      if slots > 0 {
+        spacing = (slots - 1).to_double() * edge_edge_spacing
+        if !layer.nodes.is_empty() {
+          spacing = spacing + edge_node_spacing
+        }
+        if !next_layer.nodes.is_empty() {
+          spacing = spacing + edge_node_spacing
+        }
+        if spacing < node_node_spacing && !left_external && !right_external {
+          spacing = node_node_spacing
+        }
+      } else if !left_external && !right_external {
+        spacing = node_node_spacing
+      }
+      offset = offset + spacing
+    }
+  }
+  let mut max_y = 0.0
+  let mut max_x = 0.0
+  for node in graph.nodes {
+    if node.y + node.height > max_y {
+      max_y = node.y + node.height
+    }
+    if node.x + node.width > max_x {
+      max_x = node.x + node.width
+    }
+  }
+  graph.height = max_y + padding.bottom
+  graph.width = max_x + padding.right
 }
 
 ///|
@@ -1696,8 +2062,157 @@ fn route_vertical_layout(
   direction : LayoutDirection,
   edge_edge_spacing : Double,
   edge_node_spacing : Double,
-  random_seed : Int,
+  lane_by_edge : Map[String, LaneInfo],
 ) -> Unit {
+  // ELK's layered implementation (with orthogonal routing and FIXED_POS ports)
+  // ensures enough horizontal clearance for EAST->WEST edges by shifting lower
+  // layers in the cross direction. This is especially important for sql_table
+  // column ports, which are fixed on EAST/WEST even in vertical layouts.
+  fn enforce_side_port_layer_separation(
+    graph : LGraph,
+    direction : LayoutDirection,
+    edge_node_spacing : Double,
+  ) -> Unit {
+    if !direction.is_vertical() {
+      return
+    }
+    let layer_count = graph.layers.length()
+    if layer_count <= 1 {
+      return
+    }
+    let gap = 2.0 * edge_node_spacing
+    fn port_side(node : LNode, port_id : String?) -> ElkPortSide? {
+      match port_id {
+        Some(pid) => {
+          for port in node.ports {
+            if port.id == pid {
+              return Some(port.side)
+            }
+          }
+          None
+        }
+        None => None
+      }
+    }
+    fn is_sql_table(node : LNode) -> Bool {
+      node.properties.get_bool_or("diago.sqlTable", false)
+    }
+    let shifts : Array[Double] = []
+    for _ in 0..<layer_count {
+      shifts.push(0.0)
+    }
+    // Relax constraints layer-by-layer; for a vertical layout, edges point
+    // forward in layer index for Down and reverse for Up.
+    for _pass in 0..<layer_count {
+      let mut changed = false
+      for edge in graph.edges {
+        let source = graph.get_node(edge.source_id)
+        let target = graph.get_node(edge.target_id)
+        guard source is Some(src) && target is Some(tgt) else { continue }
+        if src.layer == tgt.layer {
+          continue
+        }
+        // Only apply to sql_table nodes; other FIXED_POS uses (e.g. hierarchy
+        // ports) should keep the generic placement behavior.
+        if !is_sql_table(src) && !is_sql_table(tgt) {
+          continue
+        }
+        let forward = match direction {
+          Down => src.layer < tgt.layer
+          Up => src.layer > tgt.layer
+          _ => false
+        }
+        if !forward {
+          continue
+        }
+        let src_side = port_side(src, edge.source_port_id)
+        let tgt_side = port_side(tgt, edge.target_port_id)
+        // EAST -> WEST edges need clearance to route between layers.
+        if src_side != Some(East) || tgt_side != Some(West) {
+          continue
+        }
+        let src_layer = src.layer
+        let tgt_layer = tgt.layer
+        if src_layer < 0 || src_layer >= layer_count ||
+          tgt_layer < 0 ||
+          tgt_layer >= layer_count {
+          continue
+        }
+        let src_right = src.x + shifts[src_layer] + src.width
+        let need = src_right + gap
+        let tgt_left = tgt.x + shifts[tgt_layer]
+        if tgt_left + 1.0e-6 < need {
+          shifts[tgt_layer] = shifts[tgt_layer] + (need - tgt_left)
+          changed = true
+        }
+      }
+      if !changed {
+        break
+      }
+    }
+    for layer in graph.layers {
+      let idx = layer.index
+      if idx < 0 || idx >= shifts.length() {
+        continue
+      }
+      let dx = shifts[idx]
+      if dx == 0.0 {
+        continue
+      }
+      for node in layer.nodes {
+        node.x = node.x + dx
+      }
+    }
+  }
+
+  enforce_side_port_layer_separation(graph, direction, edge_node_spacing)
+
+  fn fallback_lane(
+    graph : LGraph,
+    src : LNode,
+    tgt : LNode,
+    direction : LayoutDirection,
+    edge_node_spacing : Double,
+  ) -> Double {
+    let lo = @cmp.minimum(src.layer, tgt.layer)
+    let hi = @cmp.maximum(src.layer, tgt.layer)
+    let scan_layer = match direction {
+      Up | Left => hi
+      _ => lo
+    }
+    let is_vertical = direction.is_vertical()
+    let mut boundary = if is_vertical {
+      if direction is Down {
+        -1.0e18
+      } else {
+        1.0e18
+      }
+    } else if direction is Right {
+      -1.0e18
+    } else {
+      1.0e18
+    }
+    if scan_layer >= 0 && scan_layer < graph.layers.length() {
+      for node in graph.layers[scan_layer].nodes {
+        if is_vertical {
+          if direction is Down {
+            boundary = max_double(boundary, node.y + node.height)
+          } else {
+            boundary = min_double(boundary, node.y)
+          }
+        } else if direction is Right {
+          boundary = max_double(boundary, node.x + node.width)
+        } else {
+          boundary = min_double(boundary, node.x)
+        }
+      }
+    }
+    match direction {
+      Up | Left => boundary - edge_node_spacing
+      _ => boundary + edge_node_spacing
+    }
+  }
+
   fn default_anchor(
     node : LNode,
     direction : LayoutDirection,
@@ -1839,16 +2354,6 @@ fn route_vertical_layout(
     }
   }
 
-  // Compute a shared lane coordinate per edge (ELK: routingSlot per segment).
-  let lane_by_edge = segment_lane_for_layer_pair(
-    graph.edges,
-    graph,
-    direction,
-    edge_edge_spacing,
-    edge_node_spacing,
-    random_seed,
-  )
-
   // First, group parallel edges deterministically.
   // Use normalized keys so (A->B) and (B->A) are counted together.
   let edge_groups : Map[String, Array[LEdge]] = {}
@@ -1976,9 +2481,8 @@ fn route_vertical_layout(
       // Nodes are aligned and single edge - straight edge, no bend points needed
       // Bend points will be empty, edge goes straight
     } else {
-      let lane_info = lane_by_edge
-        .get(edge.id)
-        .unwrap_or(default_lane_info((src_y + tgt_y) / 2.0))
+      let lane_base = fallback_lane(graph, src, tgt, direction, edge_node_spacing)
+      let lane_info = lane_by_edge.get(edge.id).unwrap_or(default_lane_info(lane_base))
       let lane = lane_info.lane
       if (src_x - tgt_x).abs() < 1.0 {
         edge.bend_points.push(ElkPoint::new(src_x + parallel_offset, src_y))
@@ -2014,8 +2518,9 @@ fn route_horizontal_layout(
   direction : LayoutDirection,
   edge_edge_spacing : Double,
   edge_node_spacing : Double,
-  random_seed : Int,
+  lane_by_edge : Map[String, LaneInfo],
 ) -> Unit {
+  let _ = edge_node_spacing
   fn default_anchor(
     node : LNode,
     direction : LayoutDirection,
@@ -2156,16 +2661,6 @@ fn route_horizontal_layout(
       (North, South)
     }
   }
-
-  // Compute a shared lane coordinate per edge (ELK: routingSlot per segment).
-  let lane_by_edge = segment_lane_for_layer_pair(
-    graph.edges,
-    graph,
-    direction,
-    edge_edge_spacing,
-    edge_node_spacing,
-    random_seed,
-  )
 
   // Deterministic parallel edge grouping.
   // Use normalized keys so (A->B) and (B->A) are counted together.
@@ -2316,6 +2811,7 @@ fn route_horizontal_layout(
 
 ///|
 /// Assign routing slots to edges to minimize crossings
+#warnings("-unused_value")
 fn assign_routing_slots(
   graph : LGraph,
   edge_spacing : Double,
@@ -2449,6 +2945,7 @@ fn route_self_loop_edges(
 
 ///|
 /// Route self-loop edges present in the graph.
+#warnings("-unused_value")
 fn route_self_loops(graph : LGraph, direction : LayoutDirection) -> Unit {
   route_self_loop_edges(graph, graph.edges, direction)
 }

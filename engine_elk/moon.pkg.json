@@ -8,6 +8,5 @@
     "moonbitlang/core/int",
     "moonbitlang/core/double",
     "moonbitlang/core/math"
-  ],
-  "warn-list": "-6-1"
+  ]
 }

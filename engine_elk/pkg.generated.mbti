@@ -20,8 +20,6 @@ type AStarEntry
 pub impl Eq for AStarEntry
 pub impl Show for AStarEntry
 
-type BKLayout
-
 type BKNodePlacementMode
 pub impl Eq for BKNodePlacementMode
 pub impl Show for BKNodePlacementMode
@@ -42,10 +40,6 @@ pub impl Show for BinaryIndexedTree
 type CenterEdgeLabelPlacementStrategy
 pub impl Eq for CenterEdgeLabelPlacementStrategy
 pub impl Show for CenterEdgeLabelPlacementStrategy
-
-type ClassEdge
-
-type ClassNode
 
 type CompactionStrategy
 pub impl Eq for CompactionStrategy
@@ -201,10 +195,6 @@ pub impl Show for NSEdge
 type NSNode
 pub impl Show for NSNode
 
-type NeighborInfo
-
-type NeighborRef
-
 type NodeFlexibility
 pub impl Eq for NodeFlexibility
 pub impl Show for NodeFlexibility
@@ -248,8 +238,6 @@ pub impl Show for PortSortingStrategy
 type PortTag
 pub impl Eq for PortTag
 pub impl Show for PortTag
-
-type Postprocessable
 
 type PropertyValue
 pub impl Eq for PropertyValue

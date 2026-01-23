@@ -399,19 +399,42 @@ fn compile_edges_with_imports(
   for edge in key.edges {
     let src_path = edge.src.to_strings()
     let dst_path = edge.dst.to_strings()
-    let edge_id = EdgeID::new(
+    let base_id = EdgeID::new(
       src_path,
       dst_path,
       edge.src_arrow == "<",
       edge.dst_arrow == ">",
     )
-    let existing = ir.find_edges(edge_id)
-    if existing.length() > 0 {
-      let e = existing[0]
-      e.references.push(EdgeReference::new(edge.range, 0, true))
-      let (primary, edge_map) = match key.value {
-        Some(value) =>
-          match value {
+
+    fn next_index_for_group(ir : Map, base_id : EdgeID) -> Int {
+      let existing = ir.find_edges(base_id)
+      let mut max_idx = -1
+      for e in existing {
+        match e.id.index {
+          Some(i) => if i > max_idx { max_idx = i }
+          None => if max_idx < 0 { max_idx = 0 }
+        }
+      }
+      max_idx + 1
+    }
+
+    fn find_exact_edge(ir : Map, id : EdgeID) -> Edge? {
+      for e in ir.edges {
+        if e.id == id {
+          return Some(e)
+        }
+      }
+      None
+    }
+
+    fn compile_edge_value(
+      existing : Edge?,
+      value : @ast.Value?,
+      resolver : ImportResolver,
+    ) -> (Scalar?, Map?) raise CompileError {
+      match (existing, value) {
+        (Some(e), Some(v)) =>
+          match v {
             @ast.Value::Scalar(s) => (Some(compile_scalar(s)), e.map)
             @ast.Value::Map(m) => {
               let ir_map = Map::new()
@@ -429,41 +452,83 @@ fn compile_edges_with_imports(
             }
             _ => (e.primary, e.map)
           }
-        None => (e.primary, e.map)
-      }
-      let e = Edge::new(e.id, primary, edge_map, e.references)
-      ir.set_edge(e)
-    } else {
-      let mut primary : Scalar? = None
-      let mut edge_map : Map? = None
-      match key.value {
-        Some(value) =>
-          match value {
-            @ast.Value::Scalar(s) => primary = Some(compile_scalar(s))
+        (Some(e), None) => (e.primary, e.map)
+        (None, Some(v)) =>
+          match v {
+            @ast.Value::Scalar(s) => (Some(compile_scalar(s)), None)
             @ast.Value::Map(m) => {
               let ir_map = Map::new()
               compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
-              edge_map = Some(ir_map)
+              (None, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
+              let mut primary : Scalar? = None
               match label {
                 @ast.Value::Scalar(s) => primary = Some(compile_scalar(s))
                 _ => ()
               }
               let ir_map = Map::new()
               compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
-              edge_map = Some(ir_map)
+              (primary, Some(ir_map))
             }
-            _ => ()
+            _ => (None, None)
           }
-        None => ()
+        (None, None) => (None, None)
       }
-      let new_edge = Edge::new(edge_id, primary, edge_map, [
-        EdgeReference::new(edge.range, 0, true),
-      ])
-      ir.add_edge(new_edge)
-      ensure_field_path(ir, src_path)
-      ensure_field_path(ir, dst_path)
+    }
+
+    match key.edge_index {
+      Some(ei) =>
+        if ei.glob {
+          let existing = ir.find_edges(base_id)
+          for e in existing {
+            e.references.push(EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true))
+            let (primary, edge_map) = compile_edge_value(Some(e), key.value, resolver)
+            ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+          }
+        } else {
+          let idx = ei.index.unwrap_or(0)
+          let edge_id = EdgeID::with_index(
+            base_id.src_path,
+            base_id.dst_path,
+            base_id.src_arrow,
+            base_id.dst_arrow,
+            idx,
+          )
+          match find_exact_edge(ir, edge_id) {
+            Some(e) => {
+              e.references.push(EdgeReference::new(edge.range, idx, true))
+              let (primary, edge_map) = compile_edge_value(Some(e), key.value, resolver)
+              ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+            }
+            None => {
+              let (primary, edge_map) = compile_edge_value(None, key.value, resolver)
+              let new_edge = Edge::new(edge_id, primary, edge_map, [
+                EdgeReference::new(edge.range, idx, true),
+              ])
+              ir.add_edge(new_edge)
+              ensure_field_path(ir, src_path)
+              ensure_field_path(ir, dst_path)
+            }
+          }
+        }
+      None => {
+        let idx = next_index_for_group(ir, base_id)
+        let edge_id = EdgeID::with_index(
+          base_id.src_path,
+          base_id.dst_path,
+          base_id.src_arrow,
+          base_id.dst_arrow,
+          idx,
+        )
+        let (primary, edge_map) = compile_edge_value(None, key.value, resolver)
+        let new_edge = Edge::new(edge_id, primary, edge_map, [
+          EdgeReference::new(edge.range, idx, true),
+        ])
+        ir.add_edge(new_edge)
+        ensure_field_path(ir, src_path)
+        ensure_field_path(ir, dst_path)
+      }
     }
   }
 }

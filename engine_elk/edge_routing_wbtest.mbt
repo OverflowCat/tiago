@@ -175,6 +175,7 @@ fn layout_to_graph_for_routing(
 }
 
 ///|
+#warnings("-unused_value")
 fn apply_layout_result_for_routing(
   _patch : @graph.LayoutPatch,
   _graph : Graph,

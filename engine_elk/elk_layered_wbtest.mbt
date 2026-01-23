@@ -68,6 +68,7 @@ test "barycenter ordering updates node positions" {
     false,
     false,
     None,
+    false,
   )
   assert_true(graph.layers[1].nodes[0].id == "v1")
   assert_true(graph.layers[1].nodes[0].position == 0)
@@ -141,6 +142,7 @@ test "layer sweep: keep best intermediate ordering" {
           true,
           false,
           None,
+          false,
         )
       }
       for i = graph.layers.length() - 2; i >= 0; i = i - 1 {
@@ -154,6 +156,7 @@ test "layer sweep: keep best intermediate ordering" {
           true,
           false,
           None,
+          false,
         )
       }
     }

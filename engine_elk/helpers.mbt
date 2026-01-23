@@ -309,9 +309,13 @@ fn compute_object_size(obj : Object, config : LayoutConfig) -> Unit {
       rows_width = rows_width + SQL_TABLE_CONSTRAINT_PADDING
     }
     let width = max(SQL_TABLE_MIN_SIZE, max(header_width, rows_width))
+    // D2 uses the header label's measured height (header font) as the base row
+    // height for sql_table. Our text metrics are approximate; match D2's
+    // row-height behavior by scaling from the header font size.
+    let row_height = (@math.ceil(font_size.to_double() * 1.5))
     let total_height = max(
       SQL_TABLE_MIN_SIZE,
-      label_dims.height * (obj.children.length() + 1).to_double(),
+      row_height * (obj.children.length() + 1).to_double(),
     )
     obj.box = Some(@graph.Box::new(0.0, 0.0, width, total_height))
   } else {

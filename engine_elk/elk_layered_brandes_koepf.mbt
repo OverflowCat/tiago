@@ -41,26 +41,27 @@ enum HDirection {
 } derive(Show, Eq)
 
 ///|
-struct NeighborRef {
+priv struct NeighborRef {
   node_id : String
   edge_id : String
 }
 
 ///|
-struct NeighborInfo {
+priv struct NeighborInfo {
   node_index : Map[String, Int]
   left_neighbors : Map[String, Array[NeighborRef]]
   right_neighbors : Map[String, Array[NeighborRef]]
 }
 
 ///|
-struct ClassEdge {
+priv struct ClassEdge {
   target_id : String
   separation : Double
 }
 
 ///|
-struct ClassNode {
+#warnings("-unused_field")
+priv struct ClassNode {
   node_id : String
   mut class_shift : Double?
   mut indegree : Int
@@ -68,7 +69,7 @@ struct ClassNode {
 }
 
 ///|
-struct BKLayout {
+priv struct BKLayout {
   vdir : VDirection
   hdir : HDirection
   root : Map[String, String]
@@ -180,11 +181,26 @@ fn port_cross(node : LNode, port_id : String?, is_horizontal : Bool) -> Double {
               port.x + port.width / 2.0
             }
           }
-          let has_pos = port.x != 0.0 || port.y != 0.0
+          // Infer missing coordinates from port side. This matches ELK behavior
+          // for FIXED_POS ports where the DSL often sets only one component
+          // (e.g. SQL table ports specify only `y`).
           if is_horizontal {
-            return if has_pos { port.y } else { node.height / 2.0 }
+            // LEFT/RIGHT layout: cross axis is Y.
+            if port.y != 0.0 {
+              return port.y
+            }
+            return match port.side {
+              North => 0.0
+              South => node.height
+              _ => node.height / 2.0
+            }
           }
-          return if has_pos { port.x } else { node.width / 2.0 }
+          // UP/DOWN layout: cross axis is X.
+          return match port.side {
+            West => 0.0
+            East => node.width
+            _ => if port.x != 0.0 { port.x } else { node.width / 2.0 }
+          }
         }
       }
       if is_horizontal {
@@ -842,7 +858,7 @@ fn check_space_below(
 }
 
 ///|
-struct Postprocessable {
+priv struct Postprocessable {
   free_id : String
   is_root : Bool
   has_edges : Bool
@@ -1593,6 +1609,7 @@ fn straight_edge_score(
 }
 
 ///|
+#warnings("-unused_value")
 fn select_smallest_layout(
   graph : LGraph,
   layouts : Array[BKLayout],
@@ -1611,6 +1628,7 @@ fn select_smallest_layout(
 }
 
 ///|
+#warnings("-unused_value")
 fn select_favor_straight_layout(
   graph : LGraph,
   layouts : Array[BKLayout],
@@ -1641,7 +1659,49 @@ fn apply_layout(
   padding : ElkPadding,
   is_horizontal : Bool,
   direction : LayoutDirection,
+  _content_alignment : ContentAlignment,
 ) -> Unit {
+  fn has_cross_in(graph : LGraph, node : LNode) -> Bool {
+    for e in node.incoming_edges {
+      match graph.get_node(e.source_id) {
+        Some(src) => if src.layer != node.layer { return true }
+        None => ()
+      }
+    }
+    false
+  }
+
+  fn has_cross_out(graph : LGraph, node : LNode) -> Bool {
+    for e in node.outgoing_edges {
+      match graph.get_node(e.target_id) {
+        Some(tgt) => if tgt.layer != node.layer { return true }
+        None => ()
+      }
+    }
+    false
+  }
+  // Preserve any precomputed minimum graph size (e.g. container title size from
+  // the D2 sizing pipeline). The layered placement expands graphs to fit
+  // children, but should not shrink them below their declared minimum.
+  let title_w = graph.properties.get_double_or(
+    "diago.layered.rootLabelWidth",
+    0.0,
+  )
+  let title_h = graph.properties.get_double_or(
+    "diago.layered.rootLabelHeight",
+    0.0,
+  )
+  let min_width = {
+    let want = title_w + padding.left + padding.right
+    if graph.width > want { graph.width } else { want }
+  }
+  let min_height = {
+    // The container top padding already accounts for the title height when
+    // coming from the diago->ELK bridge.
+    let want = title_h + padding.top + padding.bottom
+    if graph.height > want { graph.height } else { want }
+  }
+
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let reverse_layers = match direction {
     Up => !is_horizontal
@@ -1668,24 +1728,61 @@ fn apply_layout(
     }
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
+      let cross_in = has_cross_in(graph, node)
+      let cross_out = has_cross_out(graph, node)
       if is_horizontal {
-        node.x = layer_offset
+        node.x = match direction {
+          Right =>
+            if cross_out && !cross_in {
+              // Sources: align to the outgoing port side.
+              layer_offset + (layer_size - node.width)
+            } else {
+              // Targets (and isolated): align to the incoming port side.
+              layer_offset
+            }
+          Left =>
+            if cross_in && !cross_out {
+              layer_offset + (layer_size - node.width)
+            } else {
+              layer_offset
+            }
+          _ => layer_offset
+        }
         node.y = cross_pos + padding.top
       } else {
         node.x = cross_pos + padding.left
-        node.y = layer_offset
+        node.y = match direction {
+          Down =>
+            if cross_out && !cross_in {
+              // Sources: align to the outgoing port side.
+              layer_offset + (layer_size - node.height)
+            } else {
+              // Targets (and isolated): align to the incoming port side.
+              layer_offset
+            }
+          Up =>
+            if cross_in && !cross_out {
+              layer_offset + (layer_size - node.height)
+            } else {
+              layer_offset
+            }
+          _ => layer_offset
+        }
       }
     }
     layer_offset = layer_offset + layer_size + layer_spacing
   }
+
   let mut max_x = 0.0
   let mut max_y = 0.0
   for node in graph.nodes {
     max_x = bk_max(max_x, node.x + node.width)
     max_y = bk_max(max_y, node.y + node.height)
   }
-  graph.width = max_x + padding.right
-  graph.height = max_y + padding.bottom
+  let w = max_x + padding.right
+  let h = max_y + padding.bottom
+  graph.width = if w < min_width { min_width } else { w }
+  graph.height = if h < min_height { min_height } else { h }
 }
 
 // ============================================================================
@@ -1718,6 +1815,7 @@ fn run_brandes_koepf(
     Some(ImproveStraightness) | None => true
     _ => false
   }
+  let content_alignment = options.content_alignment.unwrap_or(None)
   let ni = build_neighbor_info(graph)
   let marked = mark_conflicts(graph, ni)
   let layouts : Array[BKLayout] = []
@@ -1806,7 +1904,13 @@ fn run_brandes_koepf(
   }
   positions = normalize_positions(graph, positions)
   apply_layout(
-    graph, positions, layer_spacing, padding, is_horizontal, direction,
+    graph,
+    positions,
+    layer_spacing,
+    padding,
+    is_horizontal,
+    direction,
+    content_alignment,
   )
 }
 

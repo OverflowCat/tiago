@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "Building WASM..."
-moon build --target wasm
+moon build cmd/wasm --target wasm
 
 echo "Copying wasm.wasm..."
 cp _build/wasm/release/build/cmd/wasm/wasm.wasm web/

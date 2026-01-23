@@ -727,13 +727,35 @@ fn Edge::midpoint(self : Edge) -> Point? {
   if len == 1 {
     return Some(self.route[0])
   }
-  // For even number of points, average the two middle points
-  let mid = len / 2
-  if len % 2 == 0 {
-    let p1 = self.route[mid - 1]
-    let p2 = self.route[mid]
-    Some(Point::new((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0))
-  } else {
-    Some(self.route[mid])
+  // Use arclength midpoint so L-shaped / multi-segment routes place labels
+  // where D2/ELK would (rather than the midpoint by point index).
+  let mut total = 0.0
+  for i = 1; i < len; i = i + 1 {
+    let a = self.route[i - 1]
+    let b = self.route[i]
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    total = total + (dx * dx + dy * dy).sqrt()
   }
+  if total < 1.0e-9 {
+    return Some(self.route[len / 2])
+  }
+  let half = total / 2.0
+  let mut acc = 0.0
+  for i = 1; i < len; i = i + 1 {
+    let a = self.route[i - 1]
+    let b = self.route[i]
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    let seg = (dx * dx + dy * dy).sqrt()
+    if seg < 1.0e-9 {
+      continue
+    }
+    if acc + seg >= half {
+      let t = (half - acc) / seg
+      return Some(Point::new(a.x + dx * t, a.y + dy * t))
+    }
+    acc = acc + seg
+  }
+  Some(self.route[len - 1])
 }

@@ -255,6 +255,7 @@ fn layout_to_graph(
 }
 
 ///|
+#warnings("-unused_value")
 fn apply_layout_result_for_layout(
   _patch : @graph.LayoutPatch,
   _graph : Graph,
@@ -273,10 +274,10 @@ test "layout single object" {
   // Object should have a box
   let obj = laid_out.find_object("a").unwrap()
   guard obj.box is Some(box) else { fail("expected box") }
-  // Position should be at container padding
+  // D2 uses ELK layered's default graph padding (12) for the root graph.
   let eps = 1.0
-  assert_true((box.x - 50.0).abs() <= eps)
-  assert_true((box.y - 50.0).abs() <= eps)
+  assert_true((box.x - 12.0).abs() <= eps)
+  assert_true((box.y - 12.0).abs() <= eps)
   // Size should reflect D2 size-to-content defaults.
   assert_eq(box.width, 53.0)
   assert_eq(box.height, 66.0)
@@ -340,8 +341,8 @@ test "layout container with children" {
   // Children should be positioned inside parent
   assert_true(child1_box.x >= parent_box.x)
   assert_true(child1_box.y >= parent_box.y)
-  // Child2 should be below child1
-  assert_true(childiago_box.y > child1_box.y)
+  // Child2 should be to the right of child1 (D2/ELK packs no-edge children in one layer)
+  assert_true(childiago_box.x > child1_box.x)
 }
 
 ///|
@@ -582,23 +583,39 @@ test "sequence layout activation boxes" {
   graph.add_edge(msg2)
   let config = LayoutConfig::new()
   // Run sequence layout with activations
-  let result = layout_sequence_with_activations(container, graph, config)
-  let activation_boxes : Array[@graph.Box] = []
-  for ab in result.activation_boxes {
-    activation_boxes.push(ab.get_box())
+  layout_sequence_with_activations(container, graph, config) |> ignore
+
+  // Activation boxes are shifted into the graph payload (after container padding
+  // is applied). Assert invariant placement relative to actors/messages rather
+  // than hard-coding absolute coordinates.
+  assert_eq(graph.activation_boxes.length(), 2)
+  let by_actor : Map[String, @graph.Box] = {}
+  for pair in graph.activation_boxes {
+    let (id, b) = pair
+    by_actor[id] = b
   }
-  assert_eq(activation_boxes.length(), 2)
-  let b0 = activation_boxes[0]
-  let b1 = activation_boxes[1]
-  let (left, right) = if b0.get_x() <= b1.get_x() { (b0, b1) } else { (b1, b0) }
-  assert_eq(left.get_x(), 92.0)
-  assert_eq(left.get_y(), 160.0)
-  assert_eq(left.get_width(), 16.0)
-  assert_eq(left.get_height(), 40.0)
-  assert_eq(right.get_x(), 342.0)
-  assert_eq(right.get_y(), 120.0)
-  assert_eq(right.get_width(), 16.0)
-  assert_eq(right.get_height(), 80.0)
+  let alice_ab = by_actor.get("seq.alice").unwrap()
+  let bob_ab = by_actor.get("seq.bob").unwrap()
+  guard alice.box is Some(alice_box) else { fail("expected alice box") }
+  guard bob.box is Some(bob_box) else { fail("expected bob box") }
+  let alice_center_x = alice_box.get_x() + alice_box.get_width() / 2.0
+  let bob_center_x = bob_box.get_x() + bob_box.get_width() / 2.0
+  assert_eq(alice_ab.get_width(), 16.0)
+  assert_eq(bob_ab.get_width(), 16.0)
+  assert_eq(alice_ab.get_x(), alice_center_x - 8.0)
+  assert_eq(bob_ab.get_x(), bob_center_x - 8.0)
+
+  // The activation for the callee starts at the message Y; both end at the same
+  // final message offset.
+  let y1 = msg1.route[0].get_y()
+  let y2 = msg2.route[0].get_y()
+  assert_eq(bob_ab.get_y(), y1)
+  assert_eq(alice_ab.get_y(), y2)
+  assert_true(bob_ab.get_height() > alice_ab.get_height())
+  assert_eq(
+    bob_ab.get_y() + bob_ab.get_height(),
+    alice_ab.get_y() + alice_ab.get_height(),
+  )
 }
 
 ///|
@@ -738,14 +755,14 @@ test "debug: simple linear graph" {
   guard objC.box is Some(boxC) else { fail("expected box for C") }
 
   // Debug: print positions
-  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(49, 50, 94, 66)")
+  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(12, 12, 94, 66)")
   inspect(
     (boxB.x, boxB.y, boxB.width, boxB.height),
-    content="(50, 214, 92, 66)",
+    content="(13, 148, 92, 66)",
   )
   inspect(
     (boxC.x, boxC.y, boxC.width, boxC.height),
-    content="(50, 376, 92, 66)",
+    content="(13, 284, 92, 66)",
   )
 
   // In DOWN direction:
@@ -801,15 +818,15 @@ test "debug: cyclic graph with bidirectional edges" {
   // Debug: print positions
   inspect(
     (box5.x, box5.y, box5.width, box5.height),
-    content="(150, 50, 120, 66)",
+    content="(32, 12, 120, 66)",
   )
   inspect(
     (boxI.x, boxI.y, boxI.width, boxI.height),
-    content="(100, 240, 120, 66)",
+    content="(72, 294, 120, 66)",
   )
   inspect(
     (boxA.x, boxA.y, boxA.width, boxA.height),
-    content="(120, 240, 80, 66)",
+    content="(52, 148, 80, 66)",
   )
 
   // No overlaps - this is the key constraint

@@ -57,6 +57,28 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   }
   let h_gap = horizontal_gap(container)
   let v_gap = vertical_gap(container)
+  // D2 grid diagrams use a larger default container padding (60), but if the
+  // user specifies gaps we use those as the padding too.
+  let h_pad = if container.grid_gap is Some(_) || container.horizontal_gap is Some(_) {
+    h_gap
+  } else {
+    60.0
+  }
+  let v_pad_base = if container.grid_gap is Some(_) || container.vertical_gap is Some(_) {
+    v_gap
+  } else {
+    60.0
+  }
+  // Grid containers can have a title; ensure there's enough *top* padding to fit it
+  // (D2 accounts for label height even when gap-based padding is used).
+  let v_pad_top = match container.label_box {
+    Some(b) => {
+      let want = b.height + 10.0
+      if want > v_pad_base { want } else { v_pad_base }
+    }
+    None => v_pad_base
+  }
+  let v_pad_bottom = v_pad_base
   // Determine rows and columns
   let (rows, columns, row_directed) = compute_grid_dimensions(
     container,
@@ -75,13 +97,19 @@ fn layout_grid(container : Object, config : LayoutConfig) -> Unit {
   )
   // Position children in the grid (with spanning)
   position_grid_children_with_spans(
-    children, cell_positions, col_widths, row_heights, h_gap, v_gap, config,
+    children,
+    cell_positions,
+    col_widths,
+    row_heights,
+    h_gap,
+    v_gap,
+    h_pad,
+    v_pad_top,
+    config,
   )
   // Update container size
-  let total_width = sum_with_gap(col_widths, h_gap) +
-    config.container_padding * 2.0
-  let total_height = sum_with_gap(row_heights, v_gap) +
-    config.container_padding * 2.0
+  let total_width = sum_with_gap(col_widths, h_gap) + h_pad * 2.0
+  let total_height = sum_with_gap(row_heights, v_gap) + v_pad_top + v_pad_bottom
   container.box = Some(
     @graph.Box::new(0.0, 0.0, max(total_width, 100.0), max(total_height, 60.0)),
   )
@@ -244,7 +272,7 @@ fn compute_column_widths_with_spans(
 ) -> Array[Double] {
   let widths : Array[Double] = []
   for _ in 0..<columns {
-    widths.push(config.default_width)
+    widths.push(0.0)
   }
   // First pass: handle non-spanning cells
   for i, child in children {
@@ -288,6 +316,13 @@ fn compute_column_widths_with_spans(
       }
     }
   }
+  // D2 grid layout doesn't enforce a fixed minimum column width; if a column is
+  // empty (e.g. underspecified rows/cols), fall back to the engine default.
+  for i = 0; i < widths.length(); i = i + 1 {
+    if widths[i] <= 0.0 {
+      widths[i] = config.default_width
+    }
+  }
   widths
 }
 
@@ -301,7 +336,7 @@ fn compute_row_heights_with_spans(
 ) -> Array[Double] {
   let heights : Array[Double] = []
   for _ in 0..<rows {
-    heights.push(config.default_height)
+    heights.push(0.0)
   }
   // First pass: handle non-spanning cells
   for i, child in children {
@@ -345,6 +380,11 @@ fn compute_row_heights_with_spans(
       }
     }
   }
+  for i = 0; i < heights.length(); i = i + 1 {
+    if heights[i] <= 0.0 {
+      heights[i] = config.default_height
+    }
+  }
   heights
 }
 
@@ -357,7 +397,9 @@ fn position_grid_children_with_spans(
   row_heights : Array[Double],
   h_gap : Double,
   v_gap : Double,
-  config : LayoutConfig,
+  h_pad : Double,
+  v_pad : Double,
+  _config : LayoutConfig,
 ) -> Unit {
   let columns = col_widths.length()
   let rows = row_heights.length()
@@ -370,12 +412,12 @@ fn position_grid_children_with_spans(
       continue
     }
     // Calculate x position
-    let mut x = config.container_padding
+    let mut x = h_pad
     for j in 0..<pos.col {
       x = x + col_widths[j] + h_gap
     }
     // Calculate y position
-    let mut y = config.container_padding
+    let mut y = v_pad
     for j in 0..<pos.row {
       y = y + row_heights[j] + v_gap
     }

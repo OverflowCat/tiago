@@ -19,7 +19,15 @@
 test "legend auto populates graph" {
   let source =
     #|a
-    #|legend: true
+    #|vars: {
+    #|  d2-legend: "Legend"{
+    #|    user: User
+    #|    db: Database {
+    #|      shape: cylinder
+    #|    }
+    #|    user -> db: reads
+    #|  }
+    #|}
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   assert_true(graph.has_legend())
 }
@@ -28,7 +36,15 @@ test "legend auto populates graph" {
 test "legend renders in svg" {
   let source =
     #|a
-    #|legend: true
+    #|vars: {
+    #|  d2-legend: "Legend"{
+    #|    user: User
+    #|    db: Database {
+    #|      shape: cylinder
+    #|    }
+    #|    user -> db: reads
+    #|  }
+    #|}
   let svg = compile(source).unwrap()
   assert_true(svg.contains(">Legend<"))
 }

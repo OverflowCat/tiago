@@ -1200,6 +1200,7 @@ fn get_object_center_x(graph : Graph, id : String) -> Double {
 ///|
 /// Route all edges in the graph using unified routing.
 /// This is the single source of truth for edge routing.
+#warnings("-unused_value")
 fn route_all_edges(
   graph : Graph,
   _config : LayoutConfig,

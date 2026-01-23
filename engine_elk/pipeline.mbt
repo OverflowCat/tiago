@@ -52,12 +52,6 @@ fn default_layered_pipeline() -> LayeredPipeline {
   ) {
     position_sql_table_children(graph)
   })
-  builder.add("elk.layered.normalize_coordinates", AfterPhase5, fn(
-    graph,
-    _ctx,
-  ) {
-    normalize_coordinates(graph)
-  })
   builder.add("elk.layered.apply_edge_overrides", AfterPhase5, fn(graph, _ctx) {
     apply_post_layout_edge_overrides(graph)
   })
@@ -65,6 +59,13 @@ fn default_layered_pipeline() -> LayeredPipeline {
   // Do not override them with the legacy unified router.
   builder.add("elk.layered.position_edge_labels", AfterPhase5, fn(graph, ctx) {
     position_edge_labels(graph, ctx.config)
+  })
+  // Must run after edge overrides and label placement so everything shifts together.
+  builder.add("elk.layered.normalize_coordinates", AfterPhase5, fn(
+    graph,
+    _ctx,
+  ) {
+    normalize_coordinates(graph)
   })
   builder.build()
 }
@@ -78,25 +79,13 @@ fn layout_graph(
   ensure_text_dimensions(graph)
   reset_graph_layout_state(graph)
   if is_sequence_diagram(graph.root) && graph.root.is_container() {
-    let result = layout_sequence_with_activations(graph.root, graph, config)
-    for box in result.activation_boxes {
-      graph.activation_boxes.push((box.actor_id, box.get_box()))
-    }
-    for note in result.notes {
-      graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
-    }
+    let _ = layout_sequence_with_activations(graph.root, graph, config)
     return
   }
   compute_sizes(graph, config)
   for obj in graph.objects {
     if is_sequence_diagram(obj) && obj.is_container() {
-      let result = layout_sequence_with_activations(obj, graph, config)
-      for box in result.activation_boxes {
-        graph.activation_boxes.push((box.actor_id, box.get_box()))
-      }
-      for note in result.notes {
-        graph.sequence_notes.push((note.actor_id, note.text, note.bbox))
-      }
+      let _ = layout_sequence_with_activations(obj, graph, config)
     } else if obj.is_grid_diagram() && obj.is_container() {
       layout_grid(obj, config)
     }
