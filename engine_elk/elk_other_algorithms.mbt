@@ -657,6 +657,7 @@ fn elk_stress_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
 }
 
 ///|
+#warnings("-unused_value")
 fn elk_nodes_overlap(a : ElkNode, b : ElkNode) -> Bool {
   let ax2 = a.x + a.width
   let ay2 = a.y + a.height
@@ -948,47 +949,10 @@ fn elk_spore_compaction_layout(
   graph : ElkNode,
   options : LayoutOptions,
 ) -> Unit {
-  // SPOrE defaults: padding=8, spacing.nodeNode=8.
-  // Full topology-preserving compaction is TODO; for now we reuse overlap removal.
-  elk_spore_overlap_layout(graph, options)
+  spore_compaction_layout_impl(graph, options)
 }
 
 ///|
 fn elk_spore_overlap_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
-  // Minimal overlap removal: deterministic pairwise separation.
-  ensure_sizes(graph, options)
-  let padding = options.padding.unwrap_or(ElkPadding::uniform(8.0))
-  let spacing = options.node_node_spacing.unwrap_or(8.0)
-  let max_iterations = 64
-
-  // Start at padded origin.
-  for child in graph.children {
-    child.x = child.x + padding.left
-    child.y = child.y + padding.top
-  }
-  let n = graph.children.length()
-  for _ in 0..<max_iterations {
-    let mut moved = false
-    for i in 0..<n {
-      for j in (i + 1)..<n {
-        let a = graph.children[i]
-        let b = graph.children[j]
-        if elk_nodes_overlap(a, b) {
-          let overlap_x = a.x + a.width - b.x
-          let overlap_y = a.y + a.height - b.y
-          if overlap_x <= overlap_y {
-            b.x = b.x + overlap_x + spacing
-          } else {
-            b.y = b.y + overlap_y + spacing
-          }
-          moved = true
-        }
-      }
-    }
-    if !moved {
-      break
-    }
-  }
-  update_root_bounds_from_children(graph, padding)
-  route_edges_straight(graph)
+  spore_overlap_layout_impl(graph, options)
 }
