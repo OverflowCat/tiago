@@ -36,7 +36,7 @@ pub fn compile_with_imports(
   resolver : ImportResolver,
 ) -> Map raise CompileError {
   let ir = Map::new()
-  compile_map_nodes_with_imports(ir, ast.nodes, resolver)
+  compile_map_nodes_with_imports(ir, ast.nodes, resolver, [])
   // Resolve variable substitutions
   ir.resolve_substitutions()
   ir
@@ -47,6 +47,7 @@ fn compile_map_nodes_with_imports(
   ir : Map,
   nodes : Array[@ast.MapNode],
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Unit raise CompileError {
   for node in nodes {
     match node {
@@ -54,8 +55,10 @@ fn compile_map_nodes_with_imports(
       @ast.MapNode::BlockComment(_, _) => ()
       @ast.MapNode::Substitution(sub) =>
         ir.add_field(Field::new("", Some(substitution_scalar(sub)), None, []))
-      @ast.MapNode::Import(imp) => compile_import(ir, imp, resolver)
-      @ast.MapNode::Key(key) => compile_key_with_imports(ir, key, resolver)
+      @ast.MapNode::Import(imp) =>
+        compile_import(ir, imp, resolver, import_stack)
+      @ast.MapNode::Key(key) =>
+        compile_key_with_imports(ir, key, resolver, import_stack)
     }
   }
 }
@@ -66,56 +69,164 @@ fn compile_import(
   ir : Map,
   imp : @ast.Import,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Unit raise CompileError {
-  // Build the import path
-  let path = build_import_path(imp)
-  // Resolve the import
-  match (resolver.0)(path) {
-    Some(content) => {
-      // Parse the imported content
-      let (import_ast, errors) = @parser.parse(content)
-      if !errors.is_empty() {
-        raise CompileError::ImportError(
-          "parse error in imported file '\{path}': \{errors}",
-        )
-      }
-      // Compile and merge the imported content
-      if imp.spread {
-        // Spread import: merge all fields at current level
-        compile_map_nodes_with_imports(ir, import_ast.nodes, resolver)
-      } else {
-        // Normal import: create a field with the imported content
-        let import_ir = Map::new()
-        compile_map_nodes_with_imports(import_ir, import_ast.nodes, resolver)
-        // Use filename as field name (without extension)
-        let field_name = extract_filename(path)
-        let field = ir.ensure_field(field_name)
-        let field = Field::new(
-          field.name,
-          field.primary,
-          Some(Composite::Map(import_ir)),
-          field.references,
-        )
-        ir.set_field(field)
-      }
+  let (file_key, selector, display) = split_import_file_and_selector(imp)
+  let (content, canonical) = resolve_import_content(resolver, file_key) catch {
+    _ =>
+      raise CompileError::ImportError("could not resolve import '\{display}'")
+  }
+  if contains(import_stack, canonical) {
+    raise CompileError::ImportError(
+      "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
+    )
+  }
+  let stack2 = import_stack.copy()
+  stack2.push(canonical)
+  let (import_ast, errors) = @parser.parse(content)
+  if !errors.is_empty() {
+    raise CompileError::ImportError(
+      "parse error in imported file '\{display}': \{errors}",
+    )
+  }
+  let import_ir = Map::new()
+  compile_map_nodes_with_imports(import_ir, import_ast.nodes, resolver, stack2)
+  if imp.spread {
+    // Spread import in map context: only maps are allowed.
+    let m2 = select_map_for_spread(import_ir, selector) catch {
+      _ =>
+        raise CompileError::ImportError("cannot spread import non map into map")
     }
+    merge_into_map(ir, m2)
+    return
+  }
+
+  // Non-spread import at map node level: create field named by the imported file key.
+  let (primary, composite) = select_primary_and_composite(import_ir, selector)
+  let field_name = extract_filename(display)
+  let field0 = ir.ensure_field(field_name)
+  ir.set_field(Field::new(field0.name, primary, composite, field0.references))
+}
+
+///|
+fn split_import_file_and_selector(
+  imp : @ast.Import,
+) -> (String, Array[String], String) {
+  // `@a.b.c` means: import file "a", then select path ["b", "c"].
+  // The resolver key is the file part only (d2 parity).
+  let file = if imp.path.length() > 0 {
+    imp.pre + imp.path[0].content()
+  } else {
+    imp.pre
+  }
+  let selector : Array[String] = []
+  for i = 1; i < imp.path.length(); i = i + 1 {
+    selector.push(imp.path[i].content())
+  }
+  let display = if selector.length() == 0 {
+    file
+  } else {
+    file + "." + selector.join(".")
+  }
+  (file, selector, display)
+}
+
+///|
+fn resolve_import_content(
+  resolver : ImportResolver,
+  file_key : String,
+) -> (String, String) raise CompileError {
+  match (resolver.0)(file_key) {
+    Some(content) => (content, file_key)
     None =>
-      raise CompileError::ImportError("could not resolve import '\{path}'")
+      if file_key.has_suffix(".d2") {
+        raise CompileError::ImportError("missing import")
+      } else {
+        let k2 = file_key + ".d2"
+        match (resolver.0)(k2) {
+          Some(content) => (content, k2)
+          None => raise CompileError::ImportError("missing import")
+        }
+      }
   }
 }
 
 ///|
-/// Build import path from AST Import
-fn build_import_path(imp : @ast.Import) -> String {
-  let buf = StringBuilder::new()
-  buf.write_string(imp.pre)
-  for i, s in imp.path {
-    if i > 0 {
-      buf.write_char('/')
+fn contains(arr : Array[String], s : String) -> Bool {
+  for x in arr {
+    if x == s {
+      return true
     }
-    buf.write_string(s.content())
   }
-  buf.to_string()
+  false
+}
+
+///|
+fn format_cycle(stack : Array[String], next : String) -> String {
+  let parts = stack.copy()
+  parts.push(next)
+  parts.join(" -> ")
+}
+
+///|
+fn select_primary_and_composite(
+  root : Map,
+  selector : Array[String],
+) -> (Scalar?, Composite?) raise CompileError {
+  if selector.length() == 0 {
+    return (None, Some(Composite::Map(root)))
+  }
+  let f = select_field(root, selector)
+  (f.primary, f.composite)
+}
+
+///|
+fn select_map_for_spread(
+  root : Map,
+  selector : Array[String],
+) -> Map raise CompileError {
+  if selector.length() == 0 {
+    return root
+  }
+  let f = select_field(root, selector)
+  match f.composite {
+    Some(Composite::Map(m)) => m
+    _ => raise CompileError::ImportError("not a map")
+  }
+}
+
+///|
+fn select_field(
+  root : Map,
+  selector : Array[String],
+) -> Field raise CompileError {
+  let mut current = root
+  for i = 0; i < selector.length(); i = i + 1 {
+    let name = selector[i]
+    match current.get_field(name) {
+      Some(f) =>
+        if i == selector.length() - 1 {
+          return f
+        } else {
+          match f.composite {
+            Some(Composite::Map(m)) => current = m
+            _ => raise CompileError::ImportError("not a map")
+          }
+        }
+      None => raise CompileError::ImportError("not found")
+    }
+  }
+  raise CompileError::ImportError("not found")
+}
+
+///|
+fn merge_into_map(dst : Map, src : Map) -> Unit {
+  for f in src.fields {
+    dst.set_field(f)
+  }
+  for e in src.edges {
+    dst.set_edge(e)
+  }
 }
 
 ///|
@@ -150,6 +261,7 @@ fn compile_key_with_imports(
   ir : Map,
   key : @ast.Key,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Unit raise CompileError {
   // Handle ampersand filters
   if key.ampersand || key.not_ampersand {
@@ -157,7 +269,7 @@ fn compile_key_with_imports(
   }
   // Handle edges first
   if key.edges.length() > 0 {
-    compile_edges_with_imports(ir, key, resolver)
+    compile_edges_with_imports(ir, key, resolver, import_stack)
     return
   }
   // Handle regular key
@@ -228,7 +340,8 @@ fn compile_key_with_imports(
   }
   // Set value (with import handling)
   let field = match key.value {
-    Some(value) => compile_value_with_imports(field, value, resolver)
+    Some(value) =>
+      compile_value_with_imports(field, value, resolver, import_stack)
     None => field
   }
   current_map.set_field(field)
@@ -239,6 +352,7 @@ fn compile_value_with_imports(
   field : Field,
   value : @ast.Value,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Field raise CompileError {
   match value {
     @ast.Value::Scalar(s) =>
@@ -250,7 +364,7 @@ fn compile_value_with_imports(
       )
     @ast.Value::Map(m) => {
       let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
       Field::new(
         field.name,
         field.primary,
@@ -259,7 +373,7 @@ fn compile_value_with_imports(
       )
     }
     @ast.Value::Array(a) => {
-      let ir_array = compile_array_with_imports(a, resolver)
+      let ir_array = compile_array_with_imports(a, resolver, import_stack)
       Field::new(
         field.name,
         field.primary,
@@ -268,28 +382,37 @@ fn compile_value_with_imports(
       )
     }
     @ast.Value::Import(imp) => {
-      // Value-level import
-      let path = build_import_path(imp)
-      match (resolver.0)(path) {
-        Some(content) => {
-          let (import_ast, errors) = @parser.parse(content)
-          if !errors.is_empty() {
-            raise CompileError::ImportError(
-              "parse error in imported file '\{path}'",
-            )
-          }
-          let import_ir = Map::new()
-          compile_map_nodes_with_imports(import_ir, import_ast.nodes, resolver)
-          Field::new(
-            field.name,
-            field.primary,
-            Some(Composite::Map(import_ir)),
-            field.references,
+      let (file_key, selector, display) = split_import_file_and_selector(imp)
+      let (content, canonical) = resolve_import_content(resolver, file_key) catch {
+        _ =>
+          raise CompileError::ImportError(
+            "could not resolve import '\{display}'",
           )
-        }
-        None =>
-          raise CompileError::ImportError("could not resolve import '\{path}'")
       }
+      if contains(import_stack, canonical) {
+        raise CompileError::ImportError(
+          "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
+        )
+      }
+      let stack2 = import_stack.copy()
+      stack2.push(canonical)
+      let (import_ast, errors) = @parser.parse(content)
+      if !errors.is_empty() {
+        raise CompileError::ImportError(
+          "parse error in imported file '\{display}'",
+        )
+      }
+      let import_ir = Map::new()
+      compile_map_nodes_with_imports(
+        import_ir,
+        import_ast.nodes,
+        resolver,
+        stack2,
+      )
+      let (primary, composite) = select_primary_and_composite(
+        import_ir, selector,
+      )
+      Field::new(field.name, primary, composite, field.references)
     }
     @ast.Value::BlockScalar(label, m) => {
       let field = match label {
@@ -303,7 +426,7 @@ fn compile_value_with_imports(
         _ => field
       }
       let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
       Field::new(
         field.name,
         field.primary,
@@ -318,6 +441,7 @@ fn compile_value_with_imports(
 fn compile_array_with_imports(
   arr : @ast.ArrayValue,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> IRArray raise CompileError {
   let values : Array[Value] = []
   for node in arr.nodes {
@@ -327,27 +451,60 @@ fn compile_array_with_imports(
       @ast.ArrayNode::Substitution(sub) =>
         values.push(Value::Scalar(substitution_scalar(sub)))
       @ast.ArrayNode::Import(imp) => {
-        // Import in array context
-        let path = build_import_path(imp)
-        match (resolver.0)(path) {
-          Some(content) => {
-            let (import_ast, errors) = @parser.parse(content)
-            if !errors.is_empty() {
-              continue
-            }
-            let import_ir = Map::new()
-            compile_map_nodes_with_imports(
-              import_ir,
-              import_ast.nodes,
-              resolver,
+        let (file_key, selector, display) = split_import_file_and_selector(imp)
+        let (content, canonical) = resolve_import_content(resolver, file_key) catch {
+          _ =>
+            raise CompileError::ImportError(
+              "could not resolve import '\{display}'",
             )
-            values.push(Value::Map(import_ir))
+        }
+        if contains(import_stack, canonical) {
+          raise CompileError::ImportError(
+            "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
+          )
+        }
+        let stack2 = import_stack.copy()
+        stack2.push(canonical)
+        let (import_ast, errors) = @parser.parse(content)
+        if !errors.is_empty() {
+          raise CompileError::ImportError(
+            "parse error in imported file '\{display}'",
+          )
+        }
+        let import_ir = Map::new()
+        compile_map_nodes_with_imports(
+          import_ir,
+          import_ast.nodes,
+          resolver,
+          stack2,
+        )
+        if imp.spread {
+          // Only allow spreading arrays into arrays (d2 parity).
+          let f = select_field(import_ir, selector)
+          match f.composite {
+            Some(Composite::Array(a)) =>
+              for v in a.values {
+                values.push(v)
+              }
+            _ =>
+              raise CompileError::ImportError(
+                "can only spread import array into array",
+              )
           }
-          None => ()
+        } else {
+          let (primary, composite) = select_primary_and_composite(
+            import_ir, selector,
+          )
+          match (primary, composite) {
+            (Some(p), _) => values.push(Value::Scalar(p))
+            (None, Some(Composite::Map(m))) => values.push(Value::Map(m))
+            (None, Some(Composite::Array(a))) => values.push(Value::Array(a))
+            (None, None) => ()
+          }
         }
       }
       @ast.ArrayNode::Value(v) => {
-        let compiled = compile_ast_value_with_imports(v, resolver)
+        let compiled = compile_ast_value_with_imports(v, resolver, import_stack)
         values.push(compiled)
       }
     }
@@ -359,34 +516,58 @@ fn compile_array_with_imports(
 fn compile_ast_value_with_imports(
   value : @ast.Value,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Value raise CompileError {
   match value {
     @ast.Value::Scalar(s) => Value::Scalar(compile_scalar(s))
     @ast.Value::Map(m) => {
       let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
       Value::Map(ir_map)
     }
     @ast.Value::Array(a) =>
-      Value::Array(compile_array_with_imports(a, resolver))
+      Value::Array(compile_array_with_imports(a, resolver, import_stack))
     @ast.Value::Import(imp) => {
-      let path = build_import_path(imp)
-      match (resolver.0)(path) {
-        Some(content) => {
-          let (import_ast, errors) = @parser.parse(content)
-          if !errors.is_empty() {
-            return Value::Scalar(Scalar::null())
-          }
-          let import_ir = Map::new()
-          compile_map_nodes_with_imports(import_ir, import_ast.nodes, resolver)
-          Value::Map(import_ir)
-        }
-        None => Value::Scalar(Scalar::null())
+      let (file_key, selector, display) = split_import_file_and_selector(imp)
+      let (content, canonical) = resolve_import_content(resolver, file_key) catch {
+        _ =>
+          raise CompileError::ImportError(
+            "could not resolve import '\{display}'",
+          )
+      }
+      if contains(import_stack, canonical) {
+        raise CompileError::ImportError(
+          "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
+        )
+      }
+      let stack2 = import_stack.copy()
+      stack2.push(canonical)
+      let (import_ast, errors) = @parser.parse(content)
+      if !errors.is_empty() {
+        raise CompileError::ImportError(
+          "parse error in imported file '\{display}'",
+        )
+      }
+      let import_ir = Map::new()
+      compile_map_nodes_with_imports(
+        import_ir,
+        import_ast.nodes,
+        resolver,
+        stack2,
+      )
+      let (primary, composite) = select_primary_and_composite(
+        import_ir, selector,
+      )
+      match (primary, composite) {
+        (Some(p), _) => Value::Scalar(p)
+        (None, Some(Composite::Map(m))) => Value::Map(m)
+        (None, Some(Composite::Array(a))) => Value::Array(a)
+        (None, None) => Value::Scalar(Scalar::null())
       }
     }
     @ast.Value::BlockScalar(_, m) => {
       let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
       Value::Map(ir_map)
     }
   }
@@ -397,6 +578,7 @@ fn compile_edges_with_imports(
   ir : Map,
   key : @ast.Key,
   resolver : ImportResolver,
+  import_stack : Array[String],
 ) -> Unit raise CompileError {
   for edge in key.edges {
     let src_path = edge.src.to_strings()
@@ -432,6 +614,7 @@ fn compile_edges_with_imports(
       existing : Edge?,
       value : @ast.Value?,
       resolver : ImportResolver,
+      import_stack : Array[String],
     ) -> (Scalar?, Map?) raise CompileError {
       match (existing, value) {
         (Some(e), Some(v)) =>
@@ -439,7 +622,12 @@ fn compile_edges_with_imports(
             @ast.Value::Scalar(s) => (Some(compile_scalar(s)), e.map)
             @ast.Value::Map(m) => {
               let ir_map = Map::new()
-              compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+              compile_map_nodes_with_imports(
+                ir_map,
+                m.nodes,
+                resolver,
+                import_stack,
+              )
               (e.primary, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
@@ -448,7 +636,12 @@ fn compile_edges_with_imports(
                 _ => e.primary
               }
               let ir_map = Map::new()
-              compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+              compile_map_nodes_with_imports(
+                ir_map,
+                m.nodes,
+                resolver,
+                import_stack,
+              )
               (updated_primary, Some(ir_map))
             }
             _ => (e.primary, e.map)
@@ -459,7 +652,12 @@ fn compile_edges_with_imports(
             @ast.Value::Scalar(s) => (Some(compile_scalar(s)), None)
             @ast.Value::Map(m) => {
               let ir_map = Map::new()
-              compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+              compile_map_nodes_with_imports(
+                ir_map,
+                m.nodes,
+                resolver,
+                import_stack,
+              )
               (None, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
@@ -469,7 +667,12 @@ fn compile_edges_with_imports(
                 _ => ()
               }
               let ir_map = Map::new()
-              compile_map_nodes_with_imports(ir_map, m.nodes, resolver)
+              compile_map_nodes_with_imports(
+                ir_map,
+                m.nodes,
+                resolver,
+                import_stack,
+              )
               (primary, Some(ir_map))
             }
             _ => (None, None)
@@ -490,6 +693,7 @@ fn compile_edges_with_imports(
               Some(e),
               key.value,
               resolver,
+              import_stack,
             )
             ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
           }
@@ -509,6 +713,7 @@ fn compile_edges_with_imports(
                 Some(e),
                 key.value,
                 resolver,
+                import_stack,
               )
               ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
             }
@@ -517,6 +722,7 @@ fn compile_edges_with_imports(
                 None,
                 key.value,
                 resolver,
+                import_stack,
               )
               let new_edge = Edge::new(edge_id, primary, edge_map, [
                 EdgeReference::new(edge.range, idx, true),
@@ -536,7 +742,12 @@ fn compile_edges_with_imports(
           base_id.dst_arrow,
           idx,
         )
-        let (primary, edge_map) = compile_edge_value(None, key.value, resolver)
+        let (primary, edge_map) = compile_edge_value(
+          None,
+          key.value,
+          resolver,
+          import_stack,
+        )
         let new_edge = Edge::new(edge_id, primary, edge_map, [
           EdgeReference::new(edge.range, idx, true),
         ])

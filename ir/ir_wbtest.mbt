@@ -365,6 +365,118 @@ test "compile with imports - missing import" {
 }
 
 ///|
+test "compile with imports - selection (nested scalar)" {
+  let source = "x: @a.y"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "a" || path == "a.d2" {
+      Some("y: meow")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("x") is Some(x) else { fail("expected x") }
+  guard x.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "meow")
+}
+
+///|
+test "compile with imports - selection (nested array)" {
+  let source = "x: @a.y"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "a" || path == "a.d2" {
+      Some("y: [1, 2]")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("x") is Some(x) else { fail("expected x") }
+  guard x.composite is Some(Composite::Array(arr)) else {
+    fail("expected array")
+  }
+  assert_eq(arr.values.length(), 2)
+  guard arr.values[0] is Value::Scalar(s0) else { fail("expected scalar") }
+  guard arr.values[1] is Value::Scalar(s1) else { fail("expected scalar") }
+  assert_eq(s0.to_string(), "1")
+  assert_eq(s1.to_string(), "2")
+}
+
+///|
+test "compile with imports - spread selection non-map errors" {
+  let source = "...@a.y"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "a" || path == "a.d2" {
+      Some("y: meow")
+    } else {
+      None
+    }
+  })
+  let result : Result[Map, CompileError] = Ok(
+    compile_with_imports(ast, resolver),
+  ) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(ImportError(msg)) =>
+      assert_eq(msg, "cannot spread import non map into map")
+    _ => fail("expected ImportError")
+  }
+}
+
+///|
+test "compile with imports - spread array into array" {
+  let source = "x: [...@a.y, 3]"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "a" || path == "a.d2" {
+      Some("y: [1, 2]")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("x") is Some(x) else { fail("expected x") }
+  guard x.composite is Some(Composite::Array(arr)) else {
+    fail("expected array")
+  }
+  assert_eq(arr.values.length(), 3)
+  guard arr.values[0] is Value::Scalar(s0) else { fail("expected scalar") }
+  guard arr.values[1] is Value::Scalar(s1) else { fail("expected scalar") }
+  guard arr.values[2] is Value::Scalar(s2) else { fail("expected scalar") }
+  assert_eq(s0.to_string(), "1")
+  assert_eq(s1.to_string(), "2")
+  assert_eq(s2.to_string(), "3")
+}
+
+///|
+test "compile with imports - cyclic import errors" {
+  let source = "...@a"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "a" || path == "a.d2" {
+      Some("...@b")
+    } else if path == "b" || path == "b.d2" {
+      Some("...@a")
+    } else {
+      None
+    }
+  })
+  let result : Result[Map, CompileError] = Ok(
+    compile_with_imports(ast, resolver),
+  ) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(ImportError(_)) => ()
+    _ => fail("expected ImportError")
+  }
+}
+
+///|
 test "compile - imports require resolver" {
   let cases = ["@common", "...@common", "x: @common", "x: [@common]"]
   for src in cases {

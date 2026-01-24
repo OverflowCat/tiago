@@ -1043,15 +1043,37 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
 ///|
 fn Parser::parse_import(self : Parser, spread : Bool) -> @ast.Import? {
   let start = self.current().range.start
-  let _ = self.advance() // consume @
+  let at = self.advance() // consume @
+  let mut end = at.range.end
   let path : Array[@ast.StringValue] = []
   match self.parse_string_for_key() {
-    Some(s) => path.push(s)
+    Some(s) => {
+      end = s.range().end
+      path.push(s)
+    }
     None => {
       self.error("expected path after @")
       return None
     }
   }
-  let end = self.current().range.end
+  while not(self.is_at_end()) {
+    match self.peek() {
+      @lexer.Dot => {
+        let dot = self.advance()
+        end = dot.range.end
+        match self.parse_string_for_key() {
+          Some(s) => {
+            end = s.range().end
+            path.push(s)
+          }
+          None => {
+            self.error("expected identifier after .")
+            break
+          }
+        }
+      }
+      _ => break
+    }
+  }
   Some(@ast.Import::new(@lexer.Range::new(start, end), spread, "", path))
 }
