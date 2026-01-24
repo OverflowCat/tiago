@@ -33,7 +33,7 @@ pub(all) enum ScalarValue {
   Null
   Bool(String)
   Number(String)
-  String(String)
+  String(@ast.StringValue)
 } derive(Eq, Show)
 
 ///|
@@ -229,7 +229,15 @@ pub fn Scalar::number(n : String) -> Scalar {
 
 ///|
 pub fn Scalar::string(s : String) -> Scalar {
-  Scalar::at(default_range(), ScalarValue::String(s))
+  let r = default_range()
+  Scalar::at(
+    r,
+    ScalarValue::String(
+      @ast.StringValue::Unquoted(
+        @ast.UnquotedString::new(r, [@ast.Interpolation::Text(s)], []),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -514,7 +522,7 @@ pub fn Scalar::to_string(self : Scalar) -> String {
     Null => "null"
     Bool(s) => s
     Number(n) => n
-    String(s) => s
+    String(s) => s.content()
   }
 }
 
@@ -547,7 +555,8 @@ pub fn Scalar::as_bool(self : Scalar) -> Bool? {
 ///|
 pub fn Scalar::as_int(self : Scalar) -> Int? {
   match self.value {
-    Number(n) | String(n) => Some(@strconv.parse_int(n)) catch { _ => None }
+    Number(n) => Some(@strconv.parse_int(n)) catch { _ => None }
+    String(s) => Some(@strconv.parse_int(s.content())) catch { _ => None }
     _ => None
   }
 }
@@ -555,7 +564,8 @@ pub fn Scalar::as_int(self : Scalar) -> Int? {
 ///|
 pub fn Scalar::as_double(self : Scalar) -> Double? {
   match self.value {
-    Number(n) | String(n) => Some(@strconv.parse_double(n)) catch { _ => None }
+    Number(n) => Some(@strconv.parse_double(n)) catch { _ => None }
+    String(s) => Some(@strconv.parse_double(s.content())) catch { _ => None }
     _ => None
   }
 }

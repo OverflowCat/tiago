@@ -49,8 +49,14 @@ fn compile_map_nodes(
     match node {
       @ast.MapNode::Comment(_, _) => () // Skip comments
       @ast.MapNode::BlockComment(_, _) => () // Skip block comments
-      @ast.MapNode::Substitution(_) => () // Handle at field level
-      @ast.MapNode::Import(_) => () // TODO: handle imports
+      @ast.MapNode::Substitution(sub) =>
+        // Placeholder field to be resolved during substitution pass.
+        // We use an empty name to represent "no key" (d2 parity).
+        ir.add_field(Field::new("", Some(substitution_scalar(sub)), None, []))
+      @ast.MapNode::Import(_) =>
+        raise CompileError::ImportError(
+          "imports require a resolver; use compile_with_imports",
+        )
       @ast.MapNode::Key(key) => compile_key(ir, key)
     }
   }
@@ -523,7 +529,10 @@ fn compile_value(field : Field, value : @ast.Value) -> Field raise CompileError 
         field.references,
       )
     }
-    @ast.Value::Import(_) => field // TODO: handle imports
+    @ast.Value::Import(_) =>
+      raise CompileError::ImportError(
+        "imports require a resolver; use compile_with_imports",
+      )
     @ast.Value::BlockScalar(label, m) => {
       // "name: Label { props }" - Label is primary, props is composite
       let field = match label {
@@ -555,12 +564,28 @@ fn compile_array(arr : @ast.ArrayValue) -> IRArray raise CompileError {
     match node {
       @ast.ArrayNode::Comment(_, _) => ()
       @ast.ArrayNode::BlockComment(_, _) => ()
-      @ast.ArrayNode::Substitution(_) => () // TODO: handle substitutions
-      @ast.ArrayNode::Import(_) => () // TODO: handle imports
+      @ast.ArrayNode::Substitution(sub) =>
+        values.push(Value::Scalar(substitution_scalar(sub)))
+      @ast.ArrayNode::Import(_) =>
+        raise CompileError::ImportError(
+          "imports require a resolver; use compile_with_imports",
+        )
       @ast.ArrayNode::Value(v) => values.push(compile_ast_value(v))
     }
   }
   IRArray::new(values)
+}
+
+///|
+fn substitution_scalar(sub : @ast.Substitution) -> Scalar {
+  Scalar::at(
+    sub.range,
+    ScalarValue::String(
+      @ast.StringValue::Unquoted(
+        @ast.UnquotedString::new(sub.range, [@ast.Interpolation::Sub(sub)], []),
+      ),
+    ),
+  )
 }
 
 ///|
@@ -573,7 +598,10 @@ fn compile_ast_value(value : @ast.Value) -> Value raise CompileError {
       Value::Map(ir_map)
     }
     @ast.Value::Array(a) => Value::Array(compile_array(a))
-    @ast.Value::Import(_) => Value::Scalar(Scalar::null()) // TODO: handle imports
+    @ast.Value::Import(_) =>
+      raise CompileError::ImportError(
+        "imports require a resolver; use compile_with_imports",
+      )
     @ast.Value::BlockScalar(_, m) => {
       // For arrays, just use the map part (label is ignored in array context)
       let ir_map = Map::new()
@@ -590,7 +618,6 @@ fn compile_scalar(scalar : @ast.Scalar) -> Scalar {
     @ast.Scalar::Boolean(r, b) =>
       Scalar::at(r, ScalarValue::Bool(if b { "true" } else { "false" }))
     @ast.Scalar::Number(r, n) => Scalar::at(r, ScalarValue::Number(n))
-    @ast.Scalar::String(s) =>
-      Scalar::at(s.range(), ScalarValue::String(s.content()))
+    @ast.Scalar::String(sv) => Scalar::at(sv.range(), ScalarValue::String(sv))
   }
 }

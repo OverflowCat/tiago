@@ -184,7 +184,7 @@ pub(all) enum ScalarValue {
   Null
   Bool(String)
   Number(String)
-  String(String)
+  String(@ast.StringValue)
 }
 pub impl Eq for ScalarValue
 pub impl Show for ScalarValue

@@ -52,7 +52,8 @@ fn compile_map_nodes_with_imports(
     match node {
       @ast.MapNode::Comment(_, _) => ()
       @ast.MapNode::BlockComment(_, _) => ()
-      @ast.MapNode::Substitution(_) => ()
+      @ast.MapNode::Substitution(sub) =>
+        ir.add_field(Field::new("", Some(substitution_scalar(sub)), None, []))
       @ast.MapNode::Import(imp) => compile_import(ir, imp, resolver)
       @ast.MapNode::Key(key) => compile_key_with_imports(ir, key, resolver)
     }
@@ -323,7 +324,8 @@ fn compile_array_with_imports(
     match node {
       @ast.ArrayNode::Comment(_, _) => ()
       @ast.ArrayNode::BlockComment(_, _) => ()
-      @ast.ArrayNode::Substitution(_) => ()
+      @ast.ArrayNode::Substitution(sub) =>
+        values.push(Value::Scalar(substitution_scalar(sub)))
       @ast.ArrayNode::Import(imp) => {
         // Import in array context
         let path = build_import_path(imp)

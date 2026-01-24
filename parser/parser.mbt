@@ -186,6 +186,11 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
       let token = self.advance()
       Some(@ast.MapNode::BlockComment(token.range, content))
     }
+    @lexer.Dollar | @lexer.DollarBrace =>
+      match self.parse_substitution() {
+        Some(sub) => Some(@ast.MapNode::Substitution(sub))
+        None => None
+      }
     @lexer.At =>
       // Import statement: @path
       match self.parse_import(false) {
@@ -193,16 +198,30 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
         None => None
       }
     @lexer.DotDotDot => {
-      // Spread import: ...@path
-      let _ = self.advance() // consume ...
+      // Spread import or spread substitution: ...@path or ...$var
+      let dots = self.advance() // consume ...
       match self.peek() {
         @lexer.At =>
           match self.parse_import(true) {
             Some(imp) => Some(@ast.MapNode::Import(imp))
             None => None
           }
+        @lexer.Dollar | @lexer.DollarBrace =>
+          match self.parse_substitution() {
+            Some(sub) =>
+              Some(
+                @ast.MapNode::Substitution(
+                  @ast.Substitution::new(
+                    @lexer.Range::between(dots.range, sub.range),
+                    true,
+                    sub.path,
+                  ),
+                ),
+              )
+            None => None
+          }
         _ => {
-          self.error("expected @ after ...")
+          self.error("expected @ or $ after ...")
           None
         }
       }
@@ -710,6 +729,44 @@ fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
         let token = self.advance()
         nodes.push(@ast.ArrayNode::BlockComment(token.range, content))
       }
+      @lexer.At =>
+        match self.parse_import(false) {
+          Some(imp) => nodes.push(@ast.ArrayNode::Import(imp))
+          None => break
+        }
+      @lexer.Dollar | @lexer.DollarBrace =>
+        match self.parse_substitution() {
+          Some(sub) => nodes.push(@ast.ArrayNode::Substitution(sub))
+          None => break
+        }
+      @lexer.DotDotDot => {
+        let dots = self.advance()
+        match self.peek() {
+          @lexer.At =>
+            match self.parse_import(true) {
+              Some(imp) => nodes.push(@ast.ArrayNode::Import(imp))
+              None => break
+            }
+          @lexer.Dollar | @lexer.DollarBrace =>
+            match self.parse_substitution() {
+              Some(sub) =>
+                nodes.push(
+                  @ast.ArrayNode::Substitution(
+                    @ast.Substitution::new(
+                      @lexer.Range::between(dots.range, sub.range),
+                      true,
+                      sub.path,
+                    ),
+                  ),
+                )
+              None => break
+            }
+          _ => {
+            self.error("expected @ or $ after ...")
+            break
+          }
+        }
+      }
       _ =>
         match self.parse_value() {
           Some(v) => nodes.push(@ast.ArrayNode::Value(v))
@@ -875,22 +932,51 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
           )
       }
     }
-    @lexer.Dollar | @lexer.DollarBrace =>
-      match self.parse_substitution() {
-        Some(sub) =>
-          Some(
-            @ast.Scalar::String(
-              @ast.StringValue::Unquoted(
-                @ast.UnquotedString::new(
-                  sub.range,
-                  [@ast.Interpolation::Sub(sub)],
-                  [],
-                ),
-              ),
-            ),
-          )
-        None => None
+    @lexer.Dollar | @lexer.DollarBrace => {
+      // An unquoted scalar can start with a substitution and continue with text,
+      // e.g. `${x}-b`. Parse the whole token run into interpolation segments.
+      let start_pos = self.current().range.start
+      let mut end_pos = self.current().range.end
+      let mut seg_start = start_pos
+      let segs : Array[@ast.Interpolation] = []
+      while not(self.is_at_end()) {
+        match self.peek() {
+          @lexer.Dollar | @lexer.DollarBrace =>
+            match self.parse_substitution() {
+              Some(sub) => {
+                let pre = self.extract_source(seg_start, sub.range.start)
+                if pre.length() > 0 {
+                  segs.push(@ast.Interpolation::Text(pre))
+                }
+                segs.push(@ast.Interpolation::Sub(sub))
+                seg_start = sub.range.end
+                end_pos = sub.range.end
+              }
+              None => break
+            }
+          // Stop at any delimiter.
+          @lexer.Newline
+          | @lexer.Comma
+          | @lexer.Semicolon
+          | @lexer.RightBrace
+          | @lexer.RightBracket => break
+          _ => {
+            let token = self.advance()
+            end_pos = token.range.end
+          }
+        }
       }
+      let post = self.extract_source(seg_start, end_pos)
+      if post.length() > 0 {
+        segs.push(@ast.Interpolation::Text(post))
+      }
+      let range = @lexer.Range::new(start_pos, end_pos)
+      Some(
+        @ast.Scalar::String(
+          @ast.StringValue::Unquoted(@ast.UnquotedString::new(range, segs, [])),
+        ),
+      )
+    }
     _ => None
   }
 }
@@ -898,20 +984,26 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
 ///|
 fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
   let start = self.current().range.start
+  let mut end = self.current().range.end
   let is_brace = match self.peek() {
     @lexer.DollarBrace => {
-      let _ = self.advance()
+      let token = self.advance()
+      end = token.range.end
       true
     }
     @lexer.Dollar => {
-      let _ = self.advance()
+      let token = self.advance()
+      end = token.range.end
       false
     }
     _ => return None
   }
   let path : Array[@ast.StringValue] = []
   match self.parse_string_for_key() {
-    Some(s) => path.push(s)
+    Some(s) => {
+      end = s.range().end
+      path.push(s)
+    }
     None => {
       self.error("expected variable name after $")
       return None
@@ -921,9 +1013,13 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
     while not(self.is_at_end()) {
       match self.peek() {
         @lexer.Dot => {
-          let _ = self.advance()
+          let dot = self.advance()
+          end = dot.range.end
           match self.parse_string_for_key() {
-            Some(s) => path.push(s)
+            Some(s) => {
+              end = s.range().end
+              path.push(s)
+            }
             None => {
               self.error("expected identifier after .")
               break
@@ -935,13 +1031,12 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
     }
     match self.peek() {
       @lexer.RightBrace => {
-        let _ = self.advance()
-
+        let close = self.advance()
+        end = close.range.end
       }
       _ => self.error("expected } to close substitution")
     }
   }
-  let end = self.current().range.end
   Some(@ast.Substitution::new(@lexer.Range::new(start, end), false, path))
 }
 

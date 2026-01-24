@@ -363,3 +363,144 @@ test "compile with imports - missing import" {
   }
   assert_true(result is Err(_))
 }
+
+///|
+test "compile - imports require resolver" {
+  let cases = ["@common", "...@common", "x: @common", "x: [@common]"]
+  for src in cases {
+    let (ast, _) = @parser.parse(src)
+    let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+      e => Err(e)
+    }
+    match result {
+      Err(ImportError(_)) => ()
+      _ => fail("expected ImportError for: \{src}")
+    }
+  }
+}
+
+///|
+test "compile vars - spread-in-place (d2 parity)" {
+  let source =
+    #|vars: {
+    #|  person-shape: {
+    #|    grid-columns: 1
+    #|    grid-rows: 2
+    #|    grid-gap: 0
+    #|    head
+    #|    body
+    #|  }
+    #|}
+    #|
+    #|dora: {
+    #|  ...${person-shape}
+    #|  body
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("dora") is Some(dora) else { fail("expected dora") }
+  guard dora.composite is Some(Composite::Map(dm)) else {
+    fail("expected dora map")
+  }
+  guard dm.fields.length() > 0 else { fail("expected fields") }
+  assert_eq(dm.fields[0].name, "grid-columns")
+}
+
+///|
+test "compile vars - spread array (d2 parity)" {
+  let source =
+    #|vars: {
+    #|  xs: [1, 2]
+    #|}
+    #|
+    #|a: [...${xs}, 3]
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("a") is Some(a) else { fail("expected a") }
+  guard a.composite is Some(Composite::Array(arr)) else {
+    fail("expected array")
+  }
+  assert_eq(arr.values.length(), 3)
+  guard arr.values[0] is Value::Scalar(s0) else { fail("expected scalar") }
+  guard arr.values[1] is Value::Scalar(s1) else { fail("expected scalar") }
+  guard arr.values[2] is Value::Scalar(s2) else { fail("expected scalar") }
+  assert_eq(s0.to_string(), "1")
+  assert_eq(s1.to_string(), "2")
+  assert_eq(s2.to_string(), "3")
+}
+
+///|
+test "compile vars - unresolved substitution errors (d2 parity)" {
+  let source = "x: ${missing}"
+  let (ast, _) = @parser.parse(source)
+  let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(InvalidSubstitution(msg)) =>
+      assert_eq(msg, "could not resolve variable \"missing\"")
+    _ => fail("expected InvalidSubstitution")
+  }
+}
+
+///|
+test "compile vars - self scope vars doesn't resolve to itself (d2 parity)" {
+  let source =
+    #|vars: {
+    #|  x: a
+    #|}
+    #|hi: {
+    #|  vars: {
+    #|    x: ${x}-b
+    #|  }
+    #|  yo: ${x}
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("hi") is Some(hi) else { fail("expected hi") }
+  guard hi.composite is Some(Composite::Map(hm)) else {
+    fail("expected hi map")
+  }
+  guard hm.get_field("vars") is Some(vars) else { fail("expected vars") }
+  guard vars.composite is Some(Composite::Map(vm)) else {
+    fail("expected vars map")
+  }
+  guard vm.get_field("x") is Some(x) else { fail("expected x") }
+  guard x.primary is Some(px) else { fail("expected x primary") }
+  assert_eq(px.to_string(), "a-b")
+  guard hm.get_field("yo") is Some(yo) else { fail("expected yo") }
+  guard yo.primary is Some(pyo) else { fail("expected yo primary") }
+  assert_eq(pyo.to_string(), "a-b")
+}
+
+///|
+test "compile vars - spread non-composite errors (d2 parity)" {
+  let source =
+    #|vars: { x: 1 }
+    #|a: { ...${x} }
+  let (ast, _) = @parser.parse(source)
+  let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(InvalidSubstitution(msg)) =>
+      assert_eq(msg, "cannot spread non-composite")
+    _ => fail("expected InvalidSubstitution")
+  }
+}
+
+///|
+test "compile vars - spread non-array into array errors (d2 parity)" {
+  let source =
+    #|vars: { x: { a } }
+    #|a: [...${x}]
+  let (ast, _) = @parser.parse(source)
+  let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(InvalidSubstitution(msg)) =>
+      assert_eq(msg, "cannot spread non-array into array")
+    _ => fail("expected InvalidSubstitution")
+  }
+}
