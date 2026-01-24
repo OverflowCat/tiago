@@ -204,7 +204,10 @@ test "code shape has dark background" {
     #|code_block: some code here {
     #|  shape: code
     #|}
-  let svg = compile(source).unwrap()
+  let svg = match compile(source) {
+    Ok(v) => v
+    Err(e) => fail(e)
+  }
   assert_true(svg.contains("fill=\"#1e1e1e\""))
   assert_true(svg.contains("fill=\"#d4d4d4\"")) // light text color
 }

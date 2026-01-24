@@ -801,54 +801,49 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
       } else if name == "false" {
         Some(@ast.Scalar::Boolean(start_token.range, false))
       } else {
-        // Collect multi-word unquoted value (e.g., "Web Server", "Down (default)")
-        // Use source extraction to preserve exact spacing
+        // Unquoted value may include substitutions, e.g. `pre-${x}-post`.
+        // Build interpolation segments using source extraction to preserve spacing.
         let start_pos = start_token.range.start
         let mut end_pos = start_token.range.end
-        // Keep consuming identifiers until we hit a delimiter
+        let mut seg_start = start_pos
+        let segs : Array[@ast.Interpolation] = []
         while not(self.is_at_end()) {
           match self.peek() {
-            @lexer.Ident(_) => {
-              let token = self.advance()
-              end_pos = token.range.end
-            }
-            @lexer.Number(_) => {
-              let token = self.advance()
-              end_pos = token.range.end
-            }
-            @lexer.LeftParen => {
-              // Handle parenthesized content like "(default)"
-              let _ = self.advance()
-              // Collect until closing paren
-              while not(self.is_at_end()) {
-                match self.peek() {
-                  @lexer.RightParen => {
-                    let close = self.advance()
-                    end_pos = close.range.end
-                    break
+            @lexer.Dollar | @lexer.DollarBrace =>
+              match self.parse_substitution() {
+                Some(sub) => {
+                  let pre = self.extract_source(seg_start, sub.range.start)
+                  if pre.length() > 0 {
+                    segs.push(@ast.Interpolation::Text(pre))
                   }
-                  @lexer.Ident(_) | @lexer.Number(_) => {
-                    let _ = self.advance()
-
-                  }
-                  _ => break
+                  segs.push(@ast.Interpolation::Sub(sub))
+                  seg_start = sub.range.end
+                  end_pos = sub.range.end
                 }
+                None => break
               }
+            @lexer.Newline
+            | @lexer.Comma
+            | @lexer.Semicolon
+            | @lexer.LeftBrace
+            | @lexer.RightBrace
+            | @lexer.LeftBracket
+            | @lexer.RightBracket => break
+            _ => {
+              let token = self.advance()
+              end_pos = token.range.end
             }
-            // Stop at any delimiter
-            _ => break
           }
         }
+        let post = self.extract_source(seg_start, end_pos)
+        if post.length() > 0 {
+          segs.push(@ast.Interpolation::Text(post))
+        }
         let range = @lexer.Range::new(start_pos, end_pos)
-        let text = self.extract_source(start_pos, end_pos)
         Some(
           @ast.Scalar::String(
             @ast.StringValue::Unquoted(
-              @ast.UnquotedString::new(
-                range,
-                [@ast.Interpolation::Text(text)],
-                [],
-              ),
+              @ast.UnquotedString::new(range, segs, []),
             ),
           ),
         )
@@ -860,50 +855,48 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
       // If so, treat as multi-word string, otherwise as number
       match self.peek() {
         @lexer.Ident(_) => {
-          // Multi-word value starting with number like "3D Box"
-          // Use source extraction to preserve exact spacing (e.g., "3D" not "3 D")
+          // Multi-word value starting with number like "3D Box" (may include substitutions).
           let start_pos = start_token.range.start
           let mut end_pos = start_token.range.end
+          let mut seg_start = start_pos
+          let segs : Array[@ast.Interpolation] = []
           while not(self.is_at_end()) {
             match self.peek() {
-              @lexer.Ident(_) => {
-                let token = self.advance()
-                end_pos = token.range.end
-              }
-              @lexer.Number(_) => {
-                let token = self.advance()
-                end_pos = token.range.end
-              }
-              @lexer.LeftParen => {
-                let _ = self.advance()
-                while not(self.is_at_end()) {
-                  match self.peek() {
-                    @lexer.RightParen => {
-                      let close = self.advance()
-                      end_pos = close.range.end
-                      break
+              @lexer.Dollar | @lexer.DollarBrace =>
+                match self.parse_substitution() {
+                  Some(sub) => {
+                    let pre = self.extract_source(seg_start, sub.range.start)
+                    if pre.length() > 0 {
+                      segs.push(@ast.Interpolation::Text(pre))
                     }
-                    @lexer.Ident(_) | @lexer.Number(_) => {
-                      let _ = self.advance()
-
-                    }
-                    _ => break
+                    segs.push(@ast.Interpolation::Sub(sub))
+                    seg_start = sub.range.end
+                    end_pos = sub.range.end
                   }
+                  None => break
                 }
+              @lexer.Newline
+              | @lexer.Comma
+              | @lexer.Semicolon
+              | @lexer.LeftBrace
+              | @lexer.RightBrace
+              | @lexer.LeftBracket
+              | @lexer.RightBracket => break
+              _ => {
+                let token = self.advance()
+                end_pos = token.range.end
               }
-              _ => break
             }
           }
+          let post = self.extract_source(seg_start, end_pos)
+          if post.length() > 0 {
+            segs.push(@ast.Interpolation::Text(post))
+          }
           let range = @lexer.Range::new(start_pos, end_pos)
-          let text = self.extract_source(start_pos, end_pos)
           Some(
             @ast.Scalar::String(
               @ast.StringValue::Unquoted(
-                @ast.UnquotedString::new(
-                  range,
-                  [@ast.Interpolation::Text(text)],
-                  [],
-                ),
+                @ast.UnquotedString::new(range, segs, []),
               ),
             ),
           )
@@ -924,9 +917,10 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
           Some(
             @ast.Scalar::String(
               @ast.StringValue::DoubleQuoted(
-                @ast.DoubleQuotedString::new(token.range, [
-                  @ast.Interpolation::Text(content),
-                ]),
+                @ast.DoubleQuotedString::new(
+                  token.range,
+                  parse_double_quoted_interpolations(token.range, content),
+                ),
               ),
             ),
           )
@@ -958,7 +952,9 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
           @lexer.Newline
           | @lexer.Comma
           | @lexer.Semicolon
+          | @lexer.LeftBrace
           | @lexer.RightBrace
+          | @lexer.LeftBracket
           | @lexer.RightBracket => break
           _ => {
             let token = self.advance()
@@ -979,6 +975,113 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
     }
     _ => None
   }
+}
+
+///|
+fn parse_double_quoted_interpolations(
+  range : @lexer.Range,
+  content : String,
+) -> Array[@ast.Interpolation] {
+  let segs : Array[@ast.Interpolation] = []
+  let chars = content.to_array()
+  let buf = StringBuilder::new()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if c == '$' {
+      // Try ${path} form first.
+      if i + 1 < chars.length() && chars[i + 1] == '{' {
+        let mut j = i + 2
+        let parts : Array[String] = []
+        let part_buf = StringBuilder::new()
+        let mut ok = false
+        while j < chars.length() {
+          let cj = chars[j]
+          if cj == '}' {
+            if part_buf.to_string().length() > 0 {
+              parts.push(part_buf.to_string())
+            }
+            ok = parts.length() > 0
+            break
+          } else if cj == '.' {
+            if part_buf.to_string().length() == 0 {
+              ok = false
+              break
+            }
+            parts.push(part_buf.to_string())
+            part_buf.reset()
+          } else {
+            part_buf.write_char(cj)
+          }
+          j = j + 1
+        }
+        if ok {
+          if buf.to_string().length() > 0 {
+            segs.push(@ast.Interpolation::Text(buf.to_string()))
+            buf.reset()
+          }
+          let path : Array[@ast.StringValue] = []
+          for p in parts {
+            path.push(
+              @ast.StringValue::Unquoted(
+                @ast.UnquotedString::new(range, [@ast.Interpolation::Text(p)], []),
+              ),
+            )
+          }
+          segs.push(
+            @ast.Interpolation::Sub(@ast.Substitution::new(range, false, path)),
+          )
+          // Skip past the closing brace.
+          i = j + 1
+          continue
+        }
+      } else if i + 1 < chars.length() && is_ident_start_char(chars[i + 1]) {
+        // $var form
+        let mut j = i + 1
+        let name_buf = StringBuilder::new()
+        while j < chars.length() && is_ident_continue_char(chars[j]) {
+          name_buf.write_char(chars[j])
+          j = j + 1
+        }
+        if name_buf.to_string().length() > 0 {
+          if buf.to_string().length() > 0 {
+            segs.push(@ast.Interpolation::Text(buf.to_string()))
+            buf.reset()
+          }
+          let path : Array[@ast.StringValue] = [
+            @ast.StringValue::Unquoted(
+              @ast.UnquotedString::new(
+                range,
+                [@ast.Interpolation::Text(name_buf.to_string())],
+                [],
+              ),
+            ),
+          ]
+          segs.push(
+            @ast.Interpolation::Sub(@ast.Substitution::new(range, false, path)),
+          )
+          i = j
+          continue
+        }
+      }
+    }
+    buf.write_char(c)
+    i = i + 1
+  }
+  if buf.to_string().length() > 0 || segs.length() == 0 {
+    segs.push(@ast.Interpolation::Text(buf.to_string()))
+  }
+  segs
+}
+
+///|
+fn is_ident_start_char(c : Char) -> Bool {
+  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+///|
+fn is_ident_continue_char(c : Char) -> Bool {
+  is_ident_start_char(c) || (c >= '0' && c <= '9') || c == '-'
 }
 
 ///|

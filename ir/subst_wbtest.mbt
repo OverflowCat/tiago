@@ -118,3 +118,55 @@ test "edge label substitution" {
   guard ir.edges[0].primary is Some(p) else { fail("expected primary") }
   assert_eq(p.to_string(), "hello")
 }
+
+///|
+test "unquoted interpolation - embedded ${} substitution" {
+  let source =
+    #|vars: { x: hi }
+    #|label: pre-${x}-post
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "pre-hi-post")
+}
+
+///|
+test "unquoted interpolation - embedded $var substitution" {
+  let source =
+    #|vars: { x: hi }
+    #|label: pre-$x post
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "pre-hi post")
+}
+
+///|
+test "double quoted substitution" {
+  let source =
+    #|vars: { x: hi }
+    #|label: "${x}"
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "hi")
+}
+
+///|
+test "double quoted substitution - composite errors" {
+  let source =
+    #|vars: { m: { a } }
+    #|label: "${m}"
+  let (ast, _) = @parser.parse(source)
+  let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(InvalidSubstitution(msg)) =>
+      assert_eq(msg, "cannot substitute map variable \"m\" in quotes")
+    _ => fail("expected InvalidSubstitution")
+  }
+}

@@ -165,10 +165,65 @@ fn resolve_scalar_in_field(
             vars_stack,
             in_vars_map,
           )
+        @ast.StringValue::DoubleQuoted(dqs) => {
+          let resolved = resolve_double_quoted_in_field(
+            primary.range,
+            dqs,
+            vars_stack,
+            field_name,
+            in_vars_map,
+          )
+          (false, (Some(resolved), composite))
+        }
         _ => (false, (Some(primary), composite))
       }
     _ => (false, (Some(primary), composite))
   }
+}
+
+///|
+fn resolve_double_quoted_in_field(
+  range : @lexer.Range,
+  dqs : @ast.DoubleQuotedString,
+  vars_stack : Array[Map],
+  field_name : String,
+  in_vars_map : Bool,
+) -> Scalar raise CompileError {
+  // d2 parity: substitutions in quotes always resolve to a string; composites are invalid.
+  let buf = StringBuilder::new()
+  for seg in dqs.value {
+    match seg {
+      @ast.Interpolation::Text(s) => buf.write_string(s)
+      @ast.Interpolation::Sub(sub) => {
+        let resolved = resolve_from_stack(
+          vars_stack,
+          sub,
+          Some(field_name),
+          in_vars_map,
+        )
+        match resolved.primary {
+          Some(rp) => buf.write_string(rp.to_string())
+          None =>
+            match resolved.composite {
+              Some(_) =>
+                raise CompileError::InvalidSubstitution(
+                  "cannot substitute map variable \"\{sub_path_string(sub)}\" in quotes",
+                )
+              None =>
+                raise CompileError::InvalidSubstitution(
+                  "cannot substitute variable without value: \"\{sub_path_string(sub)}\"",
+                )
+            }
+        }
+      }
+    }
+  }
+  let new_sv = @ast.StringValue::DoubleQuoted(
+    @ast.DoubleQuotedString::new(range, [
+      @ast.Interpolation::Text(buf.to_string()),
+    ]),
+  )
+  Scalar::at(range, ScalarValue::String(new_sv))
 }
 
 ///|
