@@ -197,28 +197,90 @@ fn elk_box_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
 ///|
 fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   // Defaults from elk-reference `RectPacking.melk`.
+  //
+  // Notes on parity:
+  // - ELK's width approximation considers padding when evaluating aspect ratio:
+  //   (drawingW + paddingH) / (drawingH + paddingV) ~= aspectRatio
+  // - The packing itself operates in drawing coordinates (no padding), and
+  //   padding is applied afterwards by translating children by (left, top).
   let spacing = options.node_node_spacing.unwrap_or(15.0)
   let padding = options.padding.unwrap_or(ElkPadding::uniform(15.0))
   let aspect_ratio = options.aspect_ratio.unwrap_or(1.3)
   ensure_sizes(graph, options)
 
   // Preserve input order; rectpacking keeps order stable.
-  let mut total_area = 0.0
-  let mut max_width = 0.0
-  for child in graph.children {
-    total_area = total_area + child.width * child.height
-    max_width = max_double(max_width, child.width)
+  let n = graph.children.length()
+  if n == 0 {
+    graph.width = padding.left + padding.right
+    graph.height = padding.top + padding.bottom
+    route_edges_straight(graph)
+    return
   }
 
-  // targetWidth excludes padding in ELK.
-  let target_width = max_double(max_width, total_area.sqrt() * aspect_ratio)
-  let mut x = padding.left
-  let mut y = padding.top
+  // If a target width is explicitly provided (elk-reference WidthApproximationStrategy.TARGET_WIDTH),
+  // switch to the compaction-based placement (ported from elk-reference tests).
+  let mut target_width_override : Double? = None
+  match options.custom {
+    Some(custom) =>
+      match
+        custom.get("org.eclipse.elk.rectpacking.widthApproximation.targetWidth") {
+        Some(PropertyValue::Double(v)) if v > 0.0 =>
+          target_width_override = Some(v)
+        _ => ()
+      }
+    None => ()
+  }
+  match target_width_override {
+    Some(target_width) => {
+      let pad_h = padding.left + padding.right
+      let pad_v = padding.top + padding.bottom
+      let (drawing_w, drawing_h) = rp_compact_layout(
+        graph.children,
+        target_width,
+        spacing,
+      )
+      for child in graph.children {
+        child.x = child.x + padding.left
+        child.y = child.y + padding.top
+      }
+      graph.width = drawing_w + pad_h
+      graph.height = drawing_h + pad_v
+      route_edges_straight(graph)
+      return
+    }
+    None => ()
+  }
+
+  // Approximate a target drawing width (excluding padding). We solve the
+  // area/aspect ratio equation using a continuous approximation and then clamp
+  // to feasible bounds.
+  let mut total_area = 0.0
+  let mut max_width = 0.0
+  let mut max_single_row_width = 0.0
+  for i, child in graph.children {
+    total_area = total_area + child.width * child.height
+    max_width = max_double(max_width, child.width)
+    max_single_row_width = max_single_row_width + child.width
+    if i > 0 {
+      max_single_row_width = max_single_row_width + spacing
+    }
+  }
+  let pad_h = padding.left + padding.right
+  let pad_v = padding.top + padding.bottom
+  let b = pad_h - aspect_ratio * pad_v
+  let disc = b * b + 4.0 * aspect_ratio * total_area
+  let mut target_width = (-b + disc.sqrt()) / 2.0
+  // Clamp to feasible range: at least the widest child; at most all in one row.
+  target_width = clamp_double(target_width, max_width, max_single_row_width)
+
+  // Place rectangles in rows using the chosen target width (drawing coords).
+  let mut x = 0.0
+  let mut y = 0.0
   let mut row_height = 0.0
-  let mut max_x = x
+  let mut drawing_w = 0.0
   for child in graph.children {
-    if x > padding.left && x - padding.left + child.width > target_width {
-      x = padding.left
+    if x > 0.0 && x + child.width > target_width {
+      x = 0.0
       y = y + row_height + spacing
       row_height = 0.0
     }
@@ -226,10 +288,17 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
     child.y = y
     x = x + child.width + spacing
     row_height = max_double(row_height, child.height)
-    max_x = max_double(max_x, child.x + child.width)
+    drawing_w = max_double(drawing_w, child.x + child.width)
   }
-  graph.width = max_x + padding.right
-  graph.height = y + row_height + padding.bottom
+  let drawing_h = y + row_height
+
+  // Apply padding by translating rectangles (ELK's `applyPadding`).
+  for child in graph.children {
+    child.x = child.x + padding.left
+    child.y = child.y + padding.top
+  }
+  graph.width = drawing_w + pad_h
+  graph.height = drawing_h + pad_v
   route_edges_straight(graph)
 }
 
