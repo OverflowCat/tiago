@@ -170,3 +170,45 @@ test "double quoted substitution - composite errors" {
     _ => fail("expected InvalidSubstitution")
   }
 }
+
+///|
+test "double quoted substitution in edge label" {
+  let source =
+    #|vars: { x: hi }
+    #|a -> b: "${x}"
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  guard ir.edges[0].primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "hi")
+}
+
+///|
+test "double quoted substitution in edge label - composite errors" {
+  let source =
+    #|vars: { m: { a } }
+    #|a -> b: "${m}"
+  let (ast, _) = @parser.parse(source)
+  let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
+    e => Err(e)
+  }
+  match result {
+    Err(InvalidSubstitution(msg)) =>
+      assert_eq(msg, "cannot substitute map variable \"m\" in quotes")
+    _ => fail("expected InvalidSubstitution")
+  }
+}
+
+///|
+test "double quoted substitution in array element" {
+  let source =
+    #|vars: { x: hi }
+    #|arr: ["${x}"]
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("arr") is Some(arr) else { fail("expected arr") }
+  guard arr.array() is Some(a) else { fail("expected array") }
+  assert_eq(a.values.length(), 1)
+  guard a.values[0] is Value::Scalar(s) else { fail("expected scalar") }
+  assert_eq(s.to_string(), "hi")
+}

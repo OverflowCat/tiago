@@ -438,6 +438,10 @@ fn resolve_edge_primary_and_map(
               ),
             )
           }
+        @ast.StringValue::DoubleQuoted(dqs) =>
+          out_primary = Some(
+            resolve_double_quoted_in_field(p.range, dqs, vars_stack, "", false),
+          )
         _ => ()
       }
     _ => ()
@@ -461,6 +465,18 @@ fn resolve_scalar_in_array(
       match sv {
         @ast.StringValue::Unquoted(us) =>
           resolve_unquoted_in_array(arr, index, scalar.range, us, vars_stack)
+        @ast.StringValue::DoubleQuoted(dqs) => {
+          arr.values[index] = Value::Scalar(
+            resolve_double_quoted_in_field(
+              scalar.range,
+              dqs,
+              vars_stack,
+              "",
+              false,
+            ),
+          )
+          false
+        }
         _ => false
       }
     _ => false
