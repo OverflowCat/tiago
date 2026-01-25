@@ -220,6 +220,48 @@ test "railway layout offsets overlapping gap rails" {
 }
 
 ///|
+test "railway layout respects Right direction" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Right)
+  let a_box = patch.nodes.get("a").unwrap()
+  let b_box = patch.nodes.get("b").unwrap()
+  assert_true(b_box.x > a_box.x, msg="b should be to the right of a")
+}
+
+///|
+test "railway layout respects Left direction" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Left)
+  let a_box = patch.nodes.get("a").unwrap()
+  let b_box = patch.nodes.get("b").unwrap()
+  assert_true(b_box.x < a_box.x, msg="b should be to the left of a")
+}
+
+///|
+test "railway layout respects Up direction" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let config = @engine_api.LayoutConfig::new()
+  let patch = layout_graph(g, config, @engine_api.Up)
+  let a_box = patch.nodes.get("a").unwrap()
+  let b_box = patch.nodes.get("b").unwrap()
+  assert_true(b_box.y < a_box.y, msg="b should be above a")
+}
+
+///|
 test "railway layout fans out shared source ports" {
   let x = @graph.ObjectInput::new("x")
   let y1 = @graph.ObjectInput::new("y1")

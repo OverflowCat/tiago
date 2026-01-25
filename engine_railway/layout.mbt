@@ -910,7 +910,6 @@ fn place_nodes(
   direction : @engine_api.Direction,
   levels : Array[Level],
 ) -> (Map[String, @graph.Box], Array[Double]) {
-  ignore(direction) // TODO: take direction into consideration
   let boxes = Map::new()
   let level_heights = []
   let level_spans : Array[Double] = []
@@ -942,8 +941,16 @@ fn place_nodes(
       }
       (mw, mh)
     }
-    let cell = max_object_width + config.horizontal_spacing
-    let span = (level_length - 1).to_double() * cell + max_object_width
+    let span = match direction {
+      Down | Up => {
+        let cell = max_object_width + config.horizontal_spacing
+        (level_length - 1).to_double() * cell + max_object_width
+      }
+      Right | Left => {
+        let cell = max_object_height + config.vertical_spacing
+        (level_length - 1).to_double() * cell + max_object_height
+      }
+    }
     level_spans.push(span)
     level_max_heights.push(max_object_height)
     level_max_widths.push(max_object_width)
@@ -960,45 +967,130 @@ fn place_nodes(
     }
     let max_object_width = level_max_widths[i]
     let max_object_height = level_max_heights[i]
-    let level_height = max_object_height + config.vertical_spacing
-    let mut node_offset = (global_span - level_spans[i]) / 2.0
+    let (level_thickness, node_offset0) = match direction {
+      Down | Up =>
+        (
+          max_object_height + config.vertical_spacing,
+          (global_span - level_spans[i]) / 2.0,
+        )
+      Right | Left =>
+        (
+          max_object_width + config.horizontal_spacing,
+          (global_span - level_spans[i]) / 2.0,
+        )
+    }
+    let mut node_offset = node_offset0
 
     // put the downward virtual node 
-    let box = @graph.Box::new(
-      node_offset + max_object_width / 2,
-      layer_offset + max_object_height / 2,
-      0,
-      0,
-    )
+    let box = match direction {
+      Down | Up =>
+        @graph.Box::new(
+          node_offset + max_object_width / 2,
+          layer_offset + max_object_height / 2,
+          0,
+          0,
+        )
+      Right | Left =>
+        @graph.Box::new(
+          layer_offset + max_object_width / 2,
+          node_offset + max_object_height / 2,
+          0,
+          0,
+        )
+    }
     let label = forward_virtual_node_label(i)
     boxes[label] = box
-    node_offset += max_object_width + config.horizontal_spacing
+    node_offset += match direction {
+      Down | Up => max_object_width + config.horizontal_spacing
+      Right | Left => max_object_height + config.vertical_spacing
+    }
 
     // put physical nodes
     for obj in level_objects {
       let (w, h) = object_size(obj, config)
-      let box = @graph.Box::new(
-        node_offset + max_object_width / 2 - w / 2,
-        layer_offset + max_object_height / 2 - h / 2,
-        w,
-        h,
-      )
+      let box = match direction {
+        Down | Up =>
+          @graph.Box::new(
+            node_offset + max_object_width / 2 - w / 2,
+            layer_offset + max_object_height / 2 - h / 2,
+            w,
+            h,
+          )
+        Right | Left =>
+          @graph.Box::new(
+            layer_offset + max_object_width / 2 - w / 2,
+            node_offset + max_object_height / 2 - h / 2,
+            w,
+            h,
+          )
+      }
       let label = obj.id
       boxes[label] = box
-      node_offset += max_object_width + config.horizontal_spacing
+      node_offset += match direction {
+        Down | Up => max_object_width + config.horizontal_spacing
+        Right | Left => max_object_height + config.vertical_spacing
+      }
     }
 
     // put the upward virtual node
-    let box = @graph.Box::new(
-      node_offset + max_object_width / 2,
-      layer_offset + max_object_height / 2,
-      0,
-      0,
-    )
+    let box = match direction {
+      Down | Up =>
+        @graph.Box::new(
+          node_offset + max_object_width / 2,
+          layer_offset + max_object_height / 2,
+          0,
+          0,
+        )
+      Right | Left =>
+        @graph.Box::new(
+          layer_offset + max_object_width / 2,
+          node_offset + max_object_height / 2,
+          0,
+          0,
+        )
+    }
     let label = backward_virtual_node_label(i)
     boxes[label] = box
-    level_heights.push(level_height)
-    layer_offset += level_height
+    level_heights.push(level_thickness)
+    layer_offset += level_thickness
+  }
+  // Mirror coordinates for reverse flow directions so depth increases "against" the axis.
+  match direction {
+    Up => {
+      let mut max_y = 0.0
+      for entry in boxes {
+        let b = entry.1
+        max_y = @cmp.maximum(max_y, b.y + b.height)
+      }
+      for entry in boxes {
+        let id = entry.0
+        let b = entry.1
+        boxes[id] = @graph.Box::new(
+          b.x,
+          max_y - (b.y + b.height),
+          b.width,
+          b.height,
+        )
+      }
+    }
+    Left => {
+      let mut max_x = 0.0
+      for entry in boxes {
+        let b = entry.1
+        max_x = @cmp.maximum(max_x, b.x + b.width)
+      }
+      for entry in boxes {
+        let id = entry.0
+        let b = entry.1
+        boxes[id] = @graph.Box::new(
+          max_x - (b.x + b.width),
+          b.y,
+          b.width,
+          b.height,
+        )
+      }
+    }
+    _ => ()
   }
   (boxes, level_heights)
 }
