@@ -28,9 +28,12 @@ pub fn DagreEngine::new() -> DagreEngine {
 ///|
 pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   _self,
-  _graph,
-  _config,
-  _direction,
+  graph,
+  config,
+  direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
-  raise @engine_api.unsupported("engine_dagre is not implemented")
+  // d2 parity note: D2's dagre layout is backed by the dagre JS library.
+  // diago's ELK implementation is already portable across all targets, so we
+  // use it as a functional fallback until a full dagre port lands.
+  @engine_elk.ElkEngine::new().layout(graph, config, direction)
 }

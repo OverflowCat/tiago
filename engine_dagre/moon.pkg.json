@@ -1,6 +1,12 @@
 {
   "import": [
     "Milky2018/diago/engine_api",
+    "Milky2018/diago/engine_elk",
     "Milky2018/diago/graph"
+  ],
+  "test-import": [
+    "Milky2018/diago/parser",
+    "Milky2018/diago/ir",
+    "Milky2018/diago/exporter"
   ]
 }
