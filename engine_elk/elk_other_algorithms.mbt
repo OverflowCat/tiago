@@ -218,37 +218,94 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   }
 
   // If a target width is explicitly provided (elk-reference WidthApproximationStrategy.TARGET_WIDTH),
-  // switch to the compaction-based placement (ported from elk-reference tests).
-  let mut target_width_override : Double? = None
+  // If the caller provides ELK rectpacking options via `options.custom`, switch
+  // to an elk-reference-compatible code path (phased width approximation +
+  // packing strategy selection). Otherwise, keep the existing simple placeholder
+  // behavior for stability.
+  let mut custom_target_width : Double? = None
+  let mut custom_packing_strategy : String? = None
+  let mut custom_optimization_goal : String? = None
+  let mut custom_last_place_shift : Bool? = None
   match options.custom {
-    Some(custom) =>
+    Some(custom) => {
       match
         custom.get("org.eclipse.elk.rectpacking.widthApproximation.targetWidth") {
         Some(PropertyValue::Double(v)) if v > 0.0 =>
-          target_width_override = Some(v)
+          custom_target_width = Some(v)
         _ => ()
       }
-    None => ()
-  }
-  match target_width_override {
-    Some(target_width) => {
-      let pad_h = padding.left + padding.right
-      let pad_v = padding.top + padding.bottom
-      let (drawing_w, drawing_h) = rp_compact_layout(
-        graph.children,
-        target_width,
-        spacing,
-      )
-      for child in graph.children {
-        child.x = child.x + padding.left
-        child.y = child.y + padding.top
+      match custom.get("org.eclipse.elk.rectpacking.packing.strategy") {
+        Some(PropertyValue::Enum(v)) => custom_packing_strategy = Some(v)
+        Some(PropertyValue::String(v)) => custom_packing_strategy = Some(v)
+        _ => ()
       }
-      graph.width = drawing_w + pad_h
-      graph.height = drawing_h + pad_v
-      route_edges_straight(graph)
-      return
+      match
+        custom.get(
+          "org.eclipse.elk.rectpacking.widthApproximation.optimizationGoal",
+        ) {
+        Some(PropertyValue::Enum(v)) => custom_optimization_goal = Some(v)
+        Some(PropertyValue::String(v)) => custom_optimization_goal = Some(v)
+        _ => ()
+      }
+      match
+        custom.get(
+          "org.eclipse.elk.rectpacking.widthApproximation.lastPlaceShift",
+        ) {
+        Some(PropertyValue::Bool(v)) => custom_last_place_shift = Some(v)
+        _ => ()
+      }
     }
     None => ()
+  }
+  if custom_target_width is Some(_) || custom_packing_strategy is Some(_) {
+    let pad_h = padding.left + padding.right
+    let pad_v = padding.top + padding.bottom
+
+    // Phase 1: compute a target width.
+    let target_width = match custom_target_width {
+      Some(tw) => tw
+      None => {
+        let goal = rp_parse_optimization_goal(custom_optimization_goal)
+        let lp_shift = custom_last_place_shift.unwrap_or(true)
+        let (w, _h) = rp_greedy_width_approximation(
+          graph.children,
+          aspect_ratio,
+          goal,
+          lp_shift,
+          spacing,
+          padding,
+        )
+        w
+      }
+    }
+
+    // Phase 2: packing strategy.
+    let packing_strategy = custom_packing_strategy.unwrap_or("COMPACTION")
+    let (drawing_w, drawing_h) = match packing_strategy {
+      "NONE" => {
+        // Keep coordinates from width approximation (if any), or user-provided coordinates.
+        let (w, h) = rp_calculate_rectangles_dimensions(graph.children)
+        (max_double(w, target_width), h)
+      }
+      "SIMPLE" => {
+        rp_reset_coordinates(graph.children)
+        let (w, h) = rp_simple_place_rows(graph.children, target_width, spacing)
+        (w, h)
+      }
+      _ =>
+        // Default: COMPACTION
+        rp_compact_layout(graph.children, target_width, spacing)
+    }
+
+    // Apply padding (ELK's `applyPadding`).
+    for child in graph.children {
+      child.x = child.x + padding.left
+      child.y = child.y + padding.top
+    }
+    graph.width = drawing_w + pad_h
+    graph.height = drawing_h + pad_v
+    route_edges_straight(graph)
+    return
   }
 
   // Approximate a target drawing width (excluding padding). We solve the
@@ -300,6 +357,48 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   graph.width = drawing_w + pad_h
   graph.height = drawing_h + pad_v
   route_edges_straight(graph)
+}
+
+///|
+fn rp_calculate_rectangles_dimensions(
+  rectangles : Array[ElkNode],
+) -> (Double, Double) {
+  // elk-reference DrawingUtil.calculateDimensions(rectangles)
+  let mut max_width = 0.0
+  let mut max_height = 0.0
+  for node in rectangles {
+    max_width = max_double(max_width, node.width + node.x)
+    max_height = max_double(max_height, node.height + node.y)
+  }
+  (max_width, max_height)
+}
+
+///|
+fn rp_simple_place_rows(
+  rectangles : Array[ElkNode],
+  target_width : Double,
+  node_node_spacing : Double,
+) -> (Double, Double) {
+  // Minimal port of elk-reference p2packing.SimplePlacement's row placement
+  // (without block/stack bookkeeping).
+  let mut x = 0.0
+  let mut y = 0.0
+  let mut row_height = 0.0
+  let mut drawing_w = 0.0
+  for rect in rectangles {
+    if x > 0.0 && x + rect.width > target_width {
+      x = 0.0
+      y = y + row_height + node_node_spacing
+      row_height = 0.0
+    }
+    rect.x = x
+    rect.y = y
+    x = x + rect.width + node_node_spacing
+    row_height = max_double(row_height, rect.height)
+    drawing_w = max_double(drawing_w, rect.x + rect.width)
+  }
+  let drawing_h = y + row_height
+  (drawing_w, drawing_h)
 }
 
 ///|
