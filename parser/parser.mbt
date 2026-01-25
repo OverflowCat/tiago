@@ -20,6 +20,7 @@ struct Parser {
   source : String
   tokens : Array[@lexer.Token]
   mut pos : Int
+  mut depth : Int
   errors : ParseErrors
 } derive(Show)
 
@@ -47,7 +48,7 @@ pub fn parse_with_path(
 
 ///|
 pub fn Parser::new(source : String, tokens : Array[@lexer.Token]) -> Parser {
-  { source, tokens, pos: 0, errors: ParseErrors::new() }
+  { source, tokens, pos: 0, depth: 0, errors: ParseErrors::new() }
 }
 
 ///|
@@ -134,6 +135,9 @@ fn Parser::error(self : Parser, message : String) -> Unit {
 
 ///|
 fn Parser::parse_map(self : Parser, is_file_map : Bool) -> @ast.Map {
+  if not(is_file_map) {
+    self.depth += 1
+  }
   let start = self.current().range.start
   let nodes : Array[@ast.MapNode] = []
   while not(self.is_at_end()) {
@@ -172,7 +176,11 @@ fn Parser::parse_map(self : Parser, is_file_map : Bool) -> @ast.Map {
     }
   }
   let end = self.current().range.end
-  @ast.Map::new(@lexer.Range::new(start, end), nodes)
+  let map = @ast.Map::new(@lexer.Range::new(start, end), nodes)
+  if not(is_file_map) {
+    self.depth -= 1
+  }
+  map
 }
 
 ///|
@@ -973,8 +981,288 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
         ),
       )
     }
+    @lexer.Pipe =>
+      match self.parse_block_string() {
+        Some(bs) => Some(@ast.Scalar::String(@ast.StringValue::Block(bs)))
+        None => None
+      }
     _ => None
   }
+}
+
+///|
+fn Parser::parse_block_string(self : Parser) -> @ast.BlockString? {
+  // Ported from ../d2/d2parser/parse.go:parseBlockString (adapted to token-based parsing).
+  let pipe = self.advance() // consume '|'
+  let start = pipe.range.start
+  let path = pipe.range.path
+  self.depth += 1
+  let chars = self.source.to_array()
+  let mut i = start.offset + 1
+
+  // Parse quote symbols (non-whitespace, non-[a-zA-Z0-9_]).
+  let quote_buf = StringBuilder::new()
+  while i < chars.length() {
+    let c = chars[i]
+    if is_block_string_tag_char(c) || is_block_string_space(c) {
+      break
+    }
+    quote_buf.write_char(c)
+    i = i + 1
+  }
+  let quote = quote_buf.to_string()
+
+  // Parse tag (until whitespace).
+  let tag_buf = StringBuilder::new()
+  while i < chars.length() {
+    let c = chars[i]
+    if is_block_string_space(c) {
+      break
+    }
+    tag_buf.write_char(c)
+    i = i + 1
+  }
+  let mut tag = tag_buf.to_string()
+  if tag.length() == 0 {
+    tag = "md"
+  }
+
+  // Skip whitespace until newline. If we see non-whitespace before newline, it has an implicit indent.
+  let mut implicit_indent = ""
+  while i < chars.length() {
+    let c = chars[i]
+    if not(is_block_string_space(c)) {
+      implicit_indent = self.get_indent()
+      break
+    }
+    i = i + 1
+    if c == '\n' {
+      break
+    }
+  }
+  let content_start = i
+
+  // Find terminator: quote + "|"
+  let end_marker = quote + "|"
+  let marker_chars = end_marker.to_array()
+  let mut close_start = -1
+  let mut j = content_start
+  while j + marker_chars.length() <= chars.length() {
+    if starts_with_chars(chars, j, marker_chars) {
+      close_start = j
+      break
+    }
+    j = j + 1
+  }
+  if close_start < 0 {
+    self.errors.add(
+      pipe.range,
+      "block string must be terminated with \{quote}|",
+    )
+    self.depth -= 1
+    return None
+  }
+  let close_end = close_start + marker_chars.length()
+
+  // Advance token cursor through the terminator (but not beyond it).
+  let mut end_pos = pipe.range.end
+  while not(self.is_at_end()) && self.current().range.end.offset <= close_end {
+    let t = self.advance()
+    end_pos = t.range.end
+  }
+
+  // Extract raw content and apply d2 trimming rules.
+  let mut value = substring_by_offsets(self.source, content_start, close_start)
+  if implicit_indent.length() > 0 {
+    value = implicit_indent + value
+  }
+  value = trim_common_indent(trim_space_after_last_newline(value))
+  self.depth -= 1
+  Some(
+    @ast.BlockString::new(
+      @lexer.Range::with_path(path, start, end_pos),
+      quote,
+      tag,
+      value,
+    ),
+  )
+}
+
+///|
+fn Parser::get_indent(self : Parser) -> String {
+  let buf = StringBuilder::new()
+  let n = self.depth * 2
+  let mut i = 0
+  while i < n {
+    buf.write_char(' ')
+    i = i + 1
+  }
+  buf.to_string()
+}
+
+///|
+fn is_block_string_tag_char(c : Char) -> Bool {
+  (c >= 'a' && c <= 'z') ||
+  (c >= 'A' && c <= 'Z') ||
+  (c >= '0' && c <= '9') ||
+  c == '_'
+}
+
+///|
+fn is_block_string_space(c : Char) -> Bool {
+  c == ' ' || c == '\t' || c == '\r' || c == '\n'
+}
+
+///|
+fn starts_with_chars(hay : Array[Char], at : Int, needle : Array[Char]) -> Bool {
+  let mut i = 0
+  while i < needle.length() {
+    if at + i >= hay.length() || hay[at + i] != needle[i] {
+      return false
+    }
+    i = i + 1
+  }
+  true
+}
+
+///|
+fn substring_by_offsets(s : String, start : Int, end : Int) -> String {
+  let chars = s.to_array()
+  let buf = StringBuilder::new()
+  let mut i = start
+  while i < end && i < chars.length() {
+    buf.write_char(chars[i])
+    i = i + 1
+  }
+  buf.to_string()
+}
+
+///|
+fn trim_space_after_last_newline(s : String) -> String {
+  let chars = s.to_array()
+  let mut last_nl = -1
+  for i, c in chars {
+    if c == '\n' {
+      last_nl = i
+    }
+  }
+  if last_nl < 0 {
+    return trim_right_ws(s)
+  }
+  let last_line = substring_by_offsets(s, last_nl + 1, chars.length())
+  let trimmed_last_line = trim_right_ws(last_line)
+  if trimmed_last_line.length() == 0 {
+    return substring_by_offsets(s, 0, last_nl)
+  }
+  substring_by_offsets(s, 0, last_nl + 1) + trimmed_last_line
+}
+
+///|
+fn trim_right_ws(s : String) -> String {
+  let chars = s.to_array()
+  let mut end = chars.length()
+  while end > 0 {
+    let c = chars[end - 1]
+    if is_block_string_space(c) {
+      end = end - 1
+      continue
+    }
+    break
+  }
+  substring_by_offsets(s, 0, end)
+}
+
+///|
+fn trim_common_indent(s : String) -> String {
+  let lines = split_lines(s)
+  let mut common = ""
+  for l in lines {
+    if l.length() == 0 {
+      continue
+    }
+    let (indent, rest) = split_leading_indent(l, -1)
+    if indent.length() == 0 {
+      return s
+    }
+    if rest.length() == 0 {
+      continue
+    }
+    if common.length() == 0 || indent.length() < common.length() {
+      common = indent
+    }
+  }
+  if common.length() == 0 {
+    return s
+  }
+  trim_indent(s, common)
+}
+
+///|
+fn trim_indent(s : String, indent : String) -> String {
+  let lines = split_lines(s)
+  let out : Array[String] = []
+  for l in lines {
+    if l.length() == 0 {
+      out.push(l)
+      continue
+    }
+    let (_, rest) = split_leading_indent(l, indent.length())
+    out.push(rest)
+  }
+  join_lines(out)
+}
+
+///|
+fn split_lines(s : String) -> Array[String] {
+  let chars = s.to_array()
+  let out : Array[String] = []
+  let mut start = 0
+  let mut i = 0
+  while i < chars.length() {
+    if chars[i] == '\n' {
+      out.push(substring_by_offsets(s, start, i))
+      start = i + 1
+    }
+    i = i + 1
+  }
+  out.push(substring_by_offsets(s, start, chars.length()))
+  out
+}
+
+///|
+fn join_lines(lines : Array[String]) -> String {
+  let buf = StringBuilder::new()
+  for i, l in lines {
+    if i > 0 {
+      buf.write_char('\n')
+    }
+    buf.write_string(l)
+  }
+  buf.to_string()
+}
+
+///|
+fn split_leading_indent(s : String, max_spaces : Int) -> (String, String) {
+  let chars = s.to_array()
+  let indent_buf = StringBuilder::new()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if not(is_block_string_space(c)) {
+      break
+    }
+    i = i + 1
+    if c != '\t' {
+      indent_buf.write_char(c)
+    } else {
+      indent_buf.write_char(' ')
+      indent_buf.write_char(' ')
+    }
+    if max_spaces > -1 && indent_buf.to_string().length() == max_spaces {
+      break
+    }
+  }
+  (indent_buf.to_string(), substring_by_offsets(s, i, chars.length()))
 }
 
 ///|

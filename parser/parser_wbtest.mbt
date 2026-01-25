@@ -233,6 +233,60 @@ test "parse array" {
 }
 
 ///|
+test "parse block string |md" {
+  let source =
+    #|x: |md
+    #|  hello
+    #||
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else { fail("expected Key") }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string scalar")
+  }
+  guard sv is @ast.StringValue::Block(bs) else { fail("expected block") }
+  assert_eq(bs.quote, "")
+  assert_eq(bs.tag, "md")
+  assert_eq(bs.value, "hello")
+}
+
+///|
+test "parse block string defaults tag to md" {
+  let source =
+    #|x: |
+    #|  hello
+    #||
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else { fail("expected Key") }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string scalar")
+  }
+  guard sv is @ast.StringValue::Block(bs) else { fail("expected block") }
+  assert_eq(bs.quote, "")
+  assert_eq(bs.tag, "md")
+  assert_eq(bs.value, "hello")
+}
+
+///|
+test "parse block string with quote (||md ... ||)" {
+  let source =
+    #|x: ||md
+    #|  a | b
+    #|||
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else { fail("expected Key") }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string scalar")
+  }
+  guard sv is @ast.StringValue::Block(bs) else { fail("expected block") }
+  assert_eq(bs.quote, "|")
+  assert_eq(bs.tag, "md")
+  assert_eq(bs.value, "a | b")
+}
+
+///|
 test "parse multiple keys" {
   let source =
     #|x: 1

@@ -175,6 +175,14 @@ fn resolve_scalar_in_field(
           )
           (false, (Some(resolved), composite))
         }
+        @ast.StringValue::Block(bs) => {
+          let resolved = resolve_block_string_in_scalar(
+            primary.range,
+            bs,
+            vars_stack,
+          )
+          (false, (Some(resolved), composite))
+        }
         _ => (false, (Some(primary), composite))
       }
     _ => (false, (Some(primary), composite))
@@ -442,6 +450,10 @@ fn resolve_edge_primary_and_map(
           out_primary = Some(
             resolve_double_quoted_in_field(p.range, dqs, vars_stack, "", false),
           )
+        @ast.StringValue::Block(bs) =>
+          out_primary = Some(
+            resolve_block_string_in_scalar(p.range, bs, vars_stack),
+          )
         _ => ()
       }
     _ => ()
@@ -474,6 +486,12 @@ fn resolve_scalar_in_array(
               "",
               false,
             ),
+          )
+          false
+        }
+        @ast.StringValue::Block(bs) => {
+          arr.values[index] = Value::Scalar(
+            resolve_block_string_in_scalar(scalar.range, bs, vars_stack),
           )
           false
         }
@@ -565,6 +583,138 @@ fn resolve_unquoted_in_array(
     )
     false
   }
+}
+
+// ============================================================================
+// Block string substitution resolution (d2 parity)
+// ============================================================================
+
+///|
+fn resolve_block_string_in_scalar(
+  range : @lexer.Range,
+  bs : @ast.BlockString,
+  vars_stack : Array[Map],
+) -> Scalar {
+  let variables : Array[(String, String)] = []
+  // Our vars_stack is current-scope-first. Collect outer-to-inner so inner wins.
+  let mut i = vars_stack.length() - 1
+  while i >= 0 {
+    collect_block_string_variables(vars_stack[i], variables)
+    i = i - 1
+  }
+  let replaced = replace_substitutions_markdown(bs.value, variables)
+  let new_bs = @ast.BlockString::new(range, bs.quote, bs.tag, replaced)
+  Scalar::at(range, ScalarValue::String(@ast.StringValue::Block(new_bs)))
+}
+
+///|
+fn collect_block_string_variables(
+  vars : Map,
+  out : Array[(String, String)],
+) -> Unit {
+  for f in vars.fields {
+    match f.primary {
+      Some(p) => vars_put(out, f.name, p.to_string())
+      None => ()
+    }
+    match f.composite {
+      Some(Composite::Map(m)) => {
+        let nested : Array[(String, String)] = []
+        collect_block_string_variables(m, nested)
+        for kv in nested {
+          vars_put(out, "\{f.name}.\{kv.0}", kv.1)
+        }
+        // Also expose nested keys without prefix (d2 behavior).
+        collect_block_string_variables(m, out)
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn vars_put(
+  out : Array[(String, String)],
+  key : String,
+  value : String,
+) -> Unit {
+  for i, kv in out {
+    if kv.0 == key {
+      out[i] = (key, value)
+      return
+    }
+  }
+  out.push((key, value))
+}
+
+///|
+fn replace_substitutions_markdown(
+  md_text : String,
+  variables : Array[(String, String)],
+) -> String {
+  // Best-effort port of ../d2/lib/textmeasure/substitutions.go:
+  // replace ${var} outside inline/fenced code spans.
+  let chars = md_text.to_array()
+  let out = StringBuilder::new()
+  let seg = StringBuilder::new()
+  let mut in_fenced = false
+  let mut in_inline = false
+  let mut i = 0
+  while i < chars.length() {
+    // Toggle fenced code blocks on ``` when not in inline code.
+    if not(in_inline) &&
+      i + 2 < chars.length() &&
+      chars[i] == '`' &&
+      chars[i + 1] == '`' &&
+      chars[i + 2] == '`' {
+      out.write_string(replace_variables(seg.to_string(), variables))
+      seg.reset()
+      out.write_string("```")
+      in_fenced = not(in_fenced)
+      i = i + 3
+      continue
+    }
+    // Toggle inline code on ` when not in fenced code.
+    if not(in_fenced) && chars[i] == '`' {
+      out.write_string(replace_variables(seg.to_string(), variables))
+      seg.reset()
+      out.write_char('`')
+      in_inline = not(in_inline)
+      i = i + 1
+      continue
+    }
+    if in_fenced || in_inline {
+      out.write_char(chars[i])
+    } else {
+      seg.write_char(chars[i])
+    }
+    i = i + 1
+  }
+  out.write_string(replace_variables(seg.to_string(), variables))
+  out.to_string()
+}
+
+///|
+fn replace_variables(
+  text : String,
+  variables : Array[(String, String)],
+) -> String {
+  let mut out = text
+  for kv in variables {
+    // Avoid embedding a raw "${" substring in JS backend template literals.
+    out = out.replace_all(old=substitution_pattern(kv.0), new=kv.1)
+  }
+  out
+}
+
+///|
+fn substitution_pattern(key : String) -> String {
+  let buf = StringBuilder::new()
+  buf.write_char('$')
+  buf.write_char('{')
+  buf.write_string(key)
+  buf.write_char('}')
+  buf.to_string()
 }
 
 // ============================================================================

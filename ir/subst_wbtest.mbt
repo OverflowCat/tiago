@@ -212,3 +212,45 @@ test "double quoted substitution in array element" {
   guard a.values[0] is Value::Scalar(s) else { fail("expected scalar") }
   assert_eq(s.to_string(), "hi")
 }
+
+///|
+test "block string substitution" {
+  let source =
+    #|vars: { x: hi }
+    #|label: |md
+    #|  pre ${x} post
+    #||
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "pre hi post")
+}
+
+///|
+test "block string substitution skips code spans" {
+  let source =
+    #|vars: { x: hi }
+    #|label: |md
+    #|  pre ${x} `code ${x}` post
+    #||
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "pre hi `code ${x}` post")
+}
+
+///|
+test "block string substitution supports dotted and unprefixed nested vars" {
+  let source =
+    #|vars: { m: { a: hi } }
+    #|label: |md
+    #|  ${m.a} ${a}
+    #||
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("label") is Some(lbl) else { fail("expected label") }
+  guard lbl.primary is Some(p) else { fail("expected primary") }
+  assert_eq(p.to_string(), "hi hi")
+}
