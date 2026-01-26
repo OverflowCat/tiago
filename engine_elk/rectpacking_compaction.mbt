@@ -938,15 +938,29 @@ fn rp_calculate_dimensions(
 }
 
 ///|
-fn rp_compact_layout(
+fn rp_compact_layout_with_options(
   rectangles : Array[ElkNode],
   target_width : Double,
   node_node_spacing : Double,
+  row_height_reevaluation : Bool,
 ) -> (Double, Double) {
+  let (_state, rows) = rp_compact_place_stateful(
+    rectangles, target_width, node_node_spacing, row_height_reevaluation,
+  )
+  rp_calculate_dimensions(rows, node_node_spacing)
+}
+
+///|
+fn rp_compact_place_stateful(
+  rectangles : Array[ElkNode],
+  target_width : Double,
+  node_node_spacing : Double,
+  row_height_reevaluation : Bool,
+) -> (RpState, Array[RpRectRow]) {
   let state = RpState::new()
   rp_reset_coordinates(rectangles)
   let rows = rp_initial_place(
-    state, rectangles, target_width, node_node_spacing, false,
+    state, rectangles, target_width, node_node_spacing, row_height_reevaluation,
   )
   let mut row_idx = 0
   while row_idx < rows.length() {
@@ -955,7 +969,7 @@ fn rp_compact_layout(
       rows[row_idx].set_y(state, prev.y + prev.height + node_node_spacing)
     }
     let (_changed, compact_again) = rp_compact(
-      state, rows, row_idx, target_width, node_node_spacing, false,
+      state, rows, row_idx, target_width, node_node_spacing, row_height_reevaluation,
     )
     if compact_again {
       // Reset the row such that stacks are removed, blocks are not fixed.
@@ -977,7 +991,19 @@ fn rp_compact_layout(
     }
     row_idx = row_idx + 1
   }
-  rp_calculate_dimensions(rows, node_node_spacing)
+  (state, rows)
+}
+
+///|
+#warnings("-unused_value")
+fn rp_compact_layout(
+  rectangles : Array[ElkNode],
+  target_width : Double,
+  node_node_spacing : Double,
+) -> (Double, Double) {
+  rp_compact_layout_with_options(
+    rectangles, target_width, node_node_spacing, false,
+  )
 }
 
 ///|
@@ -1293,7 +1319,10 @@ fn rp_initial_place(
     let potential_row_width = current_width +
       rect.width +
       (if first_block.children.is_empty() { 0.0 } else { node_node_spacing })
-    if potential_row_width > bounding_width {
+    let in_new_row = rect.properties
+      .get_bool("org.eclipse.elk.rectpacking.inNewRow")
+      .unwrap_or(false)
+    if potential_row_width > bounding_width || in_new_row {
       // Add rect in new block in new row.
       current_width = 0.0
       drawing_height = drawing_height + rows[row_id].height + node_node_spacing

@@ -226,6 +226,9 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   let mut custom_packing_strategy : String? = None
   let mut custom_optimization_goal : String? = None
   let mut custom_last_place_shift : Bool? = None
+  let mut custom_order_by_size = false
+  let mut custom_row_height_reevaluation = false
+  let mut custom_whitespace_elimination_strategy : String? = None
   match options.custom {
     Some(custom) => {
       match
@@ -254,12 +257,39 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
         Some(PropertyValue::Bool(v)) => custom_last_place_shift = Some(v)
         _ => ()
       }
+      match custom.get("org.eclipse.elk.rectpacking.orderBySize") {
+        Some(PropertyValue::Bool(v)) => custom_order_by_size = v
+        _ => ()
+      }
+      match
+        custom.get(
+          "org.eclipse.elk.rectpacking.packing.compaction.rowHeightReevaluation",
+        ) {
+        Some(PropertyValue::Bool(v)) => custom_row_height_reevaluation = v
+        _ => ()
+      }
+      match
+        custom.get("org.eclipse.elk.rectpacking.whiteSpaceElimination.strategy") {
+        Some(PropertyValue::Enum(v)) =>
+          custom_whitespace_elimination_strategy = Some(v)
+        Some(PropertyValue::String(v)) =>
+          custom_whitespace_elimination_strategy = Some(v)
+        _ => ()
+      }
     }
     None => ()
   }
   if custom_target_width is Some(_) || custom_packing_strategy is Some(_) {
     let pad_h = padding.left + padding.right
     let pad_v = padding.top + padding.bottom
+
+    // Phase-independent processors (elk-reference RectPackingLayoutProvider).
+    if custom_order_by_size {
+      rp_order_by_size(graph.children)
+    }
+    if options.interactive.unwrap_or(false) {
+      rp_interactive_reorder(graph.children)
+    }
 
     // Phase 1: compute a target width.
     let target_width = match custom_target_width {
@@ -281,20 +311,58 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
 
     // Phase 2: packing strategy.
     let packing_strategy = custom_packing_strategy.unwrap_or("COMPACTION")
+    let whitespace_strategy = custom_whitespace_elimination_strategy.unwrap_or(
+      "NONE",
+    )
     let (drawing_w, drawing_h) = match packing_strategy {
-      "NONE" => {
+      "NONE" =>
         // Keep coordinates from width approximation (if any), or user-provided coordinates.
-        let (w, h) = rp_calculate_rectangles_dimensions(graph.children)
-        (max_double(w, target_width), h)
-      }
-      "SIMPLE" => {
-        rp_reset_coordinates(graph.children)
-        let (w, h) = rp_simple_place_rows(graph.children, target_width, spacing)
-        (w, h)
-      }
+        rp_calculate_rectangles_dimensions(graph.children)
+      "SIMPLE" =>
+        if whitespace_strategy == "NONE" {
+          rp_simple_layout_with_blocks(
+            graph.children,
+            target_width,
+            spacing,
+            custom_row_height_reevaluation,
+          )
+        } else {
+          let state = RpState::new()
+          rp_reset_coordinates(graph.children)
+          let rows = rp_initial_place(
+            state,
+            graph.children,
+            target_width,
+            spacing,
+            custom_row_height_reevaluation,
+          )
+          rp_simple_ensure_stacks(state, rows, spacing)
+          let (w, h) = rp_calculate_dimensions(rows, spacing)
+          rp_whitespace_eliminate(
+            state, rows, w, h, aspect_ratio, whitespace_strategy,
+          )
+        }
       _ =>
         // Default: COMPACTION
-        rp_compact_layout(graph.children, target_width, spacing)
+        if whitespace_strategy == "NONE" {
+          rp_compact_layout_with_options(
+            graph.children,
+            target_width,
+            spacing,
+            custom_row_height_reevaluation,
+          )
+        } else {
+          let (state, rows) = rp_compact_place_stateful(
+            graph.children,
+            target_width,
+            spacing,
+            custom_row_height_reevaluation,
+          )
+          let (w, h) = rp_calculate_dimensions(rows, spacing)
+          rp_whitespace_eliminate(
+            state, rows, w, h, aspect_ratio, whitespace_strategy,
+          )
+        }
     }
 
     // Apply padding (ELK's `applyPadding`).
@@ -374,31 +442,119 @@ fn rp_calculate_rectangles_dimensions(
 }
 
 ///|
-fn rp_simple_place_rows(
+fn rp_simple_layout_with_blocks(
   rectangles : Array[ElkNode],
   target_width : Double,
   node_node_spacing : Double,
+  row_height_reevaluation : Bool,
 ) -> (Double, Double) {
-  // Minimal port of elk-reference p2packing.SimplePlacement's row placement
-  // (without block/stack bookkeeping).
-  let mut x = 0.0
-  let mut y = 0.0
-  let mut row_height = 0.0
-  let mut drawing_w = 0.0
-  for rect in rectangles {
-    if x > 0.0 && x + rect.width > target_width {
-      x = 0.0
-      y = y + row_height + node_node_spacing
-      row_height = 0.0
-    }
-    rect.x = x
-    rect.y = y
-    x = x + rect.width + node_node_spacing
-    row_height = max_double(row_height, rect.height)
-    drawing_w = max_double(drawing_w, rect.x + rect.width)
+  // Ported from elk-reference p2packing.SimplePlacement: use InitialPlacement's
+  // row/block logic for consistent coordinates.
+  let state = RpState::new()
+  rp_reset_coordinates(rectangles)
+  let rows = rp_initial_place(
+    state, rectangles, target_width, node_node_spacing, row_height_reevaluation,
+  )
+  rp_calculate_dimensions(rows, node_node_spacing)
+}
+
+///|
+fn rp_order_by_size(rectangles : Array[ElkNode]) -> Unit {
+  // elk-reference intermediate.NodeSizeReorderer (height descending, stable).
+  let keyed : Array[(Double, Int, ElkNode)] = []
+  for i, n in rectangles {
+    keyed.push((n.height, i, n))
   }
-  let drawing_h = y + row_height
-  (drawing_w, drawing_h)
+  keyed.sort_by(fn(a, b) {
+    let (ha, ia, _) = a
+    let (hb, ib, _) = b
+    if hb > ha {
+      1
+    } else if hb < ha {
+      -1
+    } else {
+      ia - ib
+    }
+  })
+  let mut idx = 0
+  for item in keyed {
+    let (_, _, n) = item
+    rectangles[idx] = n
+    idx = idx + 1
+  }
+}
+
+///|
+fn rp_interactive_reorder(rectangles : Array[ElkNode]) -> Unit {
+  // elk-reference intermediate.InteractiveNodeReorderer
+  let fixed : Array[(Int, Int, ElkNode)] = []
+  let remaining : Array[ElkNode] = []
+  for i, n in rectangles {
+    match n.properties.get_int("org.eclipse.elk.rectpacking.desiredPosition") {
+      Some(pos) => fixed.push((pos, i, n))
+      None => remaining.push(n)
+    }
+  }
+  fixed.sort_by(fn(a, b) {
+    let (pa, ia, _) = a
+    let (pb, ib, _) = b
+    if pa != pb {
+      pa - pb
+    } else {
+      ia - ib
+    }
+  })
+  let new_order : Array[ElkNode] = []
+  for n in remaining {
+    new_order.push(n)
+  }
+  for item in fixed {
+    let (pos, _orig, n) = item
+    let mut p = pos
+    if p < 0 {
+      p = 0
+    }
+    if p > new_order.length() {
+      p = new_order.length()
+    }
+    rp_array_insert(new_order, p, n)
+  }
+
+  // Write back order.
+  let mut i = 0
+  for n in new_order {
+    rectangles[i] = n
+    i = i + 1
+  }
+
+  // Set current positions.
+  let mut idx = 0
+  for n in rectangles {
+    n.properties.set(
+      "org.eclipse.elk.rectpacking.currentPosition",
+      PropertyValue::Int(idx),
+    )
+    idx = idx + 1
+  }
+}
+
+///|
+fn[T] rp_array_insert(arr : Array[T], index : Int, value : T) -> Unit {
+  // Manual insert to avoid relying on stdlib API details.
+  let mut idx = index
+  if idx < 0 {
+    idx = 0
+  }
+  if idx > arr.length() {
+    idx = arr.length()
+  }
+  arr.push(value)
+  let mut i = arr.length() - 1
+  while i > idx {
+    arr[i] = arr[i - 1]
+    i = i - 1
+  }
+  arr[idx] = value
 }
 
 ///|
