@@ -229,6 +229,7 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   let mut custom_order_by_size = false
   let mut custom_row_height_reevaluation = false
   let mut custom_whitespace_elimination_strategy : String? = None
+  let mut custom_trybox = false
   match options.custom {
     Some(custom) => {
       match
@@ -276,12 +277,37 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
           custom_whitespace_elimination_strategy = Some(v)
         _ => ()
       }
+      match custom.get("org.eclipse.elk.rectpacking.trybox") {
+        Some(PropertyValue::Bool(v)) => custom_trybox = v
+        _ => ()
+      }
     }
     None => ()
   }
-  if custom_target_width is Some(_) || custom_packing_strategy is Some(_) {
+  let use_reference_rectpacking = custom_target_width is Some(_) ||
+    custom_packing_strategy is Some(_) ||
+    custom_order_by_size ||
+    custom_row_height_reevaluation ||
+    custom_whitespace_elimination_strategy is Some(_) ||
+    custom_trybox
+  if use_reference_rectpacking {
     let pad_h = padding.left + padding.right
     let pad_v = padding.top + padding.bottom
+
+    // trybox fallback (elk-reference RectPackingLayoutProvider).
+    if custom_trybox && !rp_trybox_is_stackable(graph.children, spacing) {
+      let mut prio = graph.children.length()
+      for child in graph.children {
+        child.properties.set(
+          "org.eclipse.elk.priority",
+          PropertyValue::Int(prio),
+        )
+        prio = prio - 1
+      }
+      elk_box_layout_provider_simple(graph, options)
+      route_edges_straight(graph)
+      return
+    }
 
     // Phase-independent processors (elk-reference RectPackingLayoutProvider).
     if custom_order_by_size {
@@ -555,6 +581,32 @@ fn[T] rp_array_insert(arr : Array[T], index : Int, value : T) -> Unit {
     i = i - 1
   }
   arr[idx] = value
+}
+
+///|
+fn rp_trybox_is_stackable(
+  rectangles : Array[ElkNode],
+  node_node_spacing : Double,
+) -> Bool {
+  // Ported from elk-reference RectPackingLayoutProvider's trybox check.
+  let n = rectangles.length()
+  if n < 3 {
+    return true
+  }
+  let mut region2 = rectangles[0]
+  let mut region3 = rectangles[1]
+  let mut counter = 0
+  while counter + 2 < n {
+    let region1 = region2
+    region2 = region3
+    region3 = rectangles[counter + 2]
+    if region1.height >= region2.height + region3.height + node_node_spacing ||
+      region3.height >= region1.height + region2.height + node_node_spacing {
+      return true
+    }
+    counter = counter + 1
+  }
+  false
 }
 
 ///|
