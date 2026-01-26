@@ -42,7 +42,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
-          enablement: true
+          # Some org/repo configurations disallow enabling Pages via GITHUB_TOKEN.
+          # Enable GitHub Pages once in repo settings, then keep this disabled.
+          enablement: false
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
