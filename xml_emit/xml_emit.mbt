@@ -41,6 +41,31 @@ pub fn escape_attr(s : String) -> String {
 }
 
 ///|
+/// Wrap a string in a CDATA section.
+///
+/// Note: the sequence `]]>` is not allowed inside CDATA. We split it safely by
+/// closing and re-opening CDATA sections.
+pub fn cdata(content : String) -> String {
+  let sb = StringBuilder::new()
+  sb.write_string("<![CDATA[")
+  let mut i = 0
+  while i < content.length() {
+    if i + 2 < content.length() &&
+      content.code_unit_at(i).to_int().unsafe_to_char() == ']' &&
+      content.code_unit_at(i + 1).to_int().unsafe_to_char() == ']' &&
+      content.code_unit_at(i + 2).to_int().unsafe_to_char() == '>' {
+      sb.write_string("]]]]><![CDATA[>")
+      i = i + 3
+    } else {
+      sb.write_char(content.code_unit_at(i).to_int().unsafe_to_char())
+      i = i + 1
+    }
+  }
+  sb.write_string("]]>")
+  sb.to_string()
+}
+
+///|
 /// XML Element builder for constructing elements with attributes and content
 pub struct Element {
   tag : String
@@ -118,6 +143,12 @@ pub fn Element::text(self : Element, content : String) -> Element {
 /// Set raw content (will NOT be escaped - use for nested elements)
 pub fn Element::raw(self : Element, content : String) -> Element {
   { ..self, content, }
+}
+
+///|
+/// Set CDATA content (will NOT be escaped).
+pub fn Element::cdata(self : Element, content : String) -> Element {
+  self.raw(cdata(content))
 }
 
 ///|

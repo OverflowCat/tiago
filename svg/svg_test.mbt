@@ -24,7 +24,15 @@ test "svg new creates document" {
 ///|
 test "svg add element" {
   let svg = Svg::new(100.0, 100.0)
-  svg.add("<rect x=\"0\" y=\"0\" width=\"50\" height=\"50\"/>")
+  svg.add(
+    @xml_emit.Element::new("rect")
+    .attr_int("x", 0)
+    .attr_int("y", 0)
+    .attr_int("width", 50)
+    .attr_int("height", 50)
+    .self_close()
+    .build(),
+  )
   let s = svg.to_string()
   assert_true(s.contains("<rect x=\"0\" y=\"0\""))
 }
@@ -32,7 +40,9 @@ test "svg add element" {
 ///|
 test "svg add def" {
   let svg = Svg::new(100.0, 100.0)
-  svg.add_def("<marker id=\"test\"/>")
+  svg.add_def(
+    @xml_emit.Element::new("marker").attr("id", "test").self_close().build(),
+  )
   let s = svg.to_string()
   assert_true(s.contains("<defs>"))
   assert_true(s.contains("<marker id=\"test\"/>"))
@@ -42,7 +52,7 @@ test "svg add def" {
 test "svg group" {
   let svg = Svg::new(100.0, 100.0)
   svg.open_group("translate(10,10)")
-  svg.add("<rect/>")
+  svg.add(@xml_emit.Element::new("rect").self_close().build())
   svg.close_group()
   let s = svg.to_string()
   assert_true(s.contains("<g transform=\"translate(10,10)\">"))

@@ -656,7 +656,16 @@ fn render_step_controls(
     let step_width = estimate_text_width(step.name, config.font_size) + 16.0
     let style = if i == 0 { "display: block" } else { "display: none" }
     svg.add(
-      "<text id=\"step-name-\{i}\" x=\"\{step_x}\" y=\"\{control_y + control_height / 2.0 + 5.0}\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" text-anchor=\"start\" style=\"\{style}\">\{@svg.escape_xml(step.name)}</text>",
+      @xml_emit.Element::new("text")
+      .attr("id", "step-name-\{i}")
+      .attr_num("x", step_x)
+      .attr_num("y", control_y + control_height / 2.0 + 5.0)
+      .attr("font-family", config.font_family)
+      .attr_int("font-size", config.font_size)
+      .attr("text-anchor", "start")
+      .attr("style", style)
+      .text(step.name)
+      .build(),
     )
     ignore(step_width)
   }
@@ -1135,7 +1144,15 @@ fn render_svg_object(
       // Image shape - render external image (foreground only)
       if is_foreground && obj.icon is Some(url) {
         svg.add(
-          "<image href=\"\{@svg.escape_xml(url)}\" x=\"\{box.x}\" y=\"\{box.y}\" width=\"\{box.width}\" height=\"\{box.height}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+          @xml_emit.Element::new("image")
+          .attr("href", url)
+          .attr_num("x", box.x)
+          .attr_num("y", box.y)
+          .attr_num("width", box.width)
+          .attr_num("height", box.height)
+          .attr("preserveAspectRatio", "xMidYMid meet")
+          .self_close()
+          .build(),
         )
       }
       if is_foreground {
@@ -1437,7 +1454,15 @@ fn render_svg_object(
       let icon_x = cx - icon_size / 2.0
       let icon_top = icon_y - icon_size / 2.0
       svg.add(
-        "<image href=\"\{@svg.escape_xml(icon_url)}\" x=\"\{icon_x}\" y=\"\{icon_top}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+        @xml_emit.Element::new("image")
+        .attr("href", icon_url)
+        .attr_num("x", icon_x)
+        .attr_num("y", icon_top)
+        .attr_num("width", icon_size)
+        .attr_num("height", icon_size)
+        .attr("preserveAspectRatio", "xMidYMid meet")
+        .self_close()
+        .build(),
       )
     }
     // Render label
@@ -1629,7 +1654,14 @@ fn render_svg_sql_table(
       let header_center_y = box.y + row_height / 2.0
       let header_text_y = header_center_y + header_dims.height / 4.0
       svg.add(
-        "<text x=\"\{box.x + SQL_TABLE_HEADER_PADDING}\" y=\"\{header_text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{header_font_size}\">\{@svg.escape_xml(label)}</text>",
+        @xml_emit.Element::new("text")
+        .attr_num("x", box.x + SQL_TABLE_HEADER_PADDING)
+        .attr_num("y", header_text_y)
+        .attr("text-anchor", "start")
+        .attr("font-family", config.font_family)
+        .attr_int("font-size", header_font_size)
+        .text(label)
+        .build(),
       )
       let name_x = box.x + SQL_TABLE_NAME_PADDING
       let type_x = name_x + longest_name_width + SQL_TABLE_TYPE_PADDING
@@ -1641,15 +1673,36 @@ fn render_svg_sql_table(
         let text_y = row_center_y + base_font_size.to_double() / 4.0
         let col_name = get_short_name(child.id)
         svg.add(
-          "<text x=\"\{name_x}\" y=\"\{text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(col_name)}</text>",
+          @xml_emit.Element::new("text")
+          .attr_num("x", name_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", config.font_family)
+          .attr_int("font-size", base_font_size)
+          .text(col_name)
+          .build(),
         )
         svg.add(
-          "<text x=\"\{type_x}\" y=\"\{text_y}\" text-anchor=\"start\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(child.label)}</text>",
+          @xml_emit.Element::new("text")
+          .attr_num("x", type_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", config.font_family)
+          .attr_int("font-size", base_font_size)
+          .text(child.label)
+          .build(),
         )
         let constraint = sql_table_constraint_abbr(child)
         if constraint.length() > 0 {
           svg.add(
-            "<text x=\"\{constraint_x}\" y=\"\{text_y}\" text-anchor=\"end\" font-family=\"\{config.font_family}\" font-size=\"\{base_font_size}\">\{@svg.escape_xml(constraint)}</text>",
+            @xml_emit.Element::new("text")
+            .attr_num("x", constraint_x)
+            .attr_num("y", text_y)
+            .attr("text-anchor", "end")
+            .attr("font-family", config.font_family)
+            .attr_int("font-size", base_font_size)
+            .text(constraint)
+            .build(),
           )
         }
       }
@@ -1714,7 +1767,16 @@ fn render_svg_class(
       // Draw class name (bold, centered)
       let name_y = box.y + padding + line_height * 0.5
       svg.add(
-        "<text x=\"\{box.x + box.width / 2.0}\" y=\"\{name_y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size}\" font-weight=\"bold\">\{@svg.escape_xml(class_name)}</text>",
+        @xml_emit.Element::new("text")
+        .attr_num("x", box.x + box.width / 2.0)
+        .attr_num("y", name_y)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("font-family", config.font_family)
+        .attr_int("font-size", config.font_size)
+        .attr("font-weight", "bold")
+        .text(class_name)
+        .build(),
       )
       // Draw separator line after class name
       let sep1_y = box.y + padding + line_height
@@ -1744,7 +1806,15 @@ fn render_svg_class(
       for field in fields {
         if current_y < box.y + box.height - padding {
           svg.add(
-            "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(field)}</text>",
+            @xml_emit.Element::new("text")
+            .attr_num("x", box.x + padding)
+            .attr_num("y", current_y)
+            .attr("text-anchor", "start")
+            .attr("dominant-baseline", "middle")
+            .attr("font-family", config.font_family)
+            .attr_int("font-size", config.font_size - 1)
+            .text(field)
+            .build(),
           )
           current_y = current_y + line_height
         }
@@ -1770,7 +1840,15 @@ fn render_svg_class(
       for m in methods {
         if current_y < box.y + box.height - padding {
           svg.add(
-            "<text x=\"\{box.x + padding}\" y=\"\{current_y}\" text-anchor=\"start\" dominant-baseline=\"middle\" font-family=\"\{config.font_family}\" font-size=\"\{config.font_size - 1}\">\{@svg.escape_xml(m)}</text>",
+            @xml_emit.Element::new("text")
+            .attr_num("x", box.x + padding)
+            .attr_num("y", current_y)
+            .attr("text-anchor", "start")
+            .attr("dominant-baseline", "middle")
+            .attr("font-family", config.font_family)
+            .attr_int("font-size", config.font_size - 1)
+            .text(m)
+            .build(),
           )
           current_y = current_y + line_height
         }
@@ -1819,7 +1897,18 @@ fn render_svg_code(
         let y = start_y + i.to_double() * line_height
         if y < box.y + box.height - padding {
           svg.add(
-            "<text x=\"\{box.x + padding}\" y=\"\{y}\" fill=\"\{code_fg}\" font-family=\"'SF Mono', 'Fira Code', 'Consolas', monospace\" font-size=\"\{config.font_size - 2}\" text-anchor=\"start\" dominant-baseline=\"middle\">\{@svg.escape_xml(line)}</text>",
+            @xml_emit.Element::new("text")
+            .attr_num("x", box.x + padding)
+            .attr_num("y", y)
+            .attr("fill", code_fg)
+            .attr(
+              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
+            )
+            .attr_int("font-size", config.font_size - 2)
+            .attr("text-anchor", "start")
+            .attr("dominant-baseline", "middle")
+            .text(line)
+            .build(),
           )
         }
       }
@@ -2764,7 +2853,16 @@ fn render_svg_fragment(
   for operand in fragment.operands {
     // Dashed horizontal line
     svg.add(
-      "<line x1=\"\{bbox.x}\" y1=\"\{operand.separator_y}\" x2=\"\{bbox.x + bbox.width}\" y2=\"\{operand.separator_y}\" stroke=\"\{stroke}\" stroke-width=\"\{stroke_width}\" stroke-dasharray=\"5,5\"/>",
+      @xml_emit.Element::new("line")
+      .attr_num("x1", bbox.x)
+      .attr_num("y1", operand.separator_y)
+      .attr_num("x2", bbox.x + bbox.width)
+      .attr_num("y2", operand.separator_y)
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .attr("stroke-dasharray", "5,5")
+      .self_close()
+      .build(),
     )
     // Operand condition label
     if operand.condition is Some(cond) {

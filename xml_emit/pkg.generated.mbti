@@ -2,6 +2,8 @@
 package "Milky2018/diago/xml_emit"
 
 // Values
+pub fn cdata(String) -> String
+
 pub fn container_element(String, String, Array[(String, String)]) -> String
 
 pub fn empty_element(String, Array[(String, String)]) -> String
@@ -43,6 +45,7 @@ pub fn Element::attr_int(Self, String, Int) -> Self
 pub fn Element::attr_num(Self, String, Double) -> Self
 pub fn Element::attr_num_if(Self, String, Double, Bool) -> Self
 pub fn Element::build(Self) -> String
+pub fn Element::cdata(Self, String) -> Self
 pub fn Element::child(Self, String) -> Self
 pub fn Element::close_tag(Self) -> String
 pub fn Element::new(String) -> Self

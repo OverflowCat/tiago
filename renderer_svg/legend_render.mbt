@@ -49,7 +49,15 @@ pub fn render_legend_svg(
   match layout.title {
     Some(title) =>
       svg.add(
-        "<text x=\"\{title.x}\" y=\"\{title.y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" font-weight=\"bold\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(title.text)}</text>",
+        @xml_emit.Element::new("text")
+        .attr_num("x", title.x)
+        .attr_num("y", title.y)
+        .attr("font-family", "Arial, sans-serif")
+        .attr_int("font-size", config.font_size)
+        .attr("font-weight", "bold")
+        .attr("fill", config.default_stroke)
+        .text(title.text)
+        .build(),
       )
     None => ()
   }
@@ -97,7 +105,15 @@ pub fn render_legend_svg(
         )
       @layout_svg.LegendEntryLayout::Separator(x1~, x2~, y~) =>
         svg.add(
-          "<line x1=\"\{x1}\" y1=\"\{y}\" x2=\"\{x2}\" y2=\"\{y}\" stroke=\"#cccccc\" stroke-width=\"1\"/>",
+          @xml_emit.Element::new("line")
+          .attr_num("x1", x1)
+          .attr_num("y1", y)
+          .attr_num("x2", x2)
+          .attr_num("y2", y)
+          .attr("stroke", "#cccccc")
+          .attr_num("stroke-width", 1.0)
+          .self_close()
+          .build(),
         )
     }
   }
@@ -133,7 +149,14 @@ fn render_shape_entry(
   let ctx = SvgShapeContext::new(svg, icon_box, fill, stroke, 1.0, "", config)
   render_shape_svg(shape, ctx)
   svg.add(
-    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+    @xml_emit.Element::new("text")
+    .attr_num("x", label_x)
+    .attr_num("y", label_y)
+    .attr("font-family", "Arial, sans-serif")
+    .attr_int("font-size", config.font_size)
+    .attr("fill", config.default_stroke)
+    .text(label)
+    .build(),
   )
 }
 
@@ -154,17 +177,28 @@ fn render_connection_entry(
   let stroke = config.default_stroke
   let marker_start = src_arrow.marker_url(true)
   let marker_end = dst_arrow.marker_url(false)
-  let mut line = "<line x1=\"\{line_start_x}\" y1=\"\{line_y}\" x2=\"\{line_end_x}\" y2=\"\{line_y}\" stroke=\"\{stroke}\" stroke-width=\"2\""
-  if not(marker_start.is_empty()) {
-    line = line + " marker-start=\"\{marker_start}\""
-  }
-  if not(marker_end.is_empty()) {
-    line = line + " marker-end=\"\{marker_end}\""
-  }
-  line = line + "/>"
-  svg.add(line)
   svg.add(
-    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+    @xml_emit.Element::new("line")
+    .attr_num("x1", line_start_x)
+    .attr_num("y1", line_y)
+    .attr_num("x2", line_end_x)
+    .attr_num("y2", line_y)
+    .attr("stroke", stroke)
+    .attr_num("stroke-width", 2.0)
+    .attr_if("marker-start", marker_start)
+    .attr_if("marker-end", marker_end)
+    .self_close()
+    .build(),
+  )
+  svg.add(
+    @xml_emit.Element::new("text")
+    .attr_num("x", label_x)
+    .attr_num("y", label_y)
+    .attr("font-family", "Arial, sans-serif")
+    .attr_int("font-size", config.font_size)
+    .attr("fill", config.default_stroke)
+    .text(label)
+    .build(),
   )
 }
 
@@ -182,17 +216,40 @@ fn render_custom_entry(
 ) -> Unit {
   if icon.has_prefix("http") || icon.contains(".") {
     svg.add(
-      "<image href=\"\{@svg.escape_xml(icon)}\" x=\"\{icon_x}\" y=\"\{icon_y}\" width=\"\{icon_size}\" height=\"\{icon_size}\" preserveAspectRatio=\"xMidYMid meet\"/>",
+      @xml_emit.Element::new("image")
+      .attr("href", icon)
+      .attr_num("x", icon_x)
+      .attr_num("y", icon_y)
+      .attr_num("width", icon_size)
+      .attr_num("height", icon_size)
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .self_close()
+      .build(),
     )
   } else {
     let cx = icon_x + icon_size / 2.0
     // Note: text y-position is provided by layout via label_y, so reuse the same baseline offset style.
     let cy = icon_y + icon_size / 2.0 + config.font_size.to_double() * 0.35
     svg.add(
-      "<text x=\"\{cx}\" y=\"\{cy}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size + 4}\" fill=\"\{config.default_stroke}\" text-anchor=\"middle\">\{@svg.escape_xml(icon)}</text>",
+      @xml_emit.Element::new("text")
+      .attr_num("x", cx)
+      .attr_num("y", cy)
+      .attr("font-family", "Arial, sans-serif")
+      .attr_int("font-size", config.font_size + 4)
+      .attr("fill", config.default_stroke)
+      .attr("text-anchor", "middle")
+      .text(icon)
+      .build(),
     )
   }
   svg.add(
-    "<text x=\"\{label_x}\" y=\"\{label_y}\" font-family=\"Arial, sans-serif\" font-size=\"\{config.font_size}\" fill=\"\{config.default_stroke}\">\{@svg.escape_xml(label)}</text>",
+    @xml_emit.Element::new("text")
+    .attr_num("x", label_x)
+    .attr_num("y", label_y)
+    .attr("font-family", "Arial, sans-serif")
+    .attr_int("font-size", config.font_size)
+    .attr("fill", config.default_stroke)
+    .text(label)
+    .build(),
   )
 }

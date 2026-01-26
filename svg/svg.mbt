@@ -146,38 +146,40 @@ pub fn Svg::add_script(self : Svg, script : String) -> Unit {
 ///|
 /// Render to string
 pub fn Svg::to_string(self : Svg) -> String {
-  let sb = StringBuilder::new()
-  sb.write_string("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-  sb.write_string("<svg xmlns=\"http://www.w3.org/2000/svg\" ")
-  sb.write_string("width=\"\{self.width}\" height=\"\{self.height}\" ")
-  sb.write_string(
-    "viewBox=\"\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}\">\n",
-  )
-  // Defs
+  let view_box = "\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}"
+  let parts : Array[String] = []
   if self.defs.length() > 0 {
-    sb.write_string("<defs>\n")
-    for def in self.defs {
-      sb.write_string(def)
-      sb.write_char('\n')
-    }
-    sb.write_string("</defs>\n")
+    parts.push(
+      @xml_emit.Element::new("defs").raw(self.defs.join("\n") + "\n").build(),
+    )
   }
-  // Elements
   for elem in self.elements {
-    sb.write_string(elem)
-    sb.write_char('\n')
+    parts.push(elem)
   }
-  // Scripts (at the end, before closing svg)
   if self.scripts.length() > 0 {
-    sb.write_string("<script type=\"text/javascript\">\n<![CDATA[\n")
-    for script in self.scripts {
-      sb.write_string(script)
-      sb.write_char('\n')
-    }
-    sb.write_string("]]>\n</script>\n")
+    let script_body = self.scripts.join("\n") + "\n"
+    parts.push(
+      @xml_emit.Element::new("script")
+      .attr("type", "text/javascript")
+      .cdata(script_body)
+      .build(),
+    )
   }
-  sb.write_string("</svg>")
-  sb.to_string()
+  let content = if parts.is_empty() {
+    ""
+  } else {
+    "\n" + parts.join("\n") + "\n"
+  }
+  let root = @xml_emit.Element::new("svg")
+    .attr("xmlns", "http://www.w3.org/2000/svg")
+    .attr_num("width", self.width)
+    .attr_num("height", self.height)
+    .attr("viewBox", view_box)
+    .raw(content)
+    .build()
+  let doc = @xml_emit.Document::new()
+  doc.add(root)
+  doc.build()
 }
 
 ///|
