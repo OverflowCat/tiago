@@ -4,6 +4,9 @@ fn rectpacking_target_width_options(
   spacing : Double,
 ) -> LayoutOptions {
   let custom : Map[String, PropertyValue] = {
+    "org.eclipse.elk.rectpacking.widthApproximation.strategy": PropertyValue::Enum(
+      "TARGET_WIDTH",
+    ),
     "org.eclipse.elk.rectpacking.widthApproximation.targetWidth": PropertyValue::Double(
       target_width,
     ),

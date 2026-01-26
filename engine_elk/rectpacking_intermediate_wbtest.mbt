@@ -16,6 +16,9 @@ test "rectpacking: inNewRow forces a new row (simple packing)" {
     node_node_spacing: Some(10.0),
     padding: Some(ElkPadding::zero()),
     custom: Some({
+      "org.eclipse.elk.rectpacking.widthApproximation.strategy": PropertyValue::Enum(
+        "TARGET_WIDTH",
+      ),
       "org.eclipse.elk.rectpacking.widthApproximation.targetWidth": PropertyValue::Double(
         200.0,
       ),

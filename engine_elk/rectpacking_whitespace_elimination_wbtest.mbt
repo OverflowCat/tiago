@@ -14,6 +14,9 @@ test "rectpacking: whitespace elimination expands narrow rows to drawing width" 
     node_node_spacing: Some(10.0),
     padding: Some(ElkPadding::zero()),
     custom: Some({
+      "org.eclipse.elk.rectpacking.widthApproximation.strategy": PropertyValue::Enum(
+        "TARGET_WIDTH",
+      ),
       "org.eclipse.elk.rectpacking.widthApproximation.targetWidth": PropertyValue::Double(
         200.0,
       ),
@@ -47,6 +50,9 @@ test "rectpacking: whitespace elimination TO_ASPECT_RATIO increases height and d
     node_node_spacing: Some(10.0),
     padding: Some(ElkPadding::zero()),
     custom: Some({
+      "org.eclipse.elk.rectpacking.widthApproximation.strategy": PropertyValue::Enum(
+        "TARGET_WIDTH",
+      ),
       "org.eclipse.elk.rectpacking.widthApproximation.targetWidth": PropertyValue::Double(
         200.0,
       ),

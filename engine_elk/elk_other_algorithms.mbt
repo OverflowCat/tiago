@@ -223,6 +223,7 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
   // packing strategy selection). Otherwise, keep the existing simple placeholder
   // behavior for stability.
   let mut custom_target_width : Double? = None
+  let mut custom_width_approximation_strategy : String? = None
   let mut custom_packing_strategy : String? = None
   let mut custom_optimization_goal : String? = None
   let mut custom_last_place_shift : Bool? = None
@@ -236,6 +237,14 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
         custom.get("org.eclipse.elk.rectpacking.widthApproximation.targetWidth") {
         Some(PropertyValue::Double(v)) if v > 0.0 =>
           custom_target_width = Some(v)
+        _ => ()
+      }
+      match
+        custom.get("org.eclipse.elk.rectpacking.widthApproximation.strategy") {
+        Some(PropertyValue::Enum(v)) =>
+          custom_width_approximation_strategy = Some(v)
+        Some(PropertyValue::String(v)) =>
+          custom_width_approximation_strategy = Some(v)
         _ => ()
       }
       match custom.get("org.eclipse.elk.rectpacking.packing.strategy") {
@@ -285,6 +294,7 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
     None => ()
   }
   let use_reference_rectpacking = custom_target_width is Some(_) ||
+    custom_width_approximation_strategy is Some(_) ||
     custom_packing_strategy is Some(_) ||
     custom_order_by_size ||
     custom_row_height_reevaluation ||
@@ -318,9 +328,14 @@ fn elk_rect_packing_layout(graph : ElkNode, options : LayoutOptions) -> Unit {
     }
 
     // Phase 1: compute a target width.
-    let target_width = match custom_target_width {
-      Some(tw) => tw
-      None => {
+    let width_strategy = custom_width_approximation_strategy.unwrap_or("GREEDY")
+    let target_width = match width_strategy {
+      "TARGET_WIDTH" =>
+        match custom_target_width {
+          Some(tw) => tw
+          None => panic()
+        }
+      _ => {
         let goal = rp_parse_optimization_goal(custom_optimization_goal)
         let lp_shift = custom_last_place_shift.unwrap_or(true)
         let (w, _h) = rp_greedy_width_approximation(
