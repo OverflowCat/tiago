@@ -37,6 +37,13 @@ fn read_file(path : String) -> Result[String, String] {
 }
 
 ///|
+fn write_file(path : String, content : String) -> Unit {
+  @fs.write_string_to_file(path, content) catch {
+    _ => ()
+  }
+}
+
+///|
 fn normalize_newlines(s : String) -> String {
   let sb = StringBuilder::new()
   for c in s {
@@ -974,6 +981,8 @@ test "examples: svg matches D2 reference (semantic)" {
     let expected_path = "examples/reference/" + name + ".svg"
     let source = read_file(input_path).unwrap()
     let got_svg = normalize_newlines(compile(source).unwrap())
+    // Persist the generated SVGs for manual inspection and diffing.
+    write_file("examples/diago-output/" + name + ".svg", got_svg)
     let expected_svg = normalize_newlines(read_file(expected_path).unwrap())
     match compare_boxes(name, got_svg, expected_svg) {
       Ok(_) => ()

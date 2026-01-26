@@ -9,3 +9,4 @@ TODO.md
 AGENTS.md
 CLAUDE.md
 _build/
+examples/diago-output/*.svg
