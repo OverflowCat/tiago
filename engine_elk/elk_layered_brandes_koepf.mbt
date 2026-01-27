@@ -1661,21 +1661,54 @@ fn apply_layout(
   direction : LayoutDirection,
   _content_alignment : ContentAlignment,
 ) -> Unit {
-  fn in_out_ratio(node : LNode) -> Double {
-    // Port-balance alignment used by ELK (see `LGraphUtil.placeNodesHorizontally`):
-    // sources align to the outgoing side, sinks to the incoming side, isolated nodes
-    // are centered, and mixed nodes interpolate by out/(in+out).
-    //
-    // NOTE: ELK computes this based on port counts. We currently approximate using
-    // edge counts, which matches the common case where implicit ports are created
-    // per edge.
-    let incoming = node.incoming_edges.length()
-    let outgoing = node.outgoing_edges.length()
-    let total = incoming + outgoing
+  // Port-balance alignment used by ELK (see `LGraphUtil.placeNodesHorizontally`):
+  // sources align to the outgoing side, sinks to the incoming side, isolated
+  // nodes are centered, and mixed nodes interpolate by out/(in+out), where
+  // `in`/`out` count ports (not edges).
+  fn bk_port_balance_ratio(node : LNode) -> Double {
+    if node.ports.is_empty() {
+      let inports = if node.incoming_edges.is_empty() { 0 } else { 1 }
+      let outports = if node.outgoing_edges.is_empty() { 0 } else { 1 }
+      let total = inports + outports
+      return if total == 0 { 0.5 } else { outports.to_double() / total.to_double() }
+    }
+    let has_in : Map[String, Bool] = {}
+    let has_out : Map[String, Bool] = {}
+    let mut in_without_port = false
+    let mut out_without_port = false
+    for e in node.incoming_edges {
+      match e.target_port_id {
+        Some(pid) => has_in[pid] = true
+        None => in_without_port = true
+      }
+    }
+    for e in node.outgoing_edges {
+      match e.source_port_id {
+        Some(pid) => has_out[pid] = true
+        None => out_without_port = true
+      }
+    }
+    let mut inports = 0
+    let mut outports = 0
+    for p in node.ports {
+      if has_in.get(p.id).unwrap_or(false) {
+        inports = inports + 1
+      }
+      if has_out.get(p.id).unwrap_or(false) {
+        outports = outports + 1
+      }
+    }
+    if in_without_port {
+      inports = inports + 1
+    }
+    if out_without_port {
+      outports = outports + 1
+    }
+    let total = inports + outports
     if total == 0 {
       0.5
     } else {
-      outgoing.to_double() / total.to_double()
+      outports.to_double() / total.to_double()
     }
   }
   // Preserve any precomputed minimum graph size (e.g. container title size from
@@ -1720,7 +1753,19 @@ fn apply_layout(
   } else {
     layers.append(graph.layers)
   }
+  fn layer_is_external(layer : LLayer) -> Bool {
+    if layer.nodes.is_empty() {
+      return true
+    }
+    for n in layer.nodes {
+      if n.node_type != ExternalPort {
+        return false
+      }
+    }
+    true
+  }
   for layer in layers {
+    let is_external_layer = layer_is_external(layer)
     let mut layer_size = 0.0
     for node in layer.nodes {
       layer_size = if is_horizontal {
@@ -1731,7 +1776,7 @@ fn apply_layout(
     }
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
-      let ratio = in_out_ratio(node)
+      let ratio = bk_port_balance_ratio(node)
       if is_horizontal {
         node.x = layer_offset + (layer_size - node.width) * ratio
         node.y = cross_pos + padding.top
@@ -1740,11 +1785,21 @@ fn apply_layout(
         node.y = layer_offset + (layer_size - node.height) * ratio
       }
     }
-    layer_offset = layer_offset + layer_size + layer_spacing
+    // External-port layers represent hierarchical ports on the compound node
+    // border and must not consume regular layer spacing (ELK behavior).
+    if !is_external_layer {
+      layer_offset = layer_offset + layer_size + layer_spacing
+    }
   }
   let mut max_x = 0.0
   let mut max_y = 0.0
   for node in graph.nodes {
+    // External port dummies represent hierarchical ports and are positioned
+    // on or outside the graph boundary. They must not contribute to the
+    // compound node's computed size (ELK behavior).
+    if node.node_type == ExternalPort {
+      continue
+    }
     max_x = bk_max(max_x, node.x + node.width)
     max_y = bk_max(max_y, node.y + node.height)
   }

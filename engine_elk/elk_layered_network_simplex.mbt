@@ -518,14 +518,68 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
     return
   }
 
-  // Handle graphs with no edges - either keep a single layer or stack by model order.
-  if graph.edges.length() == 0 {
-    let keep_single = graph.properties.get_bool_or(
-      "diago.layered.keepSingleLayerNoEdges", false,
-    )
+  fn has_non_external_edges(graph : LGraph) -> Bool {
+    for edge in graph.edges {
+      if edge.source_id == edge.target_id {
+        continue
+      }
+      match (graph.get_node(edge.source_id), graph.get_node(edge.target_id)) {
+        (Some(src), Some(tgt)) =>
+          if src.node_type != ExternalPort && tgt.node_type != ExternalPort {
+            return true
+          }
+        _ => ()
+      }
+    }
+    false
+  }
+
+  // Treat graphs that only contain hierarchy external-port edges as "edgeless"
+  // when `keepSingleLayerNoEdges` is enabled. This matches D2/ELK behavior for
+  // compound nodes whose children would otherwise be forced into multiple
+  // layers solely due to INCLUDE_CHILDREN splitting.
+  let keep_single = graph.properties.get_bool_or(
+    "diago.layered.keepSingleLayerNoEdges",
+    false,
+  )
+  let effective_has_edges = if keep_single {
+    has_non_external_edges(graph)
+  } else {
+    graph.edges.length() > 0
+  }
+
+  // Handle graphs with no relevant edges - either keep a single layer or stack by model order.
+  if !effective_has_edges {
     if keep_single {
+      // ELK keeps the "real" nodes in a single layer, but still places
+      // hierarchy external-port dummies in dedicated border layers so routing
+      // can attach to the compound node boundary.
       for node in graph.nodes {
-        node.layer = 0
+        node.layer = if node.node_type == ExternalPort {
+          // Incoming dummies have outgoing edges into the graph; outgoing
+          // dummies have incoming edges from inside the graph.
+          if !node.outgoing_edges.is_empty() {
+            -1
+          } else if !node.incoming_edges.is_empty() {
+            1
+          } else {
+            0
+          }
+        } else {
+          0
+        }
+      }
+      // Normalize so the smallest layer becomes 0 (NetworkSimplex does this).
+      let mut min_layer = 0
+      for n in graph.nodes {
+        if n.layer < min_layer {
+          min_layer = n.layer
+        }
+      }
+      if min_layer != 0 {
+        for n in graph.nodes {
+          n.layer = n.layer - min_layer
+        }
       }
     } else {
       for i, node in graph.nodes {

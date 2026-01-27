@@ -11,3 +11,4 @@ CLAUDE.md
 _build/
 examples/diago-output/*.svg
 examples/diago-output/*.routes.diff
+examples/diago-output/*.boxes.diff

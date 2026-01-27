@@ -2147,7 +2147,12 @@ fn apply_routing_spacing_vertical(
       let left_external = layer_is_external(layer)
       let right_external = layer_is_external(next_layer)
       let mut spacing = 0.0
-      if slots > 0 {
+      if left_external || right_external {
+        // External-port border layers are positioned outside the compound node
+        // padding (handled in hierarchical port routing). They must not consume
+        // regular inter-layer spacing or push internal layers around.
+        spacing = 0.0
+      } else if slots > 0 {
         spacing = (slots - 1).to_double() * edge_edge_spacing
         if !layer.nodes.is_empty() {
           spacing = spacing + edge_node_spacing
@@ -2155,10 +2160,10 @@ fn apply_routing_spacing_vertical(
         if !next_layer.nodes.is_empty() {
           spacing = spacing + edge_node_spacing
         }
-        if spacing < node_node_spacing && !left_external && !right_external {
+        if spacing < node_node_spacing {
           spacing = node_node_spacing
         }
-      } else if !left_external && !right_external {
+      } else {
         spacing = node_node_spacing
       }
       offset = offset + spacing
@@ -2167,6 +2172,9 @@ fn apply_routing_spacing_vertical(
   let mut max_y = 0.0
   let mut max_x = 0.0
   for node in graph.nodes {
+    if node.node_type == ExternalPort {
+      continue
+    }
     if node.y + node.height > max_y {
       max_y = node.y + node.height
     }
@@ -2236,7 +2244,9 @@ fn apply_routing_spacing_horizontal(
       let left_external = layer_is_external(layer)
       let right_external = layer_is_external(next_layer)
       let mut spacing = 0.0
-      if slots > 0 {
+      if left_external || right_external {
+        spacing = 0.0
+      } else if slots > 0 {
         spacing = (slots - 1).to_double() * edge_edge_spacing
         if !layer.nodes.is_empty() {
           spacing = spacing + edge_node_spacing
@@ -2244,10 +2254,10 @@ fn apply_routing_spacing_horizontal(
         if !next_layer.nodes.is_empty() {
           spacing = spacing + edge_node_spacing
         }
-        if spacing < node_node_spacing && !left_external && !right_external {
+        if spacing < node_node_spacing {
           spacing = node_node_spacing
         }
-      } else if !left_external && !right_external {
+      } else {
         spacing = node_node_spacing
       }
       offset = offset + spacing
@@ -2256,6 +2266,9 @@ fn apply_routing_spacing_horizontal(
   let mut max_y = 0.0
   let mut max_x = 0.0
   for node in graph.nodes {
+    if node.node_type == ExternalPort {
+      continue
+    }
     if node.y + node.height > max_y {
       max_y = node.y + node.height
     }

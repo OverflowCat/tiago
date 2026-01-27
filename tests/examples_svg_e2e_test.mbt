@@ -1576,18 +1576,10 @@ fn compare_boxes(
       height: b.height,
     }
   }
-  // Some examples exercise lots of hierarchy and compound-layout behavior; allow
-  // a slightly larger positional tolerance while we converge on ELK parity.
-  let tol_pos = if name == "architecture" {
-    200.0
-  } else if name == "c4" {
-    90.0
-  } else if name == "containers" {
-    80.0
-  } else {
-    50.0
-  }
-  let tol_size = if name == "directions" { 80.0 } else { 20.0 }
+  // D2 parity goal: treat any geometry drift as a failure. Keep a tiny epsilon
+  // to tolerate float rounding artifacts.
+  let tol_pos = 0.51
+  let tol_size = 0.51
   let mismatches : Array[String] = []
   for pair in exp.iter() {
     let (label_view, eb) = pair
@@ -1634,7 +1626,7 @@ fn compare_boxes(
       _ => ()
     }
     mismatches.sort()
-    let limit = if mismatches.length() > 12 { 12 } else { mismatches.length() }
+    let limit = mismatches.length()
     let buf = StringBuilder::new()
     buf.write_string(
       name + ": box mismatches (" + mismatches.length().to_string() + ")\n",
@@ -1685,7 +1677,10 @@ test "examples: svg matches D2 reference (semantic)" {
     let expected_svg = normalize_newlines(read_file(expected_path).unwrap())
     match compare_boxes(name, got_svg, expected_svg) {
       Ok(_) => ()
-      Err(msg) => fail(msg)
+      Err(msg) => {
+        write_file("examples/diago-output/" + name + ".boxes.diff", msg)
+        fail(msg)
+      }
     }
     match compare_routes(name, got_svg, expected_svg) {
       Ok(_) => ()

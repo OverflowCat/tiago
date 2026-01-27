@@ -82,246 +82,9 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
     // Convert ElkNode to internal LGraph representation.
     let direction = resolved_options.direction.unwrap_or(Down)
     let lgraph = LGraph::from_elk_node(node, direction)
-
-    // ELK INCLUDE_CHILDREN: internal layout of a compound node needs to "feel"
-    // outgoing hierarchy edges (to outside nodes) so port distribution and
-    // spacing match D2/ELK. We approximate this by injecting ExternalPort
-    // dummies for edges that cross this node's subtree boundary (both incoming
-    // and outgoing).
-    fn collect_subtree_ids(node : ElkNode, set : Map[String, Bool]) -> Unit {
-      set[node.id] = true
-      for child in node.children {
-        collect_subtree_ids(child, set)
-      }
-    }
-
-    let subtree_ids : Map[String, Bool] = {}
-    collect_subtree_ids(node, subtree_ids)
-
-    // Merge hierarchy edges per endpoint (ELK: MERGE_HIERARCHY_EDGES default).
-    let dummy_by_src : Map[String, String] = {}
-    let dummy_by_tgt : Map[String, String] = {}
-    fn port_side(direction : LayoutDirection, suffix : String) -> ElkPortSide {
-      match direction {
-        Up =>
-          if suffix == "src" {
-            ElkPortSide::North
-          } else {
-            ElkPortSide::South
-          }
-        Left =>
-          if suffix == "src" {
-            ElkPortSide::West
-          } else {
-            ElkPortSide::East
-          }
-        Right =>
-          if suffix == "src" {
-            ElkPortSide::East
-          } else {
-            ElkPortSide::West
-          }
-        _ => if suffix == "src" { ElkPortSide::South } else { ElkPortSide::North }
-      }
-    }
-    fn opposite_side(side : ElkPortSide) -> ElkPortSide {
-      match side {
-        North => South
-        South => North
-        East => West
-        West => East
-        Undefined => Undefined
-      }
-    }
-
-    fn ensure_auto_port(
-      node : LNode,
-      edge_id : String,
-      suffix : String,
-      direction : LayoutDirection,
-      port_index : Int,
-    ) -> String {
-      let port_id = node.id + "|auto|" + edge_id + "|" + suffix
-      for p in node.ports {
-        if p.id == port_id {
-          return port_id
-        }
-      }
-      let p = LPort::new(port_id)
-      p.side = port_side(direction, suffix)
-      p.properties.set("elk.port.index", Int(port_index))
-      p.properties.set("diago.layered.autoPort", Bool(true))
-      node.ports.push(p)
-      port_id
-    }
-
-    fn ensure_dummy_port(
-      dummy : LNode,
-      edge_id : String,
-      dummy_suffix : String,
-      direction : LayoutDirection,
-    ) -> String {
-      // One shared port per dummy (multiple hierarchy edges may be merged).
-      let port_id = dummy.id + "|p0"
-      for p in dummy.ports {
-        if p.id == port_id {
-          return port_id
-        }
-      }
-      let ext_side = port_side(direction, dummy_suffix)
-      let p = LPort::new(port_id)
-      p.side = opposite_side(ext_side)
-      dummy.ports.push(p)
-      // External port dummies behave like fixed-position ports in ELK.
-      if dummy.properties.get_string("elk.portConstraints") is None {
-        dummy.properties.set("elk.portConstraints", Enum("FIXED_POS"))
-      }
-      // Keep enough info around for hierarchical port capture.
-      dummy.properties.set("diago.layered.extPortSide", Enum(ext_side.to_string()))
-      dummy.properties.set("diago.layered.extPortEdgeId", String(edge_id))
-      port_id
-    }
-    for i, edge in all_edges {
-      if edge.sources.is_empty() || edge.targets.is_empty() {
-        continue
-      }
-      let orig_src = edge.sources[0]
-      let orig_tgt = edge.targets[0]
-
-      // Outgoing boundary edges: internal source is inside, target is outside.
-      if subtree_ids.contains(orig_src) && !subtree_ids.contains(orig_tgt) {
-        // Only consider outgoing edges from nodes that are direct children of
-        // this graph. Deeper descendants are handled when their parent graphs
-        // are laid out.
-        if !lgraph.node_map.contains(orig_src) {
-          continue
-        }
-        let src_id = orig_src
-        let should_merge = edge.labels.is_empty()
-        let dummy_id = if should_merge {
-          match dummy_by_src.get(src_id) {
-            Some(id) => id
-            None => {
-              let id = lgraph.alloc_dummy_id()
-              let dummy = LNode::new(id, ExternalPort)
-              // ELK external port dummies are size-less (#766); any required
-              // spacing is handled by routing/spacing processors.
-              dummy.width = 0.0
-              dummy.height = 0.0
-              dummy.properties.set("diago.layered.hierEdgeId", String(edge.id))
-              dummy.properties.set("diago.layered.hierEdgeSuffix", String("src"))
-              lgraph.add_node(dummy)
-              dummy_by_src[src_id] = id
-              id
-            }
-          }
-        } else {
-          let id = lgraph.alloc_dummy_id()
-          let dummy = LNode::new(id, ExternalPort)
-          dummy.width = 0.0
-          dummy.height = 0.0
-          dummy.properties.set("diago.layered.hierEdgeId", String(edge.id))
-          dummy.properties.set("diago.layered.hierEdgeSuffix", String("src"))
-          lgraph.add_node(dummy)
-          id
-        }
-        let ledge = LEdge::new(
-          "h_" + edge.id + "_" + dummy_id,
-          src_id,
-          dummy_id,
-        )
-        ledge.original_id = Some(edge.id)
-        ledge.properties.set("diago.layered.hierEdgeId", String(edge.id))
-        ledge.properties.set("diago.layered.hierEdgeSuffix", String("src"))
-        match (lgraph.get_node(src_id), lgraph.get_node(dummy_id)) {
-          (Some(src), Some(dummy)) => {
-            ledge.source_port_id = Some(
-              ensure_auto_port(src, edge.id, "src", direction, i),
-            )
-            ledge.target_port_id = Some(
-              ensure_dummy_port(dummy, edge.id, "src", direction),
-            )
-          }
-          _ => ()
-        }
-        match lgraph.get_node(src_id) {
-          Some(src) => src.outgoing_edges.push(ledge)
-          None => ()
-        }
-        match lgraph.get_node(dummy_id) {
-          Some(tgt) => tgt.incoming_edges.push(ledge)
-          None => ()
-        }
-        lgraph.edges.push(ledge)
-        continue
-      }
-
-      // Incoming boundary edges: external source is outside, internal target is inside.
-      if !subtree_ids.contains(orig_src) && subtree_ids.contains(orig_tgt) {
-        // Only consider incoming edges to nodes that are direct children of
-        // this graph. Deeper descendants are handled when their parent graphs
-        // are laid out.
-        if !lgraph.node_map.contains(orig_tgt) {
-          continue
-        }
-        let tgt_id = orig_tgt
-        let should_merge = edge.labels.is_empty()
-        let dummy_id = if should_merge {
-          match dummy_by_tgt.get(tgt_id) {
-            Some(id) => id
-            None => {
-              let id = lgraph.alloc_dummy_id()
-              let dummy = LNode::new(id, ExternalPort)
-              dummy.width = 0.0
-              dummy.height = 0.0
-              dummy.properties.set("diago.layered.hierEdgeId", String(edge.id))
-              dummy.properties.set("diago.layered.hierEdgeSuffix", String("dst"))
-              lgraph.add_node(dummy)
-              dummy_by_tgt[tgt_id] = id
-              id
-            }
-          }
-        } else {
-          let id = lgraph.alloc_dummy_id()
-          let dummy = LNode::new(id, ExternalPort)
-          dummy.width = 0.0
-          dummy.height = 0.0
-          dummy.properties.set("diago.layered.hierEdgeId", String(edge.id))
-          dummy.properties.set("diago.layered.hierEdgeSuffix", String("dst"))
-          lgraph.add_node(dummy)
-          id
-        }
-        let ledge = LEdge::new(
-          "h_" + edge.id + "_" + dummy_id,
-          dummy_id,
-          tgt_id,
-        )
-        ledge.original_id = Some(edge.id)
-        ledge.properties.set("diago.layered.hierEdgeId", String(edge.id))
-        ledge.properties.set("diago.layered.hierEdgeSuffix", String("dst"))
-        match (lgraph.get_node(dummy_id), lgraph.get_node(tgt_id)) {
-          (Some(dummy), Some(tgt)) => {
-            ledge.source_port_id = Some(
-              ensure_dummy_port(dummy, edge.id, "dst", direction),
-            )
-            ledge.target_port_id = Some(
-              ensure_auto_port(tgt, edge.id, "dst", direction, i),
-            )
-          }
-          _ => ()
-        }
-        match lgraph.get_node(dummy_id) {
-          Some(src) => src.outgoing_edges.push(ledge)
-          None => ()
-        }
-        match lgraph.get_node(tgt_id) {
-          Some(tgt) => tgt.incoming_edges.push(ledge)
-          None => ()
-        }
-        lgraph.edges.push(ledge)
-        continue
-      }
-    }
+    // NOTE: We currently don't inject ExternalPort dummy nodes for hierarchy
+    // edges into nested graphs. Instead, hierarchy stitching relies on the
+    // `hierSeg` fallback below.
 
     // Get options with defaults.
     let direction = match resolved_options.direction {
@@ -443,6 +206,103 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
         arr.push(Point(p))
       }
       node.properties.set(key, Array(arr))
+    }
+
+    // When boundary edges are not modeled as explicit dummies inside the nested
+    // graph, approximate the inner segment as a straight line from the direct
+    // child node border to the container border. This is used for cross-hierarchy
+    // edge stitching in `LGraph::to_elk_node` and keeps the layered regression
+    // fixtures aligned with ELK.
+    if resolved_options.hierarchy_handling != Some(Separate) {
+      fn collect_subtree_ids(node : ElkNode, set : Map[String, Bool]) -> Unit {
+        set[node.id] = true
+        for child in node.children {
+          collect_subtree_ids(child, set)
+        }
+      }
+      let subtree_ids : Map[String, Bool] = {}
+      collect_subtree_ids(node, subtree_ids)
+      for edge in all_edges {
+        if edge.sources.is_empty() || edge.targets.is_empty() {
+          continue
+        }
+        let orig_src = edge.sources[0]
+        let orig_tgt = edge.targets[0]
+        let src_in = subtree_ids.contains(orig_src)
+        let tgt_in = subtree_ids.contains(orig_tgt)
+        if src_in == tgt_in {
+          continue
+        }
+        if src_in && !tgt_in {
+          if !lgraph.node_map.contains(orig_src) {
+            continue
+          }
+          match lgraph.get_node(orig_src) {
+            Some(src) => {
+              let sx = src.x + src.width / 2.0
+              let sy = if direction == Up { src.y } else if direction == Down {
+                src.y + src.height
+              } else {
+                src.y + src.height / 2.0
+              }
+              let (tx, ty) = match direction {
+                Down => (sx, lgraph.height)
+                Up => (sx, 0.0)
+                Right => (lgraph.width, sy)
+                Left => (0.0, sy)
+                _ => (sx, lgraph.height)
+              }
+              let key = "diago.layered.hierSeg." + edge.id + ".src"
+              if node.properties.get_array(key) is None {
+                node.properties.set(
+                  key,
+                  Array(
+                    [
+                      Point(ElkPoint::new(sx, sy)),
+                      Point(ElkPoint::new(tx, ty)),
+                    ],
+                  ),
+                )
+              }
+            }
+            None => ()
+          }
+        } else if !src_in && tgt_in {
+          if !lgraph.node_map.contains(orig_tgt) {
+            continue
+          }
+          match lgraph.get_node(orig_tgt) {
+            Some(tgt) => {
+              let tx = tgt.x + tgt.width / 2.0
+              let ty = if direction == Up { tgt.y + tgt.height } else if direction == Down {
+                tgt.y
+              } else {
+                tgt.y + tgt.height / 2.0
+              }
+              let (sx, sy) = match direction {
+                Down => (tx, 0.0)
+                Up => (tx, lgraph.height)
+                Right => (0.0, ty)
+                Left => (lgraph.width, ty)
+                _ => (tx, 0.0)
+              }
+              let key = "diago.layered.hierSeg." + edge.id + ".dst"
+              if node.properties.get_array(key) is None {
+                node.properties.set(
+                  key,
+                  Array(
+                    [
+                      Point(ElkPoint::new(sx, sy)),
+                      Point(ElkPoint::new(tx, ty)),
+                    ],
+                  ),
+                )
+              }
+            }
+            None => ()
+          }
+        }
+      }
     }
 
     // Capture ExternalPort dummy coordinates for hierarchical port positioning
