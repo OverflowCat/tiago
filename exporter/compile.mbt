@@ -24,19 +24,19 @@ priv struct Style {
   mut stroke : String?
   mut fill : String?
   mut stroke_width : Double?
-  stroke_dash : Double?
+  mut stroke_dash : Double?
   mut border_radius : Double?
   mut shadow : Bool?
   mut three_d : Bool?
-  multiple : Bool?
-  font : String?
+  mut multiple : Bool?
+  mut font : String?
   mut font_size : Int?
   mut font_color : String?
   mut bold : Bool?
   mut italic : Bool?
-  underline : Bool?
+  mut underline : Bool?
   mut animated : Bool?
-  filled : Bool?
+  mut filled : Bool?
   mut double_border : Bool?
   mut text_transform : String?
   mut font_family : String?
@@ -952,6 +952,19 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Stroke dash
+  match ir.get_field("stroke-dash") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => style.stroke_dash = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
   // Border radius
   match ir.get_field("border-radius") {
     Some(f) =>
@@ -961,6 +974,15 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
             Some(v) => style.border_radius = Some(v)
             None => ()
           }
+        None => ()
+      }
+    None => ()
+  }
+  // Font
+  match ir.get_field("font") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.font = Some(s.to_string())
         None => ()
       }
     None => ()
@@ -996,6 +1018,15 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Underline
+  match ir.get_field("underline") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.underline = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
   // Italic
   match ir.get_field("italic") {
     Some(f) =>
@@ -1023,11 +1054,29 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
       }
     None => ()
   }
+  // Multiple
+  match ir.get_field("multiple") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.multiple = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
   // Animated
   match ir.get_field("animated") {
     Some(f) =>
       match f.primary {
         Some(s) => style.animated = Some(s.to_string() == "true")
+        None => ()
+      }
+    None => ()
+  }
+  // Filled
+  match ir.get_field("filled") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => style.filled = Some(s.to_string() == "true")
         None => ()
       }
     None => ()

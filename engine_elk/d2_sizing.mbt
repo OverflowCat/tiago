@@ -419,24 +419,7 @@ fn d2_size_object_to_content(obj : Object, label_dims : Size) -> Size {
   }
   let (pad_x0, pad_y0) = default_padding_for_shape(obj.shape_type)
   let mut pad_x = if desired_w != 0.0 { 0.0 } else { pad_x0 }
-  let mut pad_y = if desired_h != 0.0 { 0.0 } else { pad_y0 }
-
-  // d2graph: extra padding for icon+label shapes
-  if obj.icon is Some(_) {
-    match obj.shape_type {
-      // these shapes already have special label layouts in d2; diago doesn't model them yet
-      SqlTable | Class | Code | Text => ()
-      _ => {
-        let label_h = label_dims.height + INNER_LABEL_PADDING
-        if desired_w == 0.0 {
-          pad_x = pad_x + label_h
-        }
-        if desired_h == 0.0 {
-          pad_y = pad_y + label_h
-        }
-      }
-    }
-  }
+  let pad_y = if desired_h != 0.0 { 0.0 } else { pad_y0 }
 
   // d2graph: link+tooltip reserve space for icon
   if desired_w == 0.0 {

@@ -18,11 +18,7 @@
 /// This module implements text dimension calculation following D2's approach:
 /// - Uses D2's constant CODE_LINE_HEIGHT = 1.3
 /// - Handles empty lines (leading/trailing) as D2 does
-/// - Considers font styles (bold/italic) for width adjustment
-///
-/// Note: D2 uses actual font metrics from TrueType files via freetype.
-/// Since MoonBit doesn't have a freetype binding, we use a simplified
-/// estimation that follows D2's constants and logic as closely as possible.
+/// - Uses pre-generated glyph bounds and advances from D2's embedded fonts
 
 ///|
 /// Text dimensions (width and height)
@@ -48,11 +44,16 @@ const CODE_LINE_HEIGHT : Double = 1.3
 const TAB_SIZE : Double = 4.0
 
 ///|
-/// D2 space advances (from lib/textmeasure via ruler.Measure at font size 16)
-const SPACE_WIDTH_SANS : Int = 3
-
-///|
-const SPACE_WIDTH_MONO : Int = 10
+/// Approximation for D2's line height scaling.
+///
+/// D2's `textmeasure.Ruler` computes line heights from font metrics at each size
+/// (with hinting), which is not perfectly linear. For the embedded Source Sans
+/// Pro / Source Code Pro fonts, the measured line height for a single line is
+/// well-approximated by `ceil(font_size * 101 / 80)`.
+///
+/// This constant is chosen to match D2's `ruler.Measure` heights across common
+/// sizes (e.g. 16 -> 21, 24 -> 31).
+const LINE_HEIGHT_FACTOR : Double = 101.0 / 80.0
 
 ///|
 priv enum FontKind {
@@ -80,49 +81,92 @@ fn select_font_kind(
 }
 
 ///|
-fn lookup_width(kind : FontKind, codepoint : Int) -> Int {
-  if codepoint >= 0 && codepoint < 256 {
-    match kind {
-      SansRegular => widths_sans_regular[codepoint]
-      SansBold => widths_sans_bold[codepoint]
-      SansItalic => widths_sans_italic[codepoint]
-      MonoRegular => widths_mono_regular[codepoint]
-    }
-  } else if codepoint >= GEO_START && codepoint <= GEO_END {
-    let idx = codepoint - GEO_START
-    match kind {
-      SansRegular => widths_sans_regular_geo[idx]
-      SansBold => widths_sans_bold_geo[idx]
-      SansItalic => widths_sans_italic_geo[idx]
-      MonoRegular => widths_mono_regular_geo[idx]
-    }
-  } else {
+priv struct GlyphMetrics {
+  x_min : Int
+  x_max : Int
+  advance_fixed : Int
+}
+
+///|
+fn lookup_kerning_fixed(
+  kind : FontKind,
+  left_codepoint : Int,
+  right_codepoint : Int,
+) -> Int {
+  if left_codepoint < 0 ||
+    left_codepoint >= 256 ||
+    right_codepoint < 0 ||
+    right_codepoint >= 256 {
     0
+  } else {
+    let idx = left_codepoint * 256 + right_codepoint
+    match kind {
+      SansRegular => kernings_fixed_sans_regular[idx]
+      SansBold => kernings_fixed_sans_bold[idx]
+      SansItalic => kernings_fixed_sans_italic[idx]
+      MonoRegular => kernings_fixed_mono_regular[idx]
+    }
   }
 }
 
 ///|
-fn fallback_width(kind : FontKind) -> Int {
-  // Use "M" as a conservative fallback for unknown glyphs.
-  lookup_width(kind, 'M'.to_int())
-}
-
-///|
-fn space_width_for(kind : FontKind) -> Int {
-  match kind {
-    MonoRegular => SPACE_WIDTH_MONO
-    _ => SPACE_WIDTH_SANS
+fn lookup_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
+  if codepoint >= 0 && codepoint < 256 {
+    match kind {
+      SansRegular => {
+        x_min: glyph_x_mins_sans_regular[codepoint],
+        x_max: glyph_x_maxs_sans_regular[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_regular[codepoint],
+      }
+      SansBold => {
+        x_min: glyph_x_mins_sans_bold[codepoint],
+        x_max: glyph_x_maxs_sans_bold[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_bold[codepoint],
+      }
+      SansItalic => {
+        x_min: glyph_x_mins_sans_italic[codepoint],
+        x_max: glyph_x_maxs_sans_italic[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_italic[codepoint],
+      }
+      MonoRegular => {
+        x_min: glyph_x_mins_mono_regular[codepoint],
+        x_max: glyph_x_maxs_mono_regular[codepoint],
+        advance_fixed: glyph_advances_fixed_mono_regular[codepoint],
+      }
+    }
+  } else if codepoint >= GEO_START && codepoint <= GEO_END {
+    let idx = codepoint - GEO_START
+    match kind {
+      SansRegular => {
+        x_min: glyph_x_mins_sans_regular_geo[idx],
+        x_max: glyph_x_maxs_sans_regular_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_regular_geo[idx],
+      }
+      SansBold => {
+        x_min: glyph_x_mins_sans_bold_geo[idx],
+        x_max: glyph_x_maxs_sans_bold_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_bold_geo[idx],
+      }
+      SansItalic => {
+        x_min: glyph_x_mins_sans_italic_geo[idx],
+        x_max: glyph_x_maxs_sans_italic_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_italic_geo[idx],
+      }
+      MonoRegular => {
+        x_min: glyph_x_mins_mono_regular_geo[idx],
+        x_max: glyph_x_maxs_mono_regular_geo[idx],
+        advance_fixed: glyph_advances_fixed_mono_regular_geo[idx],
+      }
+    }
+  } else {
+    // Use "M" as a conservative fallback for unknown glyphs.
+    lookup_glyph_metrics(kind, 'M'.to_int())
   }
 }
 
 ///|
 fn line_height_for(font_size : Int, is_mono : Bool) -> Double {
-  let base = if is_mono {
-    BASE_MONO_LINE_HEIGHT.to_double()
-  } else {
-    BASE_LINE_HEIGHT.to_double()
-  }
-  let mut height = base * font_size.to_double() / BASE_FONT_SIZE.to_double()
+  let mut height = font_size.to_double() * LINE_HEIGHT_FACTOR
   if is_mono {
     height = height * CODE_LINE_HEIGHT
   }
@@ -146,11 +190,16 @@ pub fn measure_text(
 ) -> MeasuredText {
   let kind = select_font_kind(is_mono, is_bold, is_italic)
   let scale = font_size.to_double() / BASE_FONT_SIZE.to_double()
-  let space_width = space_width_for(kind)
-  let tab_width = space_width.to_double() * scale * TAB_SIZE
-  let mut max_line_width = 0.0
+  let fixed_scale = scale / 64.0
+  let space_advance_fixed = lookup_glyph_metrics(kind, ' '.to_int()).advance_fixed
+  let tab_width = space_advance_fixed.to_double() * fixed_scale * TAB_SIZE
   let mut line_count = 0
-  let mut current_line_width = 0.0
+  let bounds_with_dot = is_mono
+  let mut has_area = false
+  let mut bounds_left = 0.0
+  let mut bounds_right = 0.0
+  let mut dot_x = 0.0
+  let mut prev_cp = -1
 
   // Analyze each character (D2's ruler.drawBuf approach)
   let len = text.length()
@@ -158,39 +207,73 @@ pub fn measure_text(
   while i < len {
     match text[i].to_char() {
       Some('\n') => {
-        // Line break: update max and reset
-        if current_line_width > max_line_width {
-          max_line_width = current_line_width
-        }
-        current_line_width = 0.0
+        dot_x = 0.0
         line_count = line_count + 1
       }
       Some('\r') =>
         // Carriage return moves to line origin without advancing lines.
-        current_line_width = 0.0
+        dot_x = 0.0
       Some('\t') => {
-        let rem = current_line_width % tab_width
-        let advance = if rem == 0.0 { tab_width } else { tab_width - rem }
-        current_line_width = current_line_width + advance
+        // Mirror D2's controlRune tab behavior (lib/textmeasure/textmeasure.go:244-252).
+        // NOTE: This does not reset `prevR`; keep kerning behavior aligned with D2.
+        let mut rem = dot_x % tab_width
+        rem = rem % (rem + tab_width)
+        if rem == 0.0 {
+          rem = tab_width
+        }
+        dot_x = dot_x + rem
       }
-      Some(' ') =>
-        current_line_width = current_line_width +
-          space_width.to_double() * scale
       Some(c) => {
         let cp = c.to_int()
-        let w = lookup_width(kind, cp)
-        let base = if w == 0 { fallback_width(kind) } else { w }
-        current_line_width = current_line_width + base.to_double() * scale
+        if prev_cp >= 0 {
+          let k_fixed = lookup_kerning_fixed(kind, prev_cp, cp)
+          dot_x = dot_x + k_fixed.to_double() * fixed_scale
+        }
+        let m = lookup_glyph_metrics(kind, cp)
+        let left = dot_x + m.x_min.to_double() * scale
+        let right = dot_x + m.x_max.to_double() * scale
+        let is_area = left != right
+
+        if bounds_with_dot {
+          if left < bounds_left {
+            bounds_left = left
+          }
+          if right > bounds_right {
+            bounds_right = right
+          }
+        } else if !has_area {
+          bounds_left = left
+          bounds_right = right
+          if is_area {
+            has_area = true
+          }
+        } else {
+          if left < bounds_left {
+            bounds_left = left
+          }
+          if right > bounds_right {
+            bounds_right = right
+          }
+        }
+
+        dot_x = dot_x + m.advance_fixed.to_double() * fixed_scale
+        prev_cp = cp
+
+        if bounds_with_dot {
+          if dot_x < bounds_left {
+            bounds_left = dot_x
+          }
+          if dot_x > bounds_right {
+            bounds_right = dot_x
+          }
+        }
       }
       None => ()
     }
     i = i + 1
   }
 
-  // Last line
-  if current_line_width > max_line_width {
-    max_line_width = current_line_width
-  }
+  let max_line_width = bounds_right - bounds_left
 
   // Handle empty lines (D2's logic from d2graph.GetTextDimensionsWithMono:1459-1476)
   let lines_iter = text.split("\n")
@@ -242,8 +325,9 @@ pub fn measure_text(
 
   // D2 text measurement returns raw text dimensions.
   // Shape padding / size-to-fit is applied later by the shape sizing layer.
-  let width = max_line_width
-  let height = total_height
+  // D2 rounds up (`math.Ceil`) the measured bounds.
+  let width = @math.ceil(max_line_width)
+  let height = @math.ceil(total_height)
   { dimensions: { width, height }, line_count, max_line_width }
 }
 

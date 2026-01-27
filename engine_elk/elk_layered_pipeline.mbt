@@ -556,7 +556,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add("elk.layered.phase2.layering", Phase2, fn(graph, ctx) {
     let layer_strategy = match ctx.options.layering_strategy {
       Some(s) => s
-      None => LongestPath
+      None => NetworkSimplex
     }
     assign_layers(graph, layer_strategy)
     graph.initialize_layers()

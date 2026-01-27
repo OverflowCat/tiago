@@ -264,8 +264,43 @@ fn invert_inferred_port_sides(
 ///|
 /// Sort ports in each node for determinism.
 fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
+  fn reverse_range(ports : Array[LPort], start : Int, end : Int) -> Unit {
+    let mut i = 0
+    while start + i < end - i - 1 {
+      let tmp = ports[start + i]
+      ports[start + i] = ports[end - i - 1]
+      ports[end - i - 1] = tmp
+      i = i + 1
+    }
+  }
+
+  fn reverse_side_segments(ports : Array[LPort]) -> Unit {
+    if ports.length() <= 1 {
+      return
+    }
+    fn find_range(ports : Array[LPort], side : ElkPortSide) -> (Int, Int) {
+      let mut lo = 0
+      while lo < ports.length() && ports[lo].side != side {
+        lo = lo + 1
+      }
+      let mut hi = lo
+      while hi < ports.length() && ports[hi].side == side {
+        hi = hi + 1
+      }
+      (lo, hi)
+    }
+    let (s_lo, s_hi) = find_range(ports, South)
+    reverse_range(ports, s_lo, s_hi)
+    let (w_lo, w_hi) = find_range(ports, West)
+    reverse_range(ports, w_lo, w_hi)
+  }
+
   for node in graph.nodes {
     let node_options = resolve_options_for_lnode(options, node)
+    let constraints = match node_options.port_constraints {
+      Some(c) => c
+      None => Undefined
+    }
 
     // For fixed port order, preserve model order.
     match node_options.port_constraints {
@@ -331,6 +366,10 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         }
       }
     })
+    // Match ELK's clockwise port ordering when sides are fixed.
+    if constraints is FixedSide {
+      reverse_side_segments(node.ports)
+    }
   }
 }
 
@@ -413,15 +452,27 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       make(length / 2.0, ports[0])
       return
     }
-    let mut step = spacing
-    if step <= 0.0 {
-      step = length / (ports.length() - 1).to_double()
+    let n = ports.length()
+    let desired_step = length / (n - 1).to_double()
+    // `spacing` is the requested port spacing. For `Distributed`, treat it as a
+    // minimum spacing but spread ports when there is room.
+    let mut step = if alignment is Distributed {
+      let distributed_step = length / (n + 1).to_double()
+      if spacing > 0.0 {
+        max_double(spacing, distributed_step)
+      } else {
+        distributed_step
+      }
+    } else if spacing > 0.0 {
+      spacing
+    } else {
+      desired_step
     }
-    let max_step = length / (ports.length() - 1).to_double()
+    let max_step = length / (n - 1).to_double()
     if step > max_step {
       step = max_step
     }
-    let span = (ports.length() - 1).to_double() * step
+    let span = (n - 1).to_double() * step
     let start = match alignment {
       Begin => 0.0
       End => max_double(0.0, length - span)
@@ -564,7 +615,12 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       alignment_for_side(node_options, South),
       spacing,
       fn(pos, port) {
-        port.x = effective_border + pos
+        let adjusted = if constraints is FixedOrder || constraints is FixedSide {
+          usable_w - pos
+        } else {
+          pos
+        }
+        port.x = effective_border + adjusted
         port.y = node.height
         port.width = 0.0
         port.height = 0.0
@@ -577,7 +633,12 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
       spacing,
       fn(pos, port) {
         port.x = 0.0
-        port.y = effective_border + pos
+        let adjusted = if constraints is FixedOrder || constraints is FixedSide {
+          usable_h - pos
+        } else {
+          pos
+        }
+        port.y = effective_border + adjusted
         port.width = 0.0
         port.height = 0.0
       },

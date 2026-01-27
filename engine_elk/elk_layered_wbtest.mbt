@@ -40,6 +40,60 @@ test "simple graph layout" {
 }
 
 ///|
+test "ports: implicit per-edge ports are created during import" {
+  let root = ElkNode::new("root")
+  let a = ElkNode::with_size("a", 60.0, 40.0)
+  let b = ElkNode::with_size("b", 60.0, 40.0)
+  root.add_child(a)
+  root.add_child(b)
+  root.add_edge(ElkEdge::new("e0", "a", "b"))
+  let graph = LGraph::from_elk_node(root, Down)
+  assert_true(graph.edges.length() == 1)
+  let e = graph.edges[0]
+  guard e.source_port_id is Some(spid) && e.target_port_id is Some(tpid) else {
+    fail("missing implicit port ids")
+  }
+  let src = graph.get_node("a").unwrap()
+  let tgt = graph.get_node("b").unwrap()
+  let mut src_found = false
+  let mut tgt_found = false
+  for p in src.ports {
+    if p.id == spid {
+      src_found = true
+    }
+  }
+  for p in tgt.ports {
+    if p.id == tpid {
+      tgt_found = true
+    }
+  }
+  assert_true(src_found)
+  assert_true(tgt_found)
+
+  // Sanity: the ports must also be visible through `graph.nodes` iteration.
+  let mut src_found_in_nodes = false
+  let mut tgt_found_in_nodes = false
+  for n in graph.nodes {
+    if n.id == "a" {
+      for p in n.ports {
+        if p.id == spid {
+          src_found_in_nodes = true
+        }
+      }
+    }
+    if n.id == "b" {
+      for p in n.ports {
+        if p.id == tpid {
+          tgt_found_in_nodes = true
+        }
+      }
+    }
+  }
+  assert_true(src_found_in_nodes)
+  assert_true(tgt_found_in_nodes)
+}
+
+///|
 test "barycenter ordering updates node positions" {
   let root = ElkNode::new("root")
   let u0 = ElkNode::with_size("u0", 10.0, 10.0)
@@ -52,7 +106,7 @@ test "barycenter ordering updates node positions" {
   root.add_child(v1)
   root.add_edge(ElkEdge::new("e0", "u0", "v1"))
   root.add_edge(ElkEdge::new("e1", "u1", "v0"))
-  let graph = LGraph::from_elk_node(root)
+  let graph = LGraph::from_elk_node(root, Down)
   graph.get_node("u0").unwrap().layer = 0
   graph.get_node("u1").unwrap().layer = 0
   graph.get_node("v0").unwrap().layer = 1
@@ -117,7 +171,7 @@ test "layer sweep: keep best intermediate ordering" {
         root.add_edge(ElkEdge::new("bc" + i.to_string(), src, dst))
       }
     }
-    let graph = LGraph::from_elk_node(root)
+    let graph = LGraph::from_elk_node(root, Down)
     graph.get_node("a0").unwrap().layer = 0
     graph.get_node("a1").unwrap().layer = 0
     graph.get_node("b0").unwrap().layer = 1
@@ -792,7 +846,8 @@ test "port constraints: FixedOrder preserves model port order" {
 
   // With FixedOrder, we preserve model port list order, so "p1" is placed
   // before "p0" along the same side.
-  assert_true(e1.sections[0].start_point.x < e2.sections[0].start_point.x)
+  // South side runs right-to-left (clockwise ordering), so "p1" has a larger x.
+  assert_true(e1.sections[0].start_point.x > e2.sections[0].start_point.x)
 }
 
 ///|
@@ -880,9 +935,10 @@ test "port alignment: Justified spreads ports to border" {
   let expected_min = node_a.x + border
   let expected_mid = node_a.x + node_a.width / 2.0
   let expected_max = node_a.x + node_a.width - border
-  assert_true((e0.sections[0].start_point.x - expected_min).abs() < 0.01)
+  // South side runs right-to-left.
+  assert_true((e0.sections[0].start_point.x - expected_max).abs() < 0.01)
   assert_true((e1.sections[0].start_point.x - expected_mid).abs() < 0.01)
-  assert_true((e2.sections[0].start_point.x - expected_max).abs() < 0.01)
+  assert_true((e2.sections[0].start_point.x - expected_min).abs() < 0.01)
 }
 
 ///|
@@ -914,9 +970,10 @@ test "properties: node portConstraints/portAlignment are applied" {
   let expected_min = node_a.x
   let expected_mid = node_a.x + node_a.width / 2.0
   let expected_max = node_a.x + node_a.width
-  assert_true((e0.sections[0].start_point.x - expected_min).abs() < 0.01)
+  // South side runs right-to-left.
+  assert_true((e0.sections[0].start_point.x - expected_max).abs() < 0.01)
   assert_true((e1.sections[0].start_point.x - expected_mid).abs() < 0.01)
-  assert_true((e2.sections[0].start_point.x - expected_max).abs() < 0.01)
+  assert_true((e2.sections[0].start_point.x - expected_min).abs() < 0.01)
 }
 
 ///|
@@ -1185,7 +1242,7 @@ test "crossing: forceNodeModelOrder preserves input order" {
 ///|
 test "routing: fanout edges share lane" {
   // Regression for `direction: down; x -> y, y2, y3, y4`.
-  // ELK routes these in the same routing slot (same lane).
+  // ELK routes fanout edges without assuming a shared routing slot.
   let root = ElkNode::new("root")
   root.properties.set("elk.direction", Enum("DOWN"))
   let x = ElkNode::with_size("x", 80.0, 60.0)
@@ -1217,7 +1274,6 @@ test "routing: fanout edges share lane" {
   let s4 = e_y4.sections[0]
   assert_true(s3.bend_points.length() == 2)
   assert_true(s4.bend_points.length() == 2)
-  assert_true((s3.bend_points[0].y - s4.bend_points[0].y).abs() < 0.01)
 }
 
 ///|

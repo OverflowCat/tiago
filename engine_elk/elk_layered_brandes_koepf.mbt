@@ -1661,24 +1661,22 @@ fn apply_layout(
   direction : LayoutDirection,
   _content_alignment : ContentAlignment,
 ) -> Unit {
-  fn has_cross_in(graph : LGraph, node : LNode) -> Bool {
-    for e in node.incoming_edges {
-      match graph.get_node(e.source_id) {
-        Some(src) => if src.layer != node.layer { return true }
-        None => ()
-      }
+  fn in_out_ratio(node : LNode) -> Double {
+    // Port-balance alignment used by ELK (see `LGraphUtil.placeNodesHorizontally`):
+    // sources align to the outgoing side, sinks to the incoming side, isolated nodes
+    // are centered, and mixed nodes interpolate by out/(in+out).
+    //
+    // NOTE: ELK computes this based on port counts. We currently approximate using
+    // edge counts, which matches the common case where implicit ports are created
+    // per edge.
+    let incoming = node.incoming_edges.length()
+    let outgoing = node.outgoing_edges.length()
+    let total = incoming + outgoing
+    if total == 0 {
+      0.5
+    } else {
+      outgoing.to_double() / total.to_double()
     }
-    false
-  }
-
-  fn has_cross_out(graph : LGraph, node : LNode) -> Bool {
-    for e in node.outgoing_edges {
-      match graph.get_node(e.target_id) {
-        Some(tgt) => if tgt.layer != node.layer { return true }
-        None => ()
-      }
-    }
-    false
   }
   // Preserve any precomputed minimum graph size (e.g. container title size from
   // the D2 sizing pipeline). The layered placement expands graphs to fit
@@ -1733,46 +1731,13 @@ fn apply_layout(
     }
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
-      let cross_in = has_cross_in(graph, node)
-      let cross_out = has_cross_out(graph, node)
+      let ratio = in_out_ratio(node)
       if is_horizontal {
-        node.x = match direction {
-          Right =>
-            if cross_out && !cross_in {
-              // Sources: align to the outgoing port side.
-              layer_offset + (layer_size - node.width)
-            } else {
-              // Targets (and isolated): align to the incoming port side.
-              layer_offset
-            }
-          Left =>
-            if cross_in && !cross_out {
-              layer_offset + (layer_size - node.width)
-            } else {
-              layer_offset
-            }
-          _ => layer_offset
-        }
+        node.x = layer_offset + (layer_size - node.width) * ratio
         node.y = cross_pos + padding.top
       } else {
         node.x = cross_pos + padding.left
-        node.y = match direction {
-          Down =>
-            if cross_out && !cross_in {
-              // Sources: align to the outgoing port side.
-              layer_offset + (layer_size - node.height)
-            } else {
-              // Targets (and isolated): align to the incoming port side.
-              layer_offset
-            }
-          Up =>
-            if cross_in && !cross_out {
-              layer_offset + (layer_size - node.height)
-            } else {
-              layer_offset
-            }
-          _ => layer_offset
-        }
+        node.y = layer_offset + (layer_size - node.height) * ratio
       }
     }
     layer_offset = layer_offset + layer_size + layer_spacing

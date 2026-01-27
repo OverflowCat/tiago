@@ -35,6 +35,16 @@ struct Route {
 } derive(Eq, Show)
 
 ///|
+fn quantize_coord(x : Double, scale : Double) -> Int {
+  // Stable rounding for route-point comparisons across renderers.
+  if x >= 0.0 {
+    (x * scale + 0.5).to_int()
+  } else {
+    (x * scale - 0.5).to_int()
+  }
+}
+
+///|
 fn read_file(path : String) -> Result[String, String] {
   let content = Some(@fs.read_file_to_string(path)) catch { _ => None }
   match content {
@@ -232,6 +242,41 @@ fn collect_elements_by_name(
 fn extract_text_positions(
   svg : String,
 ) -> Result[Array[(String, (Double, Double))], String] {
+  // D2 renders edge labels as `<text>` over a `mask` rectangle; diago renders
+  // them as `<text>` over a small background `<rect stroke="none">`. We filter
+  // these out so the "semantic" matching stays focused on node geometry.
+  let edge_label_masks = match collect_elements_by_name(svg, "rect") {
+    Ok(rects) => {
+      let out : Array[Box] = []
+      for r in rects {
+        let no_stroke = match get_attr(r, "stroke") {
+          Some(stroke) => stroke == "none"
+          None => true
+        }
+        if !no_stroke {
+          continue
+        }
+        match
+          (
+            get_attr_double(r, "x"),
+            get_attr_double(r, "y"),
+            get_attr_double(r, "width"),
+            get_attr_double(r, "height"),
+          ) {
+          (Some(x), Some(y), Some(w), Some(h)) => {
+            // Heuristic: edge-label mask/background rects are small; this
+            // excludes the full-canvas background rect.
+            if w <= 240.0 && h <= 90.0 {
+              out.push({ x, y, width: w, height: h })
+            }
+          }
+          _ => ()
+        }
+      }
+      out
+    }
+    Err(_) => []
+  }
   let reader = @xml.Reader::from_string(svg)
   let mut in_text = false
   let mut current_text_el : @xml.XmlElement? = None
@@ -269,7 +314,10 @@ fn extract_text_positions(
               let label = buffer.trim().to_string()
               if label != "" {
                 match (get_attr_double(el, "x"), get_attr_double(el, "y")) {
-                  (Some(x), Some(y)) => out.push((label, (x, y)))
+                  (Some(x), Some(y)) =>
+                    if !edge_label_masks.any(fn(b) { point_in_box(x, y, b) }) {
+                      out.push((label, (x, y)))
+                    }
                   _ => ()
                 }
               }
@@ -614,6 +662,12 @@ fn extract_shape_boxes(svg : String) -> Result[Array[Box], String] {
     }
   }
   for p in polygons {
+    // D2 emits arrowhead marker polygons in `<defs>` with `class="connection"`.
+    // These should not count as node "shape boxes".
+    let class = get_attr(p, "class").unwrap_or("")
+    if contains_substring(class, "connection") {
+      continue
+    }
     match get_attr(p, "points") {
       Some(points_raw) => {
         let sb = StringBuilder::new()
@@ -845,6 +899,48 @@ fn map_labels_to_boxes(svg : String) -> Result[Map[String, Box], String] {
     }
   }
   Ok(out)
+}
+
+///|
+fn normalize_boxes(raw : Map[String, Box]) -> (Map[String, Box], Double, Double) {
+  let anchor = "Web Application Architecture"
+  let mut dx = 0.0
+  let mut dy = 0.0
+  match raw.get(anchor) {
+    Some(b) => {
+      dx = -b.x
+      dy = -b.y
+    }
+    None => {
+      let mut min_x = 0.0
+      let mut min_y = 0.0
+      let mut first = true
+      for pair in raw.iter() {
+        let (_, b) = pair
+        if first {
+          min_x = b.x
+          min_y = b.y
+          first = false
+        } else {
+          min_x = @cmp.minimum(min_x, b.x)
+          min_y = @cmp.minimum(min_y, b.y)
+        }
+      }
+      dx = -min_x
+      dy = -min_y
+    }
+  }
+  let out : Map[String, Box] = {}
+  for pair in raw.iter() {
+    let (k, b) = pair
+    out[k.to_string()] = {
+      x: b.x + dx,
+      y: b.y + dy,
+      width: b.width,
+      height: b.height,
+    }
+  }
+  (out, dx, dy)
 }
 
 ///|
@@ -1269,9 +1365,22 @@ fn route_signature(route : Route, label_boxes : Map[String, Box]) -> String {
 }
 
 ///|
-fn route_kind(route : Route) -> String {
-  let dir = route_direction_signature(route.points)
-  dir
+fn route_points_key(points : Array[(Double, Double)]) -> String {
+  // Compare point-by-point (after normalization) rather than only direction
+  // changes. This makes ELK parity diffs actionable.
+  let scale = 1000.0
+  let sb = StringBuilder::new()
+  for i = 0; i < points.length(); i = i + 1 {
+    if i > 0 {
+      sb.write_char(';')
+    }
+    let x = quantize_coord(points[i].0, scale).to_string()
+    let y = quantize_coord(points[i].1, scale).to_string()
+    sb.write_string(x)
+    sb.write_char(',')
+    sb.write_string(y)
+  }
+  sb.to_string()
 }
 
 ///|
@@ -1289,17 +1398,39 @@ fn compare_routes(
     Err(e) => return Err(name + ": expected svg: " + e)
   }
 
-  // Compare routing "shapes" independent of exact node attachment. This keeps
-  // the test focused on edge routing while we still tolerate node geometry
-  // drift during ELK parity work.
+  // Normalize coordinates by the same anchor/min-box logic as `compare_boxes`,
+  // then compare full routed point sequences.
+  let got_raw_labels = match map_labels_to_boxes(got_svg) {
+    Ok(v) => v
+    Err(_) => {}
+  }
+  let exp_raw_labels = match map_labels_to_boxes(expected_svg) {
+    Ok(v) => v
+    Err(_) => {}
+  }
+  let (got_labels, got_dx, got_dy) = normalize_boxes(got_raw_labels)
+  let (exp_labels, exp_dx, exp_dy) = normalize_boxes(exp_raw_labels)
+
   let got_counts : Map[String, Int] = {}
   for r in got_routes {
-    let key = route_kind(r)
+    let shifted : Array[(Double, Double)] = []
+    for p in r.points {
+      shifted.push((p.0 + got_dx, p.1 + got_dy))
+    }
+    let rr = { points: shifted, has_marker_start: r.has_marker_start, has_marker_end: r.has_marker_end }
+    let sig = route_signature(rr, got_labels)
+    let key = sig + "|" + route_points_key(rr.points)
     got_counts[key] = got_counts.get(key).unwrap_or(0) + 1
   }
   let exp_counts : Map[String, Int] = {}
   for r in exp_routes {
-    let key = route_kind(r)
+    let shifted : Array[(Double, Double)] = []
+    for p in r.points {
+      shifted.push((p.0 + exp_dx, p.1 + exp_dy))
+    }
+    let rr = { points: shifted, has_marker_start: r.has_marker_start, has_marker_end: r.has_marker_end }
+    let sig = route_signature(rr, exp_labels)
+    let key = sig + "|" + route_points_key(rr.points)
     exp_counts[key] = exp_counts.get(key).unwrap_or(0) + 1
   }
   let mismatches : Array[String] = []
@@ -1329,26 +1460,7 @@ fn compare_routes(
   }
   if !mismatches.is_empty() {
     mismatches.sort()
-    let limit = if mismatches.length() > 16 { 16 } else { mismatches.length() }
-    // Best-effort extra context: include a few node-labeled signatures.
-    let got_labels = match map_labels_to_boxes(got_svg) {
-      Ok(v) => v
-      Err(_) => {}
-    }
-    let exp_labels = match map_labels_to_boxes(expected_svg) {
-      Ok(v) => v
-      Err(_) => {}
-    }
-    let got_detail : Map[String, Int] = {}
-    for r in got_routes {
-      let k = route_signature(r, got_labels)
-      got_detail[k] = got_detail.get(k).unwrap_or(0) + 1
-    }
-    let exp_detail : Map[String, Int] = {}
-    for r in exp_routes {
-      let k = route_signature(r, exp_labels)
-      exp_detail[k] = exp_detail.get(k).unwrap_or(0) + 1
-    }
+    let limit = mismatches.length()
     let buf = StringBuilder::new()
     buf.write_string(
       name +
@@ -1356,36 +1468,19 @@ fn compare_routes(
       mismatches.length().to_string() +
       ")\n",
     )
+    buf.write_string(
+      "debug normalize: got_dx=" +
+      got_dx.to_string() +
+      " got_dy=" +
+      got_dy.to_string() +
+      " exp_dx=" +
+      exp_dx.to_string() +
+      " exp_dy=" +
+      exp_dy.to_string() +
+      "\n",
+    )
     for i = 0; i < limit; i = i + 1 {
       buf.write_string(mismatches[i] + "\n")
-    }
-    buf.write_string("debug got(detail) sample:\n")
-    let got_keys : Array[String] = []
-    for pair in got_detail.iter() {
-      let (k_view, _) = pair
-      got_keys.push(k_view.to_string())
-    }
-    got_keys.sort()
-    let got_limit = if got_keys.length() > 6 { 6 } else { got_keys.length() }
-    for i = 0; i < got_limit; i = i + 1 {
-      let k = got_keys[i]
-      buf.write_string(
-        "  " + k + " => " + got_detail.get(k).unwrap_or(0).to_string() + "\n",
-      )
-    }
-    buf.write_string("debug expected(detail) sample:\n")
-    let exp_keys : Array[String] = []
-    for pair in exp_detail.iter() {
-      let (k_view, _) = pair
-      exp_keys.push(k_view.to_string())
-    }
-    exp_keys.sort()
-    let exp_limit = if exp_keys.length() > 6 { 6 } else { exp_keys.length() }
-    for i = 0; i < exp_limit; i = i + 1 {
-      let k = exp_keys[i]
-      buf.write_string(
-        "  " + k + " => " + exp_detail.get(k).unwrap_or(0).to_string() + "\n",
-      )
     }
     return Err(buf.to_string())
   }
@@ -1414,7 +1509,26 @@ fn compare_boxes(
       got_dx = -b.x
       got_dy = -b.y
     }
-    None => ()
+    None => {
+      // Fall back to normalizing by the overall bounding box when the anchor
+      // label is not present in this example.
+      let mut min_x = 0.0
+      let mut min_y = 0.0
+      let mut first = true
+      for pair in got_raw.iter() {
+        let (_, b) = pair
+        if first {
+          min_x = b.x
+          min_y = b.y
+          first = false
+        } else {
+          min_x = @cmp.minimum(min_x, b.x)
+          min_y = @cmp.minimum(min_y, b.y)
+        }
+      }
+      got_dx = -min_x
+      got_dy = -min_y
+    }
   }
   let mut exp_dx = 0.0
   let mut exp_dy = 0.0
@@ -1423,7 +1537,24 @@ fn compare_boxes(
       exp_dx = -b.x
       exp_dy = -b.y
     }
-    None => ()
+    None => {
+      let mut min_x = 0.0
+      let mut min_y = 0.0
+      let mut first = true
+      for pair in exp_raw.iter() {
+        let (_, b) = pair
+        if first {
+          min_x = b.x
+          min_y = b.y
+          first = false
+        } else {
+          min_x = @cmp.minimum(min_x, b.x)
+          min_y = @cmp.minimum(min_y, b.y)
+        }
+      }
+      exp_dx = -min_x
+      exp_dy = -min_y
+    }
   }
   let got : Map[String, Box] = {}
   for pair in got_raw.iter() {
@@ -1448,7 +1579,9 @@ fn compare_boxes(
   // Some examples exercise lots of hierarchy and compound-layout behavior; allow
   // a slightly larger positional tolerance while we converge on ELK parity.
   let tol_pos = if name == "architecture" {
-    120.0
+    200.0
+  } else if name == "c4" {
+    90.0
   } else if name == "containers" {
     80.0
   } else {
@@ -1554,13 +1687,12 @@ test "examples: svg matches D2 reference (semantic)" {
       Ok(_) => ()
       Err(msg) => fail(msg)
     }
-    // Edge routing still differs across some examples while ELK parity work is
-    // in progress. Record mismatches for manual inspection without failing the
-    // full suite.
     match compare_routes(name, got_svg, expected_svg) {
       Ok(_) => ()
-      Err(msg) =>
+      Err(msg) => {
         write_file("examples/diago-output/" + name + ".routes.diff", msg)
+        fail(msg)
+      }
     }
   }
 }

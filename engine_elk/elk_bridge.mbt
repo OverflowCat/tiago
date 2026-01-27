@@ -205,6 +205,331 @@ fn apply_port_spacing(graph : Graph, direction : Direction) -> Unit {
 }
 
 ///|
+fn d2_style_bool(v : StyleValue?) -> Bool {
+  match v {
+    Some(sv) => sv.as_bool().unwrap_or(false)
+    None => false
+  }
+}
+
+///|
+fn d2_has_outside_bottom_label(obj : Object) -> Bool {
+  match obj.shape_type {
+    @graph.Image | @graph.Person => true
+    _ => false
+  }
+}
+
+///|
+fn d2_has_label(obj : Object) -> Bool {
+  match obj.shape_type {
+    @graph.Text | @graph.Class | @graph.SqlTable | @graph.Code => false
+    _ => obj.label.length() > 0
+  }
+}
+
+///|
+fn d2_has_icon(obj : Object) -> Bool {
+  obj.icon is Some(_) && obj.shape_type != @graph.Image
+}
+
+///|
+fn d2_modifier_adjustments(obj : Object) -> (Double, Double) {
+  // Ported from d2graph.Object.GetModifierElementAdjustments.
+  let is_3d = d2_style_bool(obj.style.three_d)
+  let is_multiple = d2_style_bool(obj.style.multiple)
+  if is_3d {
+    let dx = 15.0
+    let dy = if obj.shape_type == @graph.Hexagon { 7.5 } else { 15.0 }
+    (dx, dy)
+  } else if is_multiple {
+    (10.0, 10.0)
+  } else {
+    (0.0, 0.0)
+  }
+}
+
+///|
+#warnings("-unused_constructor")
+enum D2LabelPosition {
+  InsideMiddleCenter
+  InsideTopCenter
+  InsideTopLeft
+  InsideTopRight
+  OutsideTopCenter
+  OutsideTopLeft
+  OutsideBottomCenter
+  OutsideLeftMiddle
+  OutsideRightMiddle
+} derive(Eq, Show)
+
+///|
+fn d2_is_outside(pos : D2LabelPosition) -> Bool {
+  match pos {
+    OutsideTopCenter | OutsideTopLeft | OutsideBottomCenter | OutsideLeftMiddle |
+      OutsideRightMiddle => true
+    _ => false
+  }
+}
+
+///|
+fn d2_default_label_position(obj : Object) -> D2LabelPosition {
+  // Ported from d2elklayout.positionLabelsIcons for the `LabelPosition == nil`
+  // case (diago doesn't currently persist explicit label positions).
+  let mut pos = if obj.children.length() > 0 {
+    InsideTopCenter
+  } else if d2_has_outside_bottom_label(obj) {
+    OutsideBottomCenter
+  } else if d2_has_icon(obj) {
+    InsideTopCenter
+  } else {
+    InsideMiddleCenter
+  }
+  // If label doesn't fit, move it outside.
+  match (obj.box, obj.label_box) {
+    (Some(b), Some(lb)) =>
+      if lb.width > b.width || lb.height > b.height {
+        pos = if obj.children.length() > 0 { OutsideTopCenter } else { OutsideBottomCenter }
+      }
+    _ => ()
+  }
+  pos
+}
+
+///|
+fn d2_default_icon_position(obj : Object) -> D2LabelPosition? {
+  // Ported from d2elklayout.positionLabelsIcons for the `IconPosition == nil`
+  // case. Returns `None` when no icon is present.
+  guard d2_has_icon(obj) else { return None }
+  if obj.children.length() > 0 {
+    return Some(InsideTopLeft)
+  }
+  match obj.shape_type {
+    @graph.SqlTable | @graph.Class | @graph.Code => Some(OutsideTopLeft)
+    _ => Some(InsideMiddleCenter)
+  }
+}
+
+///|
+fn d2_icon_size(box : @graph.Box, position : D2LabelPosition) -> Double {
+  // Ported from d2target.GetIconSize (returns an integer size).
+  let default_icon_size = 32.0
+  let max_icon_size = 64.0
+  let min_dim = if box.width < box.height { box.width } else { box.height }
+  let half_min = @math.ceil(0.5 * min_dim)
+  let mut size = if position == InsideMiddleCenter {
+    half_min
+  } else {
+    let a = if default_icon_size > half_min { default_icon_size } else { half_min }
+    if min_dim < a { min_dim } else { a }
+  }
+  if size > max_icon_size {
+    size = max_icon_size
+  }
+  if !d2_is_outside(position) {
+    let max_w = max_double(box.width - 2.0 * INNER_LABEL_PADDING, 0.0)
+    let max_h = max_double(box.height - 2.0 * INNER_LABEL_PADDING, 0.0)
+    let bound = if max_w < max_h { max_w } else { max_h }
+    if size > bound {
+      size = bound
+    }
+  }
+  size.round()
+}
+
+///|
+fn d2_spacing_margin(obj : Object) -> ElkPadding {
+  // Ported from d2graph.Object.SpacingOpt, but only the `margin` part is used
+  // by the D2->ELK bridge to size ELK nodes.
+  let label_padding = INNER_LABEL_PADDING
+  let icon_padding = INNER_LABEL_PADDING
+  let mut top = 0.0
+  let mut right = 0.0
+  let mut bottom = 0.0
+  let mut left = 0.0
+
+  if d2_has_label(obj) {
+    let pos = d2_default_label_position(obj)
+    match obj.label_box {
+      Some(lb) => {
+        let lw = if lb.width > 0.0 { lb.width + label_padding } else { 0.0 }
+        let lh = if lb.height > 0.0 { lb.height + label_padding } else { 0.0 }
+        match pos {
+          OutsideTopCenter => top = lh
+          OutsideBottomCenter => bottom = lh
+          OutsideLeftMiddle => left = lw
+          OutsideRightMiddle => right = lw
+          OutsideTopLeft => top = lh
+          _ => ()
+        }
+      }
+      None => ()
+    }
+  }
+
+  match (d2_default_icon_position(obj), obj.box) {
+    (Some(pos), Some(b)) => {
+      let icon_size = d2_icon_size(b, pos) + icon_padding
+      match pos {
+        OutsideTopCenter | OutsideTopLeft => top = max_double(top, icon_size)
+        OutsideBottomCenter => bottom = max_double(bottom, icon_size)
+        OutsideLeftMiddle => left = max_double(left, icon_size)
+        OutsideRightMiddle => right = max_double(right, icon_size)
+        _ => ()
+      }
+    }
+    _ => ()
+  }
+
+  let (dx, dy) = d2_modifier_adjustments(obj)
+  right = right + dx
+  top = top + dy
+
+  ElkPadding::new(top, right, bottom, left)
+}
+
+///|
+fn shift_descendants(obj : Object, dx : Double, dy : Double) -> Unit {
+  for child in obj.children {
+    match child.box {
+      Some(b) =>
+        child.box = Some(@graph.Box::new(b.x + dx, b.y + dy, b.width, b.height))
+      None => ()
+    }
+    shift_descendants(child, dx, dy)
+  }
+}
+
+///|
+fn apply_d2_margins(graph : Graph, d2_margins : Map[String, ElkPadding]) -> Unit {
+  // Mirrors the post-processing in d2elklayout/layout.go that shrinks the
+  // "spacing margin" sides back to the original object boxes and moves edge
+  // endpoints to the shrunken border.
+  let obj_edges : Map[String, Array[Edge]] = {}
+  for e in graph.edges {
+    match obj_edges.get(e.src_id) {
+      Some(es) => es.push(e)
+      None => obj_edges[e.src_id] = [e]
+    }
+    if e.dst_id != e.src_id {
+      match obj_edges.get(e.dst_id) {
+        Some(es) => es.push(e)
+        None => obj_edges[e.dst_id] = [e]
+      }
+    }
+  }
+
+  for obj in graph.objects {
+    let margin = d2_margins.get(obj.id)
+    guard margin is Some(m) else { continue }
+    match obj.box {
+      None => ()
+      Some(b0) => {
+        let mut b = b0
+        match obj_edges.get(obj.id) {
+          Some(edges) => {
+            if m.left > 0.0 {
+              for e in edges {
+                let l = e.route.length()
+                if l == 0 {
+                  continue
+                }
+                if e.src_id == obj.id && e.route[0].x == b.x {
+                  let p = e.route[0]
+                  e.route[0] = @graph.Point::new(p.x + m.left, p.y)
+                }
+                if e.dst_id == obj.id && e.route[l - 1].x == b.x {
+                  let p = e.route[l - 1]
+                  e.route[l - 1] = @graph.Point::new(p.x + m.left, p.y)
+                }
+              }
+              b = @graph.Box::new(b.x + m.left, b.y, b.width - m.left, b.height)
+              shift_descendants(obj, m.left / 2.0, 0.0)
+            }
+            if m.right > 0.0 {
+              let right_x = b.x + b.width
+              for e in edges {
+                let l = e.route.length()
+                if l == 0 {
+                  continue
+                }
+                if e.src_id == obj.id && e.route[0].x == right_x {
+                  let p = e.route[0]
+                  e.route[0] = @graph.Point::new(p.x - m.right, p.y)
+                }
+                if e.dst_id == obj.id && e.route[l - 1].x == right_x {
+                  let p = e.route[l - 1]
+                  e.route[l - 1] = @graph.Point::new(p.x - m.right, p.y)
+                }
+              }
+              b = @graph.Box::new(b.x, b.y, b.width - m.right, b.height)
+              shift_descendants(obj, -m.right / 2.0, 0.0)
+            }
+            if m.top > 0.0 {
+              for e in edges {
+                let l = e.route.length()
+                if l == 0 {
+                  continue
+                }
+                if e.src_id == obj.id && e.route[0].y == b.y {
+                  let p = e.route[0]
+                  e.route[0] = @graph.Point::new(p.x, p.y + m.top)
+                }
+                if e.dst_id == obj.id && e.route[l - 1].y == b.y {
+                  let p = e.route[l - 1]
+                  e.route[l - 1] = @graph.Point::new(p.x, p.y + m.top)
+                }
+              }
+              b = @graph.Box::new(b.x, b.y + m.top, b.width, b.height - m.top)
+              shift_descendants(obj, 0.0, m.top / 2.0)
+            }
+            if m.bottom > 0.0 {
+              let bottom_y = b.y + b.height
+              for e in edges {
+                let l = e.route.length()
+                if l == 0 {
+                  continue
+                }
+                if e.src_id == obj.id && e.route[0].y == bottom_y {
+                  let p = e.route[0]
+                  e.route[0] = @graph.Point::new(p.x, p.y - m.bottom)
+                }
+                if e.dst_id == obj.id && e.route[l - 1].y == bottom_y {
+                  let p = e.route[l - 1]
+                  e.route[l - 1] = @graph.Point::new(p.x, p.y - m.bottom)
+                }
+              }
+              b = @graph.Box::new(b.x, b.y, b.width, b.height - m.bottom)
+              shift_descendants(obj, 0.0, -m.bottom / 2.0)
+            }
+          }
+          None => {
+            // No edges attached; still shrink the box and shift descendants.
+            if m.left > 0.0 {
+              b = @graph.Box::new(b.x + m.left, b.y, b.width - m.left, b.height)
+              shift_descendants(obj, m.left / 2.0, 0.0)
+            }
+            if m.right > 0.0 {
+              b = @graph.Box::new(b.x, b.y, b.width - m.right, b.height)
+              shift_descendants(obj, -m.right / 2.0, 0.0)
+            }
+            if m.top > 0.0 {
+              b = @graph.Box::new(b.x, b.y + m.top, b.width, b.height - m.top)
+              shift_descendants(obj, 0.0, m.top / 2.0)
+            }
+            if m.bottom > 0.0 {
+              b = @graph.Box::new(b.x, b.y, b.width, b.height - m.bottom)
+              shift_descendants(obj, 0.0, -m.bottom / 2.0)
+            }
+          }
+        }
+        obj.box = Some(b)
+      }
+    }
+  }
+}
+
+///|
 fn is_descendant(container : Object, id : String) -> Bool {
   if container.id == id {
     return true
@@ -353,11 +678,12 @@ fn graph_to_elk(
   graph : Graph,
   config : LayoutConfig,
   direction : Direction,
-) -> ElkNode {
+) -> (ElkNode, Map[String, ElkPadding]) {
   apply_port_spacing(graph, direction)
   let object_by_id = build_object_map(graph)
   let parent_by_id = build_parent_map(graph)
   let container_outgoing_padding = compute_container_outgoing_padding(graph)
+  let d2_margins : Map[String, ElkPadding] = {}
   let root = ElkNode::new("root")
 
   // Convert only top-level objects to ELK nodes (children are added recursively).
@@ -387,7 +713,7 @@ fn graph_to_elk(
       continue
     }
     let elk_node = object_to_elk_node(
-      obj, config, direction, container_outgoing_padding,
+      obj, config, direction, container_outgoing_padding, d2_margins,
     )
     root.add_child(elk_node)
   }
@@ -487,7 +813,7 @@ fn graph_to_elk(
     edge_parent.add_edge(elk_edge)
   }
   apply_port_group_positions(root, port_groups)
-  root
+  (root, d2_margins)
 }
 
 ///|
@@ -497,6 +823,7 @@ fn object_to_elk_node(
   config : LayoutConfig,
   direction : Direction,
   container_outgoing_padding : Map[String, Double],
+  d2_margins : Map[String, ElkPadding],
 ) -> ElkNode {
   let elk_node = ElkNode::new(obj.id)
   let is_grid = obj.is_grid_diagram()
@@ -516,6 +843,18 @@ fn object_to_elk_node(
       }
     }
     None => abort("Object '\{obj.id}' has no box; sizes must be precomputed")
+  }
+  // D2 adds extra layout margin for outside labels/icons and for 3d/multiple
+  // modifier elements. Apply the same adjustments in the ELK input and record
+  // them so we can shrink boxes back after layout.
+  let margin = d2_spacing_margin(obj)
+  if margin.top != 0.0 ||
+    margin.right != 0.0 ||
+    margin.bottom != 0.0 ||
+    margin.left != 0.0 {
+    d2_margins[obj.id] = margin
+    elk_node.width = elk_node.width + margin.left + margin.right
+    elk_node.height = elk_node.height + margin.top + margin.bottom
   }
   // Add label
   if obj.label.length() > 0 {
@@ -589,7 +928,14 @@ fn object_to_elk_node(
         base_padding.left,
       )
     }
+    // Mirror D2's `NodeSizeMinimum` quirk for compound nodes:
+    // in vertical directions ELK expects the minimum tuple swapped.
+    // See `../d2/d2layouts/d2elklayout/layout.go`.
     let (min_w, min_h) = (elk_node.width.ceil(), elk_node.height.ceil())
+    let min_size = match direction {
+      Down | Up => (min_h, min_w)
+      _ => (min_w, min_h)
+    }
     let container_options = {
       ..LayoutOptions::new(),
       crossing_min_force_node_model_order: Some(true),
@@ -605,7 +951,7 @@ fn object_to_elk_node(
       node_node_between_layers_spacing: Some(config.vertical_spacing),
       edge_node_between_layers_spacing: Some(config.edge_padding),
       padding: Some(padding),
-      node_size_minimum: Some((min_w, min_h)),
+      node_size_minimum: Some(min_size),
     }
     elk_node.properties.copy_from(container_options.to_properties())
     // For compound nodes with no internal edges, D2/ELK keeps all children in
@@ -620,7 +966,7 @@ fn object_to_elk_node(
   if obj.shape_type != @graph.SqlTable && !is_grid {
     for child in obj.children {
       let elk_child = object_to_elk_node(
-        child, config, direction, container_outgoing_padding,
+        child, config, direction, container_outgoing_padding, d2_margins,
       )
       elk_node.add_child(elk_child)
     }
@@ -635,6 +981,7 @@ fn elk_to_graph(
   graph : Graph,
   _config : LayoutConfig,
   direction : Direction,
+  d2_margins : Map[String, ElkPadding],
 ) -> Unit {
   // Create map of ELK nodes by ID
   let elk_map : Map[String, ElkNode] = {}
@@ -648,12 +995,17 @@ fn elk_to_graph(
   for obj in graph.objects {
     match elk_map.get(obj.id) {
       Some(elk_node) => {
+        // Match D2: width/height are ceiled after ELK layout. This also affects
+        // the subsequent margin-shrinking pass which uses exact equality on
+        // edge endpoints.
+        let w = elk_node.width.ceil()
+        let h = elk_node.height.ceil()
         obj.box = Some(
           @graph.Box::new(
             elk_node.x,
             elk_node.y,
-            elk_node.width,
-            elk_node.height,
+            w,
+            h,
           ),
         )
         // Apply to children recursively
@@ -665,6 +1017,10 @@ fn elk_to_graph(
 
   // Apply edge routes
   apply_edge_routes(elk_edges, graph, elk_abs, direction)
+  apply_d2_margins(graph, d2_margins)
+  // Match D2: trace edge endpoints to outside label/icon boxes and then to the
+  // actual shape border, and finally apply ELK's bend-deletion shim.
+  d2_post_process_routes(graph)
 }
 
 ///|
@@ -730,12 +1086,14 @@ fn apply_children_positions(obj : Object, elk_node : ElkNode) -> Unit {
       if elk_child.id == child.id {
         // Child positions are relative to parent in ELK
         let parent_box = obj.box.unwrap_or(@graph.Box::zero())
+        let w = elk_child.width.ceil()
+        let h = elk_child.height.ceil()
         child.box = Some(
           @graph.Box::new(
             parent_box.x + elk_child.x,
             parent_box.y + elk_child.y,
-            elk_child.width,
-            elk_child.height,
+            w,
+            h,
           ),
         )
         apply_children_positions(child, elk_child)
@@ -990,7 +1348,7 @@ fn run_elk_layout(
   direction : Direction,
 ) -> Unit {
   // Convert to ELK format
-  let elk_root = graph_to_elk(graph, config, direction)
+  let (elk_root, d2_margins) = graph_to_elk(graph, config, direction)
 
   // Create layout options using builder pattern
   let elk_direction = match direction {
@@ -1003,8 +1361,9 @@ fn run_elk_layout(
     .with_direction(elk_direction)
     .with_node_spacing(config.horizontal_spacing)
     .with_layer_spacing(config.vertical_spacing)
-    // D2 uses ELK layered's default graph padding (12). Containers get their
-    // own (larger) padding via node-level options in `object_to_elk_node`.
+    // Match D2: the root graph does not set `elk.padding`, so ELK layered's
+    // default graph padding (12) applies. Containers get their own (larger)
+    // padding via node-level options in `object_to_elk_node`.
     .with_padding(ElkPadding::uniform(12.0))
     .with_edge_routing(EdgeRouting::Orthogonal)
   // D2 uses these defaults for ELK layered layout.
@@ -1066,5 +1425,5 @@ fn run_elk_layout(
   }
 
   // Convert back to Graph format
-  elk_to_graph(elk_root, graph, config, direction)
+  elk_to_graph(elk_root, graph, config, direction, d2_margins)
 }

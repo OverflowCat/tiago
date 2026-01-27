@@ -274,7 +274,8 @@ test "layout single object" {
   // Object should have a box
   let obj = laid_out.find_object("a").unwrap()
   guard obj.box is Some(box) else { fail("expected box") }
-  // D2 uses ELK layered's default graph padding (12) for the root graph.
+  // D2 does not set `elk.padding` on the root graph; ELK layered's default
+  // padding (12) applies.
   let eps = 1.0
   assert_true((box.x - 12.0).abs() <= eps)
   assert_true((box.y - 12.0).abs() <= eps)
@@ -755,14 +756,14 @@ test "debug: simple linear graph" {
   guard objC.box is Some(boxC) else { fail("expected box for C") }
 
   // Debug: print positions
-  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(12, 12, 94, 66)")
+  inspect((boxA.x, boxA.y, boxA.width, boxA.height), content="(12, 12, 95, 66)")
   inspect(
     (boxB.x, boxB.y, boxB.width, boxB.height),
-    content="(13, 148, 92, 66)",
+    content="(12, 148, 95, 66)",
   )
   inspect(
     (boxC.x, boxC.y, boxC.width, boxC.height),
-    content="(13, 284, 92, 66)",
+    content="(12.5, 284, 94, 66)",
   )
 
   // In DOWN direction:

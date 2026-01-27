@@ -55,9 +55,22 @@ fn port_key_for_edge(
   node_id : String,
   port_id : String?,
   is_source : Bool,
+  collapse_implicit_ports : Bool,
 ) -> String {
   match port_id {
-    Some(pid) => "p:" + node_id + ":" + pid
+    Some(pid) =>
+      // Treat implicit per-edge ports as a single hypernode endpoint for the
+      // purposes of slot assignment; this matches ELK's hyperedge behavior and
+      // keeps slot counts stable for spacing.
+      if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+        if is_source {
+          "n:" + node_id + ":out"
+        } else {
+          "n:" + node_id + ":in"
+        }
+      } else {
+        "p:" + node_id + ":" + pid
+      }
     None =>
       if is_source {
         "n:" + node_id + ":out"
@@ -330,6 +343,7 @@ fn segment_lane_for_layer_pair(
   edge_edge_spacing : Double,
   edge_node_spacing : Double,
   random_seed : Int,
+  collapse_implicit_ports : Bool,
 ) -> RoutingLaneAssignment {
   // Partial ELK port: build hyperedge segments per layer boundary, create
   // dependencies, break non-critical cycles, then assign routing slots by
@@ -757,7 +771,8 @@ fn segment_lane_for_layer_pair(
 
     // Union-find and port data for this layer boundary.
     let parent : Map[String, String] = {}
-    let port_pos : Map[String, Double] = {}
+    let port_pos_sum : Map[String, Double] = {}
+    let port_pos_count : Map[String, Int] = {}
     let port_is_incoming : Map[String, Bool] = {}
     let edge_src_key : Map[String, String] = {}
     let all_ports : Array[String] = []
@@ -799,9 +814,31 @@ fn segment_lane_for_layer_pair(
       let (fallback_src_side, fallback_tgt_side) = infer_for_edge(
         src, tgt, direction,
       )
+      // Slot assignment should not depend on implicit per-edge port positions;
+      // Slot assignment should not depend on implicit per-edge port positions;
+      // use node-side endpoints for auto/hier ports to avoid inflating slot
+      // counts and shifting layers.
+      let slot_src_port : String? = match e.source_port_id {
+        Some(pid) =>
+          if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+            (None : String?)
+          } else {
+            Some(pid)
+          }
+        None => None
+      }
+      let slot_tgt_port : String? = match e.target_port_id {
+        Some(pid) =>
+          if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+            (None : String?)
+          } else {
+            Some(pid)
+          }
+        None => None
+      }
       let (sx0, sy0, s_side) = anchor_with_port_and_side(
         src,
-        e.source_port_id,
+        slot_src_port,
         direction,
         true,
         fallback_src_side,
@@ -817,7 +854,7 @@ fn segment_lane_for_layer_pair(
       }
       let (tx0, ty0, t_side) = anchor_with_port_and_side(
         tgt,
-        e.target_port_id,
+        slot_tgt_port,
         direction,
         false,
         fallback_tgt_side,
@@ -831,8 +868,18 @@ fn segment_lane_for_layer_pair(
         }
         None => ()
       }
-      let mut sk = port_key_for_edge(e.source_id, e.source_port_id, true)
-      let mut tk = port_key_for_edge(e.target_id, e.target_port_id, false)
+      let mut sk = port_key_for_edge(
+        e.source_id,
+        e.source_port_id,
+        true,
+        collapse_implicit_ports,
+      )
+      let mut tk = port_key_for_edge(
+        e.target_id,
+        e.target_port_id,
+        false,
+        collapse_implicit_ports,
+      )
       if e.properties.get_bool_or("diago.layered.crossHierarchy", false) {
         let orig_src = e.properties.get_string("diago.layered.originalSourceId")
         let orig_tgt = e.properties.get_string("diago.layered.originalTargetId")
@@ -855,8 +902,12 @@ fn segment_lane_for_layer_pair(
       uf_union(parent, sk, tk)
 
       // Hypernode axis coordinate.
-      port_pos[sk] = if is_vertical { sx } else { sy }
-      port_pos[tk] = if is_vertical { tx } else { ty }
+      let sk_coord = if is_vertical { sx } else { sy }
+      let tk_coord = if is_vertical { tx } else { ty }
+      port_pos_sum[sk] = port_pos_sum.get(sk).unwrap_or(0.0) + sk_coord
+      port_pos_count[sk] = port_pos_count.get(sk).unwrap_or(0) + 1
+      port_pos_sum[tk] = port_pos_sum.get(tk).unwrap_or(0.0) + tk_coord
+      port_pos_count[tk] = port_pos_count.get(tk).unwrap_or(0) + 1
       port_is_incoming[sk] = s_side == source_side
       port_is_incoming[tk] = t_side == source_side
       edge_src_key[e.id] = sk
@@ -887,7 +938,9 @@ fn segment_lane_for_layer_pair(
         }
       }
       port_to_seg[p] = seg_idx
-      let coord = port_pos.get(p).unwrap_or(0.0)
+      let sum = port_pos_sum.get(p).unwrap_or(0.0)
+      let cnt = port_pos_count.get(p).unwrap_or(1).to_double()
+      let coord = sum / cnt
       if port_is_incoming.get(p).unwrap_or(false) {
         segments[seg_idx].incoming_coords.push(coord)
       } else {
@@ -1817,6 +1870,7 @@ fn route_edges_orthogonal(
     edge_edge_spacing,
     edge_node_spacing,
     random_seed,
+    true,
   )
   if is_vertical {
     apply_routing_spacing_vertical(
@@ -1846,6 +1900,7 @@ fn route_edges_orthogonal(
     edge_edge_spacing,
     edge_node_spacing,
     random_seed,
+    true,
   )
 
   // Process edges layer by layer
@@ -1865,6 +1920,150 @@ fn route_edges_orthogonal(
       edge_node_spacing,
       lane_info.lane_by_edge,
     )
+  }
+
+  // ------------------------------------------------------------------------
+  // Hierarchical port routing (north/south external ports)
+  // ------------------------------------------------------------------------
+  //
+  // ELK routes edges incident to hierarchical external ports in a dedicated
+  // post-processing step. We approximate that behavior here by:
+  // - positioning north/south ExternalPort dummy nodes outside the graph padding
+  // - setting their x coordinate to the average x of connected port anchors
+  // - re-running bendpoint routing without modifying node/layer spacing again
+  if is_vertical {
+    fn parse_side(raw : String) -> ElkPortSide? {
+      match raw {
+        "North" | "NORTH" => Some(North)
+        "South" | "SOUTH" => Some(South)
+        "East" | "EAST" => Some(East)
+        "West" | "WEST" => Some(West)
+        _ => None
+      }
+    }
+
+    fn anchor_for_port(node : LNode, port_id : String?) -> (Double, Double)? {
+      match port_id {
+        None => None
+        Some(pid) => {
+          for port in node.ports {
+            if port.id != pid {
+              continue
+            }
+            let has_size = port.width > 0.0 || port.height > 0.0
+            if has_size {
+              return Some(
+                (
+                  node.x + port.x + port.width / 2.0,
+                  node.y + port.y + port.height / 2.0,
+                ),
+              )
+            }
+            let has_pos = port.x != 0.0 || port.y != 0.0
+            let border = port.properties.get_double_or(
+              "diago.layered.portBorderOffset",
+              0.0,
+            )
+            let pt = match port.side {
+              North =>
+                if has_pos { (node.x + port.x, node.y + border) } else {
+                  (node.x + node.width / 2.0, node.y + border)
+                }
+              South =>
+                if has_pos { (node.x + port.x, node.y + node.height - border) } else {
+                  (node.x + node.width / 2.0, node.y + node.height - border)
+                }
+              West =>
+                if has_pos { (node.x + border, node.y + port.y) } else {
+                  (node.x + border, node.y + node.height / 2.0)
+                }
+              East =>
+                if has_pos { (node.x + node.width - border, node.y + port.y) } else {
+                  (node.x + node.width - border, node.y + node.height / 2.0)
+                }
+              Undefined =>
+                (node.x + node.width / 2.0, node.y + node.height / 2.0)
+            }
+            return Some(pt)
+          }
+          None
+        }
+      }
+    }
+
+    let north_y = 0.0 - padding.top
+    let south_y = graph.height
+    let mut touched = false
+
+    for dummy in graph.nodes {
+      if dummy.node_type != ExternalPort {
+        continue
+      }
+      let side_raw = dummy.properties.get_string("diago.layered.extPortSide")
+      guard side_raw is Some(sr) else { continue }
+      let side = parse_side(sr)
+      guard side is Some(s) else { continue }
+      if s != North && s != South {
+        continue
+      }
+
+      let mut pos_sum = 0.0
+      let mut degree = 0
+      for e in graph.edges {
+        if e.source_id == dummy.id {
+          match graph.get_node(e.target_id) {
+            Some(other) =>
+              match anchor_for_port(other, e.target_port_id) {
+                Some((ax, _)) => {
+                  pos_sum = pos_sum + ax
+                  degree = degree + 1
+                }
+                None => ()
+              }
+            None => ()
+          }
+        } else if e.target_id == dummy.id {
+          match graph.get_node(e.source_id) {
+            Some(other) =>
+              match anchor_for_port(other, e.source_port_id) {
+                Some((ax, _)) => {
+                  pos_sum = pos_sum + ax
+                  degree = degree + 1
+                }
+                None => ()
+              }
+            None => ()
+          }
+        }
+      }
+      if degree == 0 {
+        dummy.x = 0.0
+      } else {
+        dummy.x = pos_sum / degree.to_double()
+      }
+      dummy.y = if s == North { north_y } else { south_y }
+      touched = true
+    }
+
+    if touched {
+      // Re-route bends only.
+      let lane_info = segment_lane_for_layer_pair(
+        graph.edges,
+        graph,
+        direction,
+        edge_edge_spacing,
+        edge_node_spacing,
+        random_seed,
+        true,
+      )
+      route_vertical_layout(
+        graph,
+        direction,
+        edge_edge_spacing,
+        edge_node_spacing,
+        lane_info.lane_by_edge,
+      )
+    }
   }
 }
 

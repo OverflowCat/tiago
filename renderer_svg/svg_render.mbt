@@ -2471,7 +2471,8 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
     return
   }
   // Radius for rounded corners
-  let radius = 8.0
+  // D2's reference SVG uses a 10px corner radius for edge rounding.
+  let radius = 10.0
   // Move to first point
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
@@ -2495,6 +2496,13 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let dy1 = next.y - curr.y
       let dx2 = after.x - next.x
       let dy2 = after.y - next.y
+      // Only apply rounding when direction changes. ELK routes can contain
+      // redundant collinear waypoints; rounding those creates unwanted arcs.
+      let cross = dx1 * dy2 - dy1 * dx2
+      if cross.abs() < 0.001 {
+        let _ = pb.line_to(next.x, next.y)
+        continue
+      }
       // Normalize directions
       let len1 = (dx1 * dx1 + dy1 * dy1).sqrt()
       let len2 = (dx2 * dx2 + dy2 * dy2).sqrt()
@@ -2524,7 +2532,6 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       // In SVG coords (y down), positive cross means counter-clockwise turn
       // For right→down or left→up turns, we need sweep=true (clockwise)
       // For down→right or up→left turns, we need sweep=false (counter-clockwise)
-      let cross = dx1 * dy2 - dy1 * dx2
       let sweep_flag = cross > 0.0
       // Draw arc to resume point: rx, ry, end-x, end-y, large_arc?, sweep?
       let _ = pb.arc_to(

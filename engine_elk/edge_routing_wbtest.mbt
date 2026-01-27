@@ -511,6 +511,63 @@ test "edge routing: parallel edges" {
 }
 
 ///|
+test "edge routing: multi outgoing edges distribute source anchors" {
+  let graph = new_graph_for_routing("test")
+  graph.add_object(object_with_label_for_routing("A", "A"))
+  graph.add_object(object_with_label_for_routing("B", "B"))
+  graph.add_object(object_with_label_for_routing("C", "C"))
+  graph.add_edge(Edge::new(0, "A", "B", false, true))
+  graph.add_edge(Edge::new(1, "A", "C", false, true))
+  let config = LayoutConfig::new()
+  let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
+    e => fail("layout failed: \{e}")
+  }
+
+  let a_box = laid_out.find_object("A").unwrap().box.unwrap()
+  let b_box = laid_out.find_object("B").unwrap().box.unwrap()
+  let c_box = laid_out.find_object("C").unwrap().box.unwrap()
+  let b_cx = b_box.x + b_box.width / 2.0
+  let c_cx = c_box.x + c_box.width / 2.0
+
+  let mut ab : Edge? = None
+  let mut ac : Edge? = None
+  for edge in laid_out.edges {
+    if edge.src_id == "A" && edge.dst_id == "B" {
+      ab = Some(edge)
+    }
+    if edge.src_id == "A" && edge.dst_id == "C" {
+      ac = Some(edge)
+    }
+  }
+  guard ab is Some(eab) && ac is Some(eac) else { fail("missing A edges") }
+  guard eab.route.length() >= 2 && eac.route.length() >= 2 else {
+    fail("missing routes")
+  }
+  let ab_x = eab.route[0].x
+  let ac_x = eac.route[0].x
+
+  // With multiple outgoing edges, ELK assigns distinct anchors on the source
+  // boundary (matching D2/elkjs behavior).
+  inspect((ab_x - ac_x).abs() > 0.5, content="true")
+
+  // The ordering of anchors follows the ordering of target x positions.
+  if b_cx < c_cx {
+    inspect(ab_x <= ac_x + 0.5, content="true")
+  } else if c_cx < b_cx {
+    inspect(ac_x <= ab_x + 0.5, content="true")
+  }
+
+  // Sanity: anchors lie on A's border (top or bottom in Down direction).
+  let (on_left, on_right, on_top, on_bottom) = point_on_boundary(
+    eab.route[0],
+    a_box,
+    2.0,
+  )
+  let _ = (on_left, on_right)
+  inspect(on_top || on_bottom, content="true")
+}
+
+///|
 /// Test: Bidirectional edges (A -> B and B -> A)
 test "edge routing: bidirectional edges" {
   let graph = new_graph_for_routing("test")
