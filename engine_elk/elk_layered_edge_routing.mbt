@@ -62,7 +62,8 @@ fn port_key_for_edge(
       // Treat implicit per-edge ports as a single hypernode endpoint for the
       // purposes of slot assignment; this matches ELK's hyperedge behavior and
       // keeps slot counts stable for spacing.
-      if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+      if collapse_implicit_ports &&
+        (pid.contains("|auto|") || pid.contains("|hier|")) {
         if is_source {
           "n:" + node_id + ":out"
         } else {
@@ -362,9 +363,6 @@ fn segment_lane_for_layer_pair(
     }
     match (graph.get_node(e.source_id), graph.get_node(e.target_id)) {
       (Some(src), Some(tgt)) => {
-        if src.node_type is LongEdgeDummy || tgt.node_type is LongEdgeDummy {
-          continue
-        }
         if src.layer == tgt.layer {
           continue
         }
@@ -815,12 +813,12 @@ fn segment_lane_for_layer_pair(
         src, tgt, direction,
       )
       // Slot assignment should not depend on implicit per-edge port positions;
-      // Slot assignment should not depend on implicit per-edge port positions;
       // use node-side endpoints for auto/hier ports to avoid inflating slot
       // counts and shifting layers.
       let slot_src_port : String? = match e.source_port_id {
         Some(pid) =>
-          if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+          if collapse_implicit_ports &&
+            (pid.contains("|auto|") || pid.contains("|hier|")) {
             (None : String?)
           } else {
             Some(pid)
@@ -829,7 +827,8 @@ fn segment_lane_for_layer_pair(
       }
       let slot_tgt_port : String? = match e.target_port_id {
         Some(pid) =>
-          if collapse_implicit_ports && (pid.contains("|auto|") || pid.contains("|hier|")) {
+          if collapse_implicit_ports &&
+            (pid.contains("|auto|") || pid.contains("|hier|")) {
             (None : String?)
           } else {
             Some(pid)
@@ -837,11 +836,7 @@ fn segment_lane_for_layer_pair(
         None => None
       }
       let (sx0, sy0, s_side) = anchor_with_port_and_side(
-        src,
-        slot_src_port,
-        direction,
-        true,
-        fallback_src_side,
+        src, slot_src_port, direction, true, fallback_src_side,
       )
       let mut sx = sx0
       let mut sy = sy0
@@ -853,11 +848,7 @@ fn segment_lane_for_layer_pair(
         None => ()
       }
       let (tx0, ty0, t_side) = anchor_with_port_and_side(
-        tgt,
-        slot_tgt_port,
-        direction,
-        false,
-        fallback_tgt_side,
+        tgt, slot_tgt_port, direction, false, fallback_tgt_side,
       )
       let mut tx = tx0
       let mut ty = ty0
@@ -1961,24 +1952,31 @@ fn route_edges_orthogonal(
             }
             let has_pos = port.x != 0.0 || port.y != 0.0
             let border = port.properties.get_double_or(
-              "diago.layered.portBorderOffset",
-              0.0,
+              "diago.layered.portBorderOffset", 0.0,
             )
             let pt = match port.side {
               North =>
-                if has_pos { (node.x + port.x, node.y + border) } else {
+                if has_pos {
+                  (node.x + port.x, node.y + border)
+                } else {
                   (node.x + node.width / 2.0, node.y + border)
                 }
               South =>
-                if has_pos { (node.x + port.x, node.y + node.height - border) } else {
+                if has_pos {
+                  (node.x + port.x, node.y + node.height - border)
+                } else {
                   (node.x + node.width / 2.0, node.y + node.height - border)
                 }
               West =>
-                if has_pos { (node.x + border, node.y + port.y) } else {
+                if has_pos {
+                  (node.x + border, node.y + port.y)
+                } else {
                   (node.x + border, node.y + node.height / 2.0)
                 }
               East =>
-                if has_pos { (node.x + node.width - border, node.y + port.y) } else {
+                if has_pos {
+                  (node.x + node.width - border, node.y + port.y)
+                } else {
                   (node.x + node.width - border, node.y + node.height / 2.0)
                 }
               Undefined =>
@@ -1994,7 +1992,6 @@ fn route_edges_orthogonal(
     let north_y = 0.0 - padding.top
     let south_y = graph.height
     let mut touched = false
-
     for dummy in graph.nodes {
       if dummy.node_type != ExternalPort {
         continue
@@ -2006,7 +2003,6 @@ fn route_edges_orthogonal(
       if s != North && s != South {
         continue
       }
-
       let mut pos_sum = 0.0
       let mut degree = 0
       for e in graph.edges {
@@ -2044,7 +2040,6 @@ fn route_edges_orthogonal(
       dummy.y = if s == North { north_y } else { south_y }
       touched = true
     }
-
     if touched {
       // Re-route bends only.
       let lane_info = segment_lane_for_layer_pair(
@@ -2070,9 +2065,15 @@ fn route_edges_orthogonal(
 ///|
 fn layer_is_external(layer : LLayer) -> Bool {
   if layer.nodes.is_empty() {
+    // Match ELK's `Iterables.all(layer, PRED_EXTERNAL_WEST_OR_EAST_PORT)`: the
+    // predicate is vacuously true for an empty layer, and such layers should
+    // not force regular between-layer spacing.
     return true
   }
   for node in layer.nodes {
+    // External port dummy nodes represent hierarchical ports on the compound
+    // border. Spacing rules treat layers consisting only of these dummies as
+    // "external border layers" (no minimum node-node spacing enforced).
     if node.node_type != ExternalPort {
       return false
     }
@@ -2097,6 +2098,51 @@ fn apply_routing_spacing_vertical(
   edge_node_spacing : Double,
   slots_by_pair : Map[String, Int],
 ) -> Unit {
+  fn layer_has_compound(layer : LLayer) -> Bool {
+    for n in layer.nodes {
+      if n.nested_graph is Some(_) {
+        return true
+      }
+    }
+    false
+  }
+
+  fn has_cross_hierarchy_edge_between_layers(
+    graph : LGraph,
+    a : Int,
+    b : Int,
+  ) -> Bool {
+    for e in graph.edges {
+      let src = graph.get_node(e.source_id)
+      let dst = graph.get_node(e.target_id)
+      match (src, dst) {
+        (Some(s), Some(t)) => {
+          let sa = s.layer
+          let ta = t.layer
+          if (sa == a && ta == b) || (sa == b && ta == a) {
+            if e.properties.get_bool_or("diago.layered.crossHierarchy", false) {
+              return true
+            }
+          }
+        }
+        _ => ()
+      }
+    }
+    false
+  }
+
+  fn node_margin_top(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginTop", 0.0)
+  }
+
+  fn node_margin_bottom(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginBottom", 0.0)
+  }
+
+  fn node_margin_right(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginRight", 0.0)
+  }
+
   let reverse_layers = direction == Up
   let indices : Array[Int] = []
   if reverse_layers {
@@ -2117,10 +2163,11 @@ fn apply_routing_spacing_vertical(
     let mut layer_top = @double.infinity
     let mut layer_bottom = -@double.infinity
     for node in layer.nodes {
-      if node.y < layer_top {
-        layer_top = node.y
+      let top = node.y - node_margin_top(node)
+      if top < layer_top {
+        layer_top = top
       }
-      let b = node.y + node.height
+      let b = node.y + node.height + node_margin_bottom(node)
       if b > layer_bottom {
         layer_bottom = b
       }
@@ -2154,17 +2201,48 @@ fn apply_routing_spacing_vertical(
         spacing = 0.0
       } else if slots > 0 {
         spacing = (slots - 1).to_double() * edge_edge_spacing
-        if !layer.nodes.is_empty() {
-          spacing = spacing + edge_node_spacing
-        }
-        if !next_layer.nodes.is_empty() {
-          spacing = spacing + edge_node_spacing
+        // Both sides are real layers here.
+        spacing = spacing + edge_node_spacing + edge_node_spacing
+        if has_cross_hierarchy_edge_between_layers(
+            graph,
+            layer.index,
+            next_layer.index,
+          ) {
+          let mut buf = 0.0
+          if layer_has_compound(layer) {
+            buf = buf + 5.0
+          }
+          if layer_has_compound(next_layer) {
+            buf = buf + 5.0
+          }
+          spacing = spacing + buf
         }
         if spacing < node_node_spacing {
           spacing = node_node_spacing
         }
       } else {
         spacing = node_node_spacing
+        // Cross-hierarchy edges (into/out of compound nodes) still require edge
+        // clearance even when lane assignment yields 0 between-layer slots.
+        if has_cross_hierarchy_edge_between_layers(
+            graph,
+            layer.index,
+            next_layer.index,
+          ) {
+          let mut buf = 0.0
+          if layer_has_compound(layer) {
+            buf = buf + 5.0
+          }
+          if layer_has_compound(next_layer) {
+            buf = buf + 5.0
+          }
+          // ELK reserves a small additional buffer on top of edge-node clearance
+          // for cross-hierarchy stitching.
+          let min_clearance = edge_node_spacing + edge_node_spacing + buf
+          if spacing < min_clearance {
+            spacing = min_clearance
+          }
+        }
       }
       offset = offset + spacing
     }
@@ -2175,11 +2253,13 @@ fn apply_routing_spacing_vertical(
     if node.node_type == ExternalPort {
       continue
     }
-    if node.y + node.height > max_y {
-      max_y = node.y + node.height
+    let b = node.y + node.height + node_margin_bottom(node)
+    if b > max_y {
+      max_y = b
     }
-    if node.x + node.width > max_x {
-      max_x = node.x + node.width
+    let r = node.x + node.width + node_margin_right(node)
+    if r > max_x {
+      max_x = r
     }
   }
   graph.height = max_y + padding.bottom
@@ -2196,6 +2276,18 @@ fn apply_routing_spacing_horizontal(
   edge_node_spacing : Double,
   slots_by_pair : Map[String, Int],
 ) -> Unit {
+  fn node_margin_left(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginLeft", 0.0)
+  }
+
+  fn node_margin_right(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginRight", 0.0)
+  }
+
+  fn node_margin_bottom(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginBottom", 0.0)
+  }
+
   let reverse_layers = direction == Left
   let indices : Array[Int] = []
   if reverse_layers {
@@ -2214,10 +2306,11 @@ fn apply_routing_spacing_horizontal(
     let mut layer_left = @double.infinity
     let mut layer_right = -@double.infinity
     for node in layer.nodes {
-      if node.x < layer_left {
-        layer_left = node.x
+      let left = node.x - node_margin_left(node)
+      if left < layer_left {
+        layer_left = left
       }
-      let r = node.x + node.width
+      let r = node.x + node.width + node_margin_right(node)
       if r > layer_right {
         layer_right = r
       }
@@ -2248,12 +2341,7 @@ fn apply_routing_spacing_horizontal(
         spacing = 0.0
       } else if slots > 0 {
         spacing = (slots - 1).to_double() * edge_edge_spacing
-        if !layer.nodes.is_empty() {
-          spacing = spacing + edge_node_spacing
-        }
-        if !next_layer.nodes.is_empty() {
-          spacing = spacing + edge_node_spacing
-        }
+        spacing = spacing + edge_node_spacing + edge_node_spacing
         if spacing < node_node_spacing {
           spacing = node_node_spacing
         }
@@ -2269,11 +2357,13 @@ fn apply_routing_spacing_horizontal(
     if node.node_type == ExternalPort {
       continue
     }
-    if node.y + node.height > max_y {
-      max_y = node.y + node.height
+    let b = node.y + node.height + node_margin_bottom(node)
+    if b > max_y {
+      max_y = b
     }
-    if node.x + node.width > max_x {
-      max_x = node.x + node.width
+    let r = node.x + node.width + node_margin_right(node)
+    if r > max_x {
+      max_x = r
     }
   }
   graph.height = max_y + padding.bottom

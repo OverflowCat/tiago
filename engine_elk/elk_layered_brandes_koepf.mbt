@@ -74,6 +74,7 @@ priv struct BKLayout {
   hdir : HDirection
   root : Map[String, String]
   align : Map[String, String]
+  align_edge : Map[String, String]
   inner_shift : Map[String, Double]
   block_size : Map[String, Double]
   sink : Map[String, String]
@@ -236,6 +237,15 @@ fn build_neighbor_info(graph : LGraph) -> NeighborInfo {
       node_index[node.id] = i
     }
   }
+  // ELK's neighborhood sorting is stable. MoonBit's `sort_by` is not
+  // guaranteed to be stable, so we add an explicit tie-breaker by model order
+  // to keep parallel edges deterministic and D2-aligned.
+  let edge_order : Map[String, Int] = {}
+  for edge in graph.edges {
+    edge_order[edge.id] = edge.properties
+      .get_int("diago.layered.modelOrder")
+      .unwrap_or(0)
+  }
   let left_neighbors : Map[String, Array[NeighborRef]] = {}
   let right_neighbors : Map[String, Array[NeighborRef]] = {}
   for layer in graph.layers {
@@ -259,7 +269,12 @@ fn build_neighbor_info(graph : LGraph) -> NeighborInfo {
       incoming.sort_by(fn(a, b) {
         let ai = node_index.get(a.node_id).unwrap_or(0)
         let bi = node_index.get(b.node_id).unwrap_or(0)
-        ai - bi
+        if ai != bi {
+          ai - bi
+        } else {
+          edge_order.get(a.edge_id).unwrap_or(0) -
+          edge_order.get(b.edge_id).unwrap_or(0)
+        }
       })
       left_neighbors[node.id] = incoming
 
@@ -282,7 +297,12 @@ fn build_neighbor_info(graph : LGraph) -> NeighborInfo {
       outgoing.sort_by(fn(a, b) {
         let ai = node_index.get(a.node_id).unwrap_or(0)
         let bi = node_index.get(b.node_id).unwrap_or(0)
-        ai - bi
+        if ai != bi {
+          ai - bi
+        } else {
+          edge_order.get(a.edge_id).unwrap_or(0) -
+          edge_order.get(b.edge_id).unwrap_or(0)
+        }
       })
       right_neighbors[node.id] = outgoing
     }
@@ -376,6 +396,7 @@ fn init_layout(
 ) -> BKLayout {
   let root : Map[String, String] = {}
   let align : Map[String, String] = {}
+  let align_edge : Map[String, String] = {}
   let inner_shift : Map[String, Double] = {}
   let block_size : Map[String, Double] = {}
   let sink : Map[String, String] = {}
@@ -397,7 +418,20 @@ fn init_layout(
     od[node.id] = true
     su[node.id] = false
   }
-  { vdir, hdir, root, align, inner_shift, block_size, sink, shift, y, od, su }
+  {
+    vdir,
+    hdir,
+    root,
+    align,
+    align_edge,
+    inner_shift,
+    block_size,
+    sink,
+    shift,
+    y,
+    od,
+    su,
+  }
 }
 
 ///|
@@ -471,6 +505,7 @@ fn vertical_alignment(
           .get(median.node_id)
           .unwrap_or(median.node_id)
         layout.align[median.node_id] = node.id
+        layout.align_edge[median.node_id] = median.edge_id
         layout.root[node.id] = median_root
         layout.align[node.id] = median_root
         let is_dummy = node.node_type == LongEdgeDummy
@@ -484,6 +519,62 @@ fn vertical_alignment(
 
 ///|
 fn find_edge_between(graph : LGraph, a : String, b : String) -> LEdge? {
+  // Mirror ELK's `BKNodePlacer.getEdge`: iterate a node's connected edges in
+  // port order and return the first edge connecting to the target node.
+  //
+  // In ELK, `node.getConnectedEdges()` concatenates `port.getConnectedEdges()`
+  // for each port, and `port.getConnectedEdges()` iterates incoming edges first
+  // and outgoing edges second (both in insertion order).
+  let source = graph.get_node(a)
+  guard source is Some(source) else { return None }
+  fn edge_order(e : LEdge) -> Int {
+    e.properties.get_int("diago.layered.modelOrder").unwrap_or(0)
+  }
+
+  fn edges_for_port(
+    graph : LGraph,
+    node_id : String,
+    port_id : String,
+    incoming : Bool,
+  ) -> Array[LEdge] {
+    let edges : Array[LEdge] = []
+    for e in graph.edges {
+      if incoming {
+        if e.target_id == node_id && e.target_port_id == Some(port_id) {
+          edges.push(e)
+        }
+      } else if e.source_id == node_id && e.source_port_id == Some(port_id) {
+        edges.push(e)
+      }
+    }
+    edges.sort_by(fn(x, y) {
+      let dx = edge_order(x) - edge_order(y)
+      if dx != 0 {
+        dx
+      } else {
+        x.id.compare(y.id)
+      }
+    })
+    edges
+  }
+
+  for p in source.ports {
+    // Incoming edges first
+    for e in edges_for_port(graph, a, p.id, true) {
+      if e.source_id == b || e.target_id == b {
+        return Some(e)
+      }
+    }
+    // Then outgoing edges
+    for e in edges_for_port(graph, a, p.id, false) {
+      if e.source_id == b || e.target_id == b {
+        return Some(e)
+      }
+    }
+  }
+
+  // Fallback: scan in global edge order (should be rare; mainly for nodes
+  // without ports or dummies).
   for e in graph.edges {
     if (e.source_id == a && e.target_id == b) ||
       (e.source_id == b && e.target_id == a) {
@@ -521,7 +612,11 @@ fn inside_block_shift(
       if next_id == root_id {
         break
       }
-      match find_edge_between(graph, current_id, next_id) {
+      let edge = match layout.align_edge.get(current_id) {
+        Some(eid) => get_edge_by_id(graph, eid)
+        None => find_edge_between(graph, current_id, next_id)
+      }
+      match edge {
         Some(edge) => {
           let source = graph.get_node(edge.source_id)
           let target = graph.get_node(edge.target_id)
@@ -1279,7 +1374,9 @@ fn horizontal_compaction(
             is_initial = false
           }
         } else {
-          let spacing = vertical_spacing(spacings, current, neighbor)
+          // ELK's BKCompactor uses plain node-node spacing for class graph
+          // separations (as opposed to type-dependent spacings).
+          let spacing = spacings.node_node
           if layout.vdir == Up {
             let required = layout.y
               .get(root_id)
@@ -1428,12 +1525,32 @@ fn check_order_constraint(
   positions : Map[String, Double],
   is_horizontal : Bool,
 ) -> Bool {
+  fn margin_leading(n : LNode) -> Double {
+    if is_horizontal {
+      n.properties.get_double_or("diago.layered.marginTop", 0.0)
+    } else {
+      n.properties.get_double_or("diago.layered.marginLeft", 0.0)
+    }
+  }
+
+  fn margin_trailing(n : LNode) -> Double {
+    if is_horizontal {
+      n.properties.get_double_or("diago.layered.marginBottom", 0.0)
+    } else {
+      n.properties.get_double_or("diago.layered.marginRight", 0.0)
+    }
+  }
+
   let mut feasible = true
   for layer in graph.layers {
     let mut pos = @double.neg_infinity
     for node in layer.nodes {
-      let top = positions.get(node.id).unwrap_or(0.0)
-      let bottom = top + node_size_cross(node, is_horizontal)
+      // Mirror ELK: include node margins when checking overlaps.
+      let base = positions.get(node.id).unwrap_or(0.0)
+      let top = base - margin_leading(node)
+      let bottom = base +
+        node_size_cross(node, is_horizontal) +
+        margin_trailing(node)
       if top > pos && bottom > pos {
         pos = bottom
       } else {
@@ -1455,6 +1572,22 @@ fn enforce_layer_spacing(
   spacings : SpacingOptions,
   is_horizontal : Bool,
 ) -> Map[String, Double] {
+  fn margin_leading(n : LNode) -> Double {
+    if is_horizontal {
+      n.properties.get_double_or("diago.layered.marginTop", 0.0)
+    } else {
+      n.properties.get_double_or("diago.layered.marginLeft", 0.0)
+    }
+  }
+
+  fn margin_trailing(n : LNode) -> Double {
+    if is_horizontal {
+      n.properties.get_double_or("diago.layered.marginBottom", 0.0)
+    } else {
+      n.properties.get_double_or("diago.layered.marginRight", 0.0)
+    }
+  }
+
   let out : Map[String, Double] = {}
   for node in graph.nodes {
     out[node.id] = positions.get(node.id).unwrap_or(0.0)
@@ -1469,7 +1602,9 @@ fn enforce_layer_spacing(
           let spacing = vertical_spacing(spacings, prev, node)
           let min_pos = prev_pos +
             node_size_cross(prev, is_horizontal) +
-            spacing
+            margin_trailing(prev) +
+            spacing +
+            margin_leading(node)
           if pos < min_pos {
             pos = min_pos
             out[node.id] = pos
@@ -1491,6 +1626,12 @@ fn normalize_positions(
 ) -> Map[String, Double] {
   let mut min_pos = @double.infinity
   for node in graph.nodes {
+    // External port dummy nodes represent hierarchical ports on the compound
+    // border. They may be placed outside the content area and must not shift
+    // the actual node coordinates when normalizing the layout.
+    if node.node_type == ExternalPort {
+      continue
+    }
     let pos = positions.get(node.id).unwrap_or(0.0)
     if pos < min_pos {
       min_pos = pos
@@ -1659,8 +1800,40 @@ fn apply_layout(
   padding : ElkPadding,
   is_horizontal : Bool,
   direction : LayoutDirection,
-  _content_alignment : ContentAlignment,
+  content_alignment : ContentAlignment,
 ) -> Unit {
+  fn node_margin_left(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginLeft", 0.0)
+  }
+
+  fn node_margin_top(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginTop", 0.0)
+  }
+
+  fn node_margin_right(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginRight", 0.0)
+  }
+
+  fn node_margin_bottom(n : LNode) -> Double {
+    n.properties.get_double_or("diago.layered.marginBottom", 0.0)
+  }
+
+  fn max_double(a : Double, b : Double) -> Double {
+    if a > b {
+      a
+    } else {
+      b
+    }
+  }
+
+  fn min_double(a : Double, b : Double) -> Double {
+    if a < b {
+      a
+    } else {
+      b
+    }
+  }
+
   // Port-balance alignment used by ELK (see `LGraphUtil.placeNodesHorizontally`):
   // sources align to the outgoing side, sinks to the incoming side, isolated
   // nodes are centered, and mixed nodes interpolate by out/(in+out), where
@@ -1670,7 +1843,11 @@ fn apply_layout(
       let inports = if node.incoming_edges.is_empty() { 0 } else { 1 }
       let outports = if node.outgoing_edges.is_empty() { 0 } else { 1 }
       let total = inports + outports
-      return if total == 0 { 0.5 } else { outports.to_double() / total.to_double() }
+      return if total == 0 {
+        0.5
+      } else {
+        outports.to_double() / total.to_double()
+      }
     }
     let has_in : Map[String, Bool] = {}
     let has_out : Map[String, Bool] = {}
@@ -1711,33 +1888,24 @@ fn apply_layout(
       outports.to_double() / total.to_double()
     }
   }
-  // Preserve any precomputed minimum graph size (e.g. container title size from
-  // the D2 sizing pipeline). The layered placement expands graphs to fit
-  // children, but should not shrink them below their declared minimum.
-  let title_w = graph.properties.get_double_or(
-    "diago.layered.rootLabelWidth", 0.0,
-  )
-  let title_h = graph.properties.get_double_or(
-    "diago.layered.rootLabelHeight", 0.0,
-  )
-  let min_width = {
-    let want = title_w + padding.left + padding.right
-    if graph.width > want {
-      graph.width
-    } else {
-      want
+
+  fn alignment_ratio(node : LNode) -> Double {
+    let raw = node.properties
+      .get_string("elk.layered.alignment")
+      .unwrap_or(
+        node.properties.get_string_or("org.eclipse.elk.layered.alignment", ""),
+      )
+    match raw.to_upper() {
+      "LEFT" => 0.0
+      "RIGHT" => 1.0
+      "CENTER" => 0.5
+      _ => bk_port_balance_ratio(node)
     }
   }
-  let min_height = {
-    // The container top padding already accounts for the title height when
-    // coming from the diago->ELK bridge.
-    let want = title_h + padding.top + padding.bottom
-    if graph.height > want {
-      graph.height
-    } else {
-      want
-    }
-  }
+  // NOTE: Minimum-size handling and content alignment are applied after edge
+  // routing to match ELK's `HierarchicalNodeResizingProcessor`. At this stage
+  // we only place nodes and compute the natural content size.
+  let _ = content_alignment
   let mut layer_offset = if is_horizontal { padding.left } else { padding.top }
   let reverse_layers = match direction {
     Up => !is_horizontal
@@ -1755,7 +1923,7 @@ fn apply_layout(
   }
   fn layer_is_external(layer : LLayer) -> Bool {
     if layer.nodes.is_empty() {
-      return true
+      return false
     }
     for n in layer.nodes {
       if n.node_type != ExternalPort {
@@ -1764,25 +1932,60 @@ fn apply_layout(
     }
     true
   }
+
   for layer in layers {
     let is_external_layer = layer_is_external(layer)
     let mut layer_size = 0.0
+    let mut max_leading_margin = 0.0
+    let mut max_trailing_margin = 0.0
     for node in layer.nodes {
-      layer_size = if is_horizontal {
-        bk_max(layer_size, node.width)
+      if is_horizontal {
+        let lm = node_margin_left(node)
+        let rm = node_margin_right(node)
+        max_leading_margin = max_double(max_leading_margin, lm)
+        max_trailing_margin = max_double(max_trailing_margin, rm)
+        layer_size = max_double(layer_size, node.width + lm + rm)
       } else {
-        bk_max(layer_size, node.height)
+        let tm = node_margin_top(node)
+        let bm = node_margin_bottom(node)
+        max_leading_margin = max_double(max_leading_margin, tm)
+        max_trailing_margin = max_double(max_trailing_margin, bm)
+        layer_size = max_double(layer_size, node.height + tm + bm)
       }
     }
     for node in layer.nodes {
       let cross_pos = positions.get(node.id).unwrap_or(0.0)
-      let ratio = bk_port_balance_ratio(node)
+      let ratio = alignment_ratio(node)
       if is_horizontal {
-        node.x = layer_offset + (layer_size - node.width) * ratio
+        let mut xpos = (layer_size - node.width) * ratio
+        if ratio > 0.5 {
+          xpos = xpos - max_trailing_margin * 2.0 * (ratio - 0.5)
+        } else if ratio < 0.5 {
+          xpos = xpos + max_leading_margin * 2.0 * (0.5 - ratio)
+        }
+        let left_margin = node_margin_left(node)
+        if xpos < left_margin {
+          xpos = left_margin
+        }
+        let right_margin = node_margin_right(node)
+        xpos = min_double(xpos, layer_size - right_margin - node.width)
+        node.x = layer_offset + xpos
         node.y = cross_pos + padding.top
       } else {
         node.x = cross_pos + padding.left
-        node.y = layer_offset + (layer_size - node.height) * ratio
+        let mut ypos = (layer_size - node.height) * ratio
+        if ratio > 0.5 {
+          ypos = ypos - max_trailing_margin * 2.0 * (ratio - 0.5)
+        } else if ratio < 0.5 {
+          ypos = ypos + max_leading_margin * 2.0 * (0.5 - ratio)
+        }
+        let top_margin = node_margin_top(node)
+        if ypos < top_margin {
+          ypos = top_margin
+        }
+        let bottom_margin = node_margin_bottom(node)
+        ypos = min_double(ypos, layer_size - bottom_margin - node.height)
+        node.y = layer_offset + ypos
       }
     }
     // External-port layers represent hierarchical ports on the compound node
@@ -1800,13 +2003,11 @@ fn apply_layout(
     if node.node_type == ExternalPort {
       continue
     }
-    max_x = bk_max(max_x, node.x + node.width)
-    max_y = bk_max(max_y, node.y + node.height)
+    max_x = max_double(max_x, node.x + node.width + node_margin_right(node))
+    max_y = max_double(max_y, node.y + node.height + node_margin_bottom(node))
   }
-  let w = max_x + padding.right
-  let h = max_y + padding.bottom
-  graph.width = if w < min_width { min_width } else { w }
-  graph.height = if h < min_height { min_height } else { h }
+  graph.width = max_x + padding.right
+  graph.height = max_y + padding.bottom
 }
 
 // ============================================================================

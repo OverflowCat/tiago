@@ -517,7 +517,6 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
   if graph.nodes.length() == 0 {
     return
   }
-
   fn has_non_external_edges(graph : LGraph) -> Bool {
     for edge in graph.edges {
       if edge.source_id == edge.target_id {
@@ -539,8 +538,7 @@ fn network_simplex_layer_assignment(graph : LGraph) -> Unit {
   // compound nodes whose children would otherwise be forced into multiple
   // layers solely due to INCLUDE_CHILDREN splitting.
   let keep_single = graph.properties.get_bool_or(
-    "diago.layered.keepSingleLayerNoEdges",
-    false,
+    "diago.layered.keepSingleLayerNoEdges", false,
   )
   let effective_has_edges = if keep_single {
     has_non_external_edges(graph)
