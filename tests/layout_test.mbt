@@ -164,9 +164,11 @@ test "edge bend points override routing" {
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
   let edge = graph.get_edges()[0]
   let route = edge.route
-  // diago does not post-process ELK routes. Bend points are accepted as input
-  // but are not guaranteed to appear verbatim in the produced route.
-  assert_true(route.length() >= 2, msg="edge should have a route")
+  assert_true(route.length() >= 4, msg="expected bend points in route")
+  assert_eq(route[1].get_x(), 10.0)
+  assert_eq(route[1].get_y(), 20.0)
+  assert_eq(route[2].get_x(), 30.0)
+  assert_eq(route[2].get_y(), 40.0)
 }
 
 ///|
@@ -408,7 +410,7 @@ test "sql_table edges connect to correct rows" {
 }
 
 ///|
-test "sql_table edges have route points" {
+test "sql_table edges are clipped to boxes" {
   let source =
     #|users: {
     #|  shape: sql_table
@@ -436,12 +438,38 @@ test "sql_table edges have route points" {
     #|posts.id <-> comments.post_id
     #|users.id <-> comments.user_id
   let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
+  let sql_table_ids = ["users", "posts", "comments"]
+  let sql_row_boxes : Array[(String, Int, @graph.Box)] = []
+  for table_id in sql_table_ids {
+    let table_box = graph.find_object(table_id).unwrap().get_box().unwrap()
+    let num_cols = sql_table_column_count(table_id)
+    let row_height = table_box.get_height() / (num_cols + 1).to_double()
+    let inset = 1.0
+    for row_idx in 0..<num_cols {
+      let y = table_box.get_y() + row_height * (row_idx.to_double() + 1.0)
+      let row_box = @graph.Box::new(
+        table_box.get_x() + inset,
+        y,
+        table_box.get_width() - 2.0 * inset,
+        row_height,
+      )
+      sql_row_boxes.push((table_id, row_idx, row_box))
+    }
+  }
   for edge in graph.get_edges() {
     let route = edge.route
-    assert_true(
-      route.length() >= 2,
-      msg="edge \{edge.src_id} -> \{edge.dst_id} should have a route",
-    )
+    guard route.length() >= 2 else { continue }
+    for i in 0..<(route.length() - 1) {
+      let p0 = route[i]
+      let p1 = route[i + 1]
+      for row in sql_row_boxes {
+        let (table_id, row_idx, row_box) = row
+        assert_false(
+          line_segment_intersects_box(p0, p1, row_box),
+          msg="edge \{edge.src_id} -> \{edge.dst_id} seg \{i} intersects \{table_id} row \{row_idx}: (\{p0.get_x()},\{p0.get_y()}) -> (\{p1.get_x()},\{p1.get_y()}) vs box (\{row_box.get_x()},\{row_box.get_y()},\{row_box.get_width()},\{row_box.get_height()})",
+        )
+      }
+    }
   }
 }
 
@@ -450,6 +478,16 @@ const SQL_TABLE_FONT_SIZE_L : Int = 20
 
 ///|
 const SQL_TABLE_HEADER_FONT_ADD : Int = 4
+
+///|
+fn sql_table_column_count(table_id : String) -> Int {
+  match table_id {
+    "users" => 4
+    "posts" => 5
+    "comments" => 4
+    _ => 0
+  }
+}
 
 ///|
 fn sql_table_expected_height(label : String, num_cols : Int) -> Double {
@@ -500,4 +538,51 @@ fn sql_edge_row_anchor_point(
     dst_box.get_x() + dst_box.get_width()
   }
   @graph.Point::new(x, y)
+}
+
+///|
+fn line_segment_intersects_box(
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  box : @graph.Box,
+) -> Bool {
+  let left = box.get_x()
+  let right = box.get_x() + box.get_width()
+  let top = box.get_y()
+  let bottom = box.get_y() + box.get_height()
+  let p1_x = p1.get_x()
+  let p1_y = p1.get_y()
+  let p2_x = p2.get_x()
+  let p2_y = p2.get_y()
+  let dx = p2_x - p1_x
+  let dy = p2_y - p1_y
+  let mut t_min = 0.0
+  let mut t_max = 1.0
+  if dx != 0.0 {
+    let t1 = (left - p1_x) / dx
+    let t2 = (right - p1_x) / dx
+    let (tx_min, tx_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if tx_min > t_min { tx_min } else { t_min }
+    t_max = if tx_max < t_max { tx_max } else { t_max }
+  } else if p1_x < left || p1_x > right {
+    return false
+  }
+  if dy != 0.0 {
+    let t1 = (top - p1_y) / dy
+    let t2 = (bottom - p1_y) / dy
+    let (ty_min, ty_max) = if t1 < t2 { (t1, t2) } else { (t2, t1) }
+    t_min = if ty_min > t_min { ty_min } else { t_min }
+    t_max = if ty_max < t_max { ty_max } else { t_max }
+  } else if p1_y < top || p1_y > bottom {
+    return false
+  }
+  if t_min > t_max {
+    return false
+  }
+
+  // Only count intersections that occur away from the segment endpoints.
+  let eps = 1.0e-6
+  let inner_min = if t_min > eps { t_min } else { eps }
+  let inner_max = if t_max < 1.0 - eps { t_max } else { 1.0 - eps }
+  inner_min <= inner_max
 }

@@ -15,7 +15,7 @@
 /// E2E regression tests for the example `.d2` inputs.
 ///
 /// These tests compile the example sources using the in-repo ELK engine and
-/// compare the rendered output against checked-in golden SVGs.
+/// compare the rendered output against checked-in D2 CLI golden SVGs.
 ///
 /// We use Milky2018/xml as the XML parser.
 
@@ -263,12 +263,13 @@ fn extract_text_positions(
             get_attr_double(r, "width"),
             get_attr_double(r, "height"),
           ) {
-          (Some(x), Some(y), Some(w), Some(h)) =>
+          (Some(x), Some(y), Some(w), Some(h)) => {
             // Heuristic: edge-label mask/background rects are small; this
             // excludes the full-canvas background rect.
             if w <= 240.0 && h <= 90.0 {
               out.push({ x, y, width: w, height: h })
             }
+          }
           _ => ()
         }
       }
@@ -901,9 +902,7 @@ fn map_labels_to_boxes(svg : String) -> Result[Map[String, Box], String] {
 }
 
 ///|
-fn normalize_boxes(
-  raw : Map[String, Box],
-) -> (Map[String, Box], Double, Double) {
+fn normalize_boxes(raw : Map[String, Box]) -> (Map[String, Box], Double, Double) {
   let anchor = "Web Application Architecture"
   let mut dx = 0.0
   let mut dy = 0.0
@@ -1411,17 +1410,14 @@ fn compare_routes(
   }
   let (got_labels, got_dx, got_dy) = normalize_boxes(got_raw_labels)
   let (exp_labels, exp_dx, exp_dy) = normalize_boxes(exp_raw_labels)
+
   let got_counts : Map[String, Int] = {}
   for r in got_routes {
     let shifted : Array[(Double, Double)] = []
     for p in r.points {
       shifted.push((p.0 + got_dx, p.1 + got_dy))
     }
-    let rr = {
-      points: shifted,
-      has_marker_start: r.has_marker_start,
-      has_marker_end: r.has_marker_end,
-    }
+    let rr = { points: shifted, has_marker_start: r.has_marker_start, has_marker_end: r.has_marker_end }
     let sig = route_signature(rr, got_labels)
     let key = sig + "|" + route_points_key(rr.points)
     got_counts[key] = got_counts.get(key).unwrap_or(0) + 1
@@ -1432,11 +1428,7 @@ fn compare_routes(
     for p in r.points {
       shifted.push((p.0 + exp_dx, p.1 + exp_dy))
     }
-    let rr = {
-      points: shifted,
-      has_marker_start: r.has_marker_start,
-      has_marker_end: r.has_marker_end,
-    }
+    let rr = { points: shifted, has_marker_start: r.has_marker_start, has_marker_end: r.has_marker_end }
     let sig = route_signature(rr, exp_labels)
     let key = sig + "|" + route_points_key(rr.points)
     exp_counts[key] = exp_counts.get(key).unwrap_or(0) + 1
@@ -1639,20 +1631,12 @@ fn compare_boxes(
     buf.write_string(
       name + ": box mismatches (" + mismatches.length().to_string() + ")\n",
     )
-    if name == "basic" || name == "arrowheads" || name == "architecture" {
-      let keys = if name == "architecture" {
-        [
-          "Web Application Architecture", "Users", "CDN", "Load Balancer", "Web Tier",
-          "Application Tier", "Redis Cache", "Message Queue", "Background Workers",
-          "Database Cluster", "Object Storage",
-        ]
-      } else {
-        [
+    if name == "basic" || name == "arrowheads" {
+      for
+        key in [
           "Web Server", "PostgreSQL", "queries", "HTTP", "a", "b", "c", "d", "user",
           "orders",
-        ]
-      }
-      for key in keys {
+        ] {
         match (got.get(key), exp.get(key)) {
           (Some(gb), Some(eb)) =>
             buf.write_string(

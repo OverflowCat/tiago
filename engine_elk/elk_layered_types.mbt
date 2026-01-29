@@ -388,14 +388,35 @@ fn LGraph::add_node(self : LGraph, node : LNode) -> Unit {
 
 ///|
 /// Convert an ElkNode (root graph) to an LGraph
-fn LGraph::from_elk_node(
-  elk_node : ElkNode,
-  direction : LayoutDirection,
-) -> LGraph {
+fn LGraph::from_elk_node(elk_node : ElkNode, direction : LayoutDirection) -> LGraph {
   let graph = LGraph::new(elk_node.id)
   graph.width = elk_node.width
   graph.height = elk_node.height
   graph.properties.copy_from(elk_node.properties)
+
+  // Preserve the root node's label extents so node placement can enforce a
+  // minimum container size that fits the title (D2 behavior).
+  if !elk_node.labels.is_empty() {
+    let mut max_w = 0.0
+    let mut max_h = 0.0
+    for label in elk_node.labels {
+      let w = if label.width > 0.0 {
+        label.width
+      } else {
+        // Fallback should match `ensure_label_size`'s rough heuristic.
+        label.text.length().to_double() * 8.0
+      }
+      let h = if label.height > 0.0 { label.height } else { 14.0 }
+      if w > max_w {
+        max_w = w
+      }
+      if h > max_h {
+        max_h = h
+      }
+    }
+    graph.properties.set("diago.layered.rootLabelWidth", Double(max_w))
+    graph.properties.set("diago.layered.rootLabelHeight", Double(max_h))
+  }
 
   // Convert all children to LNodes (preserve input order for model order)
   for i, child in elk_node.children {
@@ -420,27 +441,11 @@ fn LGraph::from_elk_node(
     }
     None
   }
-
   fn port_side(direction : LayoutDirection, suffix : String) -> ElkPortSide {
     match direction {
-      Up =>
-        if suffix == "src" {
-          ElkPortSide::North
-        } else {
-          ElkPortSide::South
-        }
-      Left =>
-        if suffix == "src" {
-          ElkPortSide::West
-        } else {
-          ElkPortSide::East
-        }
-      Right =>
-        if suffix == "src" {
-          ElkPortSide::East
-        } else {
-          ElkPortSide::West
-        }
+      Up => if suffix == "src" { ElkPortSide::North } else { ElkPortSide::South }
+      Left => if suffix == "src" { ElkPortSide::West } else { ElkPortSide::East }
+      Right => if suffix == "src" { ElkPortSide::East } else { ElkPortSide::West }
       _ => if suffix == "src" { ElkPortSide::South } else { ElkPortSide::North }
     }
   }
@@ -457,15 +462,23 @@ fn LGraph::from_elk_node(
     suffix : String,
     port_index : Int,
   ) -> String? {
-    // Match ELK layered default behavior:
-    // for non-hyperedges, create one hierarchical port per hierarchy-crossing
-    // edge at each crossing point.
     match graph.node_map.get(container_id) {
       Some(container) =>
         match container.nested_graph {
           Some(nested) =>
             match nested.get_node(child_id) {
               Some(child) => {
+                // Hierarchical ports need stable positions derived from the
+                // already-laid-out nested graph (ELK's hierarchical port
+                // processors). We approximate this by fixing the port geometry
+                // and snapping it to the requested side during `position_ports`.
+                if container.properties.get_string("elk.portConstraints")
+                  is None {
+                  container.properties.set(
+                    "elk.portConstraints",
+                    Enum("FIXED_POS"),
+                  )
+                }
                 let port_id = container_id + "|hier|" + edge_id + "|" + suffix
                 for p in container.ports {
                   if p.id == port_id {
@@ -477,15 +490,19 @@ fn LGraph::from_elk_node(
                 // Mirror ELK's implicit-port indexing behavior so port ordering
                 // processors have a stable input order.
                 port.properties.set("elk.port.index", Int(port_index))
-                port.properties.set(
-                  "diago.layered.hierChildId",
-                  String(child_id),
-                )
-                // Approximate the hierarchical port coordinate by using the
-                // nested endpoint center. ELK layered will still reposition
-                // FREE ports later during port processing.
-                port.x = child.x + child.width / 2.0
-                port.y = child.y + child.height / 2.0
+                port.properties.set("diago.layered.hierChildId", String(child_id))
+                // When the nested graph has already been laid out, we may have
+                // captured external-port dummy coordinates for this hierarchy
+                // edge. Prefer those over the naive child-center heuristic.
+                let key_base = "diago.layered.hierPort." + edge_id + "." + suffix + "."
+                match container.properties.get_double(key_base + "x") {
+                  Some(x) => port.x = x
+                  None => port.x = child.x + child.width / 2.0
+                }
+                match container.properties.get_double(key_base + "y") {
+                  Some(y) => port.y = y
+                  None => port.y = child.y + child.height / 2.0
+                }
                 container.ports.push(port)
                 Some(port_id)
               }
@@ -885,6 +902,7 @@ fn LGraph::to_elk_node(
       None => ()
     }
   }
+
   fn find_elk_node_abs(
     node : ElkNode,
     id : String,
@@ -1026,10 +1044,7 @@ fn LGraph::to_elk_node(
           // and stores them on the container ElkNode. We assemble:
           //   [source-inner segment?] + [this-graph segment] + [target-inner segment?]
           // into a single ElkEdge section.
-          fn read_seg_points(
-            container : ElkNode,
-            key : String,
-          ) -> Array[ElkPoint]? {
+          fn read_seg_points(container : ElkNode, key : String) -> Array[ElkPoint]? {
             match container.properties.get_array(key) {
               None => None
               Some(arr) => {
@@ -1040,11 +1055,7 @@ fn LGraph::to_elk_node(
                     _ => ()
                   }
                 }
-                if pts.length() >= 2 {
-                  Some(pts)
-                } else {
-                  None
-                }
+                if pts.length() >= 2 { Some(pts) } else { None }
               }
             }
           }
@@ -1102,17 +1113,16 @@ fn LGraph::to_elk_node(
           let original_target_id = ledge.properties
             .get_string("diago.layered.originalTargetId")
             .unwrap_or(ledge.target_id)
+
           let edge_id = ledge.original_id.unwrap_or(ledge.id)
+
           let segments : Array[Array[ElkPoint]] = []
 
           // Optional source-side inner segment (inside source container at this level).
           if original_source_id != ledge.source_id {
             let key = "diago.layered.hierSeg." + edge_id + ".src"
             let (src_container, dx, dy) = find_elk_node_abs(
-              elk_node,
-              ledge.source_id,
-              0.0,
-              0.0,
+              elk_node, ledge.source_id, 0.0, 0.0,
             )
             match src_container {
               Some(c) =>
@@ -1125,11 +1135,7 @@ fn LGraph::to_elk_node(
           }
 
           // Middle segment routed in this graph (typically between boundary ports).
-          match
-            (
-              self.node_map.get(ledge.source_id),
-              self.node_map.get(ledge.target_id),
-            ) {
+          match (self.node_map.get(ledge.source_id), self.node_map.get(ledge.target_id)) {
             (Some(src), Some(tgt)) =>
               segments.push(compute_edge_points(ledge, src, tgt, direction))
             _ => ()
@@ -1139,10 +1145,7 @@ fn LGraph::to_elk_node(
           if original_target_id != ledge.target_id {
             let key = "diago.layered.hierSeg." + edge_id + ".dst"
             let (tgt_container, dx, dy) = find_elk_node_abs(
-              elk_node,
-              ledge.target_id,
-              0.0,
-              0.0,
+              elk_node, ledge.target_id, 0.0, 0.0,
             )
             match tgt_container {
               Some(c) =>
@@ -1153,6 +1156,7 @@ fn LGraph::to_elk_node(
               None => ()
             }
           }
+
           if segments.length() > 0 {
             // Ported from ELK's CompoundGraphPostprocessor: join bend points, and add a boundary
             // connector bendpoint when segment endpoints don't line up.
@@ -1307,34 +1311,17 @@ fn LGraph::get_layer_nodes(self : LGraph, layer_index : Int) -> Array[LNode] {
 ///|
 /// Initialize layers array based on node layer assignments
 fn LGraph::initialize_layers(self : LGraph) -> Unit {
-  // ELK's layer list contains no gaps. Normalize the assigned layer indices to
-  // a dense 0..N-1 range to avoid empty layers affecting placement.
-  let seen : Map[Int, Bool] = {}
-  let used : Array[Int] = []
+  // Find max layer
+  let mut max_layer = -1
   for node in self.nodes {
-    if node.layer < 0 {
-      continue
+    if node.layer > max_layer {
+      max_layer = node.layer
     }
-    if !seen.contains(node.layer) {
-      seen[node.layer] = true
-      used.push(node.layer)
-    }
-  }
-  used.sort_by(fn(a, b) { a - b })
-  let remap : Map[Int, Int] = {}
-  for i, layer_id in used {
-    remap[layer_id] = i
-  }
-  for node in self.nodes {
-    if node.layer < 0 {
-      continue
-    }
-    node.layer = remap.get(node.layer).unwrap_or(node.layer)
   }
 
   // Create layers
   self.layers.clear()
-  for i = 0; i < used.length(); i = i + 1 {
+  for i = 0; i <= max_layer; i = i + 1 {
     self.layers.push(LLayer::new(i))
   }
 

@@ -46,6 +46,27 @@ fn default_layered_pipeline() -> LayeredPipeline {
   builder.add("elk.layered.layout", BeforePhase5, fn(graph, ctx) {
     run_elk_layout(graph, ctx.config, ctx.direction)
   })
+  builder.add("elk.layered.position_sql_table_children", AfterPhase5, fn(
+    graph,
+    _ctx,
+  ) {
+    position_sql_table_children(graph)
+  })
+  builder.add("elk.layered.apply_edge_overrides", AfterPhase5, fn(graph, _ctx) {
+    apply_post_layout_edge_overrides(graph)
+  })
+  // ELK already computes edge routes as part of layered layout.
+  // Do not override them with the legacy unified router.
+  builder.add("elk.layered.position_edge_labels", AfterPhase5, fn(graph, ctx) {
+    position_edge_labels(graph, ctx.config)
+  })
+  // Must run after edge overrides and label placement so everything shifts together.
+  builder.add("elk.layered.normalize_coordinates", AfterPhase5, fn(
+    graph,
+    _ctx,
+  ) {
+    normalize_coordinates(graph)
+  })
   builder.build()
 }
 

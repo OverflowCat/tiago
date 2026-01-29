@@ -467,6 +467,27 @@ fn get_sql_row_anchor_point(
 }
 
 ///|
+fn position_sql_table_children(graph : Graph) -> Unit {
+  for obj in graph.objects {
+    if obj.shape_type != @graph.SqlTable {
+      continue
+    }
+    guard obj.box is Some(table_box) else { continue }
+    let row_height = table_box.height / (obj.children.length() + 1).to_double()
+    for i, child in obj.children {
+      child.box = Some(
+        @graph.Box::new(
+          table_box.x,
+          table_box.y + row_height * (i.to_double() + 1.0),
+          table_box.width,
+          row_height,
+        ),
+      )
+    }
+  }
+}
+
+///|
 fn calculate_best_anchors(
   src_box : @graph.Box,
   dst_box : @graph.Box,

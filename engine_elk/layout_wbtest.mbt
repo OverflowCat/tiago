@@ -819,15 +819,15 @@ test "debug: cyclic graph with bidirectional edges" {
   // Debug: print positions
   inspect(
     (box5.x, box5.y, box5.width, box5.height),
-    content="(52, 12, 120, 66)",
+    content="(32, 12, 120, 66)",
   )
   inspect(
     (boxI.x, boxI.y, boxI.width, boxI.height),
-    content="(12, 304, 120, 66)",
+    content="(72, 294, 120, 66)",
   )
   inspect(
     (boxA.x, boxA.y, boxA.width, boxA.height),
-    content="(78.66666666666667, 158, 80, 66)",
+    content="(52, 148, 80, 66)",
   )
 
   // No overlaps - this is the key constraint

@@ -514,8 +514,8 @@ fn route_direct_edge_sql_parallel(
 // ============================================================================
 
 ///|
-/// Compute bounding box of all objects in the graph.
-/// Returns (min_x, min_y, max_x, max_y).
+/// Compute bounding box of all objects in the graph
+/// Returns (min_x, min_y, max_x, max_y)
 fn compute_all_bounds(graph : Graph) -> (Double, Double, Double, Double) {
   let mut min_x = 1.0e10
   let mut min_y = 1.0e10
@@ -537,6 +537,244 @@ fn compute_all_bounds(graph : Graph) -> (Double, Double, Double, Double) {
     }
   }
   (min_x, min_y, max_x, max_y)
+}
+
+///|
+/// Normalize coordinates to ensure all elements have non-negative positions
+/// This shifts the entire graph if any element has negative coordinates
+fn normalize_coordinates(graph : Graph) -> Unit {
+  // Find minimum x and y across all elements (nodes and edge routes)
+  let mut min_x = 0.0
+  let mut min_y = 0.0
+  // Check object boxes
+  for obj in graph.objects {
+    if obj.box is Some(box) {
+      if box.x < min_x {
+        min_x = box.x
+      }
+      if box.y < min_y {
+        min_y = box.y
+      }
+    }
+  }
+  // Check edge route points
+  for edge in graph.edges {
+    for pt in edge.route {
+      if pt.x < min_x {
+        min_x = pt.x
+      }
+      if pt.y < min_y {
+        min_y = pt.y
+      }
+    }
+    // Check edge label positions
+    if edge.label_box is Some(lb) {
+      if lb.x < min_x {
+        min_x = lb.x
+      }
+      if lb.y < min_y {
+        min_y = lb.y
+      }
+    }
+  }
+  // If everything is already non-negative, nothing to do
+  if min_x >= 0.0 && min_y >= 0.0 {
+    return
+  }
+  // Calculate shift amounts
+  let shift_x = if min_x < 0.0 { -min_x } else { 0.0 }
+  let shift_y = if min_y < 0.0 { -min_y } else { 0.0 }
+  // Shift all object boxes
+  for obj in graph.objects {
+    match obj.box {
+      Some(box) =>
+        obj.box = Some(
+          @graph.Box::new(
+            box.x + shift_x,
+            box.y + shift_y,
+            box.width,
+            box.height,
+          ),
+        )
+      None => ()
+    }
+  }
+  // Shift all edge route points
+  for edge in graph.edges {
+    for i = 0; i < edge.route.length(); i = i + 1 {
+      let pt = edge.route[i]
+      edge.route[i] = @graph.Point::new(pt.x + shift_x, pt.y + shift_y)
+    }
+    // Shift edge label positions
+    if edge.label_box is Some(lb) {
+      edge.label_box = Some(
+        @graph.Box::new(lb.x + shift_x, lb.y + shift_y, lb.width, lb.height),
+      )
+    }
+  }
+}
+
+///|
+fn apply_post_layout_edge_overrides(graph : Graph) -> Unit {
+  apply_sql_table_edge_routes_after_elk(graph)
+  apply_manual_bend_points_after_elk(graph)
+}
+
+///|
+fn apply_sql_table_edge_routes_after_elk(graph : Graph) -> Unit {
+  let margin = 12.0
+  let canvas_bounds = compute_all_bounds(graph)
+  let obstacles : Array[@graph.Box] = []
+  for obj in graph.objects {
+    if obj.box is Some(box) {
+      obstacles.push(box)
+    }
+  }
+  for edge in graph.edges {
+    let is_sql_edge = edge.src_column_index is Some(_) ||
+      edge.dst_column_index is Some(_)
+    if !is_sql_edge {
+      continue
+    }
+    let (src_box, src_num_cols, dst_box, dst_num_cols) = match
+      get_sql_table_boxes(graph, edge) {
+      Some(v) => v
+      None => continue
+    }
+    let src_center = src_box.center()
+    let dst_center = dst_box.center()
+    let dx = dst_center.x - src_center.x
+
+    // Keep sql_table row connections on left/right sides so they align with rows.
+    let (src_is_left, dst_is_left) = if dx >= 0.0 {
+      (false, true)
+    } else {
+      (true, false)
+    }
+    let src_point = if edge.src_column_index is Some(col_idx) &&
+      src_num_cols > 0 {
+      get_sql_row_anchor_point(src_box, col_idx, src_num_cols, src_is_left)
+    } else {
+      let x = if src_is_left { src_box.x } else { src_box.x + src_box.width }
+      @graph.Point::new(x, src_center.y)
+    }
+    let dst_point = if edge.dst_column_index is Some(col_idx) &&
+      dst_num_cols > 0 {
+      get_sql_row_anchor_point(dst_box, col_idx, dst_num_cols, dst_is_left)
+    } else {
+      let x = if dst_is_left { dst_box.x } else { dst_box.x + dst_box.width }
+      @graph.Point::new(x, dst_center.y)
+    }
+    let goal_side = if dst_is_left { "left" } else { "right" }
+    let astar_route = astar_route_orthogonal(
+      src_point,
+      dst_point,
+      if src_is_left {
+        "left"
+      } else {
+        "right"
+      },
+      goal_side,
+      src_box,
+      dst_box,
+      obstacles,
+      canvas_bounds,
+      0.0,
+    )
+    if astar_route is Some(route) && route.length() >= 2 {
+      edge.route.clear()
+      for p in route {
+        edge.route.push(p)
+      }
+      continue
+    }
+
+    // If the two boxes have a horizontal gap between the connected sides,
+    // route in that gap. Otherwise (overlap), detour above/below to avoid
+    // drawing segments through sql_table row rectangles.
+    let src_left = src_box.x
+    let src_right = src_box.x + src_box.width
+    let src_top = src_box.y
+    let src_bottom = src_box.y + src_box.height
+    let dst_left = dst_box.x
+    let dst_right = dst_box.x + dst_box.width
+    let dst_top = dst_box.y
+    let dst_bottom = dst_box.y + dst_box.height
+    let detour_y = {
+      let top = if src_top < dst_top { src_top } else { dst_top }
+      let bottom = if src_bottom > dst_bottom { src_bottom } else { dst_bottom }
+      let above = top - margin
+      if above >= 0.0 {
+        above
+      } else {
+        bottom + margin
+      }
+    }
+    let detour_x_left = {
+      let left = if src_left < dst_left { src_left } else { dst_left }
+      let x = left - margin
+      if x >= 0.0 {
+        x
+      } else {
+        0.0
+      }
+    }
+    let detour_x_right = {
+      let right = if src_right > dst_right { src_right } else { dst_right }
+      right + margin
+    }
+    edge.route.clear()
+    edge.route.push(src_point)
+    if dx >= 0.0 {
+      // Source on right, destination on left
+      let gap = dst_left - src_right
+      if gap > margin {
+        let mid_x = (src_right + dst_left) / 2.0
+        edge.route.push(@graph.Point::new(mid_x, src_point.y))
+        edge.route.push(@graph.Point::new(mid_x, dst_point.y))
+      } else {
+        let src_out_x = detour_x_right
+        let dst_out_x = detour_x_left
+        edge.route.push(@graph.Point::new(src_out_x, src_point.y))
+        edge.route.push(@graph.Point::new(src_out_x, detour_y))
+        edge.route.push(@graph.Point::new(dst_out_x, detour_y))
+        edge.route.push(@graph.Point::new(dst_out_x, dst_point.y))
+      }
+    } else {
+      // Source on left, destination on right
+      let gap = src_left - dst_right
+      if gap > margin {
+        let mid_x = (src_left + dst_right) / 2.0
+        edge.route.push(@graph.Point::new(mid_x, src_point.y))
+        edge.route.push(@graph.Point::new(mid_x, dst_point.y))
+      } else {
+        let src_out_x = detour_x_left
+        let dst_out_x = detour_x_right
+        edge.route.push(@graph.Point::new(src_out_x, src_point.y))
+        edge.route.push(@graph.Point::new(src_out_x, detour_y))
+        edge.route.push(@graph.Point::new(dst_out_x, detour_y))
+        edge.route.push(@graph.Point::new(dst_out_x, dst_point.y))
+      }
+    }
+    edge.route.push(dst_point)
+  }
+}
+
+///|
+fn apply_manual_bend_points_after_elk(graph : Graph) -> Unit {
+  for edge in graph.edges {
+    if edge.bend_points is Some(bps) && !bps.is_empty() {
+      guard edge.route.length() >= 2 else { continue }
+      let start = edge.route[0]
+      let end = edge.route[edge.route.length() - 1]
+      edge.route.clear()
+      edge.route.push(start)
+      for p in bps {
+        edge.route.push(p)
+      }
+      edge.route.push(end)
+    }
+  }
 }
 
 ///|
