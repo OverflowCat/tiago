@@ -82,9 +82,205 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
     // Convert ElkNode to internal LGraph representation.
     let direction = resolved_options.direction.unwrap_or(Down)
     let lgraph = LGraph::from_elk_node(node, direction)
-    // NOTE: We currently don't inject ExternalPort dummy nodes for hierarchy
-    // edges into nested graphs. Instead, hierarchy stitching relies on the
-    // `hierSeg` fallback below.
+    // Inject ExternalPort dummy nodes for INCLUDE_CHILDREN hierarchy edges.
+    //
+    // ELK Layered represents cross-hierarchy connections inside a compound
+    // node by adding external-port dummy nodes and edges to them. This lets
+    // port ordering / crossing minimization / BK placement account for those
+    // external connections. We mirror that here for nested graphs by adding
+    // an ExternalPort dummy per crossing edge endpoint.
+    if resolved_options.hierarchy_handling == Some(Include) &&
+      node.children.length() > 0 {
+      fn contains_descendant(root : ElkNode, id : String) -> Bool {
+        if root.id == id {
+          true
+        } else {
+          match root.find_node(id) {
+            Some(_) => true
+            None => false
+          }
+        }
+      }
+
+      fn find_top_level_child_id(root : ElkNode, id : String) -> String? {
+        for child in root.children {
+          if child.id == id {
+            return Some(child.id)
+          }
+          match child.find_node(id) {
+            Some(_) => return Some(child.id)
+            None => ()
+          }
+        }
+        None
+      }
+
+      fn port_side(
+        direction : LayoutDirection,
+        suffix : String,
+      ) -> ElkPortSide {
+        match direction {
+          Up =>
+            if suffix == "src" {
+              ElkPortSide::North
+            } else {
+              ElkPortSide::South
+            }
+          Left =>
+            if suffix == "src" {
+              ElkPortSide::West
+            } else {
+              ElkPortSide::East
+            }
+          Right =>
+            if suffix == "src" {
+              ElkPortSide::East
+            } else {
+              ElkPortSide::West
+            }
+          _ =>
+            if suffix == "src" {
+              ElkPortSide::South
+            } else {
+              ElkPortSide::North
+            }
+        }
+      }
+
+      fn ext_side_string(side : ElkPortSide) -> String {
+        match side {
+          North => "North"
+          South => "South"
+          East => "East"
+          West => "West"
+          Undefined => "Undefined"
+        }
+      }
+
+      fn ensure_auto_port(
+        lgraph : LGraph,
+        node_id : String,
+        edge_id : String,
+        suffix : String,
+        port_index : Int,
+      ) -> String? {
+        match lgraph.node_map.get(node_id) {
+          Some(node) => {
+            let port_id = node_id + "|auto|" + edge_id + "|" + suffix
+            for p in node.ports {
+              if p.id == port_id {
+                return Some(port_id)
+              }
+            }
+            let port = LPort::new(port_id)
+            port.side = port_side(direction, suffix)
+            port.properties.set("elk.port.index", Int(port_index))
+            port.properties.set("diago.layered.autoPort", Bool(true))
+            node.ports.push(port)
+            Some(port_id)
+          }
+          None => None
+        }
+      }
+
+      fn ensure_dummy(
+        lgraph : LGraph,
+        dummy_id : String,
+        side : ElkPortSide,
+        edge_id : String,
+        suffix : String,
+        port_index : Int,
+      ) -> String? {
+        if lgraph.node_map.contains(dummy_id) {
+          return Some(dummy_id)
+        }
+        let dummy = LNode::new(dummy_id, ExternalPort)
+        dummy.width = 0.0
+        dummy.height = 0.0
+        dummy.properties.set(
+          "diago.layered.extPortSide",
+          String(ext_side_string(side)),
+        )
+        dummy.properties.set("diago.layered.hierEdgeId", String(edge_id))
+        dummy.properties.set("diago.layered.hierEdgeSuffix", String(suffix))
+        dummy.properties.set("elk.portConstraints", Enum("FIXED_POS"))
+        // Add a single fixed-pos port to anchor the hierarchy edge.
+        let port = LPort::new(dummy_id + "|p")
+        port.side = side
+        port.properties.set("elk.port.index", Int(port_index))
+        dummy.ports.push(port)
+        lgraph.add_node(dummy)
+        Some(dummy_id)
+      }
+
+      for i, edge in all_edges {
+        if edge.sources.is_empty() || edge.targets.is_empty() {
+          continue
+        }
+        let orig_src = edge.sources[0]
+        let orig_tgt = edge.targets[0]
+        let src_in = contains_descendant(node, orig_src)
+        let tgt_in = contains_descendant(node, orig_tgt)
+        if src_in == tgt_in {
+          continue
+        }
+        let inside_orig = if src_in { orig_src } else { orig_tgt }
+        let suffix = if src_in { "src" } else { "dst" }
+        let inside_top = find_top_level_child_id(node, inside_orig).unwrap_or(
+          inside_orig,
+        )
+        if !lgraph.node_map.contains(inside_top) {
+          continue
+        }
+        let side = port_side(direction, suffix)
+        let dummy_id = node.id + "|ext|" + edge.id + "|" + suffix
+        match ensure_dummy(lgraph, dummy_id, side, edge.id, suffix, i) {
+          Some(dummy_id) => {
+            let edge_id = "diago.hier|" + node.id + "|" + edge.id + "|" + suffix
+            let ledge = if suffix == "src" {
+              LEdge::new(edge_id, inside_top, dummy_id)
+            } else {
+              LEdge::new(edge_id, dummy_id, inside_top)
+            }
+            ledge.original_id = Some(edge.id)
+            ledge.properties.set("diago.layered.modelOrder", Int(i))
+            ledge.properties.set("diago.layered.hierEdgeId", String(edge.id))
+            ledge.properties.set("diago.layered.hierEdgeSuffix", String(suffix))
+            // Per-edge implicit ports (mirror ELK importer).
+            if suffix == "src" {
+              ledge.source_port_id = ensure_auto_port(
+                lgraph,
+                inside_top,
+                edge.id,
+                "src",
+                i,
+              )
+              ledge.target_port_id = Some(dummy_id + "|p")
+            } else {
+              ledge.source_port_id = Some(dummy_id + "|p")
+              ledge.target_port_id = ensure_auto_port(
+                lgraph,
+                inside_top,
+                edge.id,
+                "dst",
+                i,
+              )
+            }
+            // Link edge to nodes.
+            match lgraph.node_map.get(ledge.source_id) {
+              Some(src) => src.outgoing_edges.push(ledge)
+              None => ()
+            }
+            match lgraph.node_map.get(ledge.target_id) {
+              Some(tgt) => tgt.incoming_edges.push(ledge)
+              None => ()
+            }
+            lgraph.edges.push(ledge)
+          }
+          None => ()
+        }
+      }
+    }
 
     // Get options with defaults.
     let direction = match resolved_options.direction {
@@ -196,6 +392,88 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
       let eid = e.properties.get_string("diago.layered.hierEdgeId")
       let suffix = e.properties.get_string("diago.layered.hierEdgeSuffix")
       guard eid is Some(edge_id) && suffix is Some(sfx) else { continue }
+
+      // Record hierarchical port coordinates for the parent graph.
+      //
+      // ELK derives hierarchical port coordinates from the connected *inner*
+      // endpoint and projects them onto the compound-node border. This avoids
+      // relying on any special placement of external-port dummy nodes (which
+      // we may not fully mirror yet).
+      fn side_for_suffix(
+        direction : LayoutDirection,
+        suffix : String,
+      ) -> ElkPortSide {
+        match direction {
+          Up =>
+            if suffix == "src" {
+              ElkPortSide::North
+            } else {
+              ElkPortSide::South
+            }
+          Left =>
+            if suffix == "src" {
+              ElkPortSide::West
+            } else {
+              ElkPortSide::East
+            }
+          Right =>
+            if suffix == "src" {
+              ElkPortSide::East
+            } else {
+              ElkPortSide::West
+            }
+          _ =>
+            if suffix == "src" {
+              ElkPortSide::South
+            } else {
+              ElkPortSide::North
+            }
+        }
+      }
+
+      fn project_to_border(
+        side : ElkPortSide,
+        x : Double,
+        y : Double,
+      ) -> (Double, Double) {
+        match side {
+          ElkPortSide::North => (clamp(x, 0.0, lgraph.width), 0.0)
+          ElkPortSide::South => (clamp(x, 0.0, lgraph.width), lgraph.height)
+          ElkPortSide::West => (0.0, clamp(y, 0.0, lgraph.height))
+          ElkPortSide::East => (lgraph.width, clamp(y, 0.0, lgraph.height))
+          _ => (clamp(x, 0.0, lgraph.width), clamp(y, 0.0, lgraph.height))
+        }
+      }
+
+      // Prefer the inside node's port anchor if available, else fall back to
+      // its center.
+      let (ax, ay) = if sfx == "src" {
+        match lgraph.get_node(e.source_id) {
+          Some(src) =>
+            anchor_for_port(src, e.source_port_id).unwrap_or(
+              (src.x + src.width / 2.0, src.y + src.height / 2.0),
+            )
+          None => (0.0, 0.0)
+        }
+      } else {
+        match lgraph.get_node(e.target_id) {
+          Some(tgt) =>
+            anchor_for_port(tgt, e.target_port_id).unwrap_or(
+              (tgt.x + tgt.width / 2.0, tgt.y + tgt.height / 2.0),
+            )
+          None => (0.0, 0.0)
+        }
+      }
+      let side = side_for_suffix(direction, sfx)
+      let (px, py) = project_to_border(side, ax, ay)
+      node.properties.set(
+        "diago.layered.hierPort." + edge_id + "." + sfx + ".x",
+        Double(px),
+      )
+      node.properties.set(
+        "diago.layered.hierPort." + edge_id + "." + sfx + ".y",
+        Double(py),
+      )
       let points = edge_polyline_points(lgraph, e, direction)
       if points.length() < 2 {
         continue
@@ -220,6 +498,7 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
           collect_subtree_ids(child, set)
         }
       }
+
       let subtree_ids : Map[String, Bool] = {}
       collect_subtree_ids(node, subtree_ids)
       for edge in all_edges {
@@ -240,7 +519,9 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
           match lgraph.get_node(orig_src) {
             Some(src) => {
               let sx = src.x + src.width / 2.0
-              let sy = if direction == Up { src.y } else if direction == Down {
+              let sy = if direction == Up {
+                src.y
+              } else if direction == Down {
                 src.y + src.height
               } else {
                 src.y + src.height / 2.0
@@ -256,12 +537,10 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
               if node.properties.get_array(key) is None {
                 node.properties.set(
                   key,
-                  Array(
-                    [
-                      Point(ElkPoint::new(sx, sy)),
-                      Point(ElkPoint::new(tx, ty)),
-                    ],
-                  ),
+                  Array([
+                    Point(ElkPoint::new(sx, sy)),
+                    Point(ElkPoint::new(tx, ty)),
+                  ]),
                 )
               }
             }
@@ -274,7 +553,9 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
           match lgraph.get_node(orig_tgt) {
             Some(tgt) => {
               let tx = tgt.x + tgt.width / 2.0
-              let ty = if direction == Up { tgt.y + tgt.height } else if direction == Down {
+              let ty = if direction == Up {
+                tgt.y + tgt.height
+              } else if direction == Down {
                 tgt.y
               } else {
                 tgt.y + tgt.height / 2.0
@@ -290,44 +571,16 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
               if node.properties.get_array(key) is None {
                 node.properties.set(
                   key,
-                  Array(
-                    [
-                      Point(ElkPoint::new(sx, sy)),
-                      Point(ElkPoint::new(tx, ty)),
-                    ],
-                  ),
+                  Array([
+                    Point(ElkPoint::new(sx, sy)),
+                    Point(ElkPoint::new(tx, ty)),
+                  ]),
                 )
               }
             }
             None => ()
           }
         }
-      }
-    }
-
-    // Capture ExternalPort dummy coordinates for hierarchical port positioning
-    // in the parent graph. This mirrors ELK's hierarchical port processors
-    // which derive hierarchical port coordinates from their dummy nodes.
-    for n in lgraph.nodes {
-      if n.node_type != ExternalPort {
-        continue
-      }
-      let edge_id = n.properties.get_string("diago.layered.hierEdgeId")
-      let suffix = n.properties.get_string("diago.layered.hierEdgeSuffix")
-      match (edge_id, suffix) {
-        (Some(eid), Some(sfx)) => {
-          let cx = n.x + n.width / 2.0
-          let cy = n.y + n.height / 2.0
-          node.properties.set(
-            "diago.layered.hierPort." + eid + "." + sfx + ".x",
-            Double(cx),
-          )
-          node.properties.set(
-            "diago.layered.hierPort." + eid + "." + sfx + ".y",
-            Double(cy),
-          )
-        }
-        _ => ()
       }
     }
 
@@ -923,7 +1176,7 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
 
 ///|
 /// Insert dummy nodes for edges spanning multiple layers.
-fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
+fn insert_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
   fn edge_thickness(edge : LEdge) -> Double {
     let mut thickness = match edge.properties.get_double("elk.edge.thickness") {
       Some(v) => v
@@ -942,6 +1195,14 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
 
   // Collect long edges
   let long_edges = graph.get_long_edges()
+  let dir = options.direction.unwrap_or(Down)
+  let (in_side, out_side) = match dir {
+    Down => (ElkPortSide::North, ElkPortSide::South)
+    Up => (ElkPortSide::South, ElkPortSide::North)
+    Right => (ElkPortSide::West, ElkPortSide::East)
+    Left => (ElkPortSide::East, ElkPortSide::West)
+    Undefined => (ElkPortSide::West, ElkPortSide::East)
+  }
   for edge in long_edges {
     // Skip already-split carrier edges.
     if edge.properties.get_bool_or("diago.layered.longEdgeSplit", false) {
@@ -977,15 +1238,14 @@ fn insert_dummy_nodes(graph : LGraph, _options : LayoutOptions) -> Unit {
       dummy.width = 0.0
       dummy.height = thickness
       dummy.properties.set("elk.portConstraints", Enum("FIXED_POS"))
-      let port_pos = @math.floor(thickness / 2.0)
       let input_port_id = dummy_id + "_in"
       let output_port_id = dummy_id + "_out"
-      let input_port = { ..LPort::new(input_port_id), side: West, y: port_pos }
-      let output_port = {
-        ..LPort::new(output_port_id),
-        side: East,
-        y: port_pos,
-      }
+      // Long-edge dummies should connect from the previous layer into the next
+      // along the main flow direction (N/S for vertical, W/E for horizontal).
+      // Keep port coordinates at 0 so anchor resolution falls back to the
+      // dummy node center on that border (ELK behavior for 0-sized dummies).
+      let input_port = { ..LPort::new(input_port_id), side: in_side }
+      let output_port = { ..LPort::new(output_port_id), side: out_side }
       dummy.ports.push(input_port)
       dummy.ports.push(output_port)
       graph.add_node(dummy)
@@ -3296,7 +3556,7 @@ fn order_layer_by_barycenter(
   use_perturb : Bool,
   force_model_order : Bool,
   consider_model_order : OrderingStrategy,
-  is_horizontal : Bool,
+  _is_horizontal : Bool,
 ) -> Unit {
   // ELK parity notes:
   // - Nodes with no connections get an "unknown" barycenter, then filled in by
@@ -3332,67 +3592,39 @@ fn order_layer_by_barycenter(
 
   // Compute barycenters.
   let barycenters : Map[String, Double?] = {}
-  fn neighbor_position(node : LNode, edge : LEdge, is_source : Bool) -> Double {
-    let base = node.position.to_double()
-    if !edge.properties.get_bool_or("diago.layered.crossHierarchy", false) {
-      return base
-    }
-    let key = if is_source {
-      "diago.layered.originalSourceId"
-    } else {
-      "diago.layered.originalTargetId"
-    }
-    let orig_id = edge.properties.get_string(key)
-    guard orig_id is Some(child_id) else { return base }
-    if child_id == node.id {
-      return base
-    }
-    match node.nested_graph {
-      Some(nested) =>
-        match nested.get_node(child_id) {
-          Some(child) => {
-            let centers : Array[(String, Double)] = []
-            for other in nested.nodes {
-              let c = if is_horizontal {
-                other.y + other.height / 2.0
-              } else {
-                other.x + other.width / 2.0
-              }
-              centers.push((other.id, c))
-            }
-            centers.sort_by(fn(a, b) {
-              let (_, ca) = a
-              let (_, cb) = b
-              if ca < cb {
-                -1
-              } else if ca > cb {
-                1
-              } else {
-                0
-              }
-            })
-            let count = centers.length()
-            if count == 0 {
-              return base
-            }
+  fn port_offset(node : LNode, port_id : String?) -> Double {
+    match port_id {
+      None => 0.0
+      Some(pid) =>
+        match find_port_for_id(node, pid) {
+          None => 0.0
+          Some(p) => {
+            // Rank of this port among ports on the same side.
             let mut idx = 0
-            for i = 0; i < count; i = i + 1 {
-              let (id, _) = centers[i]
-              if id == child.id {
-                idx = i
-                break
+            let mut count = 0
+            for port in node.ports {
+              if port.side != p.side {
+                continue
               }
+              if port.id == p.id {
+                idx = count
+              } else {
+                match port.original_id {
+                  Some(id) => if id == p.id { idx = count }
+                  None => ()
+                }
+              }
+              count = count + 1
             }
-            // Approximate ELK's port-based crossing minimization by using a small
-            // fractional offset derived from the child order inside the compound node.
-            // This keeps the adjustment within (-0.5, 0.5) so it doesn't dominate
-            // node ordering in the outer graph.
-            let t = (idx.to_double() + 1.0) / (count.to_double() + 1.0)
-            base + (t - 0.5)
+            if count <= 1 {
+              0.0
+            } else {
+              // Keep the adjustment within (-0.5, 0.5).
+              let t = (idx.to_double() + 1.0) / (count.to_double() + 1.0)
+              t - 0.5
+            }
           }
-          None => base
         }
-      None => base
     }
   }
 
@@ -3403,7 +3635,11 @@ fn order_layer_by_barycenter(
         match graph.get_node(edge.source_id) {
           Some(source) =>
             if source.layer == fixed_layer.index {
-              connected_positions.push(neighbor_position(source, edge, true))
+              let off_fixed = port_offset(source, edge.source_port_id)
+              let off_cur = port_offset(node, edge.target_port_id)
+              connected_positions.push(
+                source.position.to_double() + (off_fixed + off_cur) / 2.0,
+              )
             }
           None => ()
         }
@@ -3413,7 +3649,11 @@ fn order_layer_by_barycenter(
         match graph.get_node(edge.target_id) {
           Some(target) =>
             if target.layer == fixed_layer.index {
-              connected_positions.push(neighbor_position(target, edge, false))
+              let off_fixed = port_offset(target, edge.target_port_id)
+              let off_cur = port_offset(node, edge.source_port_id)
+              connected_positions.push(
+                target.position.to_double() + (off_fixed + off_cur) / 2.0,
+              )
             }
           None => ()
         }
@@ -3816,7 +4056,8 @@ fn orthogonal_routing(
   let padding = effective_graph_padding(graph, options)
 
   // Use improved routing with slot assignment
-  let random_seed = options.random_seed.unwrap_or(1)
+  // Match ELK's default seed for deterministic routing decisions.
+  let random_seed = options.random_seed.unwrap_or(0)
   route_edges_orthogonal(
     graph, direction, node_node_spacing, edge_edge_spacing, edge_node_spacing, padding,
     random_seed,

@@ -104,9 +104,47 @@ fn LayeredInternalPipeline::run(
   graph : LGraph,
   ctx : LayeredInternalContext,
 ) -> Unit {
+  fn debug_enabled(graph : LGraph) -> Bool {
+    graph.properties.get_bool_or("diago.layered.debugTrace", false)
+  }
+
+  fn debug_snapshot(graph : LGraph) -> String {
+    let ids : Array[String] = []
+    for n in graph.nodes {
+      ids.push(n.id)
+    }
+    ids.sort_by(fn(a, b) { a.compare(b) })
+    let mut s = "w=\{graph.width} h=\{graph.height}"
+    for id in ids {
+      match graph.get_node(id) {
+        Some(n) =>
+          s = s +
+            " " +
+            id +
+            ":\{n.node_type}(\{n.x},\{n.y},\{n.width},\{n.height})"
+        None => ()
+      }
+    }
+    s + "\n"
+  }
+
+  fn debug_append(graph : LGraph, msg : String) -> Unit {
+    if !debug_enabled(graph) {
+      return
+    }
+    let prev = graph.properties.get_string_or("diago.layered.debugTraceLog", "")
+    graph.properties.set("diago.layered.debugTraceLog", String(prev + msg))
+  }
+
+  if debug_enabled(graph) {
+    debug_append(graph, "BEGIN " + debug_snapshot(graph))
+  }
   for processor in self.processors {
     if (processor.enabled)(ctx) {
       (processor.run)(graph, ctx)
+      if debug_enabled(graph) {
+        debug_append(graph, processor.id + " " + debug_snapshot(graph))
+      }
     }
   }
 }
@@ -369,7 +407,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.LABEL_AND_NODE_SIZE_PROCESSOR",
     BeforePhase4,
-    fn(_, _) { () },
+    fn(graph, ctx) { position_ports(graph, ctx.options) },
   )
   builder.add(
     "elk.layered.intermediate.INNERMOST_NODE_MARGIN_CALCULATOR",
@@ -431,7 +469,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.HIERARCHICAL_PORT_POSITION_PROCESSOR",
     BeforePhase5,
-    fn(graph, ctx) { position_ports(graph, ctx.options) },
+    fn(_, _) { () },
   )
 
   // After Phase 5
@@ -533,7 +571,7 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
   builder.add(
     "elk.layered.intermediate.HIERARCHICAL_NODE_RESIZER",
     AfterPhase5,
-    fn(_, _) { () },
+    fn(graph, ctx) { hierarchical_node_resizer(graph, ctx.options) },
   )
   builder.add("elk.layered.intermediate.DIRECTION_POSTPROCESSOR", AfterPhase5, fn(
     _,
@@ -586,6 +624,113 @@ fn default_layered_internal_pipeline() -> LayeredInternalPipeline {
     route_edges(graph, ctx.options, routing, ctx.direction)
   })
   builder.build()
+}
+
+///|
+/// Apply minimum-size constraints and content alignment after edge routing.
+///
+/// Mirrors ELK's `HierarchicalNodeResizingProcessor` behavior:
+/// - grow graph size to at least NODE_SIZE_MINIMUM (when enabled)
+/// - shift content according to CONTENT_ALIGNMENT (center)
+/// - keep east/south external ports on the new border
+fn hierarchical_node_resizer(graph : LGraph, options : LayoutOptions) -> Unit {
+  let size_constraints = options.node_size_constraints.unwrap_or([])
+  let apply_min = size_constraints.contains(MinimumSize) ||
+    size_constraints.contains(MinimumSizeAccountsForPadding)
+  if !apply_min {
+    return
+  }
+  let old_w = graph.width
+  let old_h = graph.height
+  let (min_w, min_h) = match options.node_size_minimum {
+    Some((w, h)) => (w, h)
+    None => (0.0, 0.0)
+  }
+  let new_w = max_double(old_w, min_w)
+  let new_h = max_double(old_h, min_h)
+  if new_w == old_w && new_h == old_h {
+    return
+  }
+  let content_alignment = options.content_alignment.unwrap_or(None)
+  let mut dx = 0.0
+  let mut dy = 0.0
+  match content_alignment {
+    Horizontal | HorizontalVertical =>
+      if new_w > old_w {
+        dx = (new_w - old_w) / 2.0
+      }
+    _ => ()
+  }
+  match content_alignment {
+    Vertical | HorizontalVertical =>
+      if new_h > old_h {
+        dy = (new_h - old_h) / 2.0
+      }
+    _ => ()
+  }
+
+  // Apply the offset to all content (nodes + routes + labels).
+  if dx != 0.0 || dy != 0.0 {
+    for node in graph.nodes {
+      node.x = node.x + dx
+      node.y = node.y + dy
+      for label in node.labels {
+        label.x = label.x + dx
+        label.y = label.y + dy
+      }
+      for port in node.ports {
+        for label in port.labels {
+          label.x = label.x + dx
+          label.y = label.y + dy
+        }
+      }
+    }
+    for edge in graph.edges {
+      for i = 0; i < edge.bend_points.length(); i = i + 1 {
+        let p = edge.bend_points[i]
+        edge.bend_points[i] = ElkPoint::new(p.x + dx, p.y + dy)
+      }
+      for label in edge.labels {
+        label.x = label.x + dx
+        label.y = label.y + dy
+      }
+    }
+  }
+
+  // Correct eastern/southern hierarchical ports for increased size.
+  //
+  // Mirrors ELK's `HierarchicalNodeResizingProcessor`: external-port dummy
+  // nodes on EAST/SOUTH must stay on the outer border after the graph grows.
+  fn parse_side(raw : String) -> ElkPortSide? {
+    match raw {
+      "North" | "NORTH" => Some(North)
+      "South" | "SOUTH" => Some(South)
+      "East" | "EAST" => Some(East)
+      "West" | "WEST" => Some(West)
+      _ => None
+    }
+  }
+
+  let dw = new_w - old_w
+  let dh = new_h - old_h
+  if dw != 0.0 || dh != 0.0 {
+    for node in graph.nodes {
+      if node.node_type != ExternalPort {
+        continue
+      }
+      let side_raw = node.properties.get_string("diago.layered.extPortSide")
+      guard side_raw is Some(sr) else { continue }
+      let side = parse_side(sr)
+      guard side is Some(s) else { continue }
+      if s == East && dw != 0.0 {
+        node.x = node.x + dw
+      } else if s == South && dh != 0.0 {
+        node.y = node.y + dh
+      }
+    }
+  }
+  graph.width = new_w
+  graph.height = new_h
 }
 
 ///|

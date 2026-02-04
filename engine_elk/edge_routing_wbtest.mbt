@@ -522,13 +522,11 @@ test "edge routing: multi outgoing edges distribute source anchors" {
   let laid_out = layout_to_graph_for_routing(graph, config, Direction::Down) catch {
     e => fail("layout failed: \{e}")
   }
-
   let a_box = laid_out.find_object("A").unwrap().box.unwrap()
   let b_box = laid_out.find_object("B").unwrap().box.unwrap()
   let c_box = laid_out.find_object("C").unwrap().box.unwrap()
   let b_cx = b_box.x + b_box.width / 2.0
   let c_cx = c_box.x + c_box.width / 2.0
-
   let mut ab : Edge? = None
   let mut ac : Edge? = None
   for edge in laid_out.edges {
