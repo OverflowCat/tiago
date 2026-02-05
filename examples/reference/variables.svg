@@ -1,43 +1,95 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="528" height="548" viewBox="-88 -88 528 548">
-<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
-<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
-<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
-</defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
-<g id="base-layer">
-<rect x="133" y="12" width="96" height="66" fill="#2196F3" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="130.5" y="148" width="101" height="66" fill="#FF9800" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="12" y="294" width="164" height="66" fill="#4CAF50" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="196" y="294" width="144" height="66" fill="#f44336" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 181 78 L 181 148" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 164.16666666666669 214 L 164.16666666666669 244 A 10 10 0 0 1 154.16666666666669 254 L 104 254 A 10 10 0 0 0 94 264 L 94 294" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 197.83333333333334 214 L 197.83333333333334 244 A 10 10 0 0 0 207.83333333333334 254 L 258 254 A 10 10 0 0 1 268 264 L 268 294" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="181" y="45" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Header</text>
-<text x="181" y="181" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Sidebar</text>
-<text x="94" y="327" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Success Message</text>
-<text x="268" y="327" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Error Message</text>
-</g>
-</svg>
+<?xml version="1.0" encoding="utf-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" data-d2-version="0.7.1" preserveAspectRatio="xMinYMin meet" viewBox="0 0 530 550"><svg class="d2-2487014839 d2-svg" width="530" height="550" viewBox="-89 -89 530 550"><rect x="-89.000000" y="-89.000000" width="530.000000" height="550.000000" rx="0.000000" fill="#FFFFFF" class=" fill-N7" stroke-width="0" /><style type="text/css"><![CDATA[
+.d2-2487014839 .text-bold {
+	font-family: "d2-2487014839-font-bold";
+}
+@font-face {
+	font-family: d2-2487014839-font-bold;
+	src: url("data:application/font-woff;base64,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");
+}]]></style><style type="text/css"><![CDATA[.shape {
+  shape-rendering: geometricPrecision;
+  stroke-linejoin: round;
+}
+.connection {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.blend {
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
 
+		.d2-2487014839 .fill-N1{fill:#0A0F25;}
+		.d2-2487014839 .fill-N2{fill:#676C7E;}
+		.d2-2487014839 .fill-N3{fill:#9499AB;}
+		.d2-2487014839 .fill-N4{fill:#CFD2DD;}
+		.d2-2487014839 .fill-N5{fill:#DEE1EB;}
+		.d2-2487014839 .fill-N6{fill:#EEF1F8;}
+		.d2-2487014839 .fill-N7{fill:#FFFFFF;}
+		.d2-2487014839 .fill-B1{fill:#0D32B2;}
+		.d2-2487014839 .fill-B2{fill:#0D32B2;}
+		.d2-2487014839 .fill-B3{fill:#E3E9FD;}
+		.d2-2487014839 .fill-B4{fill:#E3E9FD;}
+		.d2-2487014839 .fill-B5{fill:#EDF0FD;}
+		.d2-2487014839 .fill-B6{fill:#F7F8FE;}
+		.d2-2487014839 .fill-AA2{fill:#4A6FF3;}
+		.d2-2487014839 .fill-AA4{fill:#EDF0FD;}
+		.d2-2487014839 .fill-AA5{fill:#F7F8FE;}
+		.d2-2487014839 .fill-AB4{fill:#EDF0FD;}
+		.d2-2487014839 .fill-AB5{fill:#F7F8FE;}
+		.d2-2487014839 .stroke-N1{stroke:#0A0F25;}
+		.d2-2487014839 .stroke-N2{stroke:#676C7E;}
+		.d2-2487014839 .stroke-N3{stroke:#9499AB;}
+		.d2-2487014839 .stroke-N4{stroke:#CFD2DD;}
+		.d2-2487014839 .stroke-N5{stroke:#DEE1EB;}
+		.d2-2487014839 .stroke-N6{stroke:#EEF1F8;}
+		.d2-2487014839 .stroke-N7{stroke:#FFFFFF;}
+		.d2-2487014839 .stroke-B1{stroke:#0D32B2;}
+		.d2-2487014839 .stroke-B2{stroke:#0D32B2;}
+		.d2-2487014839 .stroke-B3{stroke:#E3E9FD;}
+		.d2-2487014839 .stroke-B4{stroke:#E3E9FD;}
+		.d2-2487014839 .stroke-B5{stroke:#EDF0FD;}
+		.d2-2487014839 .stroke-B6{stroke:#F7F8FE;}
+		.d2-2487014839 .stroke-AA2{stroke:#4A6FF3;}
+		.d2-2487014839 .stroke-AA4{stroke:#EDF0FD;}
+		.d2-2487014839 .stroke-AA5{stroke:#F7F8FE;}
+		.d2-2487014839 .stroke-AB4{stroke:#EDF0FD;}
+		.d2-2487014839 .stroke-AB5{stroke:#F7F8FE;}
+		.d2-2487014839 .background-color-N1{background-color:#0A0F25;}
+		.d2-2487014839 .background-color-N2{background-color:#676C7E;}
+		.d2-2487014839 .background-color-N3{background-color:#9499AB;}
+		.d2-2487014839 .background-color-N4{background-color:#CFD2DD;}
+		.d2-2487014839 .background-color-N5{background-color:#DEE1EB;}
+		.d2-2487014839 .background-color-N6{background-color:#EEF1F8;}
+		.d2-2487014839 .background-color-N7{background-color:#FFFFFF;}
+		.d2-2487014839 .background-color-B1{background-color:#0D32B2;}
+		.d2-2487014839 .background-color-B2{background-color:#0D32B2;}
+		.d2-2487014839 .background-color-B3{background-color:#E3E9FD;}
+		.d2-2487014839 .background-color-B4{background-color:#E3E9FD;}
+		.d2-2487014839 .background-color-B5{background-color:#EDF0FD;}
+		.d2-2487014839 .background-color-B6{background-color:#F7F8FE;}
+		.d2-2487014839 .background-color-AA2{background-color:#4A6FF3;}
+		.d2-2487014839 .background-color-AA4{background-color:#EDF0FD;}
+		.d2-2487014839 .background-color-AA5{background-color:#F7F8FE;}
+		.d2-2487014839 .background-color-AB4{background-color:#EDF0FD;}
+		.d2-2487014839 .background-color-AB5{background-color:#F7F8FE;}
+		.d2-2487014839 .color-N1{color:#0A0F25;}
+		.d2-2487014839 .color-N2{color:#676C7E;}
+		.d2-2487014839 .color-N3{color:#9499AB;}
+		.d2-2487014839 .color-N4{color:#CFD2DD;}
+		.d2-2487014839 .color-N5{color:#DEE1EB;}
+		.d2-2487014839 .color-N6{color:#EEF1F8;}
+		.d2-2487014839 .color-N7{color:#FFFFFF;}
+		.d2-2487014839 .color-B1{color:#0D32B2;}
+		.d2-2487014839 .color-B2{color:#0D32B2;}
+		.d2-2487014839 .color-B3{color:#E3E9FD;}
+		.d2-2487014839 .color-B4{color:#E3E9FD;}
+		.d2-2487014839 .color-B5{color:#EDF0FD;}
+		.d2-2487014839 .color-B6{color:#F7F8FE;}
+		.d2-2487014839 .color-AA2{color:#4A6FF3;}
+		.d2-2487014839 .color-AA4{color:#EDF0FD;}
+		.d2-2487014839 .color-AA5{color:#F7F8FE;}
+		.d2-2487014839 .color-AB4{color:#EDF0FD;}
+		.d2-2487014839 .color-AB5{color:#F7F8FE;}.appendix text.text{fill:#0A0F25}.md{--color-fg-default:#0A0F25;--color-fg-muted:#676C7E;--color-fg-subtle:#9499AB;--color-canvas-default:#FFFFFF;--color-canvas-subtle:#EEF1F8;--color-border-default:#0D32B2;--color-border-muted:#0D32B2;--color-neutral-muted:#EEF1F8;--color-accent-fg:#0D32B2;--color-accent-emphasis:#0D32B2;--color-attention-subtle:#676C7E;--color-danger-fg:red;}.sketch-overlay-B1{fill:url(#streaks-darker-d2-2487014839);mix-blend-mode:lighten}.sketch-overlay-B2{fill:url(#streaks-darker-d2-2487014839);mix-blend-mode:lighten}.sketch-overlay-B3{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-B4{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-B5{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-B6{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-AA2{fill:url(#streaks-dark-d2-2487014839);mix-blend-mode:overlay}.sketch-overlay-AA4{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-AA5{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-AB4{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-AB5{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-N1{fill:url(#streaks-darker-d2-2487014839);mix-blend-mode:lighten}.sketch-overlay-N2{fill:url(#streaks-dark-d2-2487014839);mix-blend-mode:overlay}.sketch-overlay-N3{fill:url(#streaks-normal-d2-2487014839);mix-blend-mode:color-burn}.sketch-overlay-N4{fill:url(#streaks-normal-d2-2487014839);mix-blend-mode:color-burn}.sketch-overlay-N5{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-N6{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.sketch-overlay-N7{fill:url(#streaks-bright-d2-2487014839);mix-blend-mode:darken}.light-code{display: block}.dark-code{display: none}]]></style><g class="aGVhZGVy"><g class="shape" ><rect x="133.000000" y="12.000000" width="96.000000" height="66.000000" stroke="#0D32B2" fill="#2196F3" class=" stroke-B1" style="stroke-width:2;" /></g><text x="181.000000" y="50.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Header</text></g><g class="c2lkZWJhcg=="><g class="shape" ><rect x="130.000000" y="148.000000" width="101.000000" height="66.000000" stroke="#0D32B2" fill="#FF9800" class=" stroke-B1" style="stroke-width:2;" /></g><text x="180.500000" y="186.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Sidebar</text></g><g class="c3VjY2Vzcw=="><g class="shape" ><rect x="12.000000" y="294.000000" width="164.000000" height="66.000000" stroke="#0D32B2" fill="#4CAF50" class=" stroke-B1" style="stroke-width:2;" /></g><text x="94.000000" y="332.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Success Message</text></g><g class="ZXJyb3I="><g class="shape" ><rect x="196.000000" y="294.000000" width="144.000000" height="66.000000" stroke="#0D32B2" fill="#f44336" class=" stroke-B1" style="stroke-width:2;" /></g><text x="268.000000" y="332.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Error Message</text></g><g class="KGhlYWRlciAtJmd0OyBzaWRlYmFyKVswXQ=="><marker id="mk-d2-2487014839-3488378134" markerWidth="10.000000" markerHeight="12.000000" refX="7.000000" refY="6.000000" viewBox="0.000000 0.000000 10.000000 12.000000" orient="auto" markerUnits="userSpaceOnUse"> <polygon points="0.000000,0.000000 10.000000,6.000000 0.000000,12.000000" fill="#0D32B2" class="connection fill-B1" stroke-width="2" /> </marker><path d="M 181.000000 80.000000 L 181.000000 144.000000" stroke="#0D32B2" fill="none" class="connection stroke-B1" style="stroke-width:2;" marker-end="url(#mk-d2-2487014839-3488378134)" mask="url(#d2-2487014839)" /></g><g class="KHNpZGViYXIgLSZndDsgc3VjY2VzcylbMF0="><path d="M 164.166000 216.000000 L 164.166000 244.000000 S 164.166000 254.000000 154.166000 254.000000 L 104.000000 254.000000 S 94.000000 254.000000 94.000000 264.000000 L 94.000000 290.000000" stroke="#0D32B2" fill="none" class="connection stroke-B1" style="stroke-width:2;" marker-end="url(#mk-d2-2487014839-3488378134)" mask="url(#d2-2487014839)" /></g><g class="KHNpZGViYXIgLSZndDsgZXJyb3IpWzBd"><path d="M 197.832993 216.000000 L 197.832993 244.000000 S 197.832993 254.000000 207.832993 254.000000 L 258.000000 254.000000 S 268.000000 254.000000 268.000000 264.000000 L 268.000000 290.000000" stroke="#0D32B2" fill="none" class="connection stroke-B1" style="stroke-width:2;" marker-end="url(#mk-d2-2487014839-3488378134)" mask="url(#d2-2487014839)" /></g><mask id="d2-2487014839" maskUnits="userSpaceOnUse" x="-89" y="-89" width="530" height="550">
+<rect x="-89" y="-89" width="530" height="550" fill="white"></rect>
+
+</mask></svg></svg>
