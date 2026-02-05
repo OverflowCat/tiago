@@ -1669,7 +1669,7 @@ test "examples: svg matches D2 reference (semantic)" {
   ]
   for name in names {
     let input_path = "examples/" + name + ".d2"
-    let expected_path = "examples/reference/" + name + ".svg"
+    let expected_path = "examples/d2-output/" + name + ".svg"
     let source = read_file(input_path).unwrap()
     let got_svg = normalize_newlines(compile(source).unwrap())
     // Persist the generated SVGs for manual inspection and diffing.
