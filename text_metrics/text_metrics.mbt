@@ -113,58 +113,50 @@ fn lookup_kerning_fixed(
 fn lookup_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
   if codepoint >= 0 && codepoint < 256 {
     match kind {
-      SansRegular =>
-        {
-          x_min: glyph_x_mins_sans_regular[codepoint],
-          x_max: glyph_x_maxs_sans_regular[codepoint],
-          advance_fixed: glyph_advances_fixed_sans_regular[codepoint],
-        }
-      SansBold =>
-        {
-          x_min: glyph_x_mins_sans_bold[codepoint],
-          x_max: glyph_x_maxs_sans_bold[codepoint],
-          advance_fixed: glyph_advances_fixed_sans_bold[codepoint],
-        }
-      SansItalic =>
-        {
-          x_min: glyph_x_mins_sans_italic[codepoint],
-          x_max: glyph_x_maxs_sans_italic[codepoint],
-          advance_fixed: glyph_advances_fixed_sans_italic[codepoint],
-        }
-      MonoRegular =>
-        {
-          x_min: glyph_x_mins_mono_regular[codepoint],
-          x_max: glyph_x_maxs_mono_regular[codepoint],
-          advance_fixed: glyph_advances_fixed_mono_regular[codepoint],
-        }
+      SansRegular => {
+        x_min: glyph_x_mins_sans_regular[codepoint],
+        x_max: glyph_x_maxs_sans_regular[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_regular[codepoint],
+      }
+      SansBold => {
+        x_min: glyph_x_mins_sans_bold[codepoint],
+        x_max: glyph_x_maxs_sans_bold[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_bold[codepoint],
+      }
+      SansItalic => {
+        x_min: glyph_x_mins_sans_italic[codepoint],
+        x_max: glyph_x_maxs_sans_italic[codepoint],
+        advance_fixed: glyph_advances_fixed_sans_italic[codepoint],
+      }
+      MonoRegular => {
+        x_min: glyph_x_mins_mono_regular[codepoint],
+        x_max: glyph_x_maxs_mono_regular[codepoint],
+        advance_fixed: glyph_advances_fixed_mono_regular[codepoint],
+      }
     }
   } else if codepoint >= GEO_START && codepoint <= GEO_END {
     let idx = codepoint - GEO_START
     match kind {
-      SansRegular =>
-        {
-          x_min: glyph_x_mins_sans_regular_geo[idx],
-          x_max: glyph_x_maxs_sans_regular_geo[idx],
-          advance_fixed: glyph_advances_fixed_sans_regular_geo[idx],
-        }
-      SansBold =>
-        {
-          x_min: glyph_x_mins_sans_bold_geo[idx],
-          x_max: glyph_x_maxs_sans_bold_geo[idx],
-          advance_fixed: glyph_advances_fixed_sans_bold_geo[idx],
-        }
-      SansItalic =>
-        {
-          x_min: glyph_x_mins_sans_italic_geo[idx],
-          x_max: glyph_x_maxs_sans_italic_geo[idx],
-          advance_fixed: glyph_advances_fixed_sans_italic_geo[idx],
-        }
-      MonoRegular =>
-        {
-          x_min: glyph_x_mins_mono_regular_geo[idx],
-          x_max: glyph_x_maxs_mono_regular_geo[idx],
-          advance_fixed: glyph_advances_fixed_mono_regular_geo[idx],
-        }
+      SansRegular => {
+        x_min: glyph_x_mins_sans_regular_geo[idx],
+        x_max: glyph_x_maxs_sans_regular_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_regular_geo[idx],
+      }
+      SansBold => {
+        x_min: glyph_x_mins_sans_bold_geo[idx],
+        x_max: glyph_x_maxs_sans_bold_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_bold_geo[idx],
+      }
+      SansItalic => {
+        x_min: glyph_x_mins_sans_italic_geo[idx],
+        x_max: glyph_x_maxs_sans_italic_geo[idx],
+        advance_fixed: glyph_advances_fixed_sans_italic_geo[idx],
+      }
+      MonoRegular => {
+        x_min: glyph_x_mins_mono_regular_geo[idx],
+        x_max: glyph_x_maxs_mono_regular_geo[idx],
+        advance_fixed: glyph_advances_fixed_mono_regular_geo[idx],
+      }
     }
   } else {
     // Use "M" as a conservative fallback for unknown glyphs.
@@ -241,6 +233,7 @@ pub fn measure_text(
         let left = dot_x + m.x_min.to_double() * scale
         let right = dot_x + m.x_max.to_double() * scale
         let is_area = left != right
+
         if bounds_with_dot {
           if left < bounds_left {
             bounds_left = left
@@ -262,8 +255,10 @@ pub fn measure_text(
             bounds_right = right
           }
         }
+
         dot_x = dot_x + m.advance_fixed.to_double() * fixed_scale
         prev_cp = cp
+
         if bounds_with_dot {
           if dot_x < bounds_left {
             bounds_left = dot_x
@@ -277,6 +272,7 @@ pub fn measure_text(
     }
     i = i + 1
   }
+
   let max_line_width = bounds_right - bounds_left
 
   // Handle empty lines (D2's logic from d2graph.GetTextDimensionsWithMono:1459-1476)

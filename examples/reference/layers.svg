@@ -1,80 +1,95 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="418" height="578" viewBox="-88 -128 418 578">
-<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
-<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
-<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
-<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
-<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
-<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
-<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
-</defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
-<rect x="100" y="5" width="58.4" height="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="1" rx="4" id="tab-base" class="layer-tab selected" onclick="switchLayer(&#39;base-layer&#39;, this)"/>
-<text x="110" y="25" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Base</text>
-<rect x="163.4" y="5" width="125.6" height="30" fill="#f0f0f0" stroke="#0A0F25" stroke-width="1" rx="4" id="tab-layer-0" class="layer-tab" onclick="switchLayer(&#39;layer-0&#39;, this)"/>
-<text x="173.4" y="25" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">development</text>
-<rect x="294" y="5" width="87.2" height="30" fill="#f0f0f0" stroke="#0A0F25" stroke-width="1" rx="4" id="tab-layer-1" class="layer-tab" onclick="switchLayer(&#39;layer-1&#39;, this)"/>
-<text x="304" y="25" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">staging</text>
-<rect x="386.2" y="5" width="116" height="30" fill="#f0f0f0" stroke="#0A0F25" stroke-width="1" rx="4" id="tab-layer-2" class="layer-tab" onclick="switchLayer(&#39;layer-2&#39;, this)"/>
-<text x="396.2" y="25" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">production</text>
-<g id="base-layer">
-<rect x="63.5" y="12" width="126" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="12" y="158" width="110" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="142" y="158" width="88" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 105.5 78 L 105.5 108 A 10 10 0 0 1 95.5 118 L 77 118 A 10 10 0 0 0 67 128 L 67 158" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 147.5 78 L 147.5 108 A 10 10 0 0 0 157.5 118 L 176 118 A 10 10 0 0 1 186 128 L 186 158" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="126.5" y="45" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Server</text>
-<text x="67" y="191" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Database</text>
-<text x="186" y="191" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Cache</text>
-</g>
-<g id="layer-0" style="display: none">
-<text x="57.5" y="45" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="67" y="181" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="55" y="317" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
-</g>
-<g id="layer-1" style="display: none">
-<text x="57.5" y="45" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="67" y="181" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="55" y="317" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
-</g>
-<g id="layer-2" style="display: none">
-<text x="57.5" y="45" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="67" y="181" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="55" y="317" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
-</g>
-<script type="text/javascript"><![CDATA[function switchLayer(layerId, tabEl) {
-  var layers = ['base-layer', 'layer-0', 'layer-1', 'layer-2'];
-  layers.forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.style.display = (id === layerId) ? 'block' : 'none';
-  });
-  var tabs = document.querySelectorAll('.layer-tab');
-  tabs.forEach(function(t) {
-    t.classList.remove('selected');
-    t.style.fill = '#f0f0f0';
-  });
-  if (tabEl) {
-    tabEl.classList.add('selected');
-    tabEl.style.fill = '#ffffff';
-  }
+<?xml version="1.0" encoding="utf-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" data-d2-version="0.7.1" preserveAspectRatio="xMinYMin meet" viewBox="0 0 420 414"><svg class="d2-923190157 d2-svg" width="420" height="414" viewBox="-89 -89 420 414"><rect x="-89.000000" y="-89.000000" width="420.000000" height="414.000000" rx="0.000000" fill="#FFFFFF" class=" fill-N7" stroke-width="0" /><style type="text/css"><![CDATA[
+.d2-923190157 .text-bold {
+	font-family: "d2-923190157-font-bold";
 }
-]]></script>
-</svg>
+@font-face {
+	font-family: d2-923190157-font-bold;
+	src: url("data:application/font-woff;base64,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");
+}]]></style><style type="text/css"><![CDATA[.shape {
+  shape-rendering: geometricPrecision;
+  stroke-linejoin: round;
+}
+.connection {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.blend {
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
 
+		.d2-923190157 .fill-N1{fill:#0A0F25;}
+		.d2-923190157 .fill-N2{fill:#676C7E;}
+		.d2-923190157 .fill-N3{fill:#9499AB;}
+		.d2-923190157 .fill-N4{fill:#CFD2DD;}
+		.d2-923190157 .fill-N5{fill:#DEE1EB;}
+		.d2-923190157 .fill-N6{fill:#EEF1F8;}
+		.d2-923190157 .fill-N7{fill:#FFFFFF;}
+		.d2-923190157 .fill-B1{fill:#0D32B2;}
+		.d2-923190157 .fill-B2{fill:#0D32B2;}
+		.d2-923190157 .fill-B3{fill:#E3E9FD;}
+		.d2-923190157 .fill-B4{fill:#E3E9FD;}
+		.d2-923190157 .fill-B5{fill:#EDF0FD;}
+		.d2-923190157 .fill-B6{fill:#F7F8FE;}
+		.d2-923190157 .fill-AA2{fill:#4A6FF3;}
+		.d2-923190157 .fill-AA4{fill:#EDF0FD;}
+		.d2-923190157 .fill-AA5{fill:#F7F8FE;}
+		.d2-923190157 .fill-AB4{fill:#EDF0FD;}
+		.d2-923190157 .fill-AB5{fill:#F7F8FE;}
+		.d2-923190157 .stroke-N1{stroke:#0A0F25;}
+		.d2-923190157 .stroke-N2{stroke:#676C7E;}
+		.d2-923190157 .stroke-N3{stroke:#9499AB;}
+		.d2-923190157 .stroke-N4{stroke:#CFD2DD;}
+		.d2-923190157 .stroke-N5{stroke:#DEE1EB;}
+		.d2-923190157 .stroke-N6{stroke:#EEF1F8;}
+		.d2-923190157 .stroke-N7{stroke:#FFFFFF;}
+		.d2-923190157 .stroke-B1{stroke:#0D32B2;}
+		.d2-923190157 .stroke-B2{stroke:#0D32B2;}
+		.d2-923190157 .stroke-B3{stroke:#E3E9FD;}
+		.d2-923190157 .stroke-B4{stroke:#E3E9FD;}
+		.d2-923190157 .stroke-B5{stroke:#EDF0FD;}
+		.d2-923190157 .stroke-B6{stroke:#F7F8FE;}
+		.d2-923190157 .stroke-AA2{stroke:#4A6FF3;}
+		.d2-923190157 .stroke-AA4{stroke:#EDF0FD;}
+		.d2-923190157 .stroke-AA5{stroke:#F7F8FE;}
+		.d2-923190157 .stroke-AB4{stroke:#EDF0FD;}
+		.d2-923190157 .stroke-AB5{stroke:#F7F8FE;}
+		.d2-923190157 .background-color-N1{background-color:#0A0F25;}
+		.d2-923190157 .background-color-N2{background-color:#676C7E;}
+		.d2-923190157 .background-color-N3{background-color:#9499AB;}
+		.d2-923190157 .background-color-N4{background-color:#CFD2DD;}
+		.d2-923190157 .background-color-N5{background-color:#DEE1EB;}
+		.d2-923190157 .background-color-N6{background-color:#EEF1F8;}
+		.d2-923190157 .background-color-N7{background-color:#FFFFFF;}
+		.d2-923190157 .background-color-B1{background-color:#0D32B2;}
+		.d2-923190157 .background-color-B2{background-color:#0D32B2;}
+		.d2-923190157 .background-color-B3{background-color:#E3E9FD;}
+		.d2-923190157 .background-color-B4{background-color:#E3E9FD;}
+		.d2-923190157 .background-color-B5{background-color:#EDF0FD;}
+		.d2-923190157 .background-color-B6{background-color:#F7F8FE;}
+		.d2-923190157 .background-color-AA2{background-color:#4A6FF3;}
+		.d2-923190157 .background-color-AA4{background-color:#EDF0FD;}
+		.d2-923190157 .background-color-AA5{background-color:#F7F8FE;}
+		.d2-923190157 .background-color-AB4{background-color:#EDF0FD;}
+		.d2-923190157 .background-color-AB5{background-color:#F7F8FE;}
+		.d2-923190157 .color-N1{color:#0A0F25;}
+		.d2-923190157 .color-N2{color:#676C7E;}
+		.d2-923190157 .color-N3{color:#9499AB;}
+		.d2-923190157 .color-N4{color:#CFD2DD;}
+		.d2-923190157 .color-N5{color:#DEE1EB;}
+		.d2-923190157 .color-N6{color:#EEF1F8;}
+		.d2-923190157 .color-N7{color:#FFFFFF;}
+		.d2-923190157 .color-B1{color:#0D32B2;}
+		.d2-923190157 .color-B2{color:#0D32B2;}
+		.d2-923190157 .color-B3{color:#E3E9FD;}
+		.d2-923190157 .color-B4{color:#E3E9FD;}
+		.d2-923190157 .color-B5{color:#EDF0FD;}
+		.d2-923190157 .color-B6{color:#F7F8FE;}
+		.d2-923190157 .color-AA2{color:#4A6FF3;}
+		.d2-923190157 .color-AA4{color:#EDF0FD;}
+		.d2-923190157 .color-AA5{color:#F7F8FE;}
+		.d2-923190157 .color-AB4{color:#EDF0FD;}
+		.d2-923190157 .color-AB5{color:#F7F8FE;}.appendix text.text{fill:#0A0F25}.md{--color-fg-default:#0A0F25;--color-fg-muted:#676C7E;--color-fg-subtle:#9499AB;--color-canvas-default:#FFFFFF;--color-canvas-subtle:#EEF1F8;--color-border-default:#0D32B2;--color-border-muted:#0D32B2;--color-neutral-muted:#EEF1F8;--color-accent-fg:#0D32B2;--color-accent-emphasis:#0D32B2;--color-attention-subtle:#676C7E;--color-danger-fg:red;}.sketch-overlay-B1{fill:url(#streaks-darker-d2-923190157);mix-blend-mode:lighten}.sketch-overlay-B2{fill:url(#streaks-darker-d2-923190157);mix-blend-mode:lighten}.sketch-overlay-B3{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-B4{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-B5{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-B6{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-AA2{fill:url(#streaks-dark-d2-923190157);mix-blend-mode:overlay}.sketch-overlay-AA4{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-AA5{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-AB4{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-AB5{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-N1{fill:url(#streaks-darker-d2-923190157);mix-blend-mode:lighten}.sketch-overlay-N2{fill:url(#streaks-dark-d2-923190157);mix-blend-mode:overlay}.sketch-overlay-N3{fill:url(#streaks-normal-d2-923190157);mix-blend-mode:color-burn}.sketch-overlay-N4{fill:url(#streaks-normal-d2-923190157);mix-blend-mode:color-burn}.sketch-overlay-N5{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-N6{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.sketch-overlay-N7{fill:url(#streaks-bright-d2-923190157);mix-blend-mode:darken}.light-code{display: block}.dark-code{display: none}]]></style><g class="c2VydmVy"><g class="shape" ><rect x="63.000000" y="12.000000" width="126.000000" height="66.000000" stroke="#0D32B2" fill="#F7F8FE" class=" stroke-B1 fill-B6" style="stroke-width:2;" /></g><text x="126.000000" y="50.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Web Server</text></g><g class="ZGF0YWJhc2U="><g class="shape" ><rect x="12.000000" y="158.000000" width="110.000000" height="66.000000" stroke="#0D32B2" fill="#F7F8FE" class=" stroke-B1 fill-B6" style="stroke-width:2;" /></g><text x="67.000000" y="196.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Database</text></g><g class="Y2FjaGU="><g class="shape" ><rect x="142.000000" y="158.000000" width="88.000000" height="66.000000" stroke="#0D32B2" fill="#F7F8FE" class=" stroke-B1 fill-B6" style="stroke-width:2;" /></g><text x="186.000000" y="196.500000" fill="#0A0F25" class="text-bold fill-N1" style="text-anchor:middle;font-size:16px">Cache</text></g><g class="KHNlcnZlciAtJmd0OyBkYXRhYmFzZSlbMF0="><marker id="mk-d2-923190157-3488378134" markerWidth="10.000000" markerHeight="12.000000" refX="7.000000" refY="6.000000" viewBox="0.000000 0.000000 10.000000 12.000000" orient="auto" markerUnits="userSpaceOnUse"> <polygon points="0.000000,0.000000 10.000000,6.000000 0.000000,12.000000" fill="#0D32B2" class="connection fill-B1" stroke-width="2" /> </marker><path d="M 105.500000 80.000000 L 105.500000 108.000000 S 105.500000 118.000000 95.500000 118.000000 L 77.000000 118.000000 S 67.000000 118.000000 67.000000 128.000000 L 67.000000 154.000000" stroke="#0D32B2" fill="none" class="connection stroke-B1" style="stroke-width:2;" marker-end="url(#mk-d2-923190157-3488378134)" mask="url(#d2-923190157)" /></g><g class="KHNlcnZlciAtJmd0OyBjYWNoZSlbMF0="><path d="M 147.500000 80.000000 L 147.500000 108.000000 S 147.500000 118.000000 157.500000 118.000000 L 176.000000 118.000000 S 186.000000 118.000000 186.000000 128.000000 L 186.000000 154.000000" stroke="#0D32B2" fill="none" class="connection stroke-B1" style="stroke-width:2;" marker-end="url(#mk-d2-923190157-3488378134)" mask="url(#d2-923190157)" /></g><mask id="d2-923190157" maskUnits="userSpaceOnUse" x="-89" y="-89" width="420" height="414">
+<rect x="-89" y="-89" width="420" height="414" fill="white"></rect>
+
+</mask></svg></svg>
