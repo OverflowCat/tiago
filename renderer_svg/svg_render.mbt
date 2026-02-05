@@ -2527,20 +2527,17 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let resume_y = next.y + dy2 / len2 * r
       // Draw line to the stop point
       let _ = pb.line_to(stop_x, stop_y)
-      // Determine arc direction (sweep flag)
-      // Cross product of directions determines if we turn left or right
-      // In SVG coords (y down), positive cross means counter-clockwise turn
-      // For right→down or left→up turns, we need sweep=true (clockwise)
-      // For down→right or up→left turns, we need sweep=false (counter-clockwise)
-      let sweep_flag = cross > 0.0
-      // Draw arc to resume point: rx, ry, end-x, end-y, large_arc?, sweep?
-      let _ = pb.arc_to(
-        r,
-        r,
+      // D2 reference SVG uses `S` (smooth cubic) for rounded corners.
+      // When a smooth cubic follows a line segment, its first control point
+      // equals the current point. This expands to an equivalent `C`:
+      //   C stop_x stop_y corner_x corner_y resume_x resume_y
+      let _ = pb.cubic_to(
+        stop_x,
+        stop_y,
+        next.x,
+        next.y,
         resume_x,
         resume_y,
-        large_arc=false,
-        sweep=sweep_flag,
       )
 
     }
