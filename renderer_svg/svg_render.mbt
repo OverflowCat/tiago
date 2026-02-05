@@ -2531,14 +2531,7 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       // When a smooth cubic follows a line segment, its first control point
       // equals the current point. This expands to an equivalent `C`:
       //   C stop_x stop_y corner_x corner_y resume_x resume_y
-      let _ = pb.cubic_to(
-        stop_x,
-        stop_y,
-        next.x,
-        next.y,
-        resume_x,
-        resume_y,
-      )
+      let _ = pb.cubic_to(stop_x, stop_y, next.x, next.y, resume_x, resume_y)
 
     }
   }
