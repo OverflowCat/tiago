@@ -310,6 +310,19 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     }
   }
 
+  fn tie_break(a : LPort, b : LPort) -> Int {
+    // Prefer explicit port indices (set by our ELK importer for implicit ports)
+    // to keep per-edge auto ports ordered consistently across nodes.
+    let ia = port_index(a)
+    let ib = port_index(b)
+    match (ia, ib) {
+      (Some(x), Some(y)) => if x != y { x - y } else { a.id.compare(b.id) }
+      (Some(_), None) => -1
+      (None, Some(_)) => 1
+      (None, None) => a.id.compare(b.id)
+    }
+  }
+
   for node in graph.nodes {
     let node_options = resolve_options_for_lnode(options, node)
     // Match ELK importer: unspecified/UNDEFINED constraints become FREE.
@@ -326,6 +339,35 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     let sorting_strategy = match node_options.port_sorting_strategy {
       Some(s) => s
       None => InputOrder
+    }
+    if constraints is FixedSide {
+      // Mirror ELK PortListSorter for FIXED_SIDE:
+      // group by side in input order (stable), then reverse SOUTH and WEST.
+      let north : Array[LPort] = []
+      let east : Array[LPort] = []
+      let south : Array[LPort] = []
+      let west : Array[LPort] = []
+      let undefined : Array[LPort] = []
+      for port in node.ports {
+        match port.side {
+          North => north.push(port)
+          East => east.push(port)
+          South => south.push(port)
+          West => west.push(port)
+          Undefined => undefined.push(port)
+        }
+      }
+      reverse_range(south, 0, south.length())
+      reverse_range(west, 0, west.length())
+      node.ports.clear()
+      node.ports.append(north)
+      node.ports.append(east)
+      node.ports.append(south)
+      node.ports.append(west)
+      node.ports.append(undefined)
+      // FIXED_SIDE + PORT_DEGREE is intentionally not implemented yet.
+      let _ = sorting_strategy
+      continue
     }
 
     // Precompute port degrees for this node.
@@ -359,26 +401,26 @@ fn sort_ports(graph : LGraph, options : LayoutOptions) -> Unit {
           let ib = port_index(b)
           match (ia, ib) {
             (Some(x), Some(y)) => if x != y { return x - y }
+            (Some(_), None) => return -1
+            (None, Some(_)) => return 1
             _ => ()
           }
         }
         // FIXED_POS / fallback: sort by port positions on the side.
-        match a.side {
+        let cmp = match a.side {
           North => if a.x < b.x { -1 } else if a.x > b.x { 1 } else { 0 }
           East => if a.y < b.y { -1 } else if a.y > b.y { 1 } else { 0 }
           South => if a.x < b.x { 1 } else if a.x > b.x { -1 } else { 0 }
           West => if a.y < b.y { 1 } else if a.y > b.y { -1 } else { 0 }
-          Undefined =>
-            // Side should not be undefined when sides/orders are fixed, but keep
-            // a deterministic tie-break.
-            a.id.compare(b.id)
+          Undefined => 0
+        }
+        if cmp != 0 {
+          cmp
+        } else {
+          tie_break(a, b)
         }
       }
     })
-    // Match ELK's clockwise port ordering when sides are fixed.
-    if constraints is FixedSide {
-      reverse_side_segments(node.ports)
-    }
     // For FIXED_SIDE + PORT_DEGREE, ELK further sorts within EAST/WEST sides by
     // degree. Keep the existing (InputOrder) behavior for now since it doesn't
     // affect our current test suite.
@@ -403,6 +445,187 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     }
   }
 
+  fn substring_from(s : String, start : Int) -> String {
+    if start >= s.length() {
+      return ""
+    }
+    let buf = StringBuilder::new()
+    let mut i = start
+    while i < s.length() {
+      let code = s.code_unit_at(i).to_int()
+      buf.write_char(code.unsafe_to_char())
+      i = i + 1
+    }
+    buf.to_string()
+  }
+
+  fn substring_range(s : String, start : Int, end_exclusive : Int) -> String {
+    if start >= s.length() || end_exclusive <= start {
+      return ""
+    }
+    let end_exclusive_clamped = if end_exclusive > s.length() {
+      s.length()
+    } else {
+      end_exclusive
+    }
+    let buf = StringBuilder::new()
+    let mut i = start
+    while i < end_exclusive_clamped {
+      let code = s.code_unit_at(i).to_int()
+      buf.write_char(code.unsafe_to_char())
+      i = i + 1
+    }
+    buf.to_string()
+  }
+
+  fn string_index_of(s : String, sub : String) -> Int? {
+    if sub.length() == 0 {
+      return Some(0)
+    }
+    if s.length() < sub.length() {
+      return None
+    }
+    let mut i = 0
+    while i <= s.length() - sub.length() {
+      let mut matches = true
+      let mut j = 0
+      while j < sub.length() {
+        if s.code_unit_at(i + j) != sub.code_unit_at(j) {
+          matches = false
+          break
+        }
+        j = j + 1
+      }
+      if matches {
+        return Some(i)
+      }
+      i = i + 1
+    }
+    None
+  }
+
+  fn find_char_from(s : String, ch : Char, start : Int) -> Int? {
+    if start < 0 {
+      return None
+    }
+    let mut i = start
+    while i < s.length() {
+      match s[i].to_char() {
+        Some(c) => if c == ch { return Some(i) }
+        None => ()
+      }
+      i = i + 1
+    }
+    None
+  }
+
+  fn parse_auto_port_id(port_id : String) -> (String, String)? {
+    // Format: "<nodeId>|auto|<edgeId>|<src|dst>"
+    let marker = "|auto|"
+    match string_index_of(port_id, marker) {
+      None => None
+      Some(i) => {
+        let after = i + marker.length()
+        match find_char_from(port_id, '|', after) {
+          None => None
+          Some(j) => {
+            let edge_id = substring_range(port_id, after, j)
+            let suffix = substring_from(port_id, j + 1)
+            if edge_id.length() == 0 || suffix.length() == 0 {
+              None
+            } else {
+              Some((edge_id, suffix))
+            }
+          }
+        }
+      }
+    }
+  }
+
+  fn original_source_id(edge : LEdge) -> String {
+    edge.properties
+    .get_string("diago.layered.originalSourceId")
+    .unwrap_or(edge.source_id)
+  }
+
+  fn original_target_id(edge : LEdge) -> String {
+    edge.properties
+    .get_string("diago.layered.originalTargetId")
+    .unwrap_or(edge.target_id)
+  }
+
+  // Decide which implicit per-edge ports should remain unpositioned.
+  //
+  // ELK Layered treats *parallel edges* differently from a node with multiple
+  // outgoing edges to different targets:
+  // - parallel edges: anchors stay centered; lane offsets separate edges
+  // - multiple targets: implicit ports are distributed along the side
+  //
+  // To match D2's goldens, only skip positioning for `auto` ports that belong
+  // to a parallel edge group (same original endpoints).
+  let edge_by_id : Map[String, LEdge] = {}
+  for e in graph.edges {
+    edge_by_id[e.id] = e
+  }
+  let auto_group_counts : Map[String, Int] = {}
+  for node in graph.nodes {
+    for port in node.ports {
+      if !port.properties.get_bool_or("diago.layered.autoPort", false) {
+        continue
+      }
+      match parse_auto_port_id(port.id) {
+        Some((edge_id, suffix)) =>
+          match edge_by_id.get(edge_id) {
+            Some(edge) => {
+              let other = if suffix == "src" {
+                original_target_id(edge)
+              } else {
+                original_source_id(edge)
+              }
+              let key = node.id + "|" + port.side.to_string() + "|" + other
+              auto_group_counts[key] = auto_group_counts.get(key).unwrap_or(0) +
+                1
+            }
+            None => ()
+          }
+        None => ()
+      }
+    }
+  }
+  let auto_skip : Map[String, Bool] = {}
+  for node in graph.nodes {
+    for port in node.ports {
+      if !port.properties.get_bool_or("diago.layered.autoPort", false) {
+        continue
+      }
+      let has_geometry = port.x != 0.0 ||
+        port.y != 0.0 ||
+        port.width != 0.0 ||
+        port.height != 0.0
+      if has_geometry {
+        continue
+      }
+      match parse_auto_port_id(port.id) {
+        Some((edge_id, suffix)) =>
+          match edge_by_id.get(edge_id) {
+            Some(edge) => {
+              let other = if suffix == "src" {
+                original_target_id(edge)
+              } else {
+                original_source_id(edge)
+              }
+              let key = node.id + "|" + port.side.to_string() + "|" + other
+              let n = auto_group_counts.get(key).unwrap_or(0)
+              if n > 1 {
+                auto_skip[port.id] = true
+              }
+            }
+            None => ()
+          }
+        None => ()
+      }
+    }
+  }
   fn alignment_for_side(
     options : LayoutOptions,
     side : ElkPortSide,
@@ -414,7 +637,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
           None =>
             match options.port_alignment {
               Some(a) => a
-              None => Distributed
+              None => Justified
             }
         }
       South =>
@@ -423,7 +646,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
           None =>
             match options.port_alignment {
               Some(a) => a
-              None => Distributed
+              None => Justified
             }
         }
       East =>
@@ -432,7 +655,7 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
           None =>
             match options.port_alignment {
               Some(a) => a
-              None => Distributed
+              None => Justified
             }
         }
       West =>
@@ -441,13 +664,13 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
           None =>
             match options.port_alignment {
               Some(a) => a
-              None => Distributed
+              None => Justified
             }
         }
       Undefined =>
         match options.port_alignment {
           Some(a) => a
-          None => Distributed
+          None => Justified
         }
     }
   }
@@ -498,7 +721,9 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     match alignment {
       Justified =>
         for i, port in ports {
-          let t = i.to_double() / (ports.length() - 1).to_double()
+          // ELK's JUSTIFIED alignment distributes ports evenly, keeping a margin
+          // to the border (equivalent to i/(n+1) on a zero-size port model).
+          let t = (i + 1).to_double() / (ports.length() + 1).to_double()
           make(t * length, port)
         }
       _ =>
@@ -508,11 +733,58 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     }
   }
 
+  fn place_auto_cluster_if_needed(
+    ports : Array[LPort],
+    length : Double,
+    alignment : PortAlignment,
+    spacing : Double,
+    between_layers_spacing : Double,
+    allow_cluster : Bool,
+    make : (Double, LPort) -> Unit,
+  ) -> Unit {
+    if !allow_cluster {
+      place_along(ports, length, alignment, spacing, make)
+      return
+    }
+    if ports.length() <= 1 {
+      place_along(ports, length, alignment, spacing, make)
+      return
+    }
+    let mut all_auto = true
+    for port in ports {
+      if !port.properties.get_bool_or("diago.layered.autoPort", false) {
+        all_auto = false
+        break
+      }
+    }
+    if !all_auto {
+      place_along(ports, length, alignment, spacing, make)
+      return
+    }
+    // For implicit per-edge ports, ELK's layered routing tends to keep a wider
+    // channel between anchors than generic JUSTIFIED distribution. Approximate
+    // that by centering ports with a lane-like spacing derived from
+    // edge-node-between-layers spacing.
+    let base = if between_layers_spacing > 0.0 {
+      max_double(spacing, between_layers_spacing * 2.0 - spacing / 5.0)
+    } else {
+      spacing
+    }
+    let max_step = length / (ports.length() - 1).to_double()
+    let step = min_double(max_step, base)
+    let span = (ports.length() - 1).to_double() * step
+    let start = max_double(0.0, (length - span) / 2.0)
+    for i, port in ports {
+      make(start + i.to_double() * step, port)
+    }
+  }
+
   for node in graph.nodes {
     let node_options = resolve_options_for_lnode(options, node)
+    // Match ELK importer: unspecified constraints become FREE.
     let constraints = match node_options.port_constraints {
       Some(c) => c
-      None => Undefined
+      None => Free
     }
 
     // Fixed positions still need to snap to the node boundary based on side.
@@ -546,6 +818,8 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
     // Normalize usable lengths.
     let usable_w = max_double(0.0, node.width - 2.0 * effective_border)
     let usable_h = max_double(0.0, node.height - 2.0 * effective_border)
+    let between_layers_spacing = node_options.edge_node_between_layers_spacing
+      .unwrap_or(0.0)
 
     // Group by side.
     let north : Array[LPort] = []
@@ -567,6 +841,20 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         port.y != 0.0 ||
         port.width != 0.0 ||
         port.height != 0.0
+
+      // Parallel-edge case: keep implicit ports centered and let the router
+      // apply lane offsets (D2/ELK behavior).
+      if auto_skip.get(port.id).unwrap_or(false) && !has_geometry {
+        continue
+      }
+
+      // Keep hierarchical ports with explicit projected coordinates fixed.
+      // These are computed from the connected inner endpoints and must not be
+      // redistributed along the border by the generic port positioner.
+      if port.properties.get_bool_or("diago.layered.hierPortFixed", false) &&
+        has_geometry {
+        continue
+      }
 
       // FixedRatio: treat existing port coordinates as ratios along the side.
       if constraints is FixedRatio && has_geometry {
@@ -611,11 +899,13 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         Undefined => ()
       }
     }
-    place_along(
+    place_auto_cluster_if_needed(
       north,
       usable_w,
       alignment_for_side(node_options, North),
       spacing,
+      between_layers_spacing,
+      true,
       fn(pos, port) {
         port.x = effective_border + pos
         port.y = 0.0
@@ -623,45 +913,41 @@ fn position_ports(graph : LGraph, options : LayoutOptions) -> Unit {
         port.height = 0.0
       },
     )
-    place_along(
+    place_auto_cluster_if_needed(
       south,
       usable_w,
       alignment_for_side(node_options, South),
       spacing,
+      between_layers_spacing,
+      true,
       fn(pos, port) {
-        let adjusted = if constraints is FixedOrder || constraints is FixedSide {
-          usable_w - pos
-        } else {
-          pos
-        }
-        port.x = effective_border + adjusted
+        port.x = effective_border + pos
         port.y = node.height
         port.width = 0.0
         port.height = 0.0
       },
     )
-    place_along(
+    place_auto_cluster_if_needed(
       west,
       usable_h,
       alignment_for_side(node_options, West),
       spacing,
+      between_layers_spacing,
+      true,
       fn(pos, port) {
         port.x = 0.0
-        let adjusted = if constraints is FixedOrder || constraints is FixedSide {
-          usable_h - pos
-        } else {
-          pos
-        }
-        port.y = effective_border + adjusted
+        port.y = effective_border + pos
         port.width = 0.0
         port.height = 0.0
       },
     )
-    place_along(
+    place_auto_cluster_if_needed(
       east,
       usable_h,
       alignment_for_side(node_options, East),
       spacing,
+      between_layers_spacing,
+      true,
       fn(pos, port) {
         port.x = node.width
         port.y = effective_border + pos

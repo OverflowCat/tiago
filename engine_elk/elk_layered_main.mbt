@@ -166,18 +166,62 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
       ) -> String? {
         match lgraph.node_map.get(node_id) {
           Some(node) => {
+            let hier_port_id = node_id + "|hier|" + edge_id + "|" + suffix
+            for p in node.ports {
+              if p.id == hier_port_id {
+                return Some(hier_port_id)
+              }
+            }
             let port_id = node_id + "|auto|" + edge_id + "|" + suffix
             for p in node.ports {
               if p.id == port_id {
                 return Some(port_id)
               }
             }
-            let port = LPort::new(port_id)
-            port.side = port_side(direction, suffix)
-            port.properties.set("elk.port.index", Int(port_index))
-            port.properties.set("diago.layered.autoPort", Bool(true))
-            node.ports.push(port)
-            Some(port_id)
+            let key_x = "diago.layered.hierPort." + edge_id + "." + suffix + ".x"
+            let key_y = "diago.layered.hierPort." + edge_id + "." + suffix + ".y"
+            match
+              (node.properties.get_double(key_x), node.properties.get_double(key_y)) {
+              (Some(px), Some(py)) => {
+                let port = LPort::new(hier_port_id)
+                let side = port_side(direction, suffix)
+                port.side = side
+                match side {
+                  North => {
+                    port.x = clamp(px, 0.0, node.width)
+                    port.y = 0.0
+                  }
+                  South => {
+                    port.x = clamp(px, 0.0, node.width)
+                    port.y = node.height
+                  }
+                  West => {
+                    port.x = 0.0
+                    port.y = clamp(py, 0.0, node.height)
+                  }
+                  East => {
+                    port.x = node.width
+                    port.y = clamp(py, 0.0, node.height)
+                  }
+                  Undefined => {
+                    port.x = clamp(px, 0.0, node.width)
+                    port.y = clamp(py, 0.0, node.height)
+                  }
+                }
+                port.properties.set("elk.port.index", Int(port_index))
+                port.properties.set("diago.layered.hierPortFixed", Bool(true))
+                node.ports.push(port)
+                Some(hier_port_id)
+              }
+              _ => {
+                let port = LPort::new(port_id)
+                port.side = port_side(direction, suffix)
+                port.properties.set("elk.port.index", Int(port_index))
+                port.properties.set("diago.layered.autoPort", Bool(true))
+                node.ports.push(port)
+                Some(port_id)
+              }
+            }
           }
           None => None
         }
@@ -294,7 +338,6 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
     run_layered_internal_pipeline(
       lgraph, resolved_options, direction, thoroughness,
     )
-
     // Persist inner edge segment routes for INCLUDE_CHILDREN hierarchy edges.
     // (Later used by the cross-hierarchy stitcher in `to_elk_node`.)
     fn anchor_for_port(node : LNode, port_id : String?) -> (Double, Double)? {
@@ -351,40 +394,6 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
           None
         }
       }
-    }
-
-    fn edge_polyline_points(
-      graph : LGraph,
-      edge : LEdge,
-      direction : LayoutDirection,
-    ) -> Array[ElkPoint] {
-      let out : Array[ElkPoint] = []
-      match (graph.get_node(edge.source_id), graph.get_node(edge.target_id)) {
-        (Some(src), Some(tgt)) => {
-          let (sx, sy) = anchor_for_port(src, edge.source_port_id).unwrap_or(
-            (src.x + src.width / 2.0, src.y + src.height / 2.0),
-          )
-          let (tx, ty) = anchor_for_port(tgt, edge.target_port_id).unwrap_or(
-            (tgt.x + tgt.width / 2.0, tgt.y + tgt.height / 2.0),
-          )
-          // Keep the edge's parallel offset semantics aligned with `to_elk_node`.
-          let offset = edge.parallel_offset
-          let (sx, sy, tx, ty) = if direction.is_vertical() {
-            (sx + offset, sy, tx + offset, ty)
-          } else if direction.is_horizontal() {
-            (sx, sy + offset, tx, ty + offset)
-          } else {
-            (sx + offset, sy, tx + offset, ty)
-          }
-          out.push(ElkPoint::new(sx, sy))
-          for bp in edge.bend_points {
-            out.push(bp)
-          }
-          out.push(ElkPoint::new(tx, ty))
-        }
-        _ => ()
-      }
-      out
     }
 
     for e in lgraph.edges {
@@ -445,27 +454,161 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
         }
       }
 
-      // Prefer the inside node's port anchor if available, else fall back to
-      // its center.
-      let (ax, ay) = if sfx == "src" {
+      fn inherited_hier_port_anchor(
+        node : LNode,
+        edge_id : String,
+        suffix : String,
+      ) -> (Double, Double)? {
+        let key_x = "diago.layered.hierPort." + edge_id + "." + suffix + ".x"
+        let key_y = "diago.layered.hierPort." + edge_id + "." + suffix + ".y"
+        match
+          (node.properties.get_double(key_x), node.properties.get_double(key_y)) {
+          (Some(px), Some(py)) => Some((node.x + px, node.y + py))
+          _ => None
+        }
+      }
+      fn find_port(node : LNode, port_id : String) -> LPort? {
+        for port in node.ports {
+          if port.id == port_id {
+            return Some(port)
+          }
+        }
+        None
+      }
+
+      fn has_positioned_auto_side_peer(node : LNode, side : ElkPortSide) -> Bool {
+        let mut count = 0
+        for port in node.ports {
+          if port.side != side {
+            continue
+          }
+          if !port.properties.get_bool_or("diago.layered.autoPort", false) {
+            continue
+          }
+          if port.x == 0.0 && port.y == 0.0 {
+            continue
+          }
+          count = count + 1
+          if count >= 2 {
+            return true
+          }
+        }
+        false
+      }
+
+      fn tiny_segment_offset(
+        node : LNode,
+        port_id : String?,
+        direction : LayoutDirection,
+      ) -> Double {
+        match port_id {
+          Some(pid) =>
+            match find_port(node, pid) {
+              Some(port) => {
+                if !port.properties.get_bool_or("diago.layered.autoPort", false) {
+                  return 0.0
+                }
+                if port.x == 0.0 && port.y == 0.0 {
+                  return 0.0
+                }
+                if !has_positioned_auto_side_peer(node, port.side) {
+                  return 0.0
+                }
+                let eps = 1.0e-6
+                match port.side {
+                  North | South =>
+                    if !direction.is_vertical() {
+                      0.0
+                    } else {
+                      let delta = port.x - node.width / 2.0
+                      if delta > eps {
+                        -0.25
+                      } else if delta < -eps {
+                        0.25
+                      } else {
+                        0.0
+                      }
+                    }
+                  East | West =>
+                    if !direction.is_horizontal() {
+                      0.0
+                    } else {
+                      let delta = port.y - node.height / 2.0
+                      if delta > eps {
+                        -0.25
+                      } else if delta < -eps {
+                        0.25
+                      } else {
+                        0.0
+                      }
+                    }
+                  Undefined => 0.0
+                }
+              }
+              None => 0.0
+            }
+          None => 0.0
+        }
+      }
+
+      // Prefer inherited hierarchical-port anchors from nested containers.
+      // Fall back to the inside node's own port anchor / center.
+      let (raw_ax, raw_ay) = if sfx == "src" {
         match lgraph.get_node(e.source_id) {
           Some(src) =>
-            anchor_for_port(src, e.source_port_id).unwrap_or(
-              (src.x + src.width / 2.0, src.y + src.height / 2.0),
+            inherited_hier_port_anchor(src, edge_id, "src").unwrap_or(
+              anchor_for_port(src, e.source_port_id).unwrap_or(
+                (src.x + src.width / 2.0, src.y + src.height / 2.0),
+              ),
             )
           None => (0.0, 0.0)
         }
       } else {
         match lgraph.get_node(e.target_id) {
           Some(tgt) =>
-            anchor_for_port(tgt, e.target_port_id).unwrap_or(
-              (tgt.x + tgt.width / 2.0, tgt.y + tgt.height / 2.0),
+            inherited_hier_port_anchor(tgt, edge_id, "dst").unwrap_or(
+              anchor_for_port(tgt, e.target_port_id).unwrap_or(
+                (tgt.x + tgt.width / 2.0, tgt.y + tgt.height / 2.0),
+              ),
             )
           None => (0.0, 0.0)
         }
       }
+      // ELK carries routing offsets (parallel edge separation) into the final
+      // anchor coordinates used for hierarchical edge stitching.
+      let offset = e.parallel_offset
+      let (ax, ay) = if direction.is_vertical() {
+        (raw_ax + offset, raw_ay)
+      } else if direction.is_horizontal() {
+        (raw_ax, raw_ay + offset)
+      } else {
+        (raw_ax + offset, raw_ay)
+      }
       let side = side_for_suffix(direction, sfx)
       let (px, py) = project_to_border(side, ax, ay)
+      let tiny = if offset.abs() <= 1.0e-6 {
+        if sfx == "src" {
+          match lgraph.get_node(e.source_id) {
+            Some(src) => tiny_segment_offset(src, e.source_port_id, direction)
+            None => 0.0
+          }
+        } else {
+          match lgraph.get_node(e.target_id) {
+            Some(tgt) => tiny_segment_offset(tgt, e.target_port_id, direction)
+            None => 0.0
+          }
+        }
+      } else {
+        0.0
+      }
+      let (seg_ax, seg_ay) = if direction.is_vertical() {
+        (ax + tiny, ay)
+      } else if direction.is_horizontal() {
+        (ax, ay + tiny)
+      } else {
+        (ax + tiny, ay)
+      }
+      let (seg_px, seg_py) = project_to_border(side, seg_ax, seg_ay)
       node.properties.set(
         "diago.layered.hierPort." + edge_id + "." + sfx + ".x",
         Double(px),
@@ -474,7 +617,18 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
         "diago.layered.hierPort." + edge_id + "." + sfx + ".y",
         Double(py),
       )
-      let points = edge_polyline_points(lgraph, e, direction)
+      // Store the segment between the connected inner anchor and the projected
+      // border anchor. Using the edge's routed source/target anchors here can
+      // drift to implicit-port centers in parent graphs and break hierarchy
+      // segment stitching.
+      let points : Array[ElkPoint] = []
+      if sfx == "src" {
+        points.push(ElkPoint::new(seg_ax, seg_ay))
+        points.push(ElkPoint::new(seg_px, seg_py))
+      } else {
+        points.push(ElkPoint::new(seg_px, seg_py))
+        points.push(ElkPoint::new(seg_ax, seg_ay))
+      }
       if points.length() < 2 {
         continue
       }
@@ -486,11 +640,11 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
       node.properties.set(key, Array(arr))
     }
 
-    // When boundary edges are not modeled as explicit dummies inside the nested
-    // graph, approximate the inner segment as a straight line from the direct
-    // child node border to the container border. This is used for cross-hierarchy
-    // edge stitching in `LGraph::to_elk_node` and keeps the layered regression
-    // fixtures aligned with ELK.
+    // Fallback approximation for hierarchy segments.
+    //
+    // Only synthesize a straight segment when no captured segment is available.
+    // This avoids duplicating captured + fallback paths, which produces doubled
+    // strokes and spurious bends in nested-container examples.
     if resolved_options.hierarchy_handling != Some(Separate) {
       fn collect_subtree_ids(node : ElkNode, set : Map[String, Bool]) -> Unit {
         set[node.id] = true
@@ -534,7 +688,11 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
                 _ => (sx, lgraph.height)
               }
               let key = "diago.layered.hierSeg." + edge.id + ".src"
-              if node.properties.get_array(key) is None {
+              let has_captured = node.properties
+                .get_array(key)
+                .map(fn(arr) { arr.length() >= 2 })
+                .unwrap_or(false)
+              if !has_captured {
                 node.properties.set(
                   key,
                   Array([
@@ -568,7 +726,11 @@ fn elk_layered_layout_impl(graph : ElkNode, options : LayoutOptions) -> Unit {
                 _ => (tx, 0.0)
               }
               let key = "diago.layered.hierSeg." + edge.id + ".dst"
-              if node.properties.get_array(key) is None {
+              let has_captured = node.properties
+                .get_array(key)
+                .map(fn(arr) { arr.length() >= 2 })
+                .unwrap_or(false)
+              if !has_captured {
                 node.properties.set(
                   key,
                   Array([
@@ -1023,6 +1185,22 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
   let label_label_spacing = options.label_label_spacing.unwrap_or(0.0)
   let edge_label_spacing = options.edge_label_spacing.unwrap_or(2.0)
   let original_edge_count = graph.edges.length()
+  fn edge_thickness(edge : LEdge) -> Double {
+    let mut thickness = match edge.properties.get_double("elk.edge.thickness") {
+      Some(v) => v
+      None =>
+        match edge.properties.get_double("org.eclipse.elk.edge.thickness") {
+          Some(v) => v
+          None => 1.0
+        }
+    }
+    if thickness < 0.0 {
+      thickness = 0.0
+      edge.properties.set("elk.edge.thickness", Double(thickness))
+    }
+    thickness
+  }
+
   for i = 0; i < original_edge_count; i = i + 1 {
     let edge = graph.edges[i]
 
@@ -1067,25 +1245,6 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
     // Follow ELK's LabelDummyInserter sizing:
     // - Vertical layout stacks labels horizontally (width sums; height is max).
     // - Horizontal layout stacks labels vertically (width is max; height sums).
-    // Always reserve edge-label spacing and edge thickness in the dummy size.
-    fn edge_thickness(edge : LEdge) -> Double {
-      let mut thickness = match
-        edge.properties.get_double("elk.edge.thickness") {
-        Some(v) => v
-        None =>
-          match edge.properties.get_double("org.eclipse.elk.edge.thickness") {
-            Some(v) => v
-            None => 1.0
-          }
-      }
-      if thickness < 0.0 {
-        thickness = 0.0
-        edge.properties.set("elk.edge.thickness", Double(thickness))
-      }
-      thickness
-    }
-
-    let thickness = edge_thickness(edge)
     let n = center_labels.length()
     let gaps = (n - 1).to_double()
     let mut max_w = 0.0
@@ -1103,18 +1262,17 @@ fn insert_label_dummy_nodes(graph : LGraph, options : LayoutOptions) -> Unit {
       sum_h = sum_h + label.height
     }
     let dir = options.direction.unwrap_or(Down)
+    let thickness = edge_thickness(edge)
     if dir.is_vertical() {
       // ELK LabelDummyInserter:
       // - stack labels horizontally (sum widths + gaps)
       // - height is max label height
-      // - add edge-label spacing and edge thickness to height
       dummy.width = sum_w + gaps * label_label_spacing
       dummy.height = max_h + edge_label_spacing + thickness
     } else {
       // ELK LabelDummyInserter:
       // - stack labels vertically (sum heights + gaps)
       // - width is max label width
-      // - add edge-label spacing and edge thickness to height
       dummy.width = max_w
       dummy.height = sum_h +
         gaps * label_label_spacing +
@@ -1570,11 +1728,7 @@ fn remove_label_dummy_nodes(
               } else {
                 dummies.sort_by(fn(a, b) { b.layer - a.layer })
               }
-              // Keep any bend points generated earlier (e.g. long-edge joiner) and append.
               for dummy in dummies {
-                let bend_x = dummy.x + dummy.width / 2.0
-                let bend_y = dummy.y + dummy.height / 2.0
-                edge.bend_points.push(ElkPoint::new(bend_x, bend_y))
                 if !edge.labels.is_empty() {
                   let center_labels : Array[LLabel] = []
                   for label in edge.labels {
