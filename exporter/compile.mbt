@@ -603,6 +603,7 @@ pub fn compile(
   compile_steps(graph, ir, classes)
   // Handle root-level shape (e.g., shape: sequence_diagram)
   handle_root_shape(graph, ir)
+  apply_d2_text_defaults(graph)
   apply_sequence_defaults(graph)
   // Compile D2 legend (vars.d2-legend)
   compile_legend(graph, ir, classes)
@@ -659,12 +660,13 @@ fn compile_objects(
         apply_class(obj, inner, classes)
         // Check for special fields (can override class)
         process_special_fields(obj, inner)
+        // D2 registers objects in encounter order before descending.
+        graph.add_object(obj)
         // Recursively compile children
         compile_children(graph, obj, inner, id, classes)
       }
-      _ => ()
+      _ => graph.add_object(obj)
     }
-    graph.add_object(obj)
   }
 }
 
@@ -724,13 +726,16 @@ fn compile_children(
             }
           }
         }
+        parent.add_child(child)
+        graph.add_object(child)
         // Recursively compile children
         compile_children(graph, child, inner, id, classes)
       }
-      _ => ()
+      _ => {
+        parent.add_child(child)
+        graph.add_object(child)
+      }
     }
-    parent.add_child(child)
-    graph.add_object(child)
   }
 }
 
@@ -1106,20 +1111,52 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
     None => ()
   }
   // 3D
-  let three_d_field = match ir.get_field("3d") {
-    Some(f) => Some(f)
-    None =>
-      match ir.get_field("3") {
-        Some(f) => Some(f)
-        None => ir.get_field("d")
-      }
-  }
-  match three_d_field {
+  let mut three_d_primary : String? = None
+  match ir.get_field("3d") {
     Some(f) =>
       match f.primary {
-        Some(s) => style.three_d = Some(s.to_string() == "true")
+        Some(s) => three_d_primary = Some(s.to_string())
         None => ()
       }
+    None => ()
+  }
+  if three_d_primary is None {
+    match ir.get_field("3") {
+      Some(f) => {
+        match f.primary {
+          Some(s) => three_d_primary = Some(s.to_string())
+          None => ()
+        }
+        if three_d_primary is None {
+          match f.map() {
+            Some(m) =>
+              match m.get_field("d") {
+                Some(df) =>
+                  match df.primary {
+                    Some(s) => three_d_primary = Some(s.to_string())
+                    None => ()
+                  }
+                None => ()
+              }
+            None => ()
+          }
+        }
+      }
+      None => ()
+    }
+  }
+  if three_d_primary is None {
+    match ir.get_field("d") {
+      Some(f) =>
+        match f.primary {
+          Some(s) => three_d_primary = Some(s.to_string())
+          None => ()
+        }
+      None => ()
+    }
+  }
+  match three_d_primary {
+    Some(s) => style.three_d = Some(s == "true")
     None => ()
   }
   // Multiple
@@ -2324,5 +2361,62 @@ fn apply_sequence_defaults(graph : Graph) -> Unit {
     if edge.style.curved is None {
       edge.style.curved = Some(false)
     }
+  }
+}
+
+///|
+fn apply_d2_text_defaults(graph : Graph) -> Unit {
+  let sequence_root = graph.root.shape_type == ShapeType::SequenceDiagram
+  for obj in graph.objects {
+    let is_container = !obj.children.is_empty()
+    if obj.style.font_size is None {
+      let default_font_size = if obj.shape_type == ShapeType::Class ||
+        obj.shape_type == ShapeType::SqlTable {
+        20
+      } else if is_container && obj.shape_type != ShapeType::Text {
+        container_level_label_size(object_depth_from_id(obj.id))
+      } else {
+        16
+      }
+      obj.style.font_size = Some(default_font_size)
+    }
+    if obj.style.bold is None {
+      let default_bold = if sequence_root {
+        false
+      } else if obj.shape_type == ShapeType::Class ||
+        obj.shape_type == ShapeType::SqlTable {
+        false
+      } else {
+        !is_container && obj.shape_type != ShapeType::Text
+      }
+      obj.style.bold = Some(default_bold)
+    }
+    if obj.style.italic is None {
+      obj.style.italic = Some(false)
+    }
+  }
+}
+
+///|
+fn object_depth_from_id(id : String) -> Int {
+  let mut depth = 1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      depth = depth + 1
+    }
+  }
+  depth
+}
+
+///|
+fn container_level_label_size(level : Int) -> Int {
+  if level <= 1 {
+    28
+  } else if level == 2 {
+    24
+  } else if level == 3 {
+    20
+  } else {
+    16
   }
 }

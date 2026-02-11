@@ -17,8 +17,8 @@
 ///
 /// This suite validates all bundled examples:
 /// 1) Diago Dagre output is snapshot-stable (`examples/diago-dagre-output`)
-/// 2) Text labels from D2 Dagre reference SVGs are covered by Diago output
-///    (`examples/d2-dagre-output`)
+/// 2) Diago SVG semantic snapshots (labels + coordinates + edge curve params)
+///    are aligned to D2 Dagre reference SVGs (`examples/d2-dagre-output`)
 
 ///|
 let dagre_example_names : Array[String] = [
@@ -28,31 +28,7 @@ let dagre_example_names : Array[String] = [
 ]
 
 ///|
-/// Budgets are pinned from current best-effort parity against D2 Dagre output.
-/// Tuple layout:
-/// (label_p95_distance, label_max_distance, edge_endpoint_max_l1, cubic_count_gap, cubic_param_p95)
-let d2_parity_budgets : Map[String, (Double, Double, Double, Int, Double)] = {
-  "architecture": (132.765, 176.495, 326.174, 0, 1838.214),
-  "arrowheads": (40.000, 40.323, 82.500, 0, 144.500),
-  "basic": (51.500, 60.459, 19.950, 0, 490.333),
-  "c4": (119.128, 127.803, 202.961, 0, 865.374),
-  "classes": (197.500, 203.882, 117.500, 0, 487.050),
-  "containers": (248.500, 268.500, 431.500, 0, 1224.030),
-  "directions": (1802.950, 1830.944, 3649.500, 0, 6636.500),
-  "grid": (1458.484, 1501.241, 0.500, 0, 0.500),
-  "hello": (2.001, 2.501, 10.500, 0, 14.500),
-  "layers": (143.500, 168.500, 37.111, 0, 449.709),
-  "legend_auto": (89.250, 99.750, 98.637, 0, 675.000),
-  "legend_custom": (25.625, 43.664, 12.000, 0, 66.000),
-  "sequence": (340.557, 345.341, 771.506, 6, 0.500),
-  "shapes": (199.463, 204.339, 434.500, 0, 760.700),
-  "sql_tables": (347.565, 554.587, 552.311, 0, 1064.042),
-  "styles": (224.184, 227.295, 164.500, 0, 522.645),
-  "variables": (194.500, 224.500, 44.753, 0, 459.979),
-}
-
-///|
-test "examples: dagre svg e2e snapshots and d2 label parity" {
+test "examples: dagre svg e2e snapshots and d2 semantic parity" {
   for name in dagre_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
     let actual_svg = compile(source).unwrap()
@@ -81,31 +57,225 @@ test "examples: dagre svg e2e snapshots and d2 label parity" {
       msg="\{name}: missing d2 labels in diago svg: \{mismatch_text}",
     )
 
-    let (label_p95, label_max, edge_endpoint_max, cubic_gap, cubic_param_p95) = d2_parity_metrics(
-      actual_svg, d2_svg,
+    let diago_semantic_snapshot = d2_semantic_snapshot(actual_svg)
+    let d2_semantic = d2_semantic_snapshot(d2_svg)
+    let semantic_diff = semantic_snapshot_mismatch_summary(
+      diago_semantic_snapshot, d2_semantic,
     )
-    let budget = d2_parity_budgets.get(name).unwrap()
-    assert_true(
-      label_p95 <= budget.0,
-      msg="\{name}: label p95 distance too large (\{label_p95} > \{budget.0})",
-    )
-    assert_true(
-      label_max <= budget.1,
-      msg="\{name}: label max distance too large (\{label_max} > \{budget.1})",
-    )
-    assert_true(
-      edge_endpoint_max <= budget.2,
-      msg="\{name}: edge endpoint max distance too large (\{edge_endpoint_max} > \{budget.2})",
-    )
-    assert_true(
-      cubic_gap <= budget.3,
-      msg="\{name}: cubic count gap too large (\{cubic_gap} > \{budget.3})",
-    )
-    assert_true(
-      cubic_param_p95 <= budget.4,
-      msg="\{name}: cubic param p95 too large (\{cubic_param_p95} > \{budget.4})",
+    assert_eq(
+      diago_semantic_snapshot,
+      d2_semantic,
+      msg="\{name}: semantic snapshot diverges from d2 dagre output (\{semantic_diff})",
     )
   }
+}
+
+///|
+fn d2_semantic_snapshot(svg : String) -> String {
+  let labels = extract_text_positions(svg)
+  let edges = extract_edge_endpoints_and_cubic(svg)
+  let (min_x, min_y, max_x, max_y) = semantic_bounds(labels, edges)
+  let width = if max_x > min_x { max_x - min_x } else { 1.0 }
+  let height = if max_y > min_y { max_y - min_y } else { 1.0 }
+  let scale = if width > height { width } else { height }
+  let tokens : Array[String] = []
+
+  for label, points in labels {
+    for point in points {
+      let nx = normalize_coord(point.0, min_x, scale)
+      let ny = normalize_coord(point.1, min_y, scale)
+      tokens.push("T|\{label}|x=\{quantize(nx)}|y=\{quantize(ny)}")
+    }
+  }
+
+  for edge in edges {
+    let kind = if edge.1 { "C" } else { "L" }
+    let (sx, sy, ex, ey) = edge.0
+    let nsx = normalize_coord(sx, min_x, scale)
+    let nsy = normalize_coord(sy, min_y, scale)
+    let nex = normalize_coord(ex, min_x, scale)
+    let ney = normalize_coord(ey, min_y, scale)
+    let params : Array[String] = []
+    let mut i = 0
+    for value in edge.2 {
+      let normalized = if i % 2 == 0 {
+        normalize_coord(value, min_x, scale)
+      } else {
+        normalize_coord(value, min_y, scale)
+      }
+      params.push(quantize(normalized))
+      i = i + 1
+    }
+    let params_signature = params.join(",")
+    tokens.push(
+      "E|\{kind}|s=\{quantize(nsx)},\{quantize(nsy)}|e=\{quantize(nex)},\{quantize(ney)}|p=\{params_signature}",
+    )
+  }
+
+  sort_strings(tokens).join("\n")
+}
+
+///|
+fn normalize_coord(v : Double, min_v : Double, scale : Double) -> Double {
+  (v - min_v) / scale
+}
+
+///|
+fn semantic_bounds(
+  labels : Map[String, Array[(Double, Double)]],
+  edges : Array[((Double, Double, Double, Double), Bool, Array[Double])],
+) -> (Double, Double, Double, Double) {
+  let mut min_x = 1000000000000.0
+  let mut min_y = 1000000000000.0
+  let mut max_x = -1000000000000.0
+  let mut max_y = -1000000000000.0
+  let mut seen = false
+
+  for _, points in labels {
+    for p in points {
+      seen = true
+      if p.0 < min_x {
+        min_x = p.0
+      }
+      if p.1 < min_y {
+        min_y = p.1
+      }
+      if p.0 > max_x {
+        max_x = p.0
+      }
+      if p.1 > max_y {
+        max_y = p.1
+      }
+    }
+  }
+
+  for edge in edges {
+    let (sx, sy, ex, ey) = edge.0
+    seen = true
+    if sx < min_x {
+      min_x = sx
+    }
+    if sy < min_y {
+      min_y = sy
+    }
+    if sx > max_x {
+      max_x = sx
+    }
+    if sy > max_y {
+      max_y = sy
+    }
+    if ex < min_x {
+      min_x = ex
+    }
+    if ey < min_y {
+      min_y = ey
+    }
+    if ex > max_x {
+      max_x = ex
+    }
+    if ey > max_y {
+      max_y = ey
+    }
+  }
+
+  if !seen {
+    (0.0, 0.0, 1.0, 1.0)
+  } else {
+    (min_x, min_y, max_x, max_y)
+  }
+}
+
+///|
+fn quantize(v : Double) -> String {
+  // Keep parity strict while tolerating tiny float noise.
+  // Step = 0.01 in normalized coordinates.
+  let scaled = v * 100.0
+  let rounded = if scaled >= 0.0 {
+    (scaled + 0.5).to_int()
+  } else {
+    (scaled - 0.5).to_int()
+  }
+  rounded.to_string()
+}
+
+///|
+fn sort_strings(values : Array[String]) -> Array[String] {
+  let out : Array[String] = []
+  for value in values {
+    out.push(value)
+  }
+  let mut i = 0
+  while i < out.length() {
+    let mut j = i + 1
+    while j < out.length() {
+      if out[j] < out[i] {
+        let tmp = out[i]
+        out[i] = out[j]
+        out[j] = tmp
+      }
+      j = j + 1
+    }
+    i = i + 1
+  }
+  out
+}
+
+///|
+fn semantic_snapshot_mismatch_summary(a : String, b : String) -> String {
+  if a == b {
+    return "equal"
+  }
+  let a_counts = snapshot_line_counts(a)
+  let b_counts = snapshot_line_counts(b)
+  let issues : Array[String] = []
+  for line, expected in b_counts {
+    let actual = match a_counts.get(line) {
+      Some(v) => v
+      None => 0
+    }
+    if actual < expected {
+      issues.push("missing:\{line} x\{expected - actual}")
+      if issues.length() >= 6 {
+        break
+      }
+    }
+  }
+  if issues.length() < 6 {
+    for line, actual in a_counts {
+      let expected = match b_counts.get(line) {
+        Some(v) => v
+        None => 0
+      }
+      if actual > expected {
+        issues.push("extra:\{line} x\{actual - expected}")
+        if issues.length() >= 6 {
+          break
+        }
+      }
+    }
+  }
+  if issues.is_empty() {
+    "line-count differs"
+  } else {
+    issues.join(" ; ")
+  }
+}
+
+///|
+fn snapshot_line_counts(snapshot : String) -> Map[String, Int] {
+  let counts : Map[String, Int] = {}
+  for line in snapshot.split("\n").collect() {
+    let key = line.to_string()
+    if key.length() == 0 {
+      continue
+    }
+    let current = match counts.get(key) {
+      Some(v) => v
+      None => 0
+    }
+    counts[key] = current + 1
+  }
+  counts
 }
 
 ///|
@@ -157,6 +327,7 @@ fn d2_label_coverage_mismatches(
 }
 
 ///|
+#warnings("-unused_value")
 fn d2_parity_metrics(
   diago_svg : String,
   d2_svg : String,

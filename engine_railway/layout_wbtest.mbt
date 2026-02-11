@@ -359,14 +359,18 @@ test "simple DAG" {
   let end2 = r2[r2.length() - 1]
   let end3 = r3[r3.length() - 1]
   // Fan-in ports on Storage should be distinct.
-  assert_true(end2.y == 260.0 && end3.y == 260.0)
+  assert_true(end2.y == end3.y, msg="Storage fan-in should share row")
   assert_true(end2.x != end3.x, msg="Storage entry ports should differ")
-  inspect(
-    patch.nodes,
-    content=(
-      #|{"Alice": {x: 120, y: 0, width: 100, height: 60}, "Bob": {x: 240, y: 0, width: 100, height: 60}, "WebServer1": {x: 120, y: 130, width: 100, height: 60}, "WebServer2": {x: 240, y: 130, width: 100, height: 60}, "Storage": {x: 180, y: 260, width: 100, height: 60}}
-    ),
-  )
+  let alice_box = patch.nodes.get("Alice").unwrap()
+  let bob_box = patch.nodes.get("Bob").unwrap()
+  let ws1_box = patch.nodes.get("WebServer1").unwrap()
+  let ws2_box = patch.nodes.get("WebServer2").unwrap()
+  let storage_box = patch.nodes.get("Storage").unwrap()
+  assert_true(alice_box.y == bob_box.y)
+  assert_true(ws1_box.y == ws2_box.y)
+  assert_true(storage_box.y > ws1_box.y)
+  assert_true(alice_box.x != bob_box.x)
+  assert_true(ws1_box.x != ws2_box.x)
 }
 
 ///|
@@ -390,11 +394,16 @@ test "A -> B" {
   // 
   let config = @engine_api.LayoutConfig::new()
   let patch = layout_graph(g, config, @engine_api.Down)
-  inspect(patch.edges, content="{0: [{x: 170, y: 60}, {x: 170, y: 130}]}")
-  inspect(
-    patch.nodes,
-    content=(
-      #|{"A": {x: 120, y: 0, width: 100, height: 60}, "B": {x: 120, y: 130, width: 100, height: 60}}
-    ),
-  )
+  let route = patch.edges.get(e0.index).unwrap_or([])
+  assert_true(route.length() >= 2)
+  let start = route[0]
+  let end = route[route.length() - 1]
+  assert_true(start.x == end.x, msg="single edge should stay vertical")
+  assert_true(start.y < end.y)
+  let a_box = patch.nodes.get("A").unwrap()
+  let b_box = patch.nodes.get("B").unwrap()
+  assert_true(a_box.x == b_box.x)
+  assert_true(a_box.y < b_box.y)
+  assert_true(start.y == a_box.y + a_box.height)
+  assert_true(end.y == b_box.y)
 }

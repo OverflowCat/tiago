@@ -73,12 +73,12 @@ pub fn unsupported(message : String) -> LayoutError {
 ///|
 pub fn LayoutConfig::new() -> LayoutConfig {
   {
-    horizontal_spacing: 20.0,
-    vertical_spacing: 70.0,
+    horizontal_spacing: 60.0,
+    vertical_spacing: 100.0,
     container_padding: 50.0,
     default_width: 100.0,
     default_height: 60.0,
-    edge_padding: 40.0,
+    edge_padding: 20.0,
   }
 }
 
@@ -883,36 +883,373 @@ fn estimate_semantic_object_size(
     is_bold,
     is_italic,
   )
-  let mut width = label_dims.width
-  let mut height = label_dims.height
-  match obj.shape_type {
-    @graph.Text | @graph.Code => {
-      width = width + 2.0
-      height = height + 2.0
+  let mut content_width = label_dims.width
+  let mut content_height = label_dims.height
+
+  if obj.shape_type == @graph.Code {
+    content_width = content_width + font_size.to_double()
+    content_height = content_height + font_size.to_double()
+  } else if obj.label != "" && obj.shape_type != @graph.Text {
+    content_width = content_width + D2_INNER_LABEL_PADDING
+    content_height = content_height + D2_INNER_LABEL_PADDING
+  }
+
+  if obj.shape_type == @graph.Text {
+    if content_width < D2_MIN_SHAPE_SIZE {
+      content_width = D2_MIN_SHAPE_SIZE
     }
-    @graph.Diamond => {
-      width = width + 40.0
-      height = height + 30.0
+    if content_height < D2_MIN_SHAPE_SIZE {
+      content_height = D2_MIN_SHAPE_SIZE
     }
-    @graph.Circle | @graph.Square | @graph.Oval => {
-      width = width + 36.0
-      height = height + 30.0
-      let side = max_double(width, height)
-      width = side
-      height = side
+    return (content_width, content_height)
+  }
+
+  if obj.shape_type == @graph.Image {
+    return (128.0, 128.0)
+  }
+
+  let base_padding = semantic_shape_default_padding(obj.shape_type)
+  let mut padding_x = base_padding.0
+  let mut padding_y = base_padding.1
+  if obj.icon is Some(_) &&
+    obj.shape_type != @graph.SqlTable &&
+    obj.shape_type != @graph.Class &&
+    obj.shape_type != @graph.Code &&
+    obj.shape_type != @graph.Text {
+    let label_height = label_dims.height + D2_INNER_LABEL_PADDING
+    padding_x = padding_x + label_height
+    padding_y = padding_y + label_height
+  }
+
+  let fitted = semantic_shape_dimensions_to_fit(
+    obj.shape_type,
+    content_width,
+    content_height,
+    padding_x,
+    padding_y,
+  )
+  let mut width = fitted.0
+  let mut height = fitted.1
+
+  if obj.shape_type == @graph.Circle || obj.shape_type == @graph.Square {
+    let side = if width > height { width } else { height }
+    width = side
+    height = side
+  } else if obj.shape_type == @graph.Person {
+    let fit = limit_ar(width, height, D2_PERSON_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  } else if obj.shape_type == @graph.Oval {
+    let fit = limit_ar(width, height, D2_OVAL_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  } else if obj.shape_type == @graph.C4Person {
+    let fit = limit_ar(width, height, D2_C4_PERSON_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  }
+
+  (
+    if width > 0.0 {
+      width
+    } else {
+      positive_or(config.default_width, 1.0)
+    },
+    if height > 0.0 {
+      height
+    } else {
+      positive_or(config.default_height, 1.0)
+    },
+  )
+}
+
+///|
+const D2_DEFAULT_PADDING : Double = 40.0
+
+///|
+const D2_DEFAULT_ARC_DEPTH : Double = 24.0
+
+///|
+const D2_PARALLELOGRAM_WEDGE_WIDTH : Double = 26.0
+
+///|
+const D2_STORED_DATA_WEDGE_WIDTH : Double = 15.0
+
+///|
+const D2_STEP_WEDGE_WIDTH : Double = 35.0
+
+///|
+const D2_PACKAGE_TOP_MAX_HEIGHT : Double = 55.0
+
+///|
+const D2_PACKAGE_VERTICAL_SCALAR : Double = 0.2
+
+///|
+const D2_CALLOUT_DEFAULT_TIP_HEIGHT : Double = 45.0
+
+///|
+const D2_PAGE_CORNER_WIDTH : Double = 20.8164
+
+///|
+const D2_PAGE_CORNER_HEIGHT : Double = 20.348
+
+///|
+const D2_DOC_PATH_HEIGHT : Double = 18.925
+
+///|
+const D2_DOC_PATH_INNER_BOTTOM : Double = 14.0
+
+///|
+const D2_INNER_LABEL_PADDING : Double = 5.0
+
+///|
+const D2_MIN_SHAPE_SIZE : Double = 5.0
+
+///|
+const D2_PERSON_AR_LIMIT : Double = 1.5
+
+///|
+const D2_OVAL_AR_LIMIT : Double = 3.0
+
+///|
+const D2_C4_PERSON_AR_LIMIT : Double = 1.5
+
+///|
+const D2_C4_HEAD_RADIUS_FACTOR : Double = 0.22
+
+///|
+const D2_C4_BODY_TOP_FACTOR : Double = 0.8
+
+///|
+const CLOUD_WIDE_INNER_WIDTH : Double = 0.819
+
+///|
+const CLOUD_WIDE_INNER_HEIGHT : Double = 0.548
+
+///|
+const CLOUD_WIDE_ASPECT_BOUNDARY : Double = (1.0 + D2_DEFAULT_PADDING) /
+  D2_DEFAULT_PADDING
+
+///|
+const CLOUD_TALL_INNER_WIDTH : Double = 0.549
+
+///|
+const CLOUD_TALL_INNER_HEIGHT : Double = 0.820
+
+///|
+const CLOUD_TALL_ASPECT_BOUNDARY : Double = D2_DEFAULT_PADDING /
+  (1.0 + D2_DEFAULT_PADDING)
+
+///|
+const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
+
+///|
+const CLOUD_SQUARE_INNER_HEIGHT : Double = 0.663
+
+///|
+fn semantic_shape_default_padding(
+  shape_type : @graph.ShapeType,
+) -> (Double, Double) {
+  match shape_type {
+    @graph.Circle => {
+      let p = D2_DEFAULT_PADDING / 2.0.sqrt()
+      (p, p)
+    }
+    @graph.Diamond => (D2_DEFAULT_PADDING / 4.0, D2_DEFAULT_PADDING / 2.0)
+    @graph.Hexagon => (D2_DEFAULT_PADDING / 2.0, D2_DEFAULT_PADDING / 2.0)
+    @graph.Cylinder => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    @graph.Queue => (D2_DEFAULT_PADDING / 2.0, D2_DEFAULT_PADDING)
+    @graph.StoredData => (D2_DEFAULT_PADDING - 10.0, D2_DEFAULT_PADDING)
+    @graph.Person => (10.0, D2_DEFAULT_PADDING)
+    @graph.C4Person => (10.0, D2_DEFAULT_PADDING)
+    @graph.Page =>
+      (D2_DEFAULT_PADDING, D2_PAGE_CORNER_HEIGHT + D2_DEFAULT_PADDING)
+    @graph.Document =>
+      (
+        D2_DEFAULT_PADDING,
+        D2_DEFAULT_PADDING * D2_DOC_PATH_INNER_BOTTOM / D2_DOC_PATH_HEIGHT,
+      )
+    @graph.Package => (D2_DEFAULT_PADDING, 0.8 * D2_DEFAULT_PADDING)
+    @graph.Step =>
+      (D2_DEFAULT_PADDING / 4.0, D2_DEFAULT_PADDING + D2_STEP_WEDGE_WIDTH)
+    @graph.Callout => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    @graph.Cloud => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    _ => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING)
+  }
+}
+
+///|
+fn semantic_shape_dimensions_to_fit(
+  shape_type : @graph.ShapeType,
+  width : Double,
+  height : Double,
+  padding_x : Double,
+  padding_y : Double,
+) -> (Double, Double) {
+  match shape_type {
+    @graph.Circle => {
+      let length = if width + padding_x > height + padding_y {
+        width + padding_x
+      } else {
+        height + padding_y
+      }
+      let diameter = (2.0.sqrt() * length).ceil()
+      (diameter, diameter)
+    }
+    @graph.Oval => {
+      let theta = @math.atan2(height, width)
+      let padded_width = width + padding_x * @math.cos(theta)
+      let padded_height = height + padding_y * @math.sin(theta)
+      let mut total_width = (2.0.sqrt() * padded_width).ceil()
+      let mut total_height = (2.0.sqrt() * padded_height).ceil()
+      let fit = limit_ar(total_width, total_height, D2_OVAL_AR_LIMIT)
+      total_width = fit.0
+      total_height = fit.1
+      (total_width, total_height)
+    }
+    @graph.Diamond =>
+      ((2.0 * (width + padding_x)).ceil(), (2.0 * (height + padding_y)).ceil())
+    @graph.Hexagon =>
+      ((1.5 * (width + padding_x)).ceil(), (1.5 * (height + padding_y)).ceil())
+    @graph.Parallelogram =>
+      (
+        (width + padding_x + D2_PARALLELOGRAM_WEDGE_WIDTH * 2.0).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Cylinder =>
+      (
+        (width + padding_x).ceil(),
+        (height + padding_y + 3.0 * D2_DEFAULT_ARC_DEPTH).ceil(),
+      )
+    @graph.Queue =>
+      (
+        (width + padding_x + 3.0 * D2_DEFAULT_ARC_DEPTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.StoredData =>
+      (
+        (width + padding_x + 2.0 * D2_STORED_DATA_WEDGE_WIDTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Person => {
+      let mut total_width = width + padding_x
+      let mut total_height = height + padding_y
+      let fit = limit_ar(total_width, total_height, D2_PERSON_AR_LIMIT)
+      total_width = fit.0
+      total_height = fit.1
+      (total_width.ceil(), total_height.ceil())
     }
     @graph.C4Person => {
-      width = width + 48.0
-      height = height + 64.0
+      let content_width = width + padding_x
+      let content_height = height + padding_y
+      let mut total_width = content_width / 0.9
+      let head_radius = total_width * D2_C4_HEAD_RADIUS_FACTOR
+      let body_top = head_radius + head_radius * D2_C4_BODY_TOP_FACTOR
+      let vertical_padding = total_width * 0.06
+      let mut total_height = content_height + body_top + vertical_padding
+      let min_height = total_width * 0.95
+      if total_height < min_height {
+        total_height = min_height
+      }
+      let fit = limit_ar(total_width, total_height, D2_C4_PERSON_AR_LIMIT)
+      total_width = fit.0
+      total_height = fit.1
+      (total_width.ceil(), total_height.ceil())
     }
-    _ => {
-      width = width + 50.0
-      height = height + 45.0
+    @graph.Cloud => {
+      let total_width = width + padding_x
+      let total_height = height + padding_y
+      let aspect_ratio = total_width / total_height
+      if aspect_ratio > CLOUD_WIDE_ASPECT_BOUNDARY {
+        (
+          (total_width / CLOUD_WIDE_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_WIDE_INNER_HEIGHT).ceil(),
+        )
+      } else if aspect_ratio < CLOUD_TALL_ASPECT_BOUNDARY {
+        (
+          (total_width / CLOUD_TALL_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_TALL_INNER_HEIGHT).ceil(),
+        )
+      } else {
+        (
+          (total_width / CLOUD_SQUARE_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_SQUARE_INNER_HEIGHT).ceil(),
+        )
+      }
     }
+    @graph.Page => {
+      let mut total_width = width + padding_x
+      let mut total_height = height + padding_y
+      if total_height < 3.0 * D2_PAGE_CORNER_HEIGHT {
+        total_width = total_width + D2_PAGE_CORNER_WIDTH
+      }
+      if total_width < 2.0 * D2_PAGE_CORNER_WIDTH {
+        total_width = 2.0 * D2_PAGE_CORNER_WIDTH
+      }
+      if total_height < D2_PAGE_CORNER_HEIGHT {
+        total_height = D2_PAGE_CORNER_HEIGHT
+      }
+      (total_width.ceil(), total_height.ceil())
+    }
+    @graph.Document =>
+      (
+        (width + padding_x).ceil(),
+        ((height + padding_y) * D2_DOC_PATH_HEIGHT / D2_DOC_PATH_INNER_BOTTOM).ceil(),
+      )
+    @graph.Package => {
+      let inner_height = height + padding_y
+      let top_height = inner_height *
+        D2_PACKAGE_VERTICAL_SCALAR /
+        (1.0 - D2_PACKAGE_VERTICAL_SCALAR)
+      let total_height = inner_height +
+        (if top_height < D2_PACKAGE_TOP_MAX_HEIGHT {
+          top_height
+        } else {
+          D2_PACKAGE_TOP_MAX_HEIGHT
+        })
+      ((width + padding_x).ceil(), total_height.ceil())
+    }
+    @graph.Step =>
+      (
+        (width + padding_x + 2.0 * D2_STEP_WEDGE_WIDTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Callout => {
+      let mut total_height = height + padding_y
+      if total_height < D2_CALLOUT_DEFAULT_TIP_HEIGHT {
+        total_height = total_height * 2.0
+      } else {
+        total_height = total_height + D2_CALLOUT_DEFAULT_TIP_HEIGHT
+      }
+      ((width + padding_x).ceil(), total_height.ceil())
+    }
+    _ => ((width + padding_x).ceil(), (height + padding_y).ceil())
   }
-  let min_width = positive_or(config.default_width * 0.5, 50.0)
-  let min_height = positive_or(config.default_height * 0.6, 40.0)
-  (max_double(width, min_width), max_double(height, min_height))
+}
+
+///|
+fn limit_ar(
+  width : Double,
+  height : Double,
+  aspect_ratio : Double,
+) -> (Double, Double) {
+  let mut w = width
+  let mut h = height
+  if w <= 0.0 && h <= 0.0 {
+    return (1.0, 1.0)
+  }
+  if w <= 0.0 {
+    w = h / aspect_ratio
+  }
+  if h <= 0.0 {
+    h = w / aspect_ratio
+  }
+  if h > 0.0 && w / h > aspect_ratio {
+    h = w / aspect_ratio
+  } else if w > 0.0 && h / w > aspect_ratio {
+    w = h / aspect_ratio
+  }
+  (w, h)
 }
 
 ///|

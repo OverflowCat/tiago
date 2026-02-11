@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="530.5" height="621" viewBox="-100 -100 530.5 621" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="564" height="673" viewBox="-100 -100 564 673" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,23 +27,23 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="118.25" y="0" width="126" height="66" fill="#e8f4f8" stroke="#2196F3" stroke-width="2" rx="0" ry="0"/>
-<path d="M 218.5 211 C 218.5 187 268.9 187 274.5 187 C 280.1 187 330.5 187 330.5 211 L 330.5 229 C 330.5 253 280.1 253 274.5 253 C 268.9 253 218.5 253 218.5 229 L 218.5 211 Z" fill="#fff3e0" stroke="#FF9800" stroke-width="2"/>
-<ellipse cx="274.5" cy="211" rx="56" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 218.5 211 C 218.5 235 268.9 235 274.5 235 C 280.1 235 330.5 235 330.5 211" fill="none" stroke="#FF9800" stroke-width="2"/>
-<rect x="0" y="353" width="176" height="68" fill="#ffebee" stroke="red" stroke-width="2" rx="0" ry="0"/>
-<path d="M 38.5 187 L 137.5 187 C 145.75 187 152.5 203.5 152.5 220 C 152.5 236.5 145.75 253 137.5 253 L 38.5 253 C 30.25 253 23.5 236.5 23.5 220 C 23.5 203.5 30.25 187 38.5 187 Z" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2"/>
-<rect x="226" y="354" width="97" height="66" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 214.16176470588235 66 C 235.4724206114722 87.36778903134208 246.1277485642671 98.05168354701314 267.43840446985695 119.41947257835523 C 267.43840446985695 119.41947257835523 274.5 126.5 274.5 136.5 C 274.5 156.7 274.5 166.8 274.5 187" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
-<rect x="248" y="116" width="53" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="274.5" y="132" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 148.33823529411765 66 C 127.02757938852781 87.36778903134208 116.37225143573289 98.05168354701314 95.06159553014305 119.41947257835523 C 95.06159553014305 119.41947257835523 88 126.5 88 136.5 C 88 156.7 88 166.8 88 187" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 88 253 C 88 293 88 313 88 353" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 274.5 253 C 274.5 293.4 274.5 313.6 274.5 354" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="181.25" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Web Server</text>
-<text x="274.5" y="225.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Database</text>
-<text x="88" y="393.12" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="18" style="fill: #0A0F25">Important Node</text>
-<text x="88" y="225.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Task Queue</text>
-<text x="274.5" y="392.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">3D Box</text>
+<rect x="94" y="0" width="126" height="66" fill="#e8f4f8" stroke="#2196F3" stroke-width="2" rx="0" ry="0"/>
+<path d="M 0 211 C 0 187 49.5 187 55 187 C 60.5 187 110 187 110 211 L 110 281 C 110 305 60.5 305 55 305 C 49.5 305 0 305 0 281 L 0 211 Z" fill="#fff3e0" stroke="#FF9800" stroke-width="2"/>
+<ellipse cx="55" cy="211" rx="55" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 0 211 C 0 235 49.5 235 55 235 C 60.5 235 110 235 110 211" fill="none" stroke="#FF9800" stroke-width="2"/>
+<rect x="189" y="405" width="171" height="68" fill="#ffebee" stroke="red" stroke-width="2" rx="0" ry="0"/>
+<path d="M 200 213 L 349 213 C 357.25 213 364 229.5 364 246 C 364 262.5 357.25 279 349 279 L 200 279 C 191.75 279 185 262.5 185 246 C 185 229.5 191.75 213 200 213 Z" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2"/>
+<rect x="8" y="406" width="94" height="66" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 119.53124658374978 66.85748421804945 C 68.19999999999999 114.30000000000001 55 138.6 55 183" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
+<rect x="43" y="106" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="67.5" y="122" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 209.96875341625022 66.85748421804945 C 261.3 114.30000000000001 274.6 141.8 274.97385676754567 199.00008543448777" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 274.0131576099925 280.9999567188565 C 274.4 339.8 274.5 365 274.5 401" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 55 307 C 55 345 55 362.2 55 387" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="157" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
+<text x="55" y="263.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
+<text x="274.5" y="445.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="18" style="fill: #0A0F25; font-weight: 700">Important Node</text>
+<text x="262.5" y="251.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Task Queue</text>
+<text x="55" y="444.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">3D Box</text>
 </g>
 </svg>

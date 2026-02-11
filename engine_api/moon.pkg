@@ -1,4 +1,5 @@
 import {
   "Milky2018/diago/graph",
   "Milky2018/diago/text_metrics",
+  "moonbitlang/core/math",
 }

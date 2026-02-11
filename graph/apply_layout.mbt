@@ -49,17 +49,19 @@ fn apply_locked_position(obj : ObjectInput, box : Box?) -> Box? {
 fn apply_route_to_edge(
   edge : EdgeInput,
   routes : Map[Int, Array[Point]],
+  edge_curves : Map[Int, Bool],
   edge_labels : Map[Int, Box],
 ) -> EdgeInput {
   let route = match routes.get(edge.index) {
     Some(ps) => ps
     None => edge.route
   }
+  let is_curve = edge_curves.get_or_default(edge.index, edge.is_curve)
   let label_box = match edge_labels.get(edge.index) {
     Some(b) => Some(b)
     None => edge.label_box
   }
-  { ..edge, route, label_box }
+  { ..edge, route, is_curve, label_box }
 }
 
 ///|
@@ -71,7 +73,9 @@ pub fn apply_layout(graph : GraphInput, patch : LayoutPatch) -> GraphInput {
   }
   let edges : Array[EdgeInput] = []
   for e in graph.edges {
-    edges.push(apply_route_to_edge(e, patch.edges, patch.edge_labels))
+    edges.push(
+      apply_route_to_edge(e, patch.edges, patch.edge_curves, patch.edge_labels),
+    )
   }
   {
     ..graph,

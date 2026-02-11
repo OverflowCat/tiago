@@ -88,6 +88,13 @@ priv struct GlyphMetrics {
 }
 
 ///|
+priv struct GlyphScale {
+  metrics : GlyphMetrics
+  scale : Double
+  fixed_scale : Double
+}
+
+///|
 fn lookup_kerning_fixed(
   kind : FontKind,
   left_codepoint : Int,
@@ -110,7 +117,7 @@ fn lookup_kerning_fixed(
 }
 
 ///|
-fn lookup_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
+fn lookup_base_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
   if codepoint >= 0 && codepoint < 256 {
     match kind {
       SansRegular =>
@@ -168,7 +175,53 @@ fn lookup_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
     }
   } else {
     // Use "M" as a conservative fallback for unknown glyphs.
-    lookup_glyph_metrics(kind, 'M'.to_int())
+    lookup_base_glyph_metrics(kind, 'M'.to_int())
+  }
+}
+
+///|
+fn lookup_sized_glyph_metrics(
+  kind : FontKind,
+  codepoint : Int,
+  font_size : Int,
+  default_scale : Double,
+  default_fixed_scale : Double,
+) -> GlyphScale {
+  let base = {
+    metrics: lookup_base_glyph_metrics(kind, codepoint),
+    scale: default_scale,
+    fixed_scale: default_fixed_scale,
+  }
+  if codepoint < 0 || codepoint >= 256 {
+    base
+  } else {
+    match kind {
+      SansRegular =>
+        if font_size == 20 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_regular_sz20[codepoint],
+              x_max: glyph_x_maxs_sans_regular_sz20[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_regular_sz20[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 24 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_regular_sz24[codepoint],
+              x_max: glyph_x_maxs_sans_regular_sz24[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_regular_sz24[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else {
+          base
+        }
+      _ => base
+    }
   }
 }
 
@@ -199,8 +252,17 @@ pub fn measure_text(
   let kind = select_font_kind(is_mono, is_bold, is_italic)
   let scale = font_size.to_double() / BASE_FONT_SIZE.to_double()
   let fixed_scale = scale / 64.0
-  let space_advance_fixed = lookup_glyph_metrics(kind, ' '.to_int()).advance_fixed
-  let tab_width = space_advance_fixed.to_double() * fixed_scale * TAB_SIZE
+  let space = lookup_sized_glyph_metrics(
+    kind,
+    ' '.to_int(),
+    font_size,
+    scale,
+    fixed_scale,
+  )
+  let tab_width = space.metrics.advance_fixed.to_double() *
+    space.fixed_scale *
+    TAB_SIZE
+  let kerning_fixed_scale = space.fixed_scale
   let mut line_count = 0
   let bounds_with_dot = is_mono
   let mut has_area = false
@@ -235,11 +297,14 @@ pub fn measure_text(
         let cp = c.to_int()
         if prev_cp >= 0 {
           let k_fixed = lookup_kerning_fixed(kind, prev_cp, cp)
-          dot_x = dot_x + k_fixed.to_double() * fixed_scale
+          dot_x = dot_x + k_fixed.to_double() * kerning_fixed_scale
         }
-        let m = lookup_glyph_metrics(kind, cp)
-        let left = dot_x + m.x_min.to_double() * scale
-        let right = dot_x + m.x_max.to_double() * scale
+        let sized = lookup_sized_glyph_metrics(
+          kind, cp, font_size, scale, fixed_scale,
+        )
+        let m = sized.metrics
+        let left = dot_x + m.x_min.to_double() * sized.scale
+        let right = dot_x + m.x_max.to_double() * sized.scale
         let is_area = left != right
 
         if bounds_with_dot {
@@ -264,7 +329,7 @@ pub fn measure_text(
           }
         }
 
-        dot_x = dot_x + m.advance_fixed.to_double() * fixed_scale
+        dot_x = dot_x + m.advance_fixed.to_double() * sized.fixed_scale
         prev_cp = cp
 
         if bounds_with_dot {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1219.5" height="977" viewBox="-100 -100 1219.5 977" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="1107" height="1009" viewBox="-90 -100 1107 1009" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,38 +27,38 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<path d="M 311.5 66 H 195.5 v -0.937984496124031 c 0 -11.25581395348837 12.73792093704246 -21.4031007751938 32.778916544655935 -26.26356589147287 C 217.2393850658858 34.87596899224806 210.6156661786237 28.480620155038757 210.6156661786237 21.488372093023255 C 210.6156661786237 9.635658914728682 229.807467057101 0 253.4150805270864 0 c 23.60761346998536 0 42.79941434846266 9.635658914728682 42.79941434846266 21.488372093023255 c 0 6.992248062015503 -6.453879941434846 13.302325581395348 -17.663250366032212 17.3953488372093 c 20.04099560761347 4.8604651162790695 32.778916544655935 15.007751937984496 32.778916544655935 26.26356589147287 v 0.8527131782945736 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="0" y="187" width="530.5" height="590" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="570.5" y="611" width="449" height="166" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 45 685 C 45 661 95.4 661 101 661 C 106.6 661 157 661 157 685 L 157 703 C 157 727 106.6 727 101 727 C 95.4 727 45 727 45 703 L 45 685 Z" fill="#438DD5" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="101" cy="685" rx="56" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 45 685 C 45 709 95.4 709 101 709 C 106.6 709 157 709 157 685" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<rect x="174" y="237" width="159" height="66" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="615.5" y="661" width="170" height="66" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="835.5" y="661" width="139" height="66" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="186.5" y="424" width="134" height="66" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 253.5 66 C 253.5 134.4 253.5 168.6 253.5 237" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="224" y="116" width="59" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="253.5" y="132" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">browses</text>
-<path d="M 253.5 303 C 253.5 351.4 253.5 375.6 253.5 424" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="236" y="353" width="35" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="253.5" y="369" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">calls</text>
-<path d="M 199.6764705882353 490 C 163.61596594339915 512.1092274379815 145.58571362098107 523.1638411569722 109.5252089761449 545.2730685949538 C 109.5252089761449 545.2730685949538 101 550.5 101 560.5 C 101 600.7 101 620.8 101 661" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="57.5" y="540" width="87" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="101" y="556" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
-<path d="M 253.5 490 C 253.5 534.4 253.5 556.6 253.5 601 C 253.5 601 253.5 611 263.33194376566047 612.8256181936238 C 404.1991662593963 638.9821718110288 474.6327775062642 652.0604486197315 615.5 678.2170022371365" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="184.5" y="540" width="138" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="253.5" y="556" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
-<path d="M 314.55882352941177 490 C 355.81635308560266 512.2981445867274 376.44511786369804 523.4472168800912 417.70264741988893 545.7453614668186 C 417.70264741988893 545.7453614668186 426.5 550.5 426.5 560.5 C 426.5 576.7 426.5 584.8 426.5 601 C 426.5 601 426.5 611 436.3528722291752 612.7090666562624 C 596.0117233375051 640.4032874336739 675.8411488916701 654.2503978223796 835.5 681.944618599791" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="362.5" y="540" width="128" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="426.5" y="556" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
-<text x="253.5" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Customer</text>
-<text x="265.25" y="207.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">E-Commerce System</text>
-<text x="795" y="631.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">external</text>
-<text x="101" y="699.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Database</text>
-<text x="253.5" y="275.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Web Application</text>
-<text x="700.5" y="699.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Payment Provider</text>
-<text x="905" y="699.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Email Service</text>
-<text x="253.5" y="462.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">API Gateway</text>
+<path d="M 266 66 H 181 v -0.937984496124031 c 0 -11.25581395348837 9.333821376281113 -21.4031007751938 24.0190336749634 -26.26356589147287 C 196.92972181551977 34.87596899224806 192.07613469985358 28.480620155038757 192.07613469985358 21.488372093023255 C 192.07613469985358 9.635658914728682 206.13909224011712 0 223.43777452415813 0 c 17.298682284040996 0 31.36163982430454 9.635658914728682 31.36163982430454 21.488372093023255 c 0 6.992248062015503 -4.729136163982431 13.302325581395348 -12.942898975109811 17.3953488372093 c 14.685212298682286 4.8604651162790695 24.0190336749634 15.007751937984496 24.0190336749634 26.26356589147287 v 0.8527131782945736 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="10" y="207" width="324" height="602" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="485" y="657" width="432" height="126" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="156" y="424" width="136" height="66" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 40 685 C 40 661 89.5 661 95 661 C 100.5 661 150 661 150 685 L 150 755 C 150 779 100.5 779 95 779 C 89.5 779 40 779 40 755 L 40 685 Z" fill="#438DD5" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="95" cy="685" rx="55" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 40 685 C 40 709 89.5 709 95 709 C 100.5 709 150 709 150 685" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="144" y="237" width="160" height="66" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="515" y="687" width="173" height="66" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="748" y="687" width="139" height="66" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 223.5 93.5 C 223.5 119.5 223.5 197 223.5 233" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="196" y="154" width="55" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="223.5" y="170" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">browses</text>
+<path d="M 223.5 304.5 C 223.5 351.3 223.5 375.7 223.5 420.5" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="208" y="353" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="223.5" y="369" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">calls</text>
+<path d="M 176.3884254659515 490.6844101997224 C 111.6 538.3 95 621 95 657" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="66" y="548" width="83" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="107.5" y="564" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
+<path d="M 223.5 491.5 C 223.5 538.3 281.7 627.8047682119205 510.65699250420266 693.9142044581671" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="256" y="629" width="134" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="323" y="645" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
+<path d="M 278.188046631467 490.57261296374463 C 353.3 538.3 447.5 629.3914510686164 743.6150994013628 702.0046025528651" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="428" y="629" width="124" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="490" y="645" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
+<text x="223.5" y="87" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Customer</text>
+<text x="172" y="194" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
+<text x="701" y="644" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>
+<text x="224" y="462.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">API Gateway</text>
+<text x="95" y="737.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
+<text x="224" y="275.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Application</text>
+<text x="601.5" y="725.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Payment Provider</text>
+<text x="817.5" y="725.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Email Service</text>
 </g>
 </svg>

@@ -51,8 +51,8 @@
 <path d="M 385 648 L 216 648" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="240" y="638" width="119" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="299.5" y="654" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Another response</text>
-<text x="62" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Alice</text>
-<text x="212" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Bob</text>
-<text x="387" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Server</text>
+<text x="62" y="90.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Alice</text>
+<text x="212" y="90.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Bob</text>
+<text x="387" y="90.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Server</text>
 </g>
 </svg>

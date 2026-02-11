@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="558" height="598" viewBox="-100 -100 558 598" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="568" height="598" viewBox="-100 -100 568 598" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,16 +27,16 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="124.5" y="0" width="99" height="66" fill="#2196F3" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="122.5" y="166" width="103" height="66" fill="#FF9800" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="194" y="332" width="164" height="66" fill="#4CAF50" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="0" y="332" width="144" height="66" fill="#f44336" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 174 66 C 174 106 174 126 174 166" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 214.55421686746988 232 C 236.02993580570237 249.47533992032643 246.76779527481858 258.21300988048966 268.24351421305107 275.68834980081607 C 268.24351421305107 275.68834980081607 276 282 276 292 C 276 308 276 316 276 332" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 133.44578313253012 232 C 111.97006419429766 249.47533992032643 101.23220472518142 258.21300988048966 79.75648578694896 275.68834980081607 C 79.75648578694896 275.68834980081607 72 282 72 292 C 72 308 72 316 72 332" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="174" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Header</text>
-<text x="174" y="204.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Sidebar</text>
-<text x="276" y="370.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Success Message</text>
-<text x="72" y="370.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Error Message</text>
+<rect x="141" y="0" width="96" height="66" fill="#2196F3" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="138" y="166" width="101" height="66" fill="#FF9800" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="332" width="164" height="66" fill="#4CAF50" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="224" y="332" width="144" height="66" fill="#f44336" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 189 68 C 189 106 189 126 189 162" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 144.42395125255086 233.23128808394463 C 94.8 272 82 292 82 328" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 233.57604874744914 233.23128808394463 C 283.2 272 296 292 296 328" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="189" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
+<text x="188.5" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Sidebar</text>
+<text x="82" y="370.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Success Message</text>
+<text x="296" y="370.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Error Message</text>
 </g>
 </svg>
