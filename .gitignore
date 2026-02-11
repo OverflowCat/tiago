@@ -9,6 +9,7 @@ TODO.md
 AGENTS.md
 CLAUDE.md
 _build/
+target
 examples/diago-output/*.svg
 examples/diago-output/*.routes.diff
 examples/diago-output/*.boxes.diff
