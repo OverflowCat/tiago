@@ -190,6 +190,14 @@ fn style_double(value : @graph.StyleValue?, default : Double) -> Double {
 }
 
 ///|
+fn style_int(value : @graph.StyleValue?, default : Int) -> Int {
+  match value {
+    Some(v) => v.as_int().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
 fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
   match value {
     Some(v) => v.as_bool().unwrap_or(default)
@@ -518,6 +526,9 @@ pub fn render_svg(
       use_css_theme_vars,
       pass=Background,
     )
+  }
+  if graph.root.shape_type == @graph.SequenceDiagram {
+    render_sequence_lifelines(svg, graph, light_theme, use_css_theme_vars)
   }
   // Pass 2: Render edges (on top of backgrounds, behind text)
   for edge in graph.connections {
@@ -3078,11 +3089,9 @@ fn render_svg_edge(
     // Use precomputed label_box from the layout pipeline.
     match edge.label_box {
       Some(label_box) => {
-        // D2's golden SVGs position edge label `y` at the text baseline.
-        // Our layout pipeline stores `label_box` as a top-left box, so render
-        // text at the bottom edge to match the baseline convention used by D2.
         let cx = label_box.x + label_box.width / 2.0
-        let baseline_y = label_box.y + label_box.height
+        let label_font_size = style_int(edge.style.font_size, config.font_size)
+        let baseline_y = label_box.y + label_font_size.to_double()
         svg.add(
           @svg.rect(
             label_box.x,
@@ -3095,16 +3104,28 @@ fn render_svg_edge(
             ry=Some(3.0),
           ),
         )
-        let text_color = resolve_theme_color("N1", theme, use_css_theme_vars)
+        let text_color = style_color(
+          edge.style.font_color,
+          "N2",
+          theme,
+          use_css_theme_vars,
+        )
+        let text_styles : Array[String] = ["fill: \{text_color}"]
+        if style_bool(edge.style.italic, true) {
+          text_styles.push("font-style: italic")
+        }
+        if style_bool(edge.style.bold, false) {
+          text_styles.push("font-weight: 700")
+        }
         svg.add(
           @svg.styled_text(
             cx,
             baseline_y,
             edge.label,
             font_family=config.font_family,
-            font_size=config.font_size - 2,
+            font_size=label_font_size,
             dominant_baseline="alphabetic",
-            extra_style="fill: \{text_color}",
+            extra_style=text_styles.join("; "),
           ),
         )
       }
@@ -3117,6 +3138,96 @@ fn render_svg_edge(
   // Close sketch filter group if opened
   if use_sketch {
     svg.close_group()
+  }
+}
+
+///|
+fn sequence_participant_ids_for_render(graph : Diagram) -> Array[String] {
+  let object_ids : Map[String, Bool] = {}
+  for obj in graph.shapes {
+    object_ids[obj.id] = true
+  }
+  if !graph.root.child_ids.is_empty() {
+    let ids : Array[String] = []
+    for id in graph.root.child_ids {
+      if object_ids.contains(id) {
+        ids.push(id)
+      }
+    }
+    if !ids.is_empty() {
+      return ids
+    }
+  }
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.shapes {
+    for child_id in obj.child_ids {
+      child_ids[child_id] = true
+    }
+  }
+  let ids : Array[String] = []
+  for obj in graph.shapes {
+    if !child_ids.contains(obj.id) {
+      ids.push(obj.id)
+    }
+  }
+  ids
+}
+
+///|
+fn render_sequence_lifelines(
+  svg : @svg.Svg,
+  graph : Diagram,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+) -> Unit {
+  let ids = sequence_participant_ids_for_render(graph)
+  if ids.is_empty() {
+    return
+  }
+  let object_by_id : Map[String, Shape] = {}
+  for obj in graph.shapes {
+    object_by_id[obj.id] = obj
+  }
+  let mut max_message_y = -1.0
+  for edge in graph.connections {
+    for p in edge.route {
+      if p.y > max_message_y {
+        max_message_y = p.y
+      }
+    }
+  }
+  let stroke = resolve_theme_color("B2", theme, use_css_theme_vars)
+  for id in ids {
+    match object_by_id.get(id) {
+      Some(obj) =>
+        match obj.box {
+          Some(box) => {
+            let x = box.x + box.width / 2.0
+            let start_y = box.y + box.height + 2.0
+            let end_y = if max_message_y >= 0.0 {
+              max_message_y + 69.0
+            } else {
+              start_y + 120.0
+            }
+            let d = @svg.PathBuilder::new()
+              .move_to(x, start_y)
+              .line_to(x, end_y)
+              .build()
+            svg.add(
+              @xml_emit.Element::new("path")
+              .attr("d", d)
+              .attr("stroke", stroke)
+              .attr("fill", "none")
+              .attr_num("stroke-width", 2.0)
+              .attr("stroke-dasharray", "12,11.838767")
+              .self_close()
+              .build(),
+            )
+          }
+          None => ()
+        }
+      None => ()
+    }
   }
 }
 

@@ -41,6 +41,9 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   config,
   direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  if graph.root.shape_type == @graph.SequenceDiagram {
+    return layout_sequence_diagram(graph, config)
+  }
   let (
     dagre_graph,
     edge_layout_by_key,
@@ -55,6 +58,228 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   )
   fill_patch_edges(patch, dagre_graph, edge_layout_by_key)
   patch
+}
+
+///|
+fn layout_sequence_diagram(
+  graph : @graph.GraphInput,
+  config : @engine_api.LayoutConfig,
+) -> @graph.LayoutPatch {
+  let patch = @graph.LayoutPatch::new()
+  copy_passthrough_layout_data(patch, graph)
+
+  let participant_ids = sequence_participant_ids(graph)
+  if participant_ids.is_empty() {
+    return patch
+  }
+
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+
+  let widths : Array[Double] = []
+  let heights : Array[Double] = []
+  for id in participant_ids {
+    match object_by_id.get(id) {
+      Some(obj) => {
+        let (w0, h0) = object_size(obj, config)
+        let width = if w0 < 100.0 { 100.0 } else { w0 }
+        let height = if h0 < 66.0 { 66.0 } else { h0 }
+        widths.push(width)
+        heights.push(height)
+      }
+      None => {
+        widths.push(100.0)
+        heights.push(66.0)
+      }
+    }
+  }
+
+  let centers : Array[Double] = []
+  if !widths.is_empty() {
+    centers.push(12.0 + widths[0] / 2.0)
+    for i = 1; i < widths.length(); i = i + 1 {
+      let base_gap = widths[i - 1] / 2.0 + widths[i] / 2.0 + 50.0
+      centers.push(centers[i - 1] + base_gap)
+    }
+  }
+
+  let participant_index_by_id : Map[String, Int] = {}
+  for i, id in participant_ids {
+    participant_index_by_id[id] = i
+  }
+
+  for edge in graph.edges {
+    let src_index = match participant_index_by_id.get(edge.src_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_index = match participant_index_by_id.get(edge.dst_id) {
+      Some(v) => v
+      None => continue
+    }
+    if src_index == dst_index {
+      continue
+    }
+    let left = if src_index < dst_index { src_index } else { dst_index }
+    let right = if src_index < dst_index { dst_index } else { src_index }
+    let (label_width, _) = sequence_edge_label_size(edge)
+    let required_span = if label_width > 0.0 { label_width + 56.0 } else { 0.0 }
+    let current_span = centers[right] - centers[left]
+    if required_span > current_span {
+      let delta = required_span - current_span
+      for i = right; i < centers.length(); i = i + 1 {
+        centers[i] = centers[i] + delta
+      }
+    }
+  }
+
+  let participant_top = 52.0
+  for i, id in participant_ids {
+    let width = widths[i]
+    let height = heights[i]
+    patch.nodes[id] = @graph.Box::new(
+      centers[i] - width / 2.0,
+      participant_top,
+      width,
+      height,
+    )
+  }
+
+  let max_participant_height = array_max(heights, 66.0)
+  let lifeline_start_y = participant_top + max_participant_height + 2.0
+  let first_message_y = lifeline_start_y + 78.0
+  let message_gap = 90.0
+
+  for i, edge in graph.edges {
+    let src_index = match participant_index_by_id.get(edge.src_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_index = match participant_index_by_id.get(edge.dst_id) {
+      Some(v) => v
+      None => continue
+    }
+
+    let src_x = centers[src_index]
+    let dst_x = centers[dst_index]
+    let y = first_message_y + i.to_double() * message_gap
+    let start_x = if src_x < dst_x { src_x + 2.0 } else { src_x - 2.0 }
+    let end_x = if src_x < dst_x { dst_x - 4.0 } else { dst_x + 4.0 }
+    patch.edges[edge.index] = [
+      @graph.Point::new(start_x, y),
+      @graph.Point::new(end_x, y),
+    ]
+
+    if edge.label != "" {
+      let (label_width, label_height) = sequence_edge_label_size(edge)
+      let center_x = (src_x + dst_x) / 2.0
+      patch.edge_labels[edge.index] = @graph.Box::new(
+        center_x - label_width / 2.0,
+        y - 10.0,
+        label_width,
+        label_height,
+      )
+    }
+  }
+
+  patch
+}
+
+///|
+fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
+  if !graph.root.child_ids.is_empty() {
+    let ids : Array[String] = []
+    let exists : Map[String, Bool] = {}
+    for obj in graph.objects {
+      exists[obj.id] = true
+    }
+    for id in graph.root.child_ids {
+      if exists.contains(id) {
+        ids.push(id)
+      }
+    }
+    if !ids.is_empty() {
+      return ids
+    }
+  }
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      child_ids[child_id] = true
+    }
+  }
+  let ids : Array[String] = []
+  for obj in graph.objects {
+    if !child_ids.contains(obj.id) {
+      ids.push(obj.id)
+    }
+  }
+  ids
+}
+
+///|
+fn sequence_edge_label_size(edge : @graph.EdgeInput) -> (Double, Double) {
+  match edge.label_box {
+    Some(box) =>
+      if box.width > 0.0 && box.height > 0.0 {
+        (box.width, box.height)
+      } else {
+        fallback_sequence_edge_label_size(edge)
+      }
+    None => fallback_sequence_edge_label_size(edge)
+  }
+}
+
+///|
+fn fallback_sequence_edge_label_size(
+  edge : @graph.EdgeInput,
+) -> (Double, Double) {
+  if edge.label.is_empty() {
+    return (0.0, 0.0)
+  }
+  let font_size = match edge.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(edge.style.bold, false)
+  let is_italic = style_bool(edge.style.italic, true)
+  let is_mono = style_is_mono(edge.style.font_family)
+  let dims = @text_metrics.measure_label(
+    edge.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let width = if dims.width > 0.0 {
+    dims.width + 4.0
+  } else {
+    edge.label.length().to_double() * 7.0 + 12.0
+  }
+  let text_height = if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double() + 5.0
+  }
+  let min_height = font_size.to_double() + 5.0
+  let height = if text_height < min_height { min_height } else { text_height }
+  (width, height)
+}
+
+///|
+fn array_max(values : Array[Double], fallback : Double) -> Double {
+  if values.is_empty() {
+    return fallback
+  }
+  let mut out = values[0]
+  for v in values {
+    if v > out {
+      out = v
+    }
+  }
+  out
 }
 
 ///|
@@ -635,17 +860,45 @@ fn edge_label_size(edge : @graph.EdgeInput) -> (Double, Double)? {
       if width > 0.0 && height > 0.0 {
         Some((width, height))
       } else {
-        None
+        fallback_edge_label_size(edge)
       }
     }
-    None =>
-      if edge.label.is_empty() {
-        None
-      } else {
-        let width = edge.label.length().to_double() * 7.0 + 12.0
-        Some((width, 16.0))
-      }
+    None => fallback_edge_label_size(edge)
   }
+}
+
+///|
+fn fallback_edge_label_size(edge : @graph.EdgeInput) -> (Double, Double)? {
+  if edge.label.is_empty() {
+    return None
+  }
+  let font_size = match edge.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(edge.style.bold, false)
+  let is_italic = style_bool(edge.style.italic, true)
+  let is_mono = style_is_mono(edge.style.font_family)
+  let dims = @text_metrics.measure_label(
+    edge.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let width = if dims.width > 0.0 {
+    dims.width + 4.0
+  } else {
+    edge.label.length().to_double() * 7.0 + 12.0
+  }
+  let text_height = if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double() + 5.0
+  }
+  let min_height = font_size.to_double() + 5.0
+  let height = if text_height < min_height { min_height } else { text_height }
+  Some((width, height))
 }
 
 ///|

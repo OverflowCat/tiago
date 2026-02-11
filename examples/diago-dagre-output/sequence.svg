@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="632.25" height="630" viewBox="-66 -100 632.25 630" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="625" height="796" viewBox="-88 -48 625 796" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,29 +27,32 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="108.75" y="0" width="83" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="347.5" y="182" width="77" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="193" y="364" width="94" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 191.75 49.019088016967125 C 265.71835412445796 77.57102958780774 302.70253118668694 91.84700037322804 376.6708853111449 120.39894194406865 C 376.6708853111449 120.39894194406865 386 124 386 134 C 386 153.2 386 162.8 386 182" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="362.5" y="116" width="47" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="386" y="132" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Hello</text>
-<path d="M 347.5 202.2367941712204 C 256.8968028432099 172.20076159829546 211.5952042648149 157.182745311833 120.99200710802482 127.14671273890805 C 120.99200710802482 127.14671273890805 111.5 124 115.41782822986532 114.7994227376066 C 123.72981781704007 95.27965364256396 127.88581261062744 85.51976909504265 136.1978021978022 66" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="74" y="116" width="75" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="111.5" y="132" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Hi there!</text>
-<path d="M 164.3021978021978 66 C 172.61418738937257 85.51976909504265 176.77018218295993 95.27965364256396 185.0821717701347 114.7994227376066 C 185.0821717701347 114.7994227376066 189 124 189 134 C 189 198.8 189 231.2 189 296 C 189 296 189 306 193.88895247230118 314.7234249995962 C 204.9355692855785 334.43405499975773 210.4588776922172 344.28936999983847 221.5054945054945 364" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="141" y="207" width="96" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="189" y="223" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Request data</text>
-<path d="M 193 376.2378640776699 C 133.0588991019927 349.75902824408416 103.08834865298905 336.5196103272913 43.147247754981755 310.04077449370556 C 43.147247754981755 310.04077449370556 34 306 34 296 C 34 231.2 34 198.8 34 134 C 34 134 34 124 41.87433527253551 117.8360042167679 C 68.6246011635213 96.89601113221127 81.9997341090142 86.42601458993298 108.75 65.48602150537634" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="0" y="207" width="68" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="34" y="223" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Response</text>
-<path d="M 415.10164835164835 248 C 432.9153203428823 268.19992711778553 441.8221563384993 278.29989067667833 459.6358283297333 298.49981779446387 C 459.6358283297333 298.49981779446387 466.25 306 456.9723199702548 309.7315751721848 C 388.98339198215285 337.07739814198493 354.9889279881019 350.750309626885 287 378.0961325966851" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="407.75" y="298" width="117" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="466.25" y="314" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Another request</text>
-<path d="M 263.8434065934066 364 C 278.2634313581631 344.0422470936451 285.47344374054126 334.06337064046755 299.89346850529773 314.1056177341126 C 299.89346850529773 314.1056177341126 305.75 306 312.3641716702667 298.49981779446387 C 330.1778436615007 278.29989067667833 339.0846796571177 268.19992711778553 356.89835164835165 248" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="243.75" y="298" width="124" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="305.75" y="314" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">Another response</text>
-<text x="150.25" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Alice</text>
-<text x="386" y="220.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Bob</text>
-<text x="240" y="402.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Server</text>
+<rect x="12" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="162" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="337" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 62 120 L 62 717" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
+<path d="M 212 120 L 212 717" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
+<path d="M 387 120 L 387 717" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
+<path d="M 64 198 L 208 198" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="118" y="188" width="38" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="137" y="204" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Hello</text>
+<path d="M 210 288 L 66 288" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="106.5" y="278" width="61" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="137" y="294" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Hi there!</text>
+<path d="M 64 378 L 383 378" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="178.5" y="368" width="92" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="224.5" y="384" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Request data</text>
+<path d="M 385 468 L 66 468" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="191" y="458" width="67" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="224.5" y="474" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Response</text>
+<path d="M 214 558 L 383 558" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="244" y="548" width="111" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="299.5" y="564" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Another request</text>
+<path d="M 385 648 L 216 648" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="240" y="638" width="119" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="299.5" y="654" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Another response</text>
+<text x="62" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Alice</text>
+<text x="212" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Bob</text>
+<text x="387" y="90.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Server</text>
 </g>
 </svg>

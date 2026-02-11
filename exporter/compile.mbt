@@ -603,6 +603,7 @@ pub fn compile(
   compile_steps(graph, ir, classes)
   // Handle root-level shape (e.g., shape: sequence_diagram)
   handle_root_shape(graph, ir)
+  apply_sequence_defaults(graph)
   // Compile D2 legend (vars.d2-legend)
   compile_legend(graph, ir, classes)
   // Semantic validation pass aligned with D2 compiler behavior.
@@ -2285,5 +2286,43 @@ fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
         None => ()
       }
     None => ()
+  }
+}
+
+///|
+fn apply_sequence_defaults(graph : Graph) -> Unit {
+  if graph.root.shape_type != ShapeType::SequenceDiagram {
+    return
+  }
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child in obj.children {
+      child_ids[child.id] = true
+    }
+  }
+  for obj in graph.objects {
+    if child_ids.contains(obj.id) {
+      continue
+    }
+    if obj.style.fill is None {
+      obj.style.fill = Some("B5")
+    }
+    if obj.style.stroke is None {
+      obj.style.stroke = Some("B1")
+    }
+  }
+  for edge in graph.edges {
+    if edge.style.stroke is None {
+      edge.style.stroke = Some("B1")
+    }
+    if edge.style.font_color is None {
+      edge.style.font_color = Some("N2")
+    }
+    if edge.style.italic is None {
+      edge.style.italic = Some(true)
+    }
+    if edge.style.curved is None {
+      edge.style.curved = Some(false)
+    }
   }
 }

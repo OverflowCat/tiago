@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="817" height="548" viewBox="-100 -100 817 548" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="817" height="553" viewBox="-100 -100 817 553" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -29,18 +29,18 @@
 <g id="base-layer">
 <rect x="0" y="0" width="473" height="166" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="518" y="50" width="99" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 533.5 306 C 533.5 282 564.1 282 567.5 282 C 570.9 282 601.5 282 601.5 306 L 601.5 324 C 601.5 348 570.9 348 567.5 348 C 564.1 348 533.5 348 533.5 324 L 533.5 306 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="567.5" cy="306" rx="34" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 533.5 306 C 533.5 330 564.1 330 567.5 330 C 570.9 330 601.5 330 601.5 306" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 533.5 311 C 533.5 287 564.1 287 567.5 287 C 570.9 287 601.5 287 601.5 311 L 601.5 329 C 601.5 353 570.9 353 567.5 353 C 564.1 353 533.5 353 533.5 329 L 533.5 311 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="567.5" cy="311" rx="34" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 533.5 311 C 533.5 335 564.1 335 567.5 335 C 570.9 335 601.5 335 601.5 311" fill="none" stroke="#0A0F25" stroke-width="2"/>
 <rect x="45" y="50" width="75" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="170" y="50" width="111" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="331" y="50" width="97" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 567.5 116 C 567.5 182.4 567.5 215.6 567.5 282" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="544" y="216" width="47" height="16" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="567.5" y="232" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14" style="fill: #0A0F25">reads</text>
+<path d="M 567.5 116 C 567.5 184.4 567.5 218.6 567.5 287" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="546.5" y="216" width="42" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="567.5" y="232" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads</text>
 <text x="236.5" y="20.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">legend</text>
 <text x="567.5" y="88.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Service</text>
-<text x="567.5" y="320.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">DB</text>
+<text x="567.5" y="325.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">DB</text>
 <text x="82.5" y="88.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Key</text>
 <text x="225.5" y="88.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">top-right</text>
 <text x="379.5" y="88.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">entries</text>
