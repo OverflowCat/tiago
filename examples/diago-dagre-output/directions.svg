@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="780" height="650" viewBox="-50 -50 780 650" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="354" height="2492" viewBox="-100 -100 354 2492" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,48 +27,48 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="410" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="410" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="410" y="310" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="410" y="440" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="170" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="170" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="170" y="310" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="290" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="290" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="290" y="310" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="310" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="530" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="530" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="530" y="310" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 460 110 L 460 145 L 460 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 460 240 L 460 275 L 460 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 460 370 L 460 405 L 460 440" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 100 110 L 100 145 L 100 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 100 240 L 100 275 L 100 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 220 110 L 220 145 L 220 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 220 240 L 220 275 L 220 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 340 110 L 340 145 L 340 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 340 240 L 340 275 L 340 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 580 110 L 580 145 L 580 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 580 240 L 580 275 L 580 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="460" y="65.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Down (default)</text>
-<text x="460" y="195.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Right</text>
-<text x="460" y="325.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Left</text>
-<text x="460" y="455.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Up</text>
-<text x="220" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">a</text>
-<text x="220" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">b</text>
-<text x="220" y="340" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">c</text>
-<text x="100" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">b</text>
-<text x="340" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">a</text>
-<text x="340" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">b</text>
-<text x="340" y="340" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">c</text>
-<text x="100" y="340" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">c</text>
-<text x="580" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">a</text>
-<text x="580" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">b</text>
-<text x="580" y="340" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">c</text>
-<text x="100" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">a</text>
+<rect x="0" y="0" width="154" height="498" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="598" width="154" height="498" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="1196" width="154" height="498" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="1794" width="154" height="498" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="648" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51" y="814" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="980" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51" y="216" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="1246" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51" y="1412" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="1578" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="382" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="1844" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51" y="2010" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="2176" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="51.5" y="50" width="57" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 80 498 C 80 538 80 558 80 598" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 1096 C 80 1136 80 1156 80 1196" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 1694 C 80 1734 80 1754 80 1794" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 116 C 80 156 80 176 80 216" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 282 C 80 322 80 342 80 382" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 714 C 80 754 80 774 80 814" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 880 C 80 920 80 940 80 980" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 1312 C 80 1352 80 1372 80 1412" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 1478 C 80 1518 80 1538 80 1578" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 1910 C 80 1950 80 1970 80 2010" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 80 2076 C 80 2116 80 2136 80 2176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="77" y="20.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Down (default)</text>
+<text x="77" y="618.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Right</text>
+<text x="77" y="1216.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Left</text>
+<text x="77" y="1814.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Up</text>
+<text x="80" y="686.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">a</text>
+<text x="80" y="852.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">b</text>
+<text x="80" y="1018.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">c</text>
+<text x="80" y="254.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">b</text>
+<text x="80" y="1284.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">a</text>
+<text x="80" y="1450.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">b</text>
+<text x="80" y="1616.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">c</text>
+<text x="80" y="420.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">c</text>
+<text x="80" y="1882.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">a</text>
+<text x="80" y="2048.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">b</text>
+<text x="80" y="2214.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">c</text>
+<text x="80" y="88.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">a</text>
 </g>
 </svg>

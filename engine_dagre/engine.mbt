@@ -28,20 +28,32 @@ pub fn DagreEngine::new() -> DagreEngine {
 }
 
 ///|
+priv struct EdgeLayoutInfo {
+  edge_index : Int
+  src_id : String
+  dst_id : String
+}
+
+///|
 pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   _self,
   graph,
   config,
   direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
-  let (dagre_graph, edge_index_by_key, node_size_by_id) = build_dagre_graph(
-    graph, config, direction,
-  )
+  let (
+    dagre_graph,
+    edge_layout_by_key,
+    node_size_by_id,
+    dagre_node_id_by_object_id,
+  ) = build_dagre_graph(graph, config, direction)
   ignore(@moon_dagre.layout(dagre_graph))
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
-  fill_patch_nodes(patch, dagre_graph, graph, node_size_by_id, config)
-  fill_patch_edges(patch, dagre_graph, edge_index_by_key)
+  fill_patch_nodes(
+    patch, dagre_graph, graph, node_size_by_id, dagre_node_id_by_object_id, config,
+  )
+  fill_patch_edges(patch, dagre_graph, edge_layout_by_key)
   patch
 }
 
@@ -66,54 +78,98 @@ fn build_dagre_graph(
   graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
-) -> (@moon_dagre.Graph, Map[String, Int], Map[String, (Double, Double)]) raise @engine_api.LayoutError {
+) -> (
+  @moon_dagre.Graph,
+  Map[String, EdgeLayoutInfo],
+  Map[String, (Double, Double)],
+  Map[String, String],
+) raise @engine_api.LayoutError {
   let dagre_graph = @moon_dagre.new_graph(multigraph=true, compound=true)
   dagre_graph.set_graph(make_dagre_graph_attrs(config, direction))
 
   let node_ids : Map[String, Bool] = {}
   let node_size_by_id : Map[String, (Double, Double)] = {}
-  for obj in graph.objects {
+  let dagre_node_id_by_object_id : Map[String, String] = {}
+  for i, obj in graph.objects {
     node_ids[obj.id] = true
-    let node_attrs = @moon_dagre.empty_attrs()
+    let dagre_id = dagre_node_id(i, obj.id)
+    dagre_node_id_by_object_id[obj.id] = dagre_id
     let (width, height) = object_size(obj, config)
     node_size_by_id[obj.id] = (width, height)
+    let node_attrs = @moon_dagre.empty_attrs()
     node_attrs.set_float("width", width)
     node_attrs.set_float("height", height)
-    dagre_graph.set_node(obj.id, label=node_attrs)
+    dagre_graph.set_node(dagre_id, label=node_attrs)
   }
 
-  let risky_parent_ids = find_risky_compound_parent_ids(graph)
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+  let parent_id_by_child_id : Map[String, String] = {}
   for parent in graph.objects {
-    if risky_parent_ids.contains(parent.id) {
-      continue
+    for child_id in parent.child_ids {
+      parent_id_by_child_id[child_id] = parent.id
+    }
+  }
+
+  for parent in graph.objects {
+    let parent_dagre_id = match dagre_node_id_by_object_id.get(parent.id) {
+      Some(v) => v
+      None => continue
     }
     for child_id in parent.child_ids {
       if child_id == parent.id || !node_ids.contains(child_id) {
         continue
       }
-      dagre_graph.set_parent(child_id, parent=parent.id)
+      match dagre_node_id_by_object_id.get(child_id) {
+        Some(child_dagre_id) =>
+          dagre_graph.set_parent(child_dagre_id, parent=parent_dagre_id)
+        None => ()
+      }
     }
   }
 
-  let edge_index_by_key : Map[String, Int] = {}
+  let edge_layout_by_key : Map[String, EdgeLayoutInfo] = {}
   for edge in graph.edges {
-    if !node_ids.contains(edge.src_id) || !node_ids.contains(edge.dst_id) {
+    let (layout_src_id, layout_dst_id) = resolve_edge_layout_endpoints(
+      graph, edge, object_by_id, parent_id_by_child_id,
+    )
+    if !node_ids.contains(layout_src_id) || !node_ids.contains(layout_dst_id) {
       raise @engine_api.invalid_graph(
-        "dagre edge endpoint not found: \{edge.src_id} -> \{edge.dst_id}",
+        "dagre edge endpoint not found: \{layout_src_id} -> \{layout_dst_id}",
       )
+    }
+    let src_dagre_id = match dagre_node_id_by_object_id.get(layout_src_id) {
+      Some(v) => v
+      None =>
+        raise @engine_api.invalid_graph(
+          "dagre edge endpoint not found: \{layout_src_id} -> \{layout_dst_id}",
+        )
+    }
+    let dst_dagre_id = match dagre_node_id_by_object_id.get(layout_dst_id) {
+      Some(v) => v
+      None =>
+        raise @engine_api.invalid_graph(
+          "dagre edge endpoint not found: \{layout_src_id} -> \{layout_dst_id}",
+        )
     }
     let edge_name = "e\{edge.index}"
     let edge_attrs = make_dagre_edge_attrs(edge)
     dagre_graph.set_edge(
-      edge.src_id,
-      edge.dst_id,
+      src_dagre_id,
+      dst_dagre_id,
       label=@moon_dagre.attrs_value(edge_attrs),
       name=edge_name,
     )
-    edge_index_by_key[dagre_edge_key(edge.src_id, edge.dst_id, Some(edge_name))] = edge.index
+    edge_layout_by_key[dagre_edge_key(
+      src_dagre_id,
+      dst_dagre_id,
+      Some(edge_name),
+    )] = { edge_index: edge.index, src_id: edge.src_id, dst_id: edge.dst_id }
   }
 
-  (dagre_graph, edge_index_by_key, node_size_by_id)
+  (dagre_graph, edge_layout_by_key, node_size_by_id, dagre_node_id_by_object_id)
 }
 
 ///|
@@ -127,8 +183,9 @@ fn make_dagre_graph_attrs(
   attrs.set_float("nodesep", nodesep)
   attrs.set_float("ranksep", ranksep)
   attrs.set_float("edgesep", clamp_positive(config.edge_padding, 20.0))
-  attrs.set_float("marginx", clamp_positive(config.container_padding, 0.0))
-  attrs.set_float("marginy", clamp_positive(config.container_padding, 0.0))
+  // D2 dagre output does not add graph-level margin here.
+  attrs.set_float("marginx", 0.0)
+  attrs.set_float("marginy", 0.0)
   attrs
 }
 
@@ -137,17 +194,31 @@ fn spacing_for_direction(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> (Double, Double) {
+  let nodesep = d2_nodesep(config.horizontal_spacing)
+  let ranksep = d2_ranksep(config.vertical_spacing)
   match direction {
-    Down | Up =>
-      (
-        clamp_positive(config.horizontal_spacing, 50.0),
-        clamp_positive(config.vertical_spacing, 50.0),
-      )
-    Right | Left =>
-      (
-        clamp_positive(config.vertical_spacing, 50.0),
-        clamp_positive(config.horizontal_spacing, 50.0),
-      )
+    Down | Up => (nodesep, ranksep)
+    Right | Left => (ranksep, nodesep)
+  }
+}
+
+///|
+fn d2_nodesep(value : Double) -> Double {
+  let base = clamp_positive(value, 50.0)
+  if base < 50.0 {
+    50.0
+  } else {
+    base
+  }
+}
+
+///|
+fn d2_ranksep(value : Double) -> Double {
+  let base = clamp_positive(value, 100.0)
+  if base < 100.0 {
+    100.0
+  } else {
+    base
   }
 }
 
@@ -162,6 +233,275 @@ fn rankdir_from_direction(direction : @engine_api.Direction) -> String {
 }
 
 ///|
+fn resolve_edge_layout_endpoints(
+  graph : @graph.GraphInput,
+  edge : @graph.EdgeInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> (String, String) {
+  let src = resolve_container_endpoint(
+    graph,
+    edge.src_id,
+    true,
+    object_by_id,
+    parent_id_by_child_id,
+  )
+  let dst = resolve_container_endpoint(
+    graph,
+    edge.dst_id,
+    false,
+    object_by_id,
+    parent_id_by_child_id,
+  )
+  if edge.src_arrow && !edge.dst_arrow {
+    (dst, src)
+  } else {
+    (src, dst)
+  }
+}
+
+///|
+fn resolve_container_endpoint(
+  graph : @graph.GraphInput,
+  id : String,
+  source : Bool,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> String {
+  let mut endpoint = id
+  while true {
+    let obj = match object_by_id.get(endpoint) {
+      Some(v) => v
+      None => break
+    }
+    if !is_layout_container_candidate(obj) {
+      break
+    }
+    let next = if source {
+      get_longest_edge_chain_tail_id(
+        graph, obj, object_by_id, parent_id_by_child_id,
+      )
+    } else {
+      get_longest_edge_chain_head_id(
+        graph, obj, object_by_id, parent_id_by_child_id,
+      )
+    }
+    if next == endpoint {
+      break
+    }
+    endpoint = next
+  }
+  endpoint
+}
+
+///|
+fn is_layout_container_candidate(obj : @graph.ObjectInput) -> Bool {
+  !obj.child_ids.is_empty() &&
+  obj.shape_type != @graph.Class &&
+  obj.shape_type != @graph.SqlTable
+}
+
+///|
+fn get_longest_edge_chain_head_id(
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> String {
+  let children : Array[String] = []
+  let child_set : Map[String, Bool] = {}
+  for child_id in container.child_ids {
+    if object_by_id.contains(child_id) {
+      children.push(child_id)
+      child_set[child_id] = true
+    }
+  }
+  if children.is_empty() {
+    return container.id
+  }
+
+  let rank : Map[String, Int] = {}
+  let chain_length : Map[String, Int] = {}
+  for child_id in children {
+    let mut is_head = true
+    for edge in graph.edges {
+      if in_container(edge.src_id, container.id, parent_id_by_child_id)
+        is Some(_) &&
+        in_container(edge.dst_id, child_id, parent_id_by_child_id) is Some(_) {
+        is_head = false
+        break
+      }
+    }
+    if !is_head {
+      continue
+    }
+    rank[child_id] = 1
+    chain_length[child_id] = 1
+    let queue : Array[String] = [child_id]
+    let visited : Map[String, Bool] = {}
+    let mut i = 0
+    while i < queue.length() {
+      let curr = queue[i]
+      i = i + 1
+      if visited.contains(curr) {
+        continue
+      }
+      visited[curr] = true
+      let curr_rank = rank.get_or_default(curr, 1)
+      for edge in graph.edges {
+        let child = match
+          in_container(edge.dst_id, container.id, parent_id_by_child_id) {
+          Some(v) => v
+          None => continue
+        }
+        if child == curr || child == container.id || !child_set.contains(child) {
+          continue
+        }
+        if in_container(edge.src_id, curr, parent_id_by_child_id) is Some(_) {
+          let candidate_rank = curr_rank + 1
+          if candidate_rank > rank.get_or_default(child, 0) {
+            rank[child] = candidate_rank
+            let best_for_head = chain_length.get_or_default(child_id, 1)
+            if candidate_rank > best_for_head {
+              chain_length[child_id] = candidate_rank
+            }
+          }
+          queue.push(child)
+        }
+      }
+    }
+  }
+
+  let mut max_chain = 0
+  for child_id in children {
+    let chain = chain_length.get_or_default(child_id, 0)
+    if chain > max_chain {
+      max_chain = chain
+    }
+  }
+  let heads : Array[String] = []
+  for child_id in children {
+    if rank.get_or_default(child_id, 0) == 1 &&
+      chain_length.get_or_default(child_id, 0) == max_chain {
+      heads.push(child_id)
+    }
+  }
+  if heads.is_empty() {
+    children[0]
+  } else {
+    heads[heads.length() / 2]
+  }
+}
+
+///|
+fn get_longest_edge_chain_tail_id(
+  graph : @graph.GraphInput,
+  container : @graph.ObjectInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> String {
+  let children : Array[String] = []
+  let child_set : Map[String, Bool] = {}
+  for child_id in container.child_ids {
+    if object_by_id.contains(child_id) {
+      children.push(child_id)
+      child_set[child_id] = true
+    }
+  }
+  if children.is_empty() {
+    return container.id
+  }
+
+  let rank : Map[String, Int] = {}
+  for child_id in children {
+    let mut is_head = true
+    for edge in graph.edges {
+      if in_container(edge.src_id, container.id, parent_id_by_child_id)
+        is Some(_) &&
+        in_container(edge.dst_id, child_id, parent_id_by_child_id) is Some(_) {
+        is_head = false
+        break
+      }
+    }
+    if !is_head {
+      continue
+    }
+    rank[child_id] = 1
+    let queue : Array[String] = [child_id]
+    let visited : Map[String, Bool] = {}
+    let mut i = 0
+    while i < queue.length() {
+      let curr = queue[i]
+      i = i + 1
+      if visited.contains(curr) {
+        continue
+      }
+      visited[curr] = true
+      let curr_rank = rank.get_or_default(curr, 1)
+      for edge in graph.edges {
+        let child = match
+          in_container(edge.dst_id, container.id, parent_id_by_child_id) {
+          Some(v) => v
+          None => continue
+        }
+        if child == curr || child == container.id || !child_set.contains(child) {
+          continue
+        }
+        if in_container(edge.src_id, curr, parent_id_by_child_id) is Some(_) {
+          let candidate_rank = curr_rank + 1
+          if candidate_rank > rank.get_or_default(child, 0) {
+            rank[child] = candidate_rank
+          }
+          queue.push(child)
+        }
+      }
+    }
+  }
+
+  let mut max_rank = 0
+  for child_id in children {
+    let value = rank.get_or_default(child_id, 0)
+    if value > max_rank {
+      max_rank = value
+    }
+  }
+  let tails : Array[String] = []
+  for child_id in children {
+    if rank.get_or_default(child_id, 0) == max_rank {
+      tails.push(child_id)
+    }
+  }
+  if tails.is_empty() {
+    children[0]
+  } else {
+    tails[tails.length() / 2]
+  }
+}
+
+///|
+fn in_container(
+  obj_id : String,
+  container_id : String,
+  parent_id_by_child_id : Map[String, String],
+) -> String? {
+  if obj_id == container_id {
+    return Some(obj_id)
+  }
+  let mut curr = obj_id
+  while true {
+    let parent = match parent_id_by_child_id.get(curr) {
+      Some(v) => v
+      None => return None
+    }
+    if parent == container_id {
+      return Some(curr)
+    }
+    curr = parent
+  }
+  None
+}
+
+///|
 fn object_size(
   obj : @graph.ObjectInput,
   config : @engine_api.LayoutConfig,
@@ -172,11 +512,7 @@ fn object_size(
         clamp_positive(box.width, config.default_width),
         clamp_positive(box.height, config.default_height),
       )
-    None =>
-      (
-        clamp_positive(config.default_width, 100.0),
-        clamp_positive(config.default_height, 60.0),
-      )
+    None => estimate_object_size(obj, config)
   }
 }
 
@@ -187,6 +523,88 @@ fn clamp_positive(value : Double, fallback : Double) -> Double {
     base
   } else {
     1.0
+  }
+}
+
+///|
+fn estimate_object_size(
+  obj : @graph.ObjectInput,
+  config : @engine_api.LayoutConfig,
+) -> (Double, Double) {
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(obj.style.bold, false)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
+  let label_dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+
+  let mut width = label_dims.width
+  let mut height = label_dims.height
+
+  match obj.shape_type {
+    @graph.Text | @graph.Code => {
+      width = width + 2.0
+      height = height + 2.0
+    }
+    @graph.Diamond => {
+      width = width + 40.0
+      height = height + 30.0
+    }
+    @graph.Circle | @graph.Square | @graph.Oval => {
+      width = width + 36.0
+      height = height + 30.0
+      let side = if width > height { width } else { height }
+      width = side
+      height = side
+    }
+    @graph.C4Person => {
+      width = width + 48.0
+      height = height + 64.0
+    }
+    _ => {
+      width = width + 50.0
+      height = height + 45.0
+    }
+  }
+
+  if !obj.child_ids.is_empty() {
+    width = width + 16.0
+    height = height + font_size.to_double() + 12.0
+  }
+
+  let min_width = clamp_positive(config.default_width * 0.5, 50.0)
+  let min_height = clamp_positive(config.default_height * 0.6, 40.0)
+  let width = if width < min_width { min_width } else { width }
+  let height = if height < min_height { min_height } else { height }
+  (width, height)
+}
+
+///|
+fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
+  match value {
+    Some(v) => v.as_bool().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
+fn style_is_mono(value : @graph.StyleValue?) -> Bool {
+  match value {
+    Some(v) =>
+      match v.get_value().to_lower() {
+        "mono" | "monospace" | "code" => true
+        _ => false
+      }
+    None => false
   }
 }
 
@@ -231,59 +649,20 @@ fn edge_label_size(edge : @graph.EdgeInput) -> (Double, Double)? {
 }
 
 ///|
-fn find_risky_compound_parent_ids(
-  graph : @graph.GraphInput,
-) -> Map[String, Bool] {
-  let has_children : Map[String, Bool] = {}
-  for obj in graph.objects {
-    if !obj.child_ids.is_empty() {
-      has_children[obj.id] = true
-    }
-  }
-
-  let has_outer_incident_edge : Map[String, Bool] = {}
-  let has_inner_edge : Map[String, Bool] = {}
-  for edge in graph.edges {
-    if has_children.contains(edge.src_id) {
-      has_outer_incident_edge[edge.src_id] = true
-    }
-    if has_children.contains(edge.dst_id) {
-      has_outer_incident_edge[edge.dst_id] = true
-    }
-
-    for parent_id, _ in has_children {
-      if is_descendant_id(edge.src_id, parent_id) &&
-        is_descendant_id(edge.dst_id, parent_id) {
-        has_inner_edge[parent_id] = true
-      }
-    }
-  }
-
-  let risky : Map[String, Bool] = {}
-  for parent_id, _ in has_children {
-    if has_outer_incident_edge.contains(parent_id) &&
-      has_inner_edge.contains(parent_id) {
-      risky[parent_id] = true
-    }
-  }
-  risky
-}
-
-///|
-fn is_descendant_id(id : String, parent_id : String) -> Bool {
-  id.has_prefix(parent_id + ".")
-}
-
-///|
 fn fill_patch_nodes(
   patch : @graph.LayoutPatch,
   dagre_graph : @moon_dagre.Graph,
   graph : @graph.GraphInput,
   node_size_by_id : Map[String, (Double, Double)],
+  dagre_node_id_by_object_id : Map[String, String],
   config : @engine_api.LayoutConfig,
 ) -> Unit {
   for obj in graph.objects {
-    match dagre_graph.node_opt(obj.id) {
+    let dagre_id = match dagre_node_id_by_object_id.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    match dagre_graph.node_opt(dagre_id) {
       Some(node_attrs) => {
         let (fallback_width, fallback_height) = match
           node_size_by_id.get(obj.id) {
@@ -325,26 +704,54 @@ fn box_from_dagre_node(
 }
 
 ///|
+fn dagre_node_id(order : Int, obj_id : String) -> String {
+  zero_padded_int(order, 8) + "\u0002" + obj_id
+}
+
+///|
+fn zero_padded_int(value : Int, width : Int) -> String {
+  let s = value.to_string()
+  if s.length() >= width {
+    return s
+  }
+  let pad = StringBuilder::new()
+  let pad_count = width - s.length()
+  for _ in 0..<pad_count {
+    pad.write_char('0')
+  }
+  pad.write_string(s)
+  pad.to_string()
+}
+
+///|
 fn fill_patch_edges(
   patch : @graph.LayoutPatch,
   dagre_graph : @moon_dagre.Graph,
-  edge_index_by_key : Map[String, Int],
+  edge_layout_by_key : Map[String, EdgeLayoutInfo],
 ) -> Unit {
   for edge_obj in dagre_graph.edges() {
     let key = dagre_edge_key(edge_obj.v, edge_obj.w, edge_obj.name)
-    match edge_index_by_key.get(key) {
-      Some(edge_index) => {
+    match edge_layout_by_key.get(key) {
+      Some(info) => {
         let edge_attrs = @moon_dagre.value_as_attrs(
           dagre_graph.edge_obj(edge_obj),
         )
         match edge_attrs {
           Some(attrs) => {
             match attrs.get_points("points") {
-              Some(points) => patch.edges[edge_index] = points_to_route(points)
+              Some(points) => {
+                let route = points_to_route(points)
+                patch.edges[info.edge_index] = chop_route_to_endpoint_boxes(
+                  route,
+                  patch.nodes,
+                  info.src_id,
+                  info.dst_id,
+                )
+              }
               None => ()
             }
             match label_box_from_dagre_edge(attrs) {
-              Some(box) => patch.edge_labels[edge_index] = box
+              Some(box) => patch.edge_labels[info.edge_index] = box
               None => ()
             }
           }
@@ -363,6 +770,167 @@ fn points_to_route(points : Array[@moon_dagre.Point]) -> Array[@graph.Point] {
     route.push(@graph.Point::new(point.x, point.y))
   }
   route
+}
+
+///|
+fn chop_route_to_endpoint_boxes(
+  route : Array[@graph.Point],
+  node_boxes : Map[String, @graph.Box],
+  src_id : String,
+  dst_id : String,
+) -> Array[@graph.Point] {
+  if route.length() < 2 || src_id == dst_id {
+    return route
+  }
+  let src_box = match node_boxes.get(src_id) {
+    Some(v) => v
+    None => return route
+  }
+  let dst_box = match node_boxes.get(dst_id) {
+    Some(v) => v
+    None => return route
+  }
+  let mut start_index = 0
+  let mut end_index = route.length() - 1
+  let mut start_point = route[start_index]
+  let mut end_point = route[end_index]
+  for i in 1..<route.length() {
+    let p0 = route[i - 1]
+    let p1 = route[i]
+    match first_box_intersection(src_box, p0, p1) {
+      Some(p) => {
+        start_point = p
+        start_index = i - 1
+      }
+      None => ()
+    }
+    match first_box_intersection(dst_box, p0, p1) {
+      Some(p) => {
+        end_point = p
+        end_index = i
+        break
+      }
+      None => ()
+    }
+  }
+  if end_index < start_index {
+    return route
+  }
+  let trimmed : Array[@graph.Point] = []
+  let mut i = start_index
+  while i <= end_index {
+    trimmed.push(route[i])
+    i = i + 1
+  }
+  if trimmed.is_empty() {
+    return route
+  }
+  trimmed[0] = start_point
+  trimmed[trimmed.length() - 1] = end_point
+  trimmed
+}
+
+///|
+fn first_box_intersection(
+  box : @graph.Box,
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+) -> @graph.Point? {
+  let candidates : Array[(Double, @graph.Point)] = []
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let y0 = box.y
+  let y1 = box.y + box.height
+
+  match segment_intersection_at_x(p0, p1, x0, y0, y1) {
+    Some(hit) => candidates.push(hit)
+    None => ()
+  }
+  match segment_intersection_at_x(p0, p1, x1, y0, y1) {
+    Some(hit) => candidates.push(hit)
+    None => ()
+  }
+  match segment_intersection_at_y(p0, p1, y0, x0, x1) {
+    Some(hit) => candidates.push(hit)
+    None => ()
+  }
+  match segment_intersection_at_y(p0, p1, y1, x0, x1) {
+    Some(hit) => candidates.push(hit)
+    None => ()
+  }
+  if candidates.is_empty() {
+    return None
+  }
+  let mut best_t = 2.0
+  let mut best_point = @graph.Point::new(0.0, 0.0)
+  for hit in candidates {
+    let t = hit.0
+    let point = hit.1
+    if t < best_t {
+      best_t = t
+      best_point = point
+    }
+  }
+  if best_t <= 1.0 {
+    Some(best_point)
+  } else {
+    None
+  }
+}
+
+///|
+fn segment_intersection_at_x(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  x : Double,
+  min_y : Double,
+  max_y : Double,
+) -> (Double, @graph.Point)? {
+  let dx = p1.x - p0.x
+  if abs_double(dx) < 0.000001 {
+    return None
+  }
+  let t = (x - p0.x) / dx
+  if t < 0.0 || t > 1.0 {
+    return None
+  }
+  let y = p0.y + (p1.y - p0.y) * t
+  if y < min_y - 0.000001 || y > max_y + 0.000001 {
+    return None
+  }
+  Some((t, @graph.Point::new(x, y)))
+}
+
+///|
+fn segment_intersection_at_y(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  y : Double,
+  min_x : Double,
+  max_x : Double,
+) -> (Double, @graph.Point)? {
+  let dy = p1.y - p0.y
+  if abs_double(dy) < 0.000001 {
+    return None
+  }
+  let t = (y - p0.y) / dy
+  if t < 0.0 || t > 1.0 {
+    return None
+  }
+  let x = p0.x + (p1.x - p0.x) * t
+  if x < min_x - 0.000001 || x > max_x + 0.000001 {
+    return None
+  }
+  Some((t, @graph.Point::new(x, y)))
+}
+
+///|
+fn abs_double(value : Double) -> Double {
+  if value < 0.0 {
+    -value
+  } else {
+    value
+  }
 }
 
 ///|

@@ -61,6 +61,7 @@ pub struct SvgConfig {
   omit_version : Bool
 }
 pub fn SvgConfig::new() -> Self
+pub fn SvgConfig::with_padding(Self, Double) -> Self
 pub fn SvgConfig::with_render_options(Self, Int?, Map[String, String], Map[String, String], Double?, Bool, String?, Bool) -> Self
 pub fn SvgConfig::with_theme(Int) -> Self
 pub fn SvgConfig::with_theme_name(String) -> Self

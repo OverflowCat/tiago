@@ -112,6 +112,11 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
 }
 
 ///|
+pub fn SvgConfig::with_padding(self : SvgConfig, padding : Double) -> SvgConfig {
+  { ..self, padding, }
+}
+
+///|
 /// Create config with theme by name
 pub fn SvgConfig::with_theme_name(name : String) -> SvgConfig {
   let theme = @themes.get_theme_by_name(name)
@@ -130,12 +135,10 @@ pub fn SvgConfig::with_render_options(
   salt : String?,
   omit_version : Bool,
 ) -> SvgConfig {
-  let active_theme = if dark_theme_id == Some(self.theme_id) {
-    @themes.get_theme(self.theme_id).with_overrides(dark_theme_overrides)
-  } else {
-    @themes.get_theme(self.theme_id).with_overrides(theme_overrides)
-  }
-  let font_family = if active_theme.rules.mono {
+  let active_light_theme = @themes.get_theme(self.theme_id).with_overrides(
+    theme_overrides,
+  )
+  let font_family = if active_light_theme.rules.mono {
     "monospace"
   } else {
     "Arial, sans-serif"
@@ -143,9 +146,9 @@ pub fn SvgConfig::with_render_options(
   {
     ..self,
     font_family,
-    background: active_theme.background_color(),
-    default_stroke: active_theme.stroke_color(),
-    default_fill: active_theme.fill_color(),
+    background: active_light_theme.background_color(),
+    default_stroke: active_light_theme.stroke_color(),
+    default_fill: active_light_theme.fill_color(),
     dark_theme_id,
     theme_overrides,
     dark_theme_overrides,
@@ -195,7 +198,7 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
 }
 
 ///|
-fn resolve_theme_token(value : String, theme : @themes.Theme) -> String {
+fn theme_token(value : String) -> String? {
   match value.to_upper() {
     "N1"
     | "N2"
@@ -214,8 +217,30 @@ fn resolve_theme_token(value : String, theme : @themes.Theme) -> String {
     | "AA4"
     | "AA5"
     | "AB4"
-    | "AB5" => theme.resolve(value.to_upper())
-    _ => value
+    | "AB5" => Some(value.to_upper())
+    _ => None
+  }
+}
+
+///|
+fn theme_css_var(token : String) -> String {
+  "var(--d2-\{token})"
+}
+
+///|
+fn resolve_theme_color(
+  value : String,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+) -> String {
+  match theme_token(value) {
+    Some(token) =>
+      if use_css_theme_vars {
+        theme_css_var(token)
+      } else {
+        theme.resolve(token)
+      }
+    None => value
   }
 }
 
@@ -224,9 +249,66 @@ fn style_color(
   value : @graph.StyleValue?,
   default : String,
   theme : @themes.Theme,
+  use_css_theme_vars : Bool,
 ) -> String {
   let raw = style_string(value, default)
-  resolve_theme_token(raw, theme)
+  resolve_theme_color(raw, theme, use_css_theme_vars)
+}
+
+///|
+fn theme_css_lines(theme : @themes.Theme, indent : String) -> Array[String] {
+  [
+    "\{indent}svg {",
+    "\{indent}  --d2-N1: \{theme.colors.n1};",
+    "\{indent}  --d2-N2: \{theme.colors.n2};",
+    "\{indent}  --d2-N3: \{theme.colors.n3};",
+    "\{indent}  --d2-N4: \{theme.colors.n4};",
+    "\{indent}  --d2-N5: \{theme.colors.n5};",
+    "\{indent}  --d2-N6: \{theme.colors.n6};",
+    "\{indent}  --d2-N7: \{theme.colors.n7};",
+    "\{indent}  --d2-B1: \{theme.colors.b1};",
+    "\{indent}  --d2-B2: \{theme.colors.b2};",
+    "\{indent}  --d2-B3: \{theme.colors.b3};",
+    "\{indent}  --d2-B4: \{theme.colors.b4};",
+    "\{indent}  --d2-B5: \{theme.colors.b5};",
+    "\{indent}  --d2-B6: \{theme.colors.b6};",
+    "\{indent}  --d2-AA2: \{theme.colors.aa2};",
+    "\{indent}  --d2-AA4: \{theme.colors.aa4};",
+    "\{indent}  --d2-AA5: \{theme.colors.aa5};",
+    "\{indent}  --d2-AB4: \{theme.colors.ab4};",
+    "\{indent}  --d2-AB5: \{theme.colors.ab5};",
+    "\{indent}}",
+  ]
+}
+
+///|
+fn add_theme_styles(
+  svg : @svg.Svg,
+  light_theme : @themes.Theme,
+  dark_theme : @themes.Theme?,
+) -> Unit {
+  let lines : Array[String] = []
+  for line in theme_css_lines(light_theme, "") {
+    lines.push(line)
+  }
+  lines.push("svg text { fill: var(--d2-N1); }")
+  match dark_theme {
+    Some(theme) => {
+      lines.push("@media screen and (prefers-color-scheme: dark) {")
+      for line in theme_css_lines(theme, "  ") {
+        lines.push(line)
+      }
+      lines.push("}")
+    }
+    None => ()
+  }
+  let css = lines.join("\n")
+  svg.add(
+    @xml_emit.Element::new("style")
+    .attr("type", "text/css")
+    .cdata(css + "\n")
+    .build(),
+  )
 }
 
 ///|
@@ -273,6 +355,12 @@ fn ceil_double(x : Double) -> Double {
 
 ///|
 const LABEL_PADDING : Double = 5.0
+
+///|
+fn d2_label_baseline_shift(font_size : Int) -> Double {
+  // D2's object labels use an alphabetic baseline near optical center.
+  font_size.to_double() * 0.34
+}
 
 ///|
 const DIAGO_VERSION : String = "0.1.0"
@@ -380,22 +468,32 @@ pub fn render_svg(
   if not(config.omit_version) {
     svg.add_root_attr("data-d2-version", DIAGO_VERSION)
   }
-  // Get theme for special rules and token resolution.
-  let theme = if config.dark_theme_id == Some(config.theme_id) {
-    @themes.get_theme(config.theme_id).with_overrides(
-      config.dark_theme_overrides,
-    )
-  } else {
-    @themes.get_theme(config.theme_id).with_overrides(config.theme_overrides)
+  // The base render always uses the light theme. Dark theme is applied through
+  // CSS media rules when configured.
+  let light_theme = @themes.get_theme(config.theme_id).with_overrides(
+    config.theme_overrides,
+  )
+  let dark_theme = match config.dark_theme_id {
+    Some(theme_id) =>
+      Some(
+        @themes.get_theme(theme_id).with_overrides(config.dark_theme_overrides),
+      )
+    None => None
+  }
+  let use_css_theme_vars = dark_theme is Some(_)
+  if use_css_theme_vars {
+    add_theme_styles(svg, light_theme, dark_theme)
   }
   // Add arrow markers for all arrowhead types
-  add_arrowhead_markers(svg, config)
+  add_arrowhead_markers(svg, config, light_theme, use_css_theme_vars)
   // Add fill patterns
-  add_fill_patterns(svg, graph, config, theme)
+  add_fill_patterns(svg, graph, config, light_theme, use_css_theme_vars)
   // Add sketch filter if needed
   add_sketch_filter(svg, graph, config)
   // Background
-  svg.add(@svg.background(theme.background_color()))
+  svg.add(
+    @svg.background(resolve_theme_color("N7", light_theme, use_css_theme_vars)),
+  )
   // Render control bar based on what's present
   if has_layers {
     render_layer_tabs(svg, graph, config)
@@ -411,15 +509,31 @@ pub fn render_svg(
   let sorted_objects = sort_objects_by_depth(graph.shapes)
   // Pass 1: Render object backgrounds (shapes, fills, borders)
   for obj in sorted_objects {
-    render_svg_object(svg, obj, graph.shapes, config, theme, pass=Background)
+    render_svg_object(
+      svg,
+      obj,
+      graph.shapes,
+      config,
+      light_theme,
+      use_css_theme_vars,
+      pass=Background,
+    )
   }
   // Pass 2: Render edges (on top of backgrounds, behind text)
   for edge in graph.connections {
-    render_svg_edge(svg, edge, config, theme)
+    render_svg_edge(svg, edge, config, light_theme, use_css_theme_vars)
   }
   // Pass 3: Render object foregrounds (text, labels, content)
   for obj in sorted_objects {
-    render_svg_object(svg, obj, graph.shapes, config, theme, pass=Foreground)
+    render_svg_object(
+      svg,
+      obj,
+      graph.shapes,
+      config,
+      light_theme,
+      use_css_theme_vars,
+      pass=Foreground,
+    )
   }
   // Render sequence diagram notes (using page shape)
   for note in graph.sequence_notes {
@@ -437,12 +551,19 @@ pub fn render_svg(
     svg.open_group_with_id_style(layer_id, "", "display: none")
     // Render layer edges
     for edge in layer.connections {
-      render_svg_edge(svg, edge, config, theme)
+      render_svg_edge(svg, edge, config, light_theme, use_css_theme_vars)
     }
     // Render layer objects sorted by depth
     let sorted_layer_objects = sort_objects_by_depth(layer.shapes)
     for obj in sorted_layer_objects {
-      render_svg_object(svg, obj, layer.shapes, config, theme)
+      render_svg_object(
+        svg,
+        obj,
+        layer.shapes,
+        config,
+        light_theme,
+        use_css_theme_vars,
+      )
     }
     svg.close_group()
   }
@@ -451,12 +572,19 @@ pub fn render_svg(
     let scenario_id = "scenario-\{i}"
     svg.open_group_with_id_style(scenario_id, "", "display: none")
     for edge in scenario.connections {
-      render_svg_edge(svg, edge, config, theme)
+      render_svg_edge(svg, edge, config, light_theme, use_css_theme_vars)
     }
     // Render scenario objects sorted by depth
     let sorted_scenario_objects = sort_objects_by_depth(scenario.shapes)
     for obj in sorted_scenario_objects {
-      render_svg_object(svg, obj, scenario.shapes, config, theme)
+      render_svg_object(
+        svg,
+        obj,
+        scenario.shapes,
+        config,
+        light_theme,
+        use_css_theme_vars,
+      )
     }
     svg.close_group()
   }
@@ -465,12 +593,19 @@ pub fn render_svg(
     let step_id = "step-\{i}"
     svg.open_group_with_id_style(step_id, "", "display: none")
     for edge in step.connections {
-      render_svg_edge(svg, edge, config, theme)
+      render_svg_edge(svg, edge, config, light_theme, use_css_theme_vars)
     }
     // Render step objects sorted by depth
     let sorted_step_objects = sort_objects_by_depth(step.shapes)
     for obj in sorted_step_objects {
-      render_svg_object(svg, obj, step.shapes, config, theme)
+      render_svg_object(
+        svg,
+        obj,
+        step.shapes,
+        config,
+        light_theme,
+        use_css_theme_vars,
+      )
     }
     svg.close_group()
   }
@@ -877,9 +1012,14 @@ fn add_step_control_script(svg : @svg.Svg, step_count : Int) -> Unit {
 
 ///|
 /// Add all arrowhead marker definitions to the SVG
-fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
+fn add_arrowhead_markers(
+  svg : @svg.Svg,
+  config : SvgConfig,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+) -> Unit {
   let size = config.arrow_size
-  let stroke = config.default_stroke
+  let stroke = resolve_theme_color("N1", theme, use_css_theme_vars)
   // Triangle (default arrow)
   svg.add_def(
     @svg.arrow_marker(defs_id(config, "arrow-triangle"), size, stroke),
@@ -1039,6 +1179,7 @@ fn add_fill_patterns(
   graph : Diagram,
   config : SvgConfig,
   theme : @themes.Theme,
+  use_css_theme_vars : Bool,
 ) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
@@ -1048,8 +1189,8 @@ fn add_fill_patterns(
     }
   }
   // Add pattern definitions for each used pattern
-  let stroke_color = resolve_theme_token(config.default_stroke, theme)
-  let bg_color = resolve_theme_token(config.default_fill, theme)
+  let stroke_color = resolve_theme_color("N1", theme, use_css_theme_vars)
+  let bg_color = resolve_theme_color("N7", theme, use_css_theme_vars)
   for pattern in patterns_used {
     match pattern.to_lower() {
       "dots" =>
@@ -1351,6 +1492,7 @@ fn render_svg_object(
   all_objects : Array[Shape],
   config : SvgConfig,
   theme : @themes.Theme,
+  use_css_theme_vars : Bool,
   pass? : RenderPass = Foreground,
 ) -> Unit {
   guard obj.box is Some(box) else { return }
@@ -1374,7 +1516,7 @@ fn render_svg_object(
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let base_fill = style_color(obj.style.fill, config.default_fill, theme)
+  let base_fill = style_color(obj.style.fill, "N7", theme, use_css_theme_vars)
   // Apply fill pattern if specified
   let fill = match style_string_opt(obj.style.fill_pattern) {
     Some(p) =>
@@ -1387,7 +1529,7 @@ fn render_svg_object(
       }
     None => base_fill
   }
-  let stroke = style_color(obj.style.stroke, config.default_stroke, theme)
+  let stroke = style_color(obj.style.stroke, "N1", theme, use_css_theme_vars)
   let stroke_width = style_double(
     obj.style.stroke_width,
     config.default_stroke_width,
@@ -1732,6 +1874,12 @@ fn render_svg_object(
     if obj.label != "" {
       // Use custom font-family if specified in style, otherwise use config
       let font_family = style_string(obj.style.font_family, config.font_family)
+      let text_color = style_color(
+        obj.style.font_color,
+        "N1",
+        theme,
+        use_css_theme_vars,
+      )
       // Get text-transform if specified, or apply caps_lock rule
       let text_transform = if theme.rules.caps_lock {
         "uppercase"
@@ -1742,6 +1890,7 @@ fn render_svg_object(
         Some(v) => v.as_int().unwrap_or(config.font_size)
         None => config.font_size
       }
+      let baseline_shift = d2_label_baseline_shift(font_size)
       let label_text = transform_label_text(obj.label, text_transform)
       let label_dims = @text_metrics.measure_label(
         label_text, font_size, false, false, false,
@@ -1761,14 +1910,17 @@ fn render_svg_object(
         let base_y = if has_icon { cy + 12.0 } else { cy }
         (cx, base_y)
       }
+      let label_baseline_y = label_y + baseline_shift
       svg.add(
         @svg.styled_text(
           label_x,
-          label_y,
+          label_baseline_y,
           obj.label,
           font_family~,
           font_size~,
+          dominant_baseline="alphabetic",
           text_transform~,
+          extra_style="fill: \{text_color}",
         ),
       )
     }
@@ -2728,8 +2880,47 @@ fn render_svg_callout(
 }
 
 ///|
+fn compress_collinear_points(points : Array[Point]) -> Array[Point] {
+  if points.length() <= 2 {
+    return points
+  }
+  let compressed : Array[Point] = [points[0]]
+  for i = 1; i < points.length() - 1; i = i + 1 {
+    let prev = compressed[compressed.length() - 1]
+    let curr = points[i]
+    let next = points[i + 1]
+    let dx1 = curr.x - prev.x
+    let dy1 = curr.y - prev.y
+    let dx2 = next.x - curr.x
+    let dy2 = next.y - curr.y
+    let cross = dx1 * dy2 - dy1 * dx2
+    if cross.abs() >= 0.001 {
+      compressed.push(curr)
+    }
+  }
+  compressed.push(points[points.length() - 1])
+  compressed
+}
+
+///|
+fn cubic_line_to(
+  pb : @svg.PathBuilder,
+  sx : Double,
+  sy : Double,
+  ex : Double,
+  ey : Double,
+) -> Unit {
+  let c1x = sx + (ex - sx) * 0.4
+  let c1y = sy + (ey - sy) * 0.4
+  let c2x = sx + (ex - sx) * 0.6
+  let c2y = sy + (ey - sy) * 0.6
+  let _ = pb.cubic_to(c1x, c1y, c2x, c2y, ex, ey)
+}
+
+///|
 /// Build a polyline path with rounded corners.
-fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
+fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit {
+  let points = compress_collinear_points(raw_points)
   if points.length() < 2 {
     return
   }
@@ -2739,17 +2930,19 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
   // Move to first point
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
-    // Two points: routing is decided by the layout pipeline.
-    let _ = pb.line_to(points[1].x, points[1].y)
+    cubic_line_to(pb, points[0].x, points[0].y, points[1].x, points[1].y)
     return
   }
+  let mut pen_x = points[0].x
+  let mut pen_y = points[0].y
   // For each intermediate point, draw line segments with rounded corners
   for i = 0; i < points.length() - 1; i = i + 1 {
     let curr = points[i]
     let next = points[i + 1]
     if i == points.length() - 2 {
-      // Last segment - just draw to end
-      let _ = pb.line_to(next.x, next.y)
+      cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
+      pen_x = next.x
+      pen_y = next.y
     } else {
       // There's a corner at 'next', so we need to draw a rounded corner
       let after = points[i + 2]
@@ -2762,7 +2955,9 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       // redundant collinear waypoints; rounding those creates unwanted arcs.
       let cross = dx1 * dy2 - dy1 * dx2
       if cross.abs() < 0.001 {
-        let _ = pb.line_to(next.x, next.y)
+        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
+        pen_x = next.x
+        pen_y = next.y
         continue
       }
       // Normalize directions
@@ -2770,15 +2965,19 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let len2 = (dx2 * dx2 + dy2 * dy2).sqrt()
       if len1 < 0.001 || len2 < 0.001 {
         // Degenerate case - just line to next
-        let _ = pb.line_to(next.x, next.y)
+        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
+        pen_x = next.x
+        pen_y = next.y
         continue
       }
       // Limit radius to half the shorter segment length
       let max_radius = @cmp.minimum(len1, len2) / 2.0
       let r = @cmp.minimum(radius, max_radius)
       if r < 1.0 {
-        // Radius too small - just use straight lines
-        let _ = pb.line_to(next.x, next.y)
+        // Radius too small - fall back to a straight cubic segment.
+        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
+        pen_x = next.x
+        pen_y = next.y
         continue
       }
       // Calculate the point where we stop before the corner
@@ -2788,13 +2987,29 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       let resume_x = next.x + dx2 / len2 * r
       let resume_y = next.y + dy2 / len2 * r
       // Draw line to the stop point
-      let _ = pb.line_to(stop_x, stop_y)
+      cubic_line_to(pb, pen_x, pen_y, stop_x, stop_y)
+      pen_x = stop_x
+      pen_y = stop_y
       // D2 reference SVG uses `S` (smooth cubic) for rounded corners.
       // When a smooth cubic follows a line segment, its first control point
       // equals the current point. This expands to an equivalent `C`:
       //   C stop_x stop_y corner_x corner_y resume_x resume_y
       let _ = pb.cubic_to(stop_x, stop_y, next.x, next.y, resume_x, resume_y)
+      pen_x = resume_x
+      pen_y = resume_y
     }
+  }
+}
+
+///|
+fn build_polyline_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
+  if points.length() < 2 {
+    return
+  }
+  let _ = pb.move_to(points[0].x, points[0].y)
+  for i = 1; i < points.length(); i = i + 1 {
+    let p = points[i]
+    let _ = pb.line_to(p.x, p.y)
   }
 }
 
@@ -2804,6 +3019,7 @@ fn render_svg_edge(
   edge : Connection,
   config : SvgConfig,
   theme : @themes.Theme,
+  use_css_theme_vars : Bool,
 ) -> Unit raise @render_api.RenderError {
   if edge.route.length() < 2 {
     return
@@ -2814,16 +3030,21 @@ fn render_svg_edge(
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let stroke = style_color(edge.style.stroke, config.default_stroke, theme)
+  let stroke = style_color(edge.style.stroke, "N1", theme, use_css_theme_vars)
   let stroke_width = style_double(
     edge.style.stroke_width,
     config.default_stroke_width,
   )
   let stroke_dash = style_double(edge.style.stroke_dash, 0.0)
+  let is_curved = style_bool(edge.style.curved, true)
   let pb = @svg.PathBuilder::new()
-  // Route points are provided by the layout pipeline.
-  // Only apply rounded corner transitions at bends here.
-  build_rounded_path(pb, edge.route)
+  if is_curved {
+    // Route points are provided by the layout pipeline.
+    // Only apply rounded corner transitions at bends here.
+    build_rounded_path(pb, edge.route)
+  } else {
+    build_polyline_path(pb, edge.route)
+  }
   // Determine markers based on arrowhead types
   // For marker-start: reverse direction (arrow points toward destination/into line)
   // For marker-end: normal direction (arrow points toward destination/away from line)
@@ -2868,20 +3089,22 @@ fn render_svg_edge(
             label_box.y,
             label_box.width,
             label_box.height,
-            fill="white",
+            fill=resolve_theme_color("N7", theme, use_css_theme_vars),
             stroke="none",
             rx=Some(3.0),
             ry=Some(3.0),
           ),
         )
+        let text_color = resolve_theme_color("N1", theme, use_css_theme_vars)
         svg.add(
-          @svg.text(
+          @svg.styled_text(
             cx,
             baseline_y,
             edge.label,
             font_family=config.font_family,
             font_size=config.font_size - 2,
             dominant_baseline="alphabetic",
+            extra_style="fill: \{text_color}",
           ),
         )
       }

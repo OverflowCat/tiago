@@ -225,6 +225,126 @@ test "theme-overrides applies to theme tokens in style" {
 }
 
 ///|
+test "invalid theme-overrides key fails config parsing" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    theme-overrides: {
+    #|      ZZ9: red
+    #|    }
+    #|  }
+    #|}
+    #|a -> b
+  match
+    compile_source(
+      source,
+      OutputMode::Svg,
+      None,
+      None,
+      LayoutEngineChoice::Dagre,
+      false,
+      None,
+    ) {
+    Ok(_) => fail("expected invalid theme-overrides key to fail")
+    Err(msg) => assert_true(msg.contains("\"ZZ9\" is not a valid theme code"))
+  }
+}
+
+///|
+test "invalid theme-overrides color fails config parsing" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    theme-overrides: {
+    #|      B1: definitely-not-a-color
+    #|    }
+    #|  }
+    #|}
+    #|a -> b
+  match
+    compile_source(
+      source,
+      OutputMode::Svg,
+      None,
+      None,
+      LayoutEngineChoice::Dagre,
+      false,
+      None,
+    ) {
+    Ok(_) => fail("expected invalid theme-overrides color to fail")
+    Err(msg) =>
+      assert_true(
+        msg.contains(
+          "expected \"B1\" to be a valid named color (\"orange\") or a hex code (\"#f0ff3a\")",
+        ),
+      )
+  }
+}
+
+///|
+test "dark-theme-id does not replace base light theme when theme-id is absent" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    dark-theme-id: 300
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  assert_true(not(svg.contains("monospace")))
+}
+
+///|
+test "vars d2-config pad is applied to svg config padding" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    pad: 16
+    #|  }
+    #|}
+    #|a -> b
+  let diagram = compile_to_diagram(
+    source,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  let svg_config = resolve_svg_config(None, diagram.config)
+  assert_eq(svg_config.padding, 16.0)
+}
+
+///|
+test "vars d2-config dark-theme-id emits dark media css" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    dark-theme-id: 200
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  assert_true(svg.contains("@media screen and (prefers-color-scheme: dark)"))
+  assert_true(svg.contains("var(--d2-N7)"))
+}
+
+///|
 test "salt namespaces SVG marker IDs" {
   let source =
     #|vars: {

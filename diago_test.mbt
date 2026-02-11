@@ -132,3 +132,99 @@ test "compile supports custom route plugin hook" {
     _ => fail("expected LayoutError from custom route plugin")
   }
 }
+
+///|
+test "vars d2-config invalid theme-overrides key raises ConfigError" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    theme-overrides: {
+    #|      ZZ9: red
+    #|    }
+    #|  }
+    #|}
+    #|a -> b
+  let result = try? compile(source)
+  match result {
+    Err(ConfigError(msg)) =>
+      assert_true(msg.contains("\"ZZ9\" is not a valid theme code"))
+    _ => fail("expected ConfigError for invalid theme override key")
+  }
+}
+
+///|
+test "vars d2-config invalid theme-overrides color raises ConfigError" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    theme-overrides: {
+    #|      B1: definitely-not-a-color
+    #|    }
+    #|  }
+    #|}
+    #|a -> b
+  let result = try? compile(source)
+  match result {
+    Err(ConfigError(msg)) =>
+      assert_true(
+        msg.contains(
+          "expected \"B1\" to be a valid named color (\"orange\") or a hex code (\"#f0ff3a\")",
+        ),
+      )
+    _ => fail("expected ConfigError for invalid theme override color")
+  }
+}
+
+///|
+test "dark-theme-id alone does not replace base light theme" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    dark-theme-id: 300
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile(source)
+  assert_true(not(svg.contains("monospace")))
+}
+
+///|
+test "vars d2-config pad is preserved in diagram config" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    pad: 16
+    #|  }
+    #|}
+    #|a -> b
+  let diagram = compile_diagram(source)
+  match diagram.config {
+    Some(config) => assert_eq(config.pad, Some(16.0))
+    None => fail("expected diagram config")
+  }
+}
+
+///|
+test "dark-theme-id enables css media theme variables" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    dark-theme-id: 200
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile(source)
+  assert_true(svg.contains("@media screen and (prefers-color-scheme: dark)"))
+  assert_true(svg.contains("--d2-N1:"))
+  assert_true(svg.contains("var(--d2-N7)"))
+}
+
+///|
+test "without dark-theme-id svg keeps static theme colors" {
+  let source =
+    #|a -> b
+  let svg = compile(source)
+  assert_true(
+    not(svg.contains("@media screen and (prefers-color-scheme: dark)")),
+  )
+}

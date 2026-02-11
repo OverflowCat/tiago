@@ -221,17 +221,23 @@ test "curved edge" {
     #|  style.curved: true
     #|}
   let svg = compile(source).unwrap()
-  // Rendering does not do route post-processing beyond rounded corner arcs.
-  // Curved edges are not converted to bezier curves here.
-  assert_false(svg.contains(" Q") || svg.contains(" C"))
+  assert_true(svg.contains(" C"))
 }
 
 ///|
-test "straight edge default" {
+test "curved edge default" {
   let source = "a -> b"
   let svg = compile(source).unwrap()
-  // Straight edges use line commands (L in path), not cubic beziers
-  // The path should contain L command for straight lines
+  assert_true(svg.contains(" C"))
+}
+
+///|
+test "straight edge when curved=false" {
+  let source =
+    #|a -> b {
+    #|  style.curved: false
+    #|}
+  let svg = compile(source).unwrap()
   assert_true(svg.contains(" L"))
 }
 

@@ -42,6 +42,7 @@ pub fn get_theme(id : Int) -> Theme {
     300 => terminal()
     301 => terminal_grayscale()
     302 => origami()
+    303 => c4()
     _ => neutral_default()
   }
 }
@@ -70,6 +71,9 @@ pub fn get_theme_by_name(name : String) -> Theme {
   }
   if lower.contains("origami") {
     return origami()
+  }
+  if lower == "c4" {
+    return c4()
   }
   if lower.contains("flagship") {
     return flagship_terrastruct()
@@ -121,7 +125,7 @@ pub fn list_themes() -> Array[String] {
     "Grape Soda", "Aubergine", "Colorblind Clear", "Vanilla Nitro Cola", "Orange Creamsicle",
     "Shirley Temple", "Earth Tones", "Everglade Green", "Buttered Toast", "Dark Mauve",
     "Dark Flagship", "Dark Slate", "Dark Monokai", "Terminal", "Terminal Grayscale",
-    "Origami",
+    "Origami", "C4",
   ]
 }
 
@@ -784,6 +788,36 @@ fn origami() -> Theme {
       caps_lock: false,
       all_paper: true,
     },
+    is_dark: false,
+  }
+}
+
+///|
+fn c4() -> Theme {
+  {
+    id: 303,
+    name: "C4",
+    colors: {
+      n1: "#0F5EAA",
+      n2: "#707070",
+      n3: "#FFFFFF",
+      n4: "#073B6F",
+      n5: "#999999",
+      n6: "#FFFFFF",
+      n7: "#FFFFFF",
+      b1: "#073B6F",
+      b2: "#08427B",
+      b3: "#3C7FC0",
+      b4: "#438DD5",
+      b5: "#8A8A8A",
+      b6: "#999999",
+      aa2: "#0F5EAA",
+      aa4: "#707070",
+      aa5: "#F5F5F5",
+      ab4: "#E1E1E1",
+      ab5: "#F0F0F0",
+    },
+    rules: SpecialRules::default(),
     is_dark: false,
   }
 }

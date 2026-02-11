@@ -126,6 +126,56 @@ fn graph_input(
 }
 
 ///|
+fn edge_input(index : Int, curved : Bool?) -> @graph.EdgeInput {
+  let style = @graph.StyleInput::from_parts(
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    @graph.StyleValue::from_bool_opt(curved),
+  )
+  @graph.EdgeInput::from_parts(
+    index,
+    "a",
+    "b",
+    false,
+    true,
+    @graph.None,
+    @graph.Triangle,
+    None,
+    None,
+    "",
+    style,
+    [],
+    None,
+    false,
+    0,
+    1,
+    None,
+    None,
+    None,
+  )
+}
+
+///|
 struct RoundtripEngine {
   _marker : Unit
 } derive(Show)
@@ -210,7 +260,7 @@ test "layout_with_engine applies to variants" {
 ///|
 test "layout result roundtrips via graph" {
   let objects = [object_input("a", None), object_input("b", None)]
-  let edges = [@graph.EdgeInput::new(7, "a", "b", false, true)]
+  let edges = [edge_input(7, None)]
   let graph = graph_input("roundtrip", ["a", "b"], objects, edges, [], [], [])
   let engine = RoundtripEngine::new()
   let laid_out_graph = @engine_api.layout_with_engine(
@@ -230,13 +280,42 @@ test "layout result roundtrips via graph" {
   }
   let e = diagram.get_edges()[0]
   assert_eq(e.index, 7)
-  assert_eq(e.route.length(), 3)
+  assert_eq(e.route.length(), 2)
   match e.label_box {
     Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
     None => fail("edge should have label box")
   }
   assert_eq(diagram.activation_boxes.length(), 1)
   assert_eq(diagram.sequence_notes.length(), 1)
+}
+
+///|
+test "layout result keeps orthogonalization when curved=false" {
+  let objects = [object_input("a", None), object_input("b", None)]
+  let edges = [edge_input(7, Some(false))]
+  let graph = graph_input(
+    "roundtrip-orth",
+    ["a", "b"],
+    objects,
+    edges,
+    [],
+    [],
+    [],
+  )
+  let engine = RoundtripEngine::new()
+  let laid_out_graph = @engine_api.layout_with_engine(
+    engine,
+    graph,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Direction::Down,
+  )
+  let diagram = @diagram.from_graph(laid_out_graph, None)
+  let e = diagram.get_edges()[0]
+  assert_eq(e.route.length(), 3)
+  match e.label_box {
+    Some(box) => assert_eq(box, @graph.Box::new(5.0, 6.0, 7.0, 8.0))
+    None => fail("edge should have label box")
+  }
 }
 
 ///|

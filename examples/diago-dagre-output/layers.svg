@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="540" height="430" viewBox="-50 -90 540 430" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="595" height="472" viewBox="-100 -140 595 472" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -35,29 +35,29 @@
 <rect x="386.2" y="5" width="116" height="30" fill="#f0f0f0" stroke="#0A0F25" stroke-width="1" rx="4" id="tab-layer-2" class="layer-tab" onclick="switchLayer(&#39;layer-2&#39;, this)"/>
 <text x="396.2" y="25" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">production</text>
 <g id="base-layer">
-<rect x="110" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="170" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="180" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 187.69230769230768 110 L 213.21719897266934 137.65196555372512 C 213.21719897266934 137.65196555372512 220 145 220 155 L 220 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 132.30769230769232 110 L 106.78280102733066 137.65196555372512 C 106.78280102733066 137.65196555372512 100 145 100 155 L 100 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="160" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Server</text>
-<text x="220" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Database</text>
-<text x="100" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Cache</text>
+<rect x="59" y="0" width="126" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="142" y="166" width="112" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="166" width="92" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 152.2168674698795 66 C 167.82883187714435 83.04990849740764 175.63481408077675 91.57486274611148 191.2467784880416 108.62477124351912 C 191.2467784880416 108.62477124351912 198 116 198 126 C 198 142 198 150 198 166" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 91.78313253012048 66 C 76.17116812285565 83.04990849740764 68.36518591922322 91.57486274611148 52.75322151195839 108.62477124351912 C 52.75322151195839 108.62477124351912 46 116 46 126 C 46 142 46 150 46 166" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="122" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Web Server</text>
+<text x="198" y="204.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Database</text>
+<text x="46" y="204.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">Cache</text>
 </g>
 <g id="layer-0" style="display: none">
-<text x="100" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="220" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="340" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
+<text x="46" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">server</text>
+<text x="198.5" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">database</text>
+<text x="350" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">cache</text>
 </g>
 <g id="layer-1" style="display: none">
-<text x="100" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="220" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="340" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
+<text x="46" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">server</text>
+<text x="198.5" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">database</text>
+<text x="350" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">cache</text>
 </g>
 <g id="layer-2" style="display: none">
-<text x="100" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">server</text>
-<text x="220" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">database</text>
-<text x="340" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">cache</text>
+<text x="46" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">server</text>
+<text x="198.5" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">database</text>
+<text x="350" y="38.44" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25">cache</text>
 </g>
 <script type="text/javascript"><![CDATA[function switchLayer(layerId, tabEl) {
   var layers = ['base-layer', 'layer-0', 'layer-1', 'layer-2'];
