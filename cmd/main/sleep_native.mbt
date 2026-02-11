@@ -24,7 +24,6 @@ fn sleep_ms_internal(ms : Int) -> Unit {
     usec = 0
   }
   let _ = usleep_ffi(usec)
-
 }
 
 ///|

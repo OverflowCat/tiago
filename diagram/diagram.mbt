@@ -26,9 +26,15 @@ pub struct Config {
   sketch : Bool?
   theme_id : Int?
   dark_theme_id : Int?
+  theme_overrides : Map[String, String]
+  dark_theme_overrides : Map[String, String]
   pad : Double?
   center : Bool?
   layout_engine : String?
+  scale : Double?
+  no_xml_tag : Bool?
+  salt : String?
+  omit_version : Bool?
   data : Map[String, String]
 } derive(Show)
 
@@ -38,10 +44,49 @@ pub fn Config::new() -> Config {
     sketch: None,
     theme_id: None,
     dark_theme_id: None,
+    theme_overrides: {},
+    dark_theme_overrides: {},
     pad: None,
     center: None,
     layout_engine: None,
+    scale: None,
+    no_xml_tag: None,
+    salt: None,
+    omit_version: None,
     data: {},
+  }
+}
+
+///|
+pub fn Config::from_parts(
+  sketch : Bool?,
+  theme_id : Int?,
+  dark_theme_id : Int?,
+  theme_overrides : Map[String, String],
+  dark_theme_overrides : Map[String, String],
+  pad : Double?,
+  center : Bool?,
+  layout_engine : String?,
+  scale : Double?,
+  no_xml_tag : Bool?,
+  salt : String?,
+  omit_version : Bool?,
+  data : Map[String, String],
+) -> Config {
+  {
+    sketch,
+    theme_id,
+    dark_theme_id,
+    theme_overrides,
+    dark_theme_overrides,
+    pad,
+    center,
+    layout_engine,
+    scale,
+    no_xml_tag,
+    salt,
+    omit_version,
+    data,
   }
 }
 
@@ -138,6 +183,104 @@ pub fn Diagram::has_legend(self : Diagram) -> Bool {
     Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
     None => false
   }
+}
+
+///|
+/// Get a board by path.
+///
+/// Supports both explicit and shorthand paths:
+/// - Explicit: ["layers", "x", "scenarios", "y"]
+/// - Shorthand: ["x", "y"]
+pub fn Diagram::get_board(
+  self : Diagram,
+  board_path : Array[String],
+) -> Diagram? {
+  get_board_at(self, board_path, 0)
+}
+
+///|
+fn get_board_at(
+  current : Diagram,
+  board_path : Array[String],
+  index : Int,
+) -> Diagram? {
+  if index >= board_path.length() {
+    return Some(current)
+  }
+
+  let head = board_path[index]
+  if index == board_path.length() - 1 && current.name == head {
+    return Some(current)
+  }
+
+  if head == "layers" || head == "scenarios" || head == "steps" {
+    if index + 1 >= board_path.length() {
+      return None
+    }
+    let board_name = board_path[index + 1]
+    match find_named_board(current, head, board_name) {
+      Some(child) => return get_board_at(child, board_path, index + 2)
+      None => return None
+    }
+  }
+
+  match find_named_board_any(current, head) {
+    Some(child) => get_board_at(child, board_path, index + 1)
+    None => None
+  }
+}
+
+///|
+fn find_named_board(
+  current : Diagram,
+  board_kind : String,
+  board_name : String,
+) -> Diagram? {
+  if board_kind == "layers" {
+    for board in current.layers {
+      if board.name == board_name {
+        return Some(board)
+      }
+    }
+    return None
+  }
+  if board_kind == "scenarios" {
+    for board in current.scenarios {
+      if board.name == board_name {
+        return Some(board)
+      }
+    }
+    return None
+  }
+  if board_kind == "steps" {
+    for board in current.steps {
+      if board.name == board_name {
+        return Some(board)
+      }
+    }
+    return None
+  }
+  None
+}
+
+///|
+fn find_named_board_any(current : Diagram, board_name : String) -> Diagram? {
+  for board in current.layers {
+    if board.name == board_name {
+      return Some(board)
+    }
+  }
+  for board in current.scenarios {
+    if board.name == board_name {
+      return Some(board)
+    }
+  }
+  for board in current.steps {
+    if board.name == board_name {
+      return Some(board)
+    }
+  }
+  None
 }
 
 ///|

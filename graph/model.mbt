@@ -157,6 +157,8 @@ pub struct ObjectModel {
   grid_column_span : Int?
   grid_row_span : Int?
   near : String?
+  top : Int?
+  left : Int?
 } derive(Show)
 
 ///|
@@ -182,6 +184,8 @@ pub fn ObjectModel::new(id : String) -> ObjectModel {
     grid_column_span: None,
     grid_row_span: None,
     near: None,
+    top: None,
+    left: None,
   }
 }
 

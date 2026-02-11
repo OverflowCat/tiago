@@ -1,0 +1,15 @@
+import {
+  "Milky2018/diago/parser",
+  "Milky2018/diago/ir",
+  "Milky2018/diago/graph",
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/exporter",
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/engine_dagre",
+  "Milky2018/diago/renderer_svg",
+  "Milky2018/diago/renderer_ascii",
+  "moonbitlang/x/fs",
+  "moonbitlang/core/cmp",
+  "moonbitlang/core/math",
+  "moonbitlang/core/strconv",
+} for "test"

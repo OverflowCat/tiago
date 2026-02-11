@@ -152,7 +152,9 @@ fn make_levels(
       max_depth = d
     }
   }
-  let nodes_by_level : Array[Array[String]] = Array::makei(max_depth + 1, _ => [])
+  let nodes_by_level : Array[Array[String]] = Array::makei(max_depth + 1, _ => {
+    []
+  })
   for i in 0..<n {
     nodes_by_level[depths[i]].push(ids[i])
   }

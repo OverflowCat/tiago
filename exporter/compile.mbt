@@ -79,6 +79,7 @@ priv struct Object {
   id : String
   mut label : String
   mut shape_type : ShapeType
+  mut raw_shape : String?
   style : Style
   children : Array[Object]
   z_index : Int
@@ -94,6 +95,8 @@ priv struct Object {
   mut grid_column_span : Int?
   mut grid_row_span : Int?
   mut near : String?
+  mut top : Int?
+  mut left : Int?
 } derive(Show)
 
 ///|
@@ -102,6 +105,7 @@ fn Object::new(id : String) -> Object {
     id,
     label: id,
     shape_type: Rectangle,
+    raw_shape: None,
     style: Style::new(),
     children: [],
     z_index: 0,
@@ -117,6 +121,8 @@ fn Object::new(id : String) -> Object {
     grid_column_span: None,
     grid_row_span: None,
     near: None,
+    top: None,
+    left: None,
   }
 }
 
@@ -485,6 +491,8 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     obj.grid_column_span,
     obj.grid_row_span,
     obj.near,
+    obj.top,
+    obj.left,
   )
 }
 
@@ -573,6 +581,7 @@ pub(all) suberror GraphCompileError {
   InvalidShape(String)
   InvalidStyle(String)
   MissingObject(String)
+  Semantic(String)
 } derive(Eq, Show)
 
 ///|
@@ -596,6 +605,8 @@ pub fn compile(
   handle_root_shape(graph, ir)
   // Compile D2 legend (vars.d2-legend)
   compile_legend(graph, ir, classes)
+  // Semantic validation pass aligned with D2 compiler behavior.
+  validate_semantics(graph)
   graph_to_input(graph)
 }
 
@@ -662,7 +673,7 @@ fn apply_class(
   obj : Object,
   ir : @ir.Map,
   classes : Map[String, @ir.Map],
-) -> Unit {
+) -> Unit raise GraphCompileError {
   match ir.get_field("class") {
     Some(f) =>
       match f.primary {
@@ -748,12 +759,20 @@ fn extract_sql_constraints(ir : @ir.Map) -> Array[String] {
 }
 
 ///|
-fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
+fn process_special_fields(
+  obj : Object,
+  ir : @ir.Map,
+) -> Unit raise GraphCompileError {
+  validate_reserved_fields(ir)
   // Process shape
   match ir.get_field("shape") {
     Some(f) =>
       match f.primary {
-        Some(s) => obj.shape_type = ShapeType::from_string(s.to_string())
+        Some(s) => {
+          let shape = s.to_string()
+          obj.raw_shape = Some(shape)
+          obj.shape_type = ShapeType::from_string(shape)
+        }
         None => ()
       }
     None => ()
@@ -798,8 +817,10 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
   match ir.get_field("style") {
     Some(f) =>
       match f.composite {
-        Some(@ir.Composite::Map(style_map)) =>
+        Some(@ir.Composite::Map(style_map)) => {
+          validate_style_keys(style_map)
           process_style(obj.style, style_map)
+        }
         _ => ()
       }
     None => ()
@@ -903,6 +924,44 @@ fn process_special_fields(obj : Object, ir : @ir.Map) -> Unit {
         None => ()
       }
     None => ()
+  }
+  // Process fixed top position
+  match ir.get_field("top") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          obj.top = Some(parse_non_negative_position("top", s.to_string()))
+        None => ()
+      }
+    None => ()
+  }
+  // Process fixed left position
+  match ir.get_field("left") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          obj.left = Some(parse_non_negative_position("left", s.to_string()))
+        None => ()
+      }
+    None => ()
+  }
+
+  validate_link_safety(obj)
+}
+
+///|
+fn parse_non_negative_position(
+  keyword : String,
+  raw : String,
+) -> Int raise GraphCompileError {
+  match parse_int(raw) {
+    Some(v) =>
+      if v < 0 {
+        raise Semantic("\{keyword} must be a non-negative integer: \"\{raw}\"")
+      } else {
+        v
+      }
+    None => raise Semantic("non-integer \{keyword} \"\{raw}\"")
   }
 }
 
@@ -1046,7 +1105,15 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
     None => ()
   }
   // 3D
-  match ir.get_field("3d") {
+  let three_d_field = match ir.get_field("3d") {
+    Some(f) => Some(f)
+    None =>
+      match ir.get_field("3") {
+        Some(f) => Some(f)
+        None => ir.get_field("d")
+      }
+  }
+  match three_d_field {
     Some(f) =>
       match f.primary {
         Some(s) => style.three_d = Some(s.to_string() == "true")
@@ -1160,7 +1227,7 @@ fn compile_edges_in_map(
   ir : @ir.Map,
   prefix : String,
   next_index : Int,
-) -> Int {
+) -> Int raise GraphCompileError {
   let mut next_index = next_index
   for edge in ir.edges {
     let src_id = join_path(prefix, edge.id.src_path)
@@ -1183,12 +1250,15 @@ fn compile_edges_in_map(
     // Process edge properties from map
     match edge.map {
       Some(m) => {
+        validate_edge_map_keys(m)
         // Process style
         match m.get_field("style") {
           Some(f) =>
             match f.composite {
-              Some(@ir.Composite::Map(style_map)) =>
+              Some(@ir.Composite::Map(style_map)) => {
+                validate_style_keys(style_map)
                 process_style(graph_edge.style, style_map)
+              }
               _ => ()
             }
           None => ()
@@ -1303,17 +1373,297 @@ fn compile_edges_in_map(
 }
 
 ///|
-fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit {
+fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit raise GraphCompileError {
   compile_edges_in_map(graph, ir, "", 0) |> ignore
+}
+
+///|
+fn validate_style_keys(style_map : @ir.Map) -> Unit raise GraphCompileError {
+  for field in style_map.fields {
+    if !is_style_keyword(field.name) {
+      raise InvalidStyle("invalid style keyword: \"\{field.name}\"")
+    }
+  }
+}
+
+///|
+fn is_style_keyword(name : String) -> Bool {
+  let keywords = [
+    "opacity", "stroke", "fill", "stroke-width", "stroke-dash", "border-radius",
+    "shadow", "3d", "3", "d", "multiple", "font", "font-size", "font-color", "bold",
+    "italic", "underline", "animated", "filled", "double-border", "text-transform",
+    "font-family", "fill-pattern", "sketch", "curved",
+  ]
+  keywords.contains(name.to_lower())
+}
+
+///|
+fn validate_edge_map_keys(edge_map : @ir.Map) -> Unit raise GraphCompileError {
+  for field in edge_map.fields {
+    if !is_edge_reserved_keyword(field.name) {
+      raise Semantic("edge map keys must be reserved keywords")
+    }
+  }
+}
+
+///|
+fn is_edge_reserved_keyword(name : String) -> Bool {
+  let keywords = [
+    "style", "source-arrowhead", "target-arrowhead", "source-anchor", "target-anchor",
+    "bend-points", "route",
+  ]
+  keywords.contains(name.to_lower())
+}
+
+///|
+fn validate_reserved_fields(ir : @ir.Map) -> Unit raise GraphCompileError {
+  for field in ir.fields {
+    if !is_reserved_keyword(field.name) {
+      continue
+    }
+    let keyword = field.name.to_lower()
+    if keyword == "style" {
+      match field.composite {
+        Some(@ir.Composite::Map(style_map)) => validate_style_keys(style_map)
+        _ =>
+          if field.primary is None {
+            raise Semantic("reserved field \"style\" must have a value")
+          }
+      }
+      continue
+    }
+    if field.primary is None && field.composite is None {
+      raise Semantic("reserved field \"\{field.name}\" must have a value")
+    }
+    if keyword == "shape" {
+      if field.composite is Some(_) {
+        raise Semantic("reserved field shape does not accept composite")
+      }
+    }
+    if keyword == "near" {
+      if field.composite is Some(_) {
+        raise Semantic("invalid \"near\" field")
+      }
+    }
+    if keyword == "top" || keyword == "left" {
+      if field.composite is Some(_) {
+        raise Semantic(
+          "reserved field \"\{field.name}\" does not accept composite",
+        )
+      }
+    }
+  }
+}
+
+///|
+fn is_http_url(s : String) -> Bool {
+  let lower = s.to_lower()
+  lower.has_prefix("http://") || lower.has_prefix("https://")
+}
+
+///|
+fn validate_link_safety(obj : Object) -> Unit raise GraphCompileError {
+  match obj.link {
+    Some(link) =>
+      if is_http_url(link) {
+        if is_http_url(obj.label) {
+          raise Semantic(
+            "Label cannot be set to URL when link is also set (for security)",
+          )
+        }
+        match obj.tooltip {
+          Some(tooltip) =>
+            if is_http_url(tooltip) {
+              raise Semantic(
+                "Tooltip cannot be set to URL when link is also set (for security)",
+              )
+            }
+          None => ()
+        }
+      }
+    None => ()
+  }
+}
+
+///|
+fn validate_semantics(graph : Graph) -> Unit raise GraphCompileError {
+  validate_near_rules(graph)
+  validate_position_rules(graph)
+  for layer in graph.layers {
+    validate_semantics(layer.graph)
+  }
+  for scenario in graph.scenarios {
+    validate_semantics(scenario.graph)
+  }
+  for step in graph.steps {
+    validate_semantics(step.graph)
+  }
+}
+
+///|
+fn validate_near_rules(graph : Graph) -> Unit raise GraphCompileError {
+  let object_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    object_ids[obj.id] = true
+  }
+  for obj in graph.objects {
+    match obj.near {
+      None => ()
+      Some(near_raw) => {
+        let near = near_raw.to_lower()
+        if is_near_constant(near) {
+          if obj.id.contains(".") {
+            raise Semantic(
+              "constant near keys can only be set on root level shapes",
+            )
+          }
+          continue
+        }
+        if !object_ids.contains(near_raw) {
+          raise Semantic(
+            "near key \"\{near_raw}\" must be the absolute path to a shape or one of the following constants: \{near_constants_message()}",
+          )
+        }
+        if near_raw == obj.id || obj.id.has_prefix(near_raw + ".") {
+          raise Semantic("near keys cannot be set to an ancestor")
+        }
+        if near_raw.has_prefix(obj.id + ".") {
+          raise Semantic("near keys cannot be set to an descendant")
+        }
+      }
+    }
+  }
+}
+
+///|
+fn validate_position_rules(graph : Graph) -> Unit raise GraphCompileError {
+  let object_by_id : Map[String, Object] = {}
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+  for obj in graph.objects {
+    if obj.top is None && obj.left is None {
+      continue
+    }
+    let parent = lookup_parent_object(graph, object_by_id, obj.id)
+    if is_hierarchy_shape(parent) {
+      raise Semantic(
+        "position keywords cannot be used with shape \"hierarchy\"",
+      )
+    }
+    if parent.grid_columns is Some(_) || parent.grid_rows is Some(_) {
+      raise Semantic("position keywords cannot be used with grids")
+    }
+    if is_inside_sequence_diagram(graph, object_by_id, obj.id) {
+      raise Semantic(
+        "position keywords cannot be used inside shape \"sequence_diagram\"",
+      )
+    }
+  }
+}
+
+///|
+fn is_hierarchy_shape(obj : Object) -> Bool {
+  match obj.raw_shape {
+    Some(shape) => shape.to_lower() == "hierarchy"
+    None => false
+  }
+}
+
+///|
+fn is_inside_sequence_diagram(
+  graph : Graph,
+  object_by_id : Map[String, Object],
+  id : String,
+) -> Bool {
+  if graph.root.shape_type == ShapeType::SequenceDiagram {
+    return true
+  }
+  has_sequence_diagram_ancestor(object_by_id, id)
+}
+
+///|
+fn has_sequence_diagram_ancestor(
+  object_by_id : Map[String, Object],
+  id : String,
+) -> Bool {
+  match parent_id_of(id) {
+    None => false
+    Some(parent_id) =>
+      match object_by_id.get(parent_id) {
+        Some(parent) =>
+          if parent.shape_type == ShapeType::SequenceDiagram {
+            true
+          } else {
+            has_sequence_diagram_ancestor(object_by_id, parent_id)
+          }
+        None => false
+      }
+  }
+}
+
+///|
+fn lookup_parent_object(
+  graph : Graph,
+  object_by_id : Map[String, Object],
+  id : String,
+) -> Object {
+  match parent_id_of(id) {
+    Some(parent_id) =>
+      match object_by_id.get(parent_id) {
+        Some(parent) => parent
+        None => graph.root
+      }
+    None => graph.root
+  }
+}
+
+///|
+fn parent_id_of(id : String) -> String? {
+  let mut last_dot = -1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      last_dot = i
+    }
+  }
+  if last_dot <= 0 {
+    return None
+  }
+  let out = StringBuilder::new()
+  for i = 0; i < last_dot; i = i + 1 {
+    match id[i].to_char() {
+      Some(c) => out.write_char(c)
+      None => ()
+    }
+  }
+  Some(out.to_string())
+}
+
+///|
+fn is_near_constant(value : String) -> Bool {
+  near_constants().contains(value)
+}
+
+///|
+fn near_constants() -> Array[String] {
+  [
+    "top-left", "top-center", "top-right", "center-left", "center-right", "bottom-left",
+    "bottom-center", "bottom-right",
+  ]
+}
+
+///|
+fn near_constants_message() -> String {
+  near_constants().join(", ")
 }
 
 ///|
 fn is_reserved_keyword(name : String) -> Bool {
   let keywords = [
     "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
-    "direction", "constraint", "class", "classes", "vars", "grid-rows", "grid-columns",
-    "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span", "grid-row-span",
-    "layers", "scenarios", "steps",
+    "top", "left", "direction", "constraint", "class", "classes", "vars", "grid-rows",
+    "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span",
+    "grid-row-span", "layers", "scenarios", "steps",
   ]
   keywords.contains(name.to_lower())
 }

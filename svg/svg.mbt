@@ -26,9 +26,11 @@ pub struct Svg {
   mut viewbox_y : Double
   mut viewbox_width : Double
   mut viewbox_height : Double
+  mut include_xml_declaration : Bool
   elements : Array[String]
   defs : Array[String]
   scripts : Array[String]
+  root_attrs : Array[(String, String)]
 }
 
 ///|
@@ -41,9 +43,11 @@ pub fn Svg::new(width : Double, height : Double) -> Svg {
     viewbox_y: 0.0,
     viewbox_width: width,
     viewbox_height: height,
+    include_xml_declaration: true,
     elements: [],
     defs: [],
     scripts: [],
+    root_attrs: [],
   }
 }
 
@@ -144,6 +148,18 @@ pub fn Svg::add_script(self : Svg, script : String) -> Unit {
 }
 
 ///|
+/// Enable or disable XML declaration output.
+pub fn Svg::set_include_xml_declaration(self : Svg, enabled : Bool) -> Unit {
+  self.include_xml_declaration = enabled
+}
+
+///|
+/// Add an attribute to the root `<svg>` element.
+pub fn Svg::add_root_attr(self : Svg, name : String, value : String) -> Unit {
+  self.root_attrs.push((name, value))
+}
+
+///|
 /// Render to string
 pub fn Svg::to_string(self : Svg) -> String {
   let view_box = "\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}"
@@ -170,16 +186,22 @@ pub fn Svg::to_string(self : Svg) -> String {
   } else {
     "\n" + parts.join("\n") + "\n"
   }
-  let root = @xml_emit.Element::new("svg")
+  let mut root = @xml_emit.Element::new("svg")
     .attr("xmlns", "http://www.w3.org/2000/svg")
     .attr_num("width", self.width)
     .attr_num("height", self.height)
     .attr("viewBox", view_box)
-    .raw(content)
-    .build()
-  let doc = @xml_emit.Document::new()
-  doc.add(root)
-  doc.build()
+  for attr in self.root_attrs {
+    root = root.attr(attr.0, attr.1)
+  }
+  let root = root.raw(content).build()
+  if self.include_xml_declaration {
+    let doc = @xml_emit.Document::new()
+    doc.add(root)
+    doc.build()
+  } else {
+    root + "\n"
+  }
 }
 
 ///|

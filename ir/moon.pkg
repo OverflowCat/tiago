@@ -1,0 +1,10 @@
+import {
+  "Milky2018/diago/ast",
+  "Milky2018/diago/lexer",
+  "Milky2018/diago/parser",
+  "moonbitlang/core/strconv",
+}
+
+import {
+  "Milky2018/diago/lexer",
+} for "wbtest"

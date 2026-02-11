@@ -1,0 +1,28 @@
+import {
+  "Milky2018/diago/compiler",
+  "Milky2018/diago/ir",
+  "Milky2018/diago/exporter",
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/engine_dagre",
+  "Milky2018/diago/engine_railway",
+  "Milky2018/diago/renderer_svg",
+  "Milky2018/diago/renderer_ascii",
+  "Milky2018/diago/renderer_unicode",
+  "Milky2018/diago/formatter",
+  "moonbitlang/x/fs",
+  "moonbitlang/x/sys",
+  "moonbitlang/x/path",
+}
+
+options(
+  "is-main": true,
+  targets: {
+    "exec_js.mbt": [ "js" ],
+    "exec_native.mbt": [ "native", "llvm" ],
+    "exec_wasm.mbt": [ "wasm", "wasm-gc" ],
+    "sleep_js.mbt": [ "js" ],
+    "sleep_native.mbt": [ "native", "llvm" ],
+    "sleep_wasm.mbt": [ "wasm", "wasm-gc" ],
+  },
+)

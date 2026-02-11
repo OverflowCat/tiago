@@ -108,7 +108,6 @@ fn Parser::skip_trivia(self : Parser) -> Unit {
     match self.peek() {
       @lexer.Newline | @lexer.Comment(_) | @lexer.BlockComment(_) => {
         let _ = self.advance()
-
       }
       _ => break
     }
@@ -121,7 +120,6 @@ fn Parser::skip_whitespace_not_newline(self : Parser) -> Unit {
     match self.peek() {
       @lexer.Comment(_) | @lexer.BlockComment(_) => {
         let _ = self.advance()
-
       }
       _ => break
     }
@@ -169,7 +167,6 @@ fn Parser::parse_map(self : Parser, is_file_map : Bool) -> @ast.Map {
             @lexer.Newline | @lexer.Semicolon | @lexer.RightBrace => break
             _ => {
               let _ = self.advance()
-
             }
           }
         }
@@ -580,7 +577,6 @@ fn Parser::parse_edge_group(
   match self.peek() {
     @lexer.RightParen => {
       let _ = self.advance()
-
     }
     _ => self.error("expected ) to close edge group")
   }
@@ -652,7 +648,6 @@ fn Parser::parse_edge_index(self : Parser) -> @ast.EdgeIndex? {
   match self.peek() {
     @lexer.RightBracket => {
       let _ = self.advance()
-
     }
     _ => self.error("expected ] to close edge index")
   }
@@ -708,7 +703,6 @@ fn Parser::parse_block(self : Parser) -> @ast.Map? {
   match self.peek() {
     @lexer.RightBrace => {
       let _ = self.advance()
-
     }
     _ => self.error("expected } to close block")
   }
@@ -789,7 +783,6 @@ fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
   match self.peek() {
     @lexer.RightBracket => {
       let _ = self.advance()
-
     }
     _ => self.error("expected ] to close array")
   }

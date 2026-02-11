@@ -306,8 +306,7 @@ server -> database: queries"></textarea>
           <div class="toolbar-row">
             <span class="toolbar-label">Engine</span>
             <div class="engine-tabs">
-              <button class="engine-tab active" data-engine="elk">ELK</button>
-              <button class="engine-tab" data-engine="dagre">Dagre</button>
+              <button class="engine-tab active" data-engine="dagre">Dagre</button>
               <button class="engine-tab" data-engine="railway">Railway</button>
             </div>
             <div class="spacer"></div>
@@ -370,18 +369,17 @@ server -> database: queries"></textarea>
 
     // Engine selection
     const ENGINE_STORAGE_KEY = 'diago.layout_engine';
-    let selectedEngine = 'elk';
+    let selectedEngine = 'dagre';
     function getSelectedEngine() {
       return selectedEngine;
     }
     function getEngineId() {
-      if (selectedEngine === 'dagre') return 1;
       if (selectedEngine === 'railway') return 2;
-      return 0; // elk
+      return 1; // dagre
     }
     // Restore last engine preference
     const savedEngine = localStorage.getItem(ENGINE_STORAGE_KEY);
-    if (savedEngine === 'dagre' || savedEngine === 'elk' || savedEngine === 'railway') {
+    if (savedEngine === 'dagre' || savedEngine === 'railway') {
       selectedEngine = savedEngine;
       engineTabs.forEach(tab => {
         tab.classList.toggle('active', tab.dataset.engine === savedEngine);

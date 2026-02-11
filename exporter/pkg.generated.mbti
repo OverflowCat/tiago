@@ -16,6 +16,7 @@ pub(all) suberror GraphCompileError {
   InvalidShape(String)
   InvalidStyle(String)
   MissingObject(String)
+  Semantic(String)
 }
 pub impl Eq for GraphCompileError
 pub impl Show for GraphCompileError

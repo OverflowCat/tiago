@@ -210,8 +210,9 @@ fn topo_scc_order(
   comp_id : Array[Int],
   out_adj : Array[Array[Int]],
 ) -> Array[Int] raise @engine_api.LayoutError {
-  let scc_out : Array[Array[Int]] = Array::makei(scc_count, _ => (
-    [] : Array[Int]))
+  let scc_out : Array[Array[Int]] = Array::makei(scc_count, _ => {
+    ([] : Array[Int])
+  })
   let indeg = Array::make(scc_count, 0)
   for u in 0..<comp_id.length() {
     let cu = comp_id[u]

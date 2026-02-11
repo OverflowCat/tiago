@@ -52,8 +52,16 @@ pub struct SvgConfig {
   default_stroke_width : Double
   arrow_size : Double
   theme_id : Int
+  dark_theme_id : Int?
+  theme_overrides : Map[String, String]
+  dark_theme_overrides : Map[String, String]
+  scale : Double?
+  no_xml_tag : Bool
+  salt : String?
+  omit_version : Bool
 }
 pub fn SvgConfig::new() -> Self
+pub fn SvgConfig::with_render_options(Self, Int?, Map[String, String], Map[String, String], Double?, Bool, String?, Bool) -> Self
 pub fn SvgConfig::with_theme(Int) -> Self
 pub fn SvgConfig::with_theme_name(String) -> Self
 pub impl Show for SvgConfig

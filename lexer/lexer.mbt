@@ -192,7 +192,6 @@ fn Lexer::skip_whitespace(self : Lexer) -> Unit {
     match self.peek() {
       ' ' | '\t' | '\r' => {
         let _ = self.advance()
-
       }
       _ => break
     }
@@ -264,7 +263,6 @@ fn Lexer::scan_line_comment(self : Lexer, start : Position) -> Unit {
   let content_start = self.pos
   while not(self.is_at_end()) && self.peek() != '\n' {
     let _ = self.advance()
-
   }
   let content = self.slice_source(content_start, self.pos)
   self.add_token(Comment(content), start)
@@ -285,7 +283,6 @@ fn Lexer::scan_block_comment(self : Lexer, start : Position) -> Unit {
       depth -= 1
     } else {
       let _ = self.advance()
-
     }
   }
   if depth > 0 {
@@ -311,7 +308,6 @@ fn Lexer::scan_single_quoted_string(self : Lexer, start : Position) -> Unit {
       break
     } else {
       let _ = self.advance()
-
     }
   }
   let content = self.slice_source(content_start, self.pos)
@@ -340,7 +336,6 @@ fn Lexer::scan_double_quoted_string(self : Lexer, start : Position) -> Unit {
       break
     } else {
       let _ = self.advance()
-
     }
   }
   let content = self.slice_source(content_start, self.pos)

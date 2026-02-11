@@ -66,6 +66,8 @@ fn root_input(child_ids : Array[String]) -> @graph.ObjectInput {
     None,
     None,
     None,
+    None,
+    None,
   )
 }
 
@@ -84,6 +86,8 @@ fn object_input(id : String, box : @graph.Box?) -> @graph.ObjectInput {
     None,
     None,
     [],
+    None,
+    None,
     None,
     None,
     None,
@@ -253,7 +257,7 @@ test "engine implementations must not mutate input graph" {
   for e in graph.get_edges() {
     labels_before.push(e.label_box)
   }
-  let engine = @engine_elk.ElkEngine::new()
+  let engine = @engine_dagre.DagreEngine::new()
   let config = @engine_api.LayoutConfig::new()
   ignore(engine.layout(graph, config, @engine_api.Direction::Down)) catch {
     e => fail("engine.layout should not fail: \{e}")

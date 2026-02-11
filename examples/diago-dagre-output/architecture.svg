@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="1596" viewBox="-50 -50 860 1596" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<rect x="80" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 300 110 H 200 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 218.74084919472915 81.70542635658914 213.0307467057101 75.89147286821705 213.0307467057101 69.53488372093022 C 213.0307467057101 58.75968992248062 229.5754026354319 50 249.9267935578331 50 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 216.5267386091127 200.9751051625239 C 216.5267386091127 201.61250478011473 215.86055155875297 202.2497896749522 215.19448441247002 202.2497896749522 C 206.7013189448441 203.0464244741874 200.03992805755394 211.17269598470364 200.03992805755394 221.05158699808797 C 200.03992805755394 231.5678776290631 207.533932853717 240.01273422562144 217.02637889688248 240.01273422562144 H 281.47482014388487 C 291.63345323741004 240.01273422562144 299.960071942446 230.9304780114723 299.960071942446 219.9362523900574 C 299.960071942446 209.41996175908227 292.2994004796163 200.65640535372853 282.64064748201434 200.01912045889105 C 281.9744604316546 200.01912045889105 281.30839328537166 199.54107074569794 281.14184652278175 198.74443594646274 C 278.9768585131894 188.06891013384325 268.9847721822542 180.1019885277247 257.32757793764983 180.1019885277247 C 249.66702637889685 180.1019885277247 242.83908872901674 183.44810707456983 238.50935251798558 188.70619502868072 C 238.0097122302158 189.34359464627155 237.1770983213429 189.50294455066924 236.67745803357312 189.34359464627155 C 235.01211031175058 188.70619502868072 233.18033573141486 188.38760994263868 231.18189448441245 188.38760994263868 C 223.52122302158273 188.22814531548758 217.19292565947242 193.80493307839387 216.5267386091127 200.9751051625239 Z" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="225,310 275,310 300,340 275,370 225,370 200,340" fill="#fff3e0" stroke="#0A0F25" stroke-width="2"/>
+<rect x="110" y="440" width="400" height="130" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="50" y="640" width="580" height="130" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 100 864 C 100 840 145 840 150 840 C 155 840 200 840 200 864 L 200 876 C 200 900 155 900 150 900 C 145 900 100 900 100 876 L 100 864 Z" fill="#ffebee" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="150" cy="864" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 100 864 C 100 888 145 888 150 888 C 155 888 200 888 200 864" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="110" y="1170" width="380" height="276" fill="#fff8e1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 535 840 L 605 840 C 613.25 840 620 855 620 870 C 620 885 613.25 900 605 900 L 535 900 C 526.75 900 520 885 520 870 C 520 855 526.75 840 535 840 Z" fill="#e0f2f1" stroke="#0A0F25" stroke-width="2"/>
+<rect x="370" y="970" width="340" height="130" fill="#fce4ec" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 575 1205 L 645 1205 C 655.95 1205 660 1220 660 1235 C 660 1250 655.95 1265 645 1265 L 575 1265 C 564.05 1265 560 1250 560 1235 C 560 1220 564.05 1205 575 1205 Z" fill="#f5f5f5" stroke="#0A0F25" stroke-width="2"/>
+<rect x="380" y="475" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 280 1229 C 280 1205 325 1205 330 1205 C 335 1205 380 1205 380 1229 L 380 1241 C 380 1265 335 1265 330 1265 C 325 1265 280 1265 280 1241 L 280 1229 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="330" cy="1229" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 280 1229 C 280 1253 325 1253 330 1253 C 335 1253 380 1253 380 1229" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 140 1375 C 140 1351 185 1351 190 1351 C 195 1351 240 1351 240 1375 L 240 1387 C 240 1411 195 1411 190 1411 C 185 1411 140 1411 140 1387 L 140 1375 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="190" cy="1375" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 140 1375 C 140 1399 185 1399 190 1399 C 195 1399 240 1399 240 1375" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 360 1375 C 360 1351 405 1351 410 1351 C 415 1351 460 1351 460 1375 L 460 1387 C 460 1411 415 1411 410 1411 C 405 1411 360 1411 360 1387 L 360 1375 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="410" cy="1375" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 360 1375 C 360 1399 405 1399 410 1399 C 415 1399 460 1399 460 1375" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="140" y="475" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="140" y="675" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="440" y="1005" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="580" y="1005" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="300" y="675" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="260" y="475" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 250 110 L 250 145 L 250 180" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 250 240 L 250 275 L 250 310" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 222.30769230769232 370 L 196.78280102733066 397.6519655537251 C 196.78280102733066 397.6519655537251 190 405 190 415 L 190 440 L 190 475" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 277.6923076923077 370 L 303.21719897266934 397.6519655537251 C 303.21719897266934 397.6519655537251 310 405 310 415 L 310 440 L 310 475" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 300 358.05555555555554 L 420.59446100308304 401.6035553622244 C 420.59446100308304 401.6035553622244 430 405 430 415 L 430 440 L 430 475" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 190 535 L 190 570 L 190 605 L 190 640 L 190 675" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 310 535 L 310 570 L 310 605 L 310 630 C 310 630 310 640 301.2070803346323 644.7628314854076 L 240 677.9166666666666" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 328.46153846153845 535 L 344.75902574335663 561.4834168329546 C 344.75902574335663 561.4834168329546 350 570 350 580 L 350 605 L 350 640 L 350 675" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 430 535 L 430 570 L 430 605 L 430 630 C 430 630 430 640 422.23885999883737 646.3059262509447 L 386.9230769230769 675" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 162.30769230769232 735 L 136.78280102733066 762.6519655537252 C 136.78280102733066 762.6519655537252 130 770 130 780 L 130 795 C 130 795 130 805 132.94085848837523 814.5577900872195 L 140.76923076923077 840" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 300 723.0555555555555 L 179.40553899691696 766.6035553622245 C 179.40553899691696 766.6035553622245 170 770 170 780 L 170 795 C 170 795 170 805 167.05914151162477 814.5577900872195 L 159.23076923076923 840" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 208.46153846153845 735 L 224.75902574335666 761.4834168329546 C 224.75902574335666 761.4834168329546 230 770 230 780 L 230 805 L 230 870 L 230 935 L 230 970 L 230 1035 L 230 1100 L 230 1135 L 230 1160 C 230 1160 230 1170 238.38443616300637 1175.4498835059542 L 283.84615384615387 1205" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 340.7692307692308 735 L 332.9408584883752 760.4422099127805 C 332.9408584883752 760.4422099127805 330 770 330 780 L 330 805 L 330 870 L 330 935 L 330 970 L 330 1035 L 330 1100 L 330 1135 L 330 1170 L 330 1205" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 240 717.5 L 440.29857499854666 767.5746437496367 C 440.29857499854666 767.5746437496367 450 770 450 780 L 450 795 C 450 795 450 805 458.7929196653677 809.7628314854076 L 520 842.9166666666666" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 400 718.5416666666666 L 580.3477362808005 767.3858452427169 C 580.3477362808005 767.3858452427169 590 770 590 780 L 590 795 C 590 795 590 805 587.0591415116248 814.5577900872195 L 579.2307692307693 840" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 533.0769230769231 900 L 497.76114000116263 928.6940737490553 C 497.76114000116263 928.6940737490553 490 935 490 945 L 490 970 L 490 1005" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 597.6923076923077 900 L 623.2171989726694 927.6519655537251 C 623.2171989726694 927.6519655537251 630 935 630 945 L 630 970 L 630 1005" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 517.6923076923077 1065 L 543.2171989726694 1092.6519655537252 C 543.2171989726694 1092.6519655537252 550 1100 550 1110 L 550 1135 L 550 1160 C 550 1160 550 1170 556.7828010273306 1177.3480344462748 L 582.3076923076923 1205" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 630 1065 L 630 1100 L 630 1135 L 630 1160 C 630 1160 630 1170 627.0591415116248 1179.5577900872195 L 619.2307692307693 1205" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 471.53846153846155 1065 L 455.24097425664337 1091.4834168329546 C 455.24097425664337 1091.4834168329546 450 1100 450 1110 L 450 1135 L 450 1160 C 450 1160 450 1170 441.2070803346323 1174.7628314854076 L 380 1207.9166666666667" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 280 1261.0714285714287 L 198.86697750893782 1303.3765045846253 C 198.86697750893782 1303.3765045846253 190 1308 190 1318 L 190 1351" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="170" y="1300" width="40" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="190" y="1316" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">sync</text>
+<path d="M 362.8767123287671 1265 L 402.61314636559786 1301.259496058608 C 402.61314636559786 1301.259496058608 410 1308 410 1318 L 410 1351" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="390" y="1300" width="40" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="410" y="1316" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">sync</text>
+<text x="130" y="130.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="24">Web Application Architecture</text>
+<text x="250" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Users</text>
+<text x="250" y="210" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">CDN</text>
+<text x="250" y="340" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Load Balancer</text>
+<text x="310" y="455.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Tier</text>
+<text x="340" y="655.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Application Tier</text>
+<text x="150" y="870" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Redis Cache</text>
+<text x="300" y="1185.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Database Cluster</text>
+<text x="570" y="915.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Message Queue</text>
+<text x="540" y="985.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Background Workers</text>
+<text x="610" y="1235" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Object Storage</text>
+<text x="430" y="505" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Server 3</text>
+<text x="330" y="1235" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Primary DB</text>
+<text x="190" y="1381" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Replica 1</text>
+<text x="410" y="1381" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Replica 2</text>
+<text x="190" y="505" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Server 1</text>
+<text x="190" y="705" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">App Server 1</text>
+<text x="490" y="1035" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Worker 1</text>
+<text x="630" y="1035" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Worker 2</text>
+<text x="350" y="705" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">App Server 2</text>
+<text x="310" y="505" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Server 2</text>
+</g>
+</svg>

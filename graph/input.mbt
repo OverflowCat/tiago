@@ -211,6 +211,8 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 /// * `grid_column_span` : Optional number of columns this object spans.
 /// * `grid_row_span` : Optional number of rows this object spans.
 /// * `near` : Optional identifier of object to position near.
+/// * `top` : Optional fixed top coordinate in pixels.
+/// * `left` : Optional fixed left coordinate in pixels.
 ///
 pub struct ObjectInput {
   id : String
@@ -233,6 +235,8 @@ pub struct ObjectInput {
   grid_column_span : Int?
   grid_row_span : Int?
   near : String?
+  top : Int?
+  left : Int?
 } derive(Show)
 
 ///|
@@ -258,6 +262,8 @@ pub fn ObjectInput::new(id : String) -> ObjectInput {
     grid_column_span: None,
     grid_row_span: None,
     near: None,
+    top: None,
+    left: None,
   }
 }
 
@@ -283,6 +289,8 @@ pub fn ObjectInput::from_parts(
   grid_column_span : Int?,
   grid_row_span : Int?,
   near : String?,
+  top : Int?,
+  left : Int?,
 ) -> ObjectInput {
   {
     id,
@@ -305,6 +313,8 @@ pub fn ObjectInput::from_parts(
     grid_column_span,
     grid_row_span,
     near,
+    top,
+    left,
   }
 }
 
@@ -824,6 +834,8 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     obj.grid_column_span,
     obj.grid_row_span,
     obj.near,
+    obj.top,
+    obj.left,
   )
 }
 

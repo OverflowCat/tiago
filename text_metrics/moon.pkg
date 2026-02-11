@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/core/math",
+}
+
+options(
+  description: "",
+  keywords: [ ],
+  license: "Apache-2.0",
+  name: "text_metrics",
+  readme: "README.md",
+  repository: "",
+)

@@ -47,6 +47,20 @@ pub struct SvgConfig {
   arrow_size : Double
   /// Theme ID (0 = default)
   theme_id : Int
+  /// Optional dark theme ID.
+  dark_theme_id : Int?
+  /// Light theme color overrides by token (e.g. B1, N7).
+  theme_overrides : Map[String, String]
+  /// Dark theme color overrides by token.
+  dark_theme_overrides : Map[String, String]
+  /// Optional output scale factor.
+  scale : Double?
+  /// Omit XML declaration when true.
+  no_xml_tag : Bool
+  /// Optional salt for namespacing SVG definition IDs.
+  salt : String?
+  /// Omit version metadata on root element.
+  omit_version : Bool
 } derive(Show)
 
 ///|
@@ -62,6 +76,13 @@ pub fn SvgConfig::new() -> SvgConfig {
     default_stroke_width: 2.0,
     arrow_size: 10.0,
     theme_id: 0,
+    dark_theme_id: None,
+    theme_overrides: {},
+    dark_theme_overrides: {},
+    scale: None,
+    no_xml_tag: false,
+    salt: None,
+    omit_version: false,
   }
 }
 
@@ -80,6 +101,13 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
     default_stroke_width: 2.0,
     arrow_size: 10.0,
     theme_id,
+    dark_theme_id: None,
+    theme_overrides: {},
+    dark_theme_overrides: {},
+    scale: None,
+    no_xml_tag: false,
+    salt: None,
+    omit_version: false,
   }
 }
 
@@ -88,6 +116,44 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
 pub fn SvgConfig::with_theme_name(name : String) -> SvgConfig {
   let theme = @themes.get_theme_by_name(name)
   SvgConfig::with_theme(theme.get_id())
+}
+
+///|
+/// Apply render-time options on top of a base theme config.
+pub fn SvgConfig::with_render_options(
+  self : SvgConfig,
+  dark_theme_id : Int?,
+  theme_overrides : Map[String, String],
+  dark_theme_overrides : Map[String, String],
+  scale : Double?,
+  no_xml_tag : Bool,
+  salt : String?,
+  omit_version : Bool,
+) -> SvgConfig {
+  let active_theme = if dark_theme_id == Some(self.theme_id) {
+    @themes.get_theme(self.theme_id).with_overrides(dark_theme_overrides)
+  } else {
+    @themes.get_theme(self.theme_id).with_overrides(theme_overrides)
+  }
+  let font_family = if active_theme.rules.mono {
+    "monospace"
+  } else {
+    "Arial, sans-serif"
+  }
+  {
+    ..self,
+    font_family,
+    background: active_theme.background_color(),
+    default_stroke: active_theme.stroke_color(),
+    default_fill: active_theme.fill_color(),
+    dark_theme_id,
+    theme_overrides,
+    dark_theme_overrides,
+    scale,
+    no_xml_tag,
+    salt,
+    omit_version,
+  }
 }
 
 ///|
@@ -129,7 +195,87 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
 }
 
 ///|
+fn resolve_theme_token(value : String, theme : @themes.Theme) -> String {
+  match value.to_upper() {
+    "N1"
+    | "N2"
+    | "N3"
+    | "N4"
+    | "N5"
+    | "N6"
+    | "N7"
+    | "B1"
+    | "B2"
+    | "B3"
+    | "B4"
+    | "B5"
+    | "B6"
+    | "AA2"
+    | "AA4"
+    | "AA5"
+    | "AB4"
+    | "AB5" => theme.resolve(value.to_upper())
+    _ => value
+  }
+}
+
+///|
+fn style_color(
+  value : @graph.StyleValue?,
+  default : String,
+  theme : @themes.Theme,
+) -> String {
+  let raw = style_string(value, default)
+  resolve_theme_token(raw, theme)
+}
+
+///|
+fn hash_u32(s : String) -> Int {
+  let mut h : Int = 216613626
+  for i in 0..<s.length() {
+    let b = s.code_unit_at(i).to_int()
+    h = h ^ b
+    h = (h * 16777619) & 0x7fffffff
+  }
+  h
+}
+
+///|
+fn defs_prefix(config : SvgConfig) -> String {
+  match config.salt {
+    Some(s) => if s == "" { "" } else { "s\{hash_u32(s).to_string()}-" }
+    None => ""
+  }
+}
+
+///|
+fn defs_id(config : SvgConfig, base : String) -> String {
+  defs_prefix(config) + base
+}
+
+///|
+fn defs_url(config : SvgConfig, base : String) -> String {
+  "url(#\{defs_id(config, base)})"
+}
+
+///|
+fn ceil_double(x : Double) -> Double {
+  let n = x.to_int()
+  let n_double = n.to_double()
+  if n_double == x {
+    x
+  } else if x > n_double {
+    (n + 1).to_double()
+  } else {
+    n_double
+  }
+}
+
+///|
 const LABEL_PADDING : Double = 5.0
+
+///|
+const DIAGO_VERSION : String = "0.1.0"
 
 ///|
 fn transform_label_text(text : String, text_transform : String) -> String {
@@ -216,23 +362,40 @@ pub fn render_svg(
   // Calculate dimensions accounting for negative coordinates
   let content_width = max_x - min_x
   let content_height = max_y - min_y
-  let width = content_width + config.padding * 2.0
-  let height = content_height + config.padding * 2.0 + control_height
+  let viewbox_width = content_width + config.padding * 2.0
+  let viewbox_height = content_height + config.padding * 2.0 + control_height
   let viewbox_x = min_x - config.padding
   let viewbox_y = min_y - config.padding - control_height
+  let (width, height) = match config.scale {
+    Some(scale) =>
+      (ceil_double(viewbox_width * scale), ceil_double(viewbox_height * scale))
+    None => (viewbox_width, viewbox_height)
+  }
   // Create SVG document
   let svg = @svg.Svg::new(width, height)
-  svg.set_viewbox(viewbox_x, viewbox_y, width, height)
-  // Get theme for special rules
-  let theme = @themes.get_theme(config.theme_id)
+  svg.set_viewbox(viewbox_x, viewbox_y, viewbox_width, viewbox_height)
+  if config.no_xml_tag {
+    svg.set_include_xml_declaration(false)
+  }
+  if not(config.omit_version) {
+    svg.add_root_attr("data-d2-version", DIAGO_VERSION)
+  }
+  // Get theme for special rules and token resolution.
+  let theme = if config.dark_theme_id == Some(config.theme_id) {
+    @themes.get_theme(config.theme_id).with_overrides(
+      config.dark_theme_overrides,
+    )
+  } else {
+    @themes.get_theme(config.theme_id).with_overrides(config.theme_overrides)
+  }
   // Add arrow markers for all arrowhead types
   add_arrowhead_markers(svg, config)
   // Add fill patterns
-  add_fill_patterns(svg, graph, config)
+  add_fill_patterns(svg, graph, config, theme)
   // Add sketch filter if needed
-  add_sketch_filter(svg, graph)
+  add_sketch_filter(svg, graph, config)
   // Background
-  svg.add(@svg.background(config.background))
+  svg.add(@svg.background(theme.background_color()))
   // Render control bar based on what's present
   if has_layers {
     render_layer_tabs(svg, graph, config)
@@ -718,37 +881,72 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
   let size = config.arrow_size
   let stroke = config.default_stroke
   // Triangle (default arrow)
-  svg.add_def(@svg.arrow_marker("arrow-triangle", size, stroke))
   svg.add_def(
-    @svg.arrow_marker("arrow-triangle-reverse", size, stroke, reverse=true),
+    @svg.arrow_marker(defs_id(config, "arrow-triangle"), size, stroke),
+  )
+  svg.add_def(
+    @svg.arrow_marker(
+      defs_id(config, "arrow-triangle-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Diamond
-  svg.add_def(@svg.diamond_marker("arrow-diamond", size, stroke))
   svg.add_def(
-    @svg.diamond_marker("arrow-diamond-reverse", size, stroke, reverse=true),
+    @svg.diamond_marker(defs_id(config, "arrow-diamond"), size, stroke),
+  )
+  svg.add_def(
+    @svg.diamond_marker(
+      defs_id(config, "arrow-diamond-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Circle
-  svg.add_def(@svg.circle_marker("arrow-circle", size, stroke))
+  svg.add_def(@svg.circle_marker(defs_id(config, "arrow-circle"), size, stroke))
   svg.add_def(
-    @svg.circle_marker("arrow-circle-reverse", size, stroke, reverse=true),
+    @svg.circle_marker(
+      defs_id(config, "arrow-circle-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Crow's foot: one
-  svg.add_def(@svg.cf_one_marker("arrow-cf-one", size, stroke))
+  svg.add_def(@svg.cf_one_marker(defs_id(config, "arrow-cf-one"), size, stroke))
   svg.add_def(
-    @svg.cf_one_marker("arrow-cf-one-reverse", size, stroke, reverse=true),
+    @svg.cf_one_marker(
+      defs_id(config, "arrow-cf-one-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Crow's foot: many
-  svg.add_def(@svg.cf_many_marker("arrow-cf-many", size, stroke))
   svg.add_def(
-    @svg.cf_many_marker("arrow-cf-many-reverse", size, stroke, reverse=true),
+    @svg.cf_many_marker(defs_id(config, "arrow-cf-many"), size, stroke),
+  )
+  svg.add_def(
+    @svg.cf_many_marker(
+      defs_id(config, "arrow-cf-many-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Crow's foot: one-required
   svg.add_def(
-    @svg.cf_one_required_marker("arrow-cf-one-required", size, stroke),
+    @svg.cf_one_required_marker(
+      defs_id(config, "arrow-cf-one-required"),
+      size,
+      stroke,
+    ),
   )
   svg.add_def(
     @svg.cf_one_required_marker(
-      "arrow-cf-one-required-reverse",
+      defs_id(config, "arrow-cf-one-required-reverse"),
       size,
       stroke,
       reverse=true,
@@ -756,11 +954,15 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
   )
   // Crow's foot: many-required
   svg.add_def(
-    @svg.cf_many_required_marker("arrow-cf-many-required", size, stroke),
+    @svg.cf_many_required_marker(
+      defs_id(config, "arrow-cf-many-required"),
+      size,
+      stroke,
+    ),
   )
   svg.add_def(
     @svg.cf_many_required_marker(
-      "arrow-cf-many-required-reverse",
+      defs_id(config, "arrow-cf-many-required-reverse"),
       size,
       stroke,
       reverse=true,
@@ -768,11 +970,15 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
   )
   // Crow's foot: one-optional
   svg.add_def(
-    @svg.cf_one_optional_marker("arrow-cf-one-optional", size, stroke),
+    @svg.cf_one_optional_marker(
+      defs_id(config, "arrow-cf-one-optional"),
+      size,
+      stroke,
+    ),
   )
   svg.add_def(
     @svg.cf_one_optional_marker(
-      "arrow-cf-one-optional-reverse",
+      defs_id(config, "arrow-cf-one-optional-reverse"),
       size,
       stroke,
       reverse=true,
@@ -780,29 +986,50 @@ fn add_arrowhead_markers(svg : @svg.Svg, config : SvgConfig) -> Unit {
   )
   // Crow's foot: many-optional
   svg.add_def(
-    @svg.cf_many_optional_marker("arrow-cf-many-optional", size, stroke),
+    @svg.cf_many_optional_marker(
+      defs_id(config, "arrow-cf-many-optional"),
+      size,
+      stroke,
+    ),
   )
   svg.add_def(
     @svg.cf_many_optional_marker(
-      "arrow-cf-many-optional-reverse",
+      defs_id(config, "arrow-cf-many-optional-reverse"),
       size,
       stroke,
       reverse=true,
     ),
   )
   // Line terminator
-  svg.add_def(@svg.line_marker("arrow-line", size, stroke))
+  svg.add_def(@svg.line_marker(defs_id(config, "arrow-line"), size, stroke))
   svg.add_def(
-    @svg.line_marker("arrow-line-reverse", size, stroke, reverse=true),
+    @svg.line_marker(
+      defs_id(config, "arrow-line-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Open triangle
-  svg.add_def(@svg.open_marker("arrow-open", size, stroke))
+  svg.add_def(@svg.open_marker(defs_id(config, "arrow-open"), size, stroke))
   svg.add_def(
-    @svg.open_marker("arrow-open-reverse", size, stroke, reverse=true),
+    @svg.open_marker(
+      defs_id(config, "arrow-open-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
   )
   // Aliases for backward compatibility
-  svg.add_def(@svg.arrow_marker("arrow", size, stroke))
-  svg.add_def(@svg.arrow_marker("arrow-reverse", size, stroke, reverse=true))
+  svg.add_def(@svg.arrow_marker(defs_id(config, "arrow"), size, stroke))
+  svg.add_def(
+    @svg.arrow_marker(
+      defs_id(config, "arrow-reverse"),
+      size,
+      stroke,
+      reverse=true,
+    ),
+  )
 }
 
 ///|
@@ -811,6 +1038,7 @@ fn add_fill_patterns(
   svg : @svg.Svg,
   graph : Diagram,
   config : SvgConfig,
+  theme : @themes.Theme,
 ) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
@@ -820,20 +1048,42 @@ fn add_fill_patterns(
     }
   }
   // Add pattern definitions for each used pattern
-  let stroke_color = config.default_stroke
-  let bg_color = config.default_fill
+  let stroke_color = resolve_theme_token(config.default_stroke, theme)
+  let bg_color = resolve_theme_token(config.default_fill, theme)
   for pattern in patterns_used {
     match pattern.to_lower() {
       "dots" =>
-        svg.add_def(@svg.dots_pattern("pattern-dots", stroke_color, bg_color))
+        svg.add_def(
+          @svg.dots_pattern(
+            defs_id(config, "pattern-dots"),
+            stroke_color,
+            bg_color,
+          ),
+        )
       "lines" =>
-        svg.add_def(@svg.lines_pattern("pattern-lines", stroke_color, bg_color))
+        svg.add_def(
+          @svg.lines_pattern(
+            defs_id(config, "pattern-lines"),
+            stroke_color,
+            bg_color,
+          ),
+        )
       "cross-hatch" | "crosshatch" =>
         svg.add_def(
-          @svg.crosshatch_pattern("pattern-crosshatch", stroke_color, bg_color),
+          @svg.crosshatch_pattern(
+            defs_id(config, "pattern-crosshatch"),
+            stroke_color,
+            bg_color,
+          ),
         )
       "grain" =>
-        svg.add_def(@svg.grain_pattern("pattern-grain", stroke_color, bg_color))
+        svg.add_def(
+          @svg.grain_pattern(
+            defs_id(config, "pattern-grain"),
+            stroke_color,
+            bg_color,
+          ),
+        )
       _ => ()
     }
   }
@@ -841,7 +1091,11 @@ fn add_fill_patterns(
 
 ///|
 /// Add sketch filter if any object uses sketch mode
-fn add_sketch_filter(svg : @svg.Svg, graph : Diagram) -> Unit {
+fn add_sketch_filter(
+  svg : @svg.Svg,
+  graph : Diagram,
+  config : SvgConfig,
+) -> Unit {
   // Check if any object uses sketch mode
   let mut needs_sketch = false
   for obj in graph.shapes {
@@ -860,14 +1114,23 @@ fn add_sketch_filter(svg : @svg.Svg, graph : Diagram) -> Unit {
     }
   }
   if needs_sketch {
-    svg.add_def(@svg.sketch_filter("sketch-filter"))
+    svg.add_def(@svg.sketch_filter(defs_id(config, "sketch-filter")))
   }
 }
 
 ///|
 /// Get the marker URL for an arrowhead type
-fn get_marker_url(arrowhead : ArrowheadType, reverse : Bool) -> String {
-  arrowhead.marker_url(reverse)
+fn get_marker_url(
+  arrowhead : ArrowheadType,
+  reverse : Bool,
+  config : SvgConfig,
+) -> String {
+  let marker_id = arrowhead.marker_id(reverse)
+  if marker_id == "" {
+    ""
+  } else {
+    defs_url(config, marker_id)
+  }
 }
 
 ///|
@@ -1108,23 +1371,23 @@ fn render_svg_object(
   // Apply sketch filter if enabled (only in foreground pass)
   let use_sketch = style_bool(obj.style.sketch, false) && is_foreground
   if use_sketch {
-    svg.open_group_with_filter("sketch-filter")
+    svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let base_fill = style_string(obj.style.fill, config.default_fill)
+  let base_fill = style_color(obj.style.fill, config.default_fill, theme)
   // Apply fill pattern if specified
   let fill = match style_string_opt(obj.style.fill_pattern) {
     Some(p) =>
       match p.to_lower() {
-        "dots" => "url(#pattern-dots)"
-        "lines" => "url(#pattern-lines)"
-        "cross-hatch" | "crosshatch" => "url(#pattern-crosshatch)"
-        "grain" => "url(#pattern-grain)"
+        "dots" => defs_url(config, "pattern-dots")
+        "lines" => defs_url(config, "pattern-lines")
+        "cross-hatch" | "crosshatch" => defs_url(config, "pattern-crosshatch")
+        "grain" => defs_url(config, "pattern-grain")
         _ => base_fill
       }
     None => base_fill
   }
-  let stroke = style_string(obj.style.stroke, config.default_stroke)
+  let stroke = style_color(obj.style.stroke, config.default_stroke, theme)
   let stroke_width = style_double(
     obj.style.stroke_width,
     config.default_stroke_width,
@@ -2487,7 +2750,6 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
     if i == points.length() - 2 {
       // Last segment - just draw to end
       let _ = pb.line_to(next.x, next.y)
-
     } else {
       // There's a corner at 'next', so we need to draw a rounded corner
       let after = points[i + 2]
@@ -2532,7 +2794,6 @@ fn build_rounded_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
       // equals the current point. This expands to an equivalent `C`:
       //   C stop_x stop_y corner_x corner_y resume_x resume_y
       let _ = pb.cubic_to(stop_x, stop_y, next.x, next.y, resume_x, resume_y)
-
     }
   }
 }
@@ -2544,18 +2805,16 @@ fn render_svg_edge(
   config : SvgConfig,
   theme : @themes.Theme,
 ) -> Unit raise @render_api.RenderError {
-  // Suppress unused variable warning
-  let _ = theme
   if edge.route.length() < 2 {
     return
   }
   // Apply sketch filter if enabled
   let use_sketch = style_bool(edge.style.sketch, false)
   if use_sketch {
-    svg.open_group_with_filter("sketch-filter")
+    svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let stroke = style_string(edge.style.stroke, config.default_stroke)
+  let stroke = style_color(edge.style.stroke, config.default_stroke, theme)
   let stroke_width = style_double(
     edge.style.stroke_width,
     config.default_stroke_width,
@@ -2568,8 +2827,8 @@ fn render_svg_edge(
   // Determine markers based on arrowhead types
   // For marker-start: reverse direction (arrow points toward destination/into line)
   // For marker-end: normal direction (arrow points toward destination/away from line)
-  let marker_start = get_marker_url(edge.src_arrowhead, true)
-  let marker_end = get_marker_url(edge.dst_arrowhead, false)
+  let marker_start = get_marker_url(edge.src_arrowhead, true, config)
+  let marker_end = get_marker_url(edge.dst_arrowhead, false, config)
   // Use animated path if animated style is enabled
   if style_bool(edge.style.animated, false) {
     svg.add(

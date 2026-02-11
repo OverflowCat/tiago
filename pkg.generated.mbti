@@ -1,11 +1,133 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago"
 
+import {
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/graph",
+  "Milky2018/diago/ir",
+  "Milky2018/diago/lexer",
+}
+
 // Values
+pub fn compile(String, options? : CompileOptions) -> String raise DiagoError
+
+pub fn compile_diagram(String, options? : CompileOptions) -> @diagram.Diagram raise DiagoError
+
+pub fn compile_file(String, options? : CompileOptions) -> String raise DiagoError
+
+pub fn get_board_path_at_position(String, Int, Int) -> Array[String]
+
+pub fn get_completion_items(String, Int, Int) -> Array[CompletionItem]
+
+pub fn get_ref_ranges(String, String, board_path? : Array[String], options? : ParseOptions) -> Array[@lexer.Range] raise DiagoError
+
+pub fn parse(String, options? : ParseOptions) -> @ir.Map raise DiagoError
+
+pub fn parse_file(String, options? : ParseOptions) -> @ir.Map raise DiagoError
 
 // Errors
+pub(all) suberror DiagoError {
+  ParseError(String)
+  IOError(String)
+  IrError(String)
+  GraphError(String)
+  LayoutError(String)
+  RenderError(String)
+  ConfigError(String)
+  TargetError(String)
+}
+pub impl Eq for DiagoError
+pub impl Show for DiagoError
 
 // Types and methods
+pub struct CompileOptions {
+  output_mode : OutputMode
+  layout_engine : LayoutEngine
+  direction : @engine_api.Direction
+  target_spec : String?
+  layout_plugin : LayoutPlugin?
+  route_plugin : RoutePlugin?
+  parse_options : ParseOptions
+  theme_name : String?
+  dark_theme_id : Int?
+  theme_overrides : Map[String, String]
+  dark_theme_overrides : Map[String, String]
+  scale : Double?
+  no_xml_tag : Bool?
+  salt : String?
+  omit_version : Bool?
+}
+pub fn CompileOptions::new() -> Self
+pub fn CompileOptions::with_dark_theme_id(Self, Int?) -> Self
+pub fn CompileOptions::with_dark_theme_overrides(Self, Map[String, String]) -> Self
+pub fn CompileOptions::with_direction(Self, @engine_api.Direction) -> Self
+pub fn CompileOptions::with_layout_engine(Self, LayoutEngine) -> Self
+pub fn CompileOptions::with_layout_plugin(Self, LayoutPlugin?) -> Self
+pub fn CompileOptions::with_no_xml_tag(Self, Bool?) -> Self
+pub fn CompileOptions::with_omit_version(Self, Bool?) -> Self
+pub fn CompileOptions::with_output_mode(Self, OutputMode) -> Self
+pub fn CompileOptions::with_parse_options(Self, ParseOptions) -> Self
+pub fn CompileOptions::with_route_plugin(Self, RoutePlugin?) -> Self
+pub fn CompileOptions::with_salt(Self, String?) -> Self
+pub fn CompileOptions::with_scale(Self, Double?) -> Self
+pub fn CompileOptions::with_target_spec(Self, String?) -> Self
+pub fn CompileOptions::with_theme_name(Self, String?) -> Self
+pub fn CompileOptions::with_theme_overrides(Self, Map[String, String]) -> Self
+
+pub struct CompletionItem {
+  label : String
+  kind : CompletionKind
+  detail : String
+  insert_text : String
+}
+pub impl Eq for CompletionItem
+pub impl Show for CompletionItem
+
+pub(all) enum CompletionKind {
+  Keyword
+  Style
+  Shape
+  Value
+}
+pub impl Eq for CompletionKind
+pub impl Show for CompletionKind
+
+pub(all) enum LayoutEngine {
+  Auto
+  Dagre
+  Railway
+}
+pub impl Eq for LayoutEngine
+pub impl Show for LayoutEngine
+
+pub struct LayoutPlugin((@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String])
+#deprecated
+pub fn LayoutPlugin::inner(Self) -> (@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String]
+pub fn LayoutPlugin::new((@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String]) -> Self
+pub fn LayoutPlugin::run(Self, @graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String]
+
+pub(all) enum OutputMode {
+  Svg
+  Ascii
+  Unicode
+}
+pub impl Eq for OutputMode
+pub impl Show for OutputMode
+
+pub struct ParseOptions {
+  base_path : String?
+  import_resolver : @ir.ImportResolver?
+}
+pub fn ParseOptions::new() -> Self
+pub fn ParseOptions::with_base_path(Self, String?) -> Self
+pub fn ParseOptions::with_import_resolver(Self, @ir.ImportResolver?) -> Self
+
+pub struct RoutePlugin((@graph.GraphInput) -> Result[@graph.GraphInput, String])
+#deprecated
+pub fn RoutePlugin::inner(Self) -> (@graph.GraphInput) -> Result[@graph.GraphInput, String]
+pub fn RoutePlugin::new((@graph.GraphInput) -> Result[@graph.GraphInput, String]) -> Self
+pub fn RoutePlugin::run(Self, @graph.GraphInput) -> Result[@graph.GraphInput, String]
 
 // Type aliases
 

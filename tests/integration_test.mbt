@@ -54,7 +54,7 @@ fn compile_to_diagram(
   }
   let config = @engine_api.LayoutConfig::new()
   let laid_out_graph = @engine_api.layout_with_engine(
-    @engine_elk.ElkEngine::new(),
+    @engine_dagre.DagreEngine::new(),
     graph_input,
     config,
     direction,
@@ -491,7 +491,7 @@ fn compile_with_theme(
   }
   let config = @engine_api.LayoutConfig::new()
   let laid_out_graph = @engine_api.layout_with_engine(
-    @engine_elk.ElkEngine::new(),
+    @engine_dagre.DagreEngine::new(),
     graph_input,
     config,
     @engine_api.Direction::Down,

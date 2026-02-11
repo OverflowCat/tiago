@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "deps": {
     "moonbitlang/x": "0.4.38",
-    "Milky2018/xml": "0.2.0"
+    "Milky2018/xml": "0.2.0",
+    "Milky2018/moon_dagre": "0.1.0"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/diago",

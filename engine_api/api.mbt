@@ -182,6 +182,8 @@ fn normalize_sequence_root(graph : @graph.GraphInput) -> @graph.GraphInput {
     r.grid_column_span,
     r.grid_row_span,
     r.near,
+    r.top,
+    r.left,
   )
   @graph.GraphInput::from_parts(
     graph.name,
@@ -354,8 +356,12 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
   direction : Direction,
 ) -> @graph.GraphInput raise LayoutError {
   let prepared = prepare_graph_for_layout(graph)
-  let patch = engine.layout(prepared, config, direction)
-  let laid_out = @graph.apply_layout(prepared, patch)
+  let laid_out = if prepared.objects.is_empty() {
+    prepared
+  } else {
+    let patch = engine.layout(prepared, config, direction)
+    @graph.apply_layout(prepared, patch)
+  }
   let layers : Array[@graph.LayerInput] = []
   for layer in laid_out.layers {
     layers.push(

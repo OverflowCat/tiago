@@ -15,11 +15,18 @@ pub struct Config {
   sketch : Bool?
   theme_id : Int?
   dark_theme_id : Int?
+  theme_overrides : Map[String, String]
+  dark_theme_overrides : Map[String, String]
   pad : Double?
   center : Bool?
   layout_engine : String?
+  scale : Double?
+  no_xml_tag : Bool?
+  salt : String?
+  omit_version : Bool?
   data : Map[String, String]
 }
+pub fn Config::from_parts(Bool?, Int?, Int?, Map[String, String], Map[String, String], Double?, Bool?, String?, Double?, Bool?, String?, Bool?, Map[String, String]) -> Self
 pub fn Config::new() -> Self
 pub impl Show for Config
 
@@ -61,6 +68,7 @@ pub struct Diagram {
   legend : @graph.LegendInput?
 }
 pub fn Diagram::find_object(Self, String) -> Shape?
+pub fn Diagram::get_board(Self, Array[String]) -> Self?
 pub fn Diagram::get_edges(Self) -> Array[Connection]
 pub fn Diagram::get_objects(Self) -> Array[Shape]
 pub fn Diagram::has_layers(Self) -> Bool

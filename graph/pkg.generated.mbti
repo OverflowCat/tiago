@@ -310,9 +310,11 @@ pub struct ObjectInput {
   grid_column_span : Int?
   grid_row_span : Int?
   near : String?
+  top : Int?
+  left : Int?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
 pub fn ObjectInput::new(String) -> Self
@@ -339,6 +341,8 @@ pub struct ObjectModel {
   grid_column_span : Int?
   grid_row_span : Int?
   near : String?
+  top : Int?
+  left : Int?
 }
 pub fn ObjectModel::add_child(Self, Self) -> Self
 pub fn ObjectModel::new(String) -> Self

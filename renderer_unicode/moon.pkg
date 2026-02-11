@@ -1,0 +1,5 @@
+import {
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/renderer_ascii",
+  "Milky2018/diago/render_api",
+}

@@ -20,9 +20,28 @@ fn apply_box_to_object(
   obj : ObjectInput,
   nodes : Map[String, Box],
 ) -> ObjectInput {
-  match nodes.get(obj.id) {
-    Some(b) => { ..obj, box: Some(b) }
-    None => obj
+  let layout_box = match nodes.get(obj.id) {
+    Some(b) => Some(b)
+    None => obj.box
+  }
+  { ..obj, box: apply_locked_position(obj, layout_box) }
+}
+
+///|
+fn apply_locked_position(obj : ObjectInput, box : Box?) -> Box? {
+  match box {
+    Some(b) => {
+      let x = match obj.left {
+        Some(v) => v.to_double()
+        None => b.x
+      }
+      let y = match obj.top {
+        Some(v) => v.to_double()
+        None => b.y
+      }
+      Some(Box::new(x, y, b.width, b.height))
+    }
+    None => None
   }
 }
 

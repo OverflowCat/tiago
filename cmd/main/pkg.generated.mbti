@@ -2,6 +2,10 @@
 package "Milky2018/diago/cmd/main"
 
 // Values
+pub fn command_exec(String) -> Int
+
+pub fn command_exec_is_supported() -> Bool
+
 pub fn sleep_is_supported() -> Bool
 
 pub fn sleep_ms(Int) -> Unit
@@ -9,6 +13,11 @@ pub fn sleep_ms(Int) -> Unit
 // Errors
 
 // Types and methods
+type AsciiMode
+
+type LayoutEngineChoice
+
+type OutputMode
 
 // Type aliases
 

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1059" height="803" viewBox="-50 -50 1059 803" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<path d="M 345 110 H 245 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 263.74084919472915 81.70542635658914 258.0307467057101 75.89147286821705 258.0307467057101 69.53488372093022 C 258.0307467057101 58.75968992248062 274.57540263543194 50 294.9267935578331 50 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="196" width="539" height="457" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="629" y="523" width="280" height="130" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 88 582 C 88 558 133 558 138 558 C 143 558 188 558 188 582 L 188 594 C 188 618 143 618 138 618 C 133 618 88 618 88 594 L 88 582 Z" fill="#438DD5" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="138" cy="582" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 88 582 C 88 606 133 606 138 606 C 143 606 188 606 188 582" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="245" y="231" width="100" height="60" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="659" y="558" width="100" height="60" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="779" y="558" width="100" height="60" fill="#999999" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="245" y="377" width="100" height="60" fill="#438DD5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 295 110 L 295 153 L 295 196 L 295 231" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="264.5" y="145" width="61" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="295" y="161" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">browses</text>
+<path d="M 295 291 L 295 334 L 295 377" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="271.5" y="326" width="47" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="295" y="342" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">calls</text>
+<path d="M 245 430.2484076433121 L 147.06772466843177 475.78379681021966 C 147.06772466843177 475.78379681021966 138 480 138 490 L 138 523 L 138 558" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="90" y="472" width="96" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="138" y="488" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">reads/writes</text>
+<path d="M 295 437 L 295 480 L 295 513 C 295 513 295 523 304.8789802741461 524.5510476275833 L 659 580.1497584541063" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="226" y="472" width="138" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="295" y="488" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">processes payments</text>
+<path d="M 345 427.11019283746555 L 467.22230041588364 476.2684734455069 C 467.22230041588364 476.2684734455069 476.5 480 476.5 490 L 476.5 513 C 476.5 513 476.5 523 486.3342047176852 524.8133994514881 L 779 578.7801418439716" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="404" y="472" width="145" height="16" fill="white" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="476.5" y="488" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="14">sends notifications</text>
+<text x="295" y="80" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Customer</text>
+<text x="319.5" y="211.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">E-Commerce System</text>
+<text x="769" y="538.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">external</text>
+<text x="138" y="588" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Database</text>
+<text x="295" y="306.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Web Application</text>
+<text x="709" y="633.5" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Payment Provider</text>
+<text x="829" y="588" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">Email Service</text>
+<text x="295" y="407" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="16">API Gateway</text>
+</g>
+</svg>

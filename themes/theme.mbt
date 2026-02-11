@@ -171,3 +171,40 @@ pub fn Theme::accent_color(self : Theme) -> String {
 pub fn Theme::background_color(self : Theme) -> String {
   self.colors.n7
 }
+
+///|
+/// Return a copy of this theme with color overrides applied.
+pub fn Theme::with_overrides(
+  self : Theme,
+  overrides : Map[String, String],
+) -> Theme {
+  if overrides.is_empty() {
+    return self
+  }
+  let mut theme = self
+  for raw_key, value in overrides {
+    let colors = theme.colors
+    theme = match raw_key.to_upper() {
+      "N1" => { ..theme, colors: { ..colors, n1: value } }
+      "N2" => { ..theme, colors: { ..colors, n2: value } }
+      "N3" => { ..theme, colors: { ..colors, n3: value } }
+      "N4" => { ..theme, colors: { ..colors, n4: value } }
+      "N5" => { ..theme, colors: { ..colors, n5: value } }
+      "N6" => { ..theme, colors: { ..colors, n6: value } }
+      "N7" => { ..theme, colors: { ..colors, n7: value } }
+      "B1" => { ..theme, colors: { ..colors, b1: value } }
+      "B2" => { ..theme, colors: { ..colors, b2: value } }
+      "B3" => { ..theme, colors: { ..colors, b3: value } }
+      "B4" => { ..theme, colors: { ..colors, b4: value } }
+      "B5" => { ..theme, colors: { ..colors, b5: value } }
+      "B6" => { ..theme, colors: { ..colors, b6: value } }
+      "AA2" => { ..theme, colors: { ..colors, aa2: value } }
+      "AA4" => { ..theme, colors: { ..colors, aa4: value } }
+      "AA5" => { ..theme, colors: { ..colors, aa5: value } }
+      "AB4" => { ..theme, colors: { ..colors, ab4: value } }
+      "AB5" => { ..theme, colors: { ..colors, ab5: value } }
+      _ => theme
+    }
+  }
+  theme
+}
