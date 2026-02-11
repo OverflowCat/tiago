@@ -159,6 +159,15 @@ pub fn Element::child(self : Element, child : String) -> Element {
 }
 
 ///|
+/// Add multiple child elements (as strings)
+pub fn Element::children(self : Element, children : Array[String]) -> Element {
+  for child in children {
+    self.children.push(child)
+  }
+  self
+}
+
+///|
 /// Mark as self-closing element (e.g., <br/>)
 pub fn Element::self_close(self : Element) -> Element {
   { ..self, self_closing: true }

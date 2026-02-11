@@ -98,9 +98,8 @@ pub fn Svg::open_group_with_filter(self : Svg, filter_id : String) -> Unit {
 ///|
 /// Open a group with tooltip (adds title element)
 pub fn Svg::open_group_with_tooltip(self : Svg, tooltip : String) -> Unit {
-  let title_elem = @xml_emit.Element::new("title").text(tooltip).build()
-  let group_open = @xml_emit.Element::new("g").open_tag()
-  self.elements.push(group_open + title_elem)
+  self.elements.push(@xml_emit.Element::new("g").open_tag())
+  self.elements.push(@xml_emit.Element::new("title").text(tooltip).build())
 }
 
 ///|
@@ -163,38 +162,45 @@ pub fn Svg::add_root_attr(self : Svg, name : String, value : String) -> Unit {
 /// Render to string
 pub fn Svg::to_string(self : Svg) -> String {
   let view_box = "\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}"
-  let parts : Array[String] = []
+  let mut root = @xml_emit.Element::new("svg")
+    .attr("xmlns", "http://www.w3.org/2000/svg")
+    .attr_num("width", self.width)
+    .attr_num("height", self.height)
+    .attr("viewBox", view_box)
+  let blocks : Array[String] = []
+  for attr in self.root_attrs {
+    root = root.attr(attr.0, attr.1)
+  }
   if self.defs.length() > 0 {
-    parts.push(
-      @xml_emit.Element::new("defs").raw(self.defs.join("\n") + "\n").build(),
-    )
+    let mut defs = @xml_emit.Element::new("defs")
+    for i, def in self.defs {
+      if i > 0 {
+        defs = defs.child("\n")
+      }
+      defs = defs.child(def)
+    }
+    defs = defs.child("\n")
+    blocks.push(defs.build())
   }
   for elem in self.elements {
-    parts.push(elem)
+    blocks.push(elem)
   }
   if self.scripts.length() > 0 {
     let script_body = self.scripts.join("\n") + "\n"
-    parts.push(
+    blocks.push(
       @xml_emit.Element::new("script")
       .attr("type", "text/javascript")
       .cdata(script_body)
       .build(),
     )
   }
-  let content = if parts.is_empty() {
-    ""
-  } else {
-    "\n" + parts.join("\n") + "\n"
+  for block in blocks {
+    root = root.child("\n").child(block)
   }
-  let mut root = @xml_emit.Element::new("svg")
-    .attr("xmlns", "http://www.w3.org/2000/svg")
-    .attr_num("width", self.width)
-    .attr_num("height", self.height)
-    .attr("viewBox", view_box)
-  for attr in self.root_attrs {
-    root = root.attr(attr.0, attr.1)
+  if blocks.length() > 0 {
+    root = root.child("\n")
   }
-  let root = root.raw(content).build()
+  let root = root.build()
   if self.include_xml_declaration {
     let doc = @xml_emit.Document::new()
     doc.add(root)
@@ -428,7 +434,7 @@ pub fn animated_path(
     .attr("repeatCount", "indefinite")
     .self_close()
     .build()
-  path_elem.raw(animate).build()
+  path_elem.child(animate).build()
 }
 
 ///|
@@ -514,7 +520,7 @@ pub fn arrow_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem)
+  .child(path_elem)
   .build()
 }
 
@@ -542,7 +548,7 @@ pub fn diamond_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem)
+  .child(path_elem)
   .build()
 }
 
@@ -572,7 +578,7 @@ pub fn circle_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(circle_elem)
+  .child(circle_elem)
   .build()
 }
 
@@ -604,7 +610,7 @@ pub fn cf_one_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(line_elem)
+  .child(line_elem)
   .build()
 }
 
@@ -643,7 +649,7 @@ pub fn cf_many_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem)
+  .child(path_elem)
   .build()
 }
 
@@ -685,7 +691,7 @@ pub fn cf_one_required_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(line1 + line2)
+  .children([line1, line2])
   .build()
 }
 
@@ -734,7 +740,7 @@ pub fn cf_many_required_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem + line_elem)
+  .children([path_elem, line_elem])
   .build()
 }
 
@@ -777,7 +783,7 @@ pub fn cf_one_optional_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(line_elem + circle_elem)
+  .children([line_elem, circle_elem])
   .build()
 }
 
@@ -827,7 +833,7 @@ pub fn cf_many_optional_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem + circle_elem)
+  .children([path_elem, circle_elem])
   .build()
 }
 
@@ -859,7 +865,7 @@ pub fn line_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(line_elem)
+  .child(line_elem)
   .build()
 }
 
@@ -892,7 +898,7 @@ pub fn open_marker(
   .attr_num("refY", half)
   .attr("orient", "auto")
   .attr("markerUnits", "strokeWidth")
-  .raw(path_elem)
+  .child(path_elem)
   .build()
 }
 
@@ -934,7 +940,7 @@ pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .raw(rect_elem + circle_elem)
+  .children([rect_elem, circle_elem])
   .build()
 }
 
@@ -962,7 +968,7 @@ pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .raw(rect_elem + line_elem)
+  .children([rect_elem, line_elem])
   .build()
 }
 
@@ -992,7 +998,7 @@ pub fn crosshatch_pattern(
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .raw(rect_elem + path_elem)
+  .children([rect_elem, path_elem])
   .build()
 }
 
@@ -1027,7 +1033,7 @@ pub fn grain_pattern(id : String, color : String, bg_color : String) -> String {
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .raw(rect_elem + circle1 + circle2)
+  .children([rect_elem, circle1, circle2])
   .build()
 }
 
@@ -1193,7 +1199,7 @@ pub fn sketch_filter(id : String) -> String {
   .attr("y", "-5%")
   .attr("width", "110%")
   .attr("height", "110%")
-  .raw(turbulence + displacement)
+  .children([turbulence, displacement])
   .build()
 }
 

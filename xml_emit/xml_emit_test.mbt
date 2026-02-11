@@ -72,6 +72,14 @@ test "element with raw content" {
 }
 
 ///|
+test "element with multiple children" {
+  let span1 = Element::new("span").text("a").build()
+  let span2 = Element::new("span").text("b").build()
+  let div = Element::new("div").children([span1, span2])
+  assert_eq(div.build(), "<div><span>a</span><span>b</span></div>")
+}
+
+///|
 test "attr_if only adds non-empty" {
   let elem = Element::new("div")
     .attr_if("class", "active")

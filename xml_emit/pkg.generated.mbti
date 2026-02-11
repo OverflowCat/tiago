@@ -47,6 +47,7 @@ pub fn Element::attr_num_if(Self, String, Double, Bool) -> Self
 pub fn Element::build(Self) -> String
 pub fn Element::cdata(Self, String) -> Self
 pub fn Element::child(Self, String) -> Self
+pub fn Element::children(Self, Array[String]) -> Self
 pub fn Element::close_tag(Self) -> String
 pub fn Element::new(String) -> Self
 pub fn Element::open_tag(Self) -> String
