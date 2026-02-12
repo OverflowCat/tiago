@@ -2150,14 +2150,14 @@ fn render_svg_sql_table(
           stroke_width~,
         ),
       )
-      // Draw header background (same fill; D2 uses CSS for header styling)
+      // Draw header background using the border color, matching D2 SQL table style.
       svg.add(
         @svg.rect(
           box.x,
           box.y,
           box.width,
           row_height,
-          fill~,
+          fill=stroke,
           stroke="none",
           stroke_width=0.0,
         ),
@@ -2166,14 +2166,7 @@ fn render_svg_sql_table(
       let mut y = box.y + row_height
       for i in 0..<children.length() {
         svg.add(
-          @svg.line(
-            box.x,
-            y,
-            box.x + box.width,
-            y,
-            stroke=fill,
-            stroke_width=2.0,
-          ),
+          @svg.line(box.x, y, box.x + box.width, y, stroke~, stroke_width=2.0),
         )
         y = y + row_height
       }

@@ -28,24 +28,24 @@
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
 <rect x="78" y="0" width="304" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="78" y="0" width="304" height="36" fill="#FFFFFF" stroke="none" stroke-width="0"/>
-<line x1="78" y1="36" x2="382" y2="36" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="78" y1="72" x2="382" y2="72" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="78" y1="108" x2="382" y2="108" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="78" y1="144" x2="382" y2="144" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="78" y="0" width="304" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="78" y1="36" x2="382" y2="36" stroke="#0A0F25" stroke-width="2"/>
+<line x1="78" y1="72" x2="382" y2="72" stroke="#0A0F25" stroke-width="2"/>
+<line x1="78" y1="108" x2="382" y2="108" stroke="#0A0F25" stroke-width="2"/>
+<line x1="78" y1="144" x2="382" y2="144" stroke="#0A0F25" stroke-width="2"/>
 <rect x="0" y="280" width="280" height="216" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="0" y="280" width="280" height="36" fill="#FFFFFF" stroke="none" stroke-width="0"/>
-<line x1="0" y1="316" x2="280" y2="316" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="0" y1="352" x2="280" y2="352" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="0" y1="388" x2="280" y2="388" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="0" y1="424" x2="280" y2="424" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="0" y1="460" x2="280" y2="460" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="0" y="280" width="280" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="0" y1="316" x2="280" y2="316" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="352" x2="280" y2="352" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="388" x2="280" y2="388" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="424" x2="280" y2="424" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="460" x2="280" y2="460" stroke="#0A0F25" stroke-width="2"/>
 <rect x="136" y="596" width="187" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="136" y="596" width="187" height="36" fill="#FFFFFF" stroke="none" stroke-width="0"/>
-<line x1="136" y1="632" x2="323" y2="632" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="136" y1="668" x2="323" y2="668" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="136" y1="704" x2="323" y2="704" stroke="#FFFFFF" stroke-width="2"/>
-<line x1="136" y1="740" x2="323" y2="740" stroke="#FFFFFF" stroke-width="2"/>
+<rect x="136" y="596" width="187" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="136" y1="632" x2="323" y2="632" stroke="#0A0F25" stroke-width="2"/>
+<line x1="136" y1="668" x2="323" y2="668" stroke="#0A0F25" stroke-width="2"/>
+<line x1="136" y1="704" x2="323" y2="704" stroke="#0A0F25" stroke-width="2"/>
+<line x1="136" y1="740" x2="323" y2="740" stroke="#0A0F25" stroke-width="2"/>
 <path d="M 169.84378521430654 183.36908560264604 C 146.4 220 140 240 140 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
 <path d="M 140 500 C 140 536 146.4 556 169.84378521430654 592.630914397354" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
 <path d="M 290.15621478569346 183.36908560264604 C 313.6 220 320 261.6 320 309 C 320 356.4 313.6 556 290.15621478569346 592.630914397354" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
