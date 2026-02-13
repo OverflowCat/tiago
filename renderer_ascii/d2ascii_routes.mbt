@@ -21,10 +21,14 @@ struct RouteDrawContext {
 }
 
 ///|
-fn calibrate_xy(ctx : RouteDrawContext, x : Double, y : Double) -> (Double, Double) {
+fn calibrate_xy(
+  ctx : RouteDrawContext,
+  x : Double,
+  y : Double,
+) -> (Double, Double) {
   (
-    round_double((x / ctx.shape_ctx.font_width) * ctx.shape_ctx.scale),
-    round_double((y / ctx.shape_ctx.font_height) * ctx.shape_ctx.scale),
+    round_double(x / ctx.shape_ctx.font_width * ctx.shape_ctx.scale),
+    round_double(y / ctx.shape_ctx.font_height * ctx.shape_ctx.scale),
   )
 }
 
@@ -39,20 +43,25 @@ fn draw_connection_route(
   if raw_source_route.length() < 2 {
     return
   }
-  let source_routes = route_points_from_graph(raw_source_route, x_offset, y_offset)
-  let routes_input = route_points_from_graph(raw_source_route, x_offset, y_offset)
+  let source_routes = route_points_from_graph(
+    raw_source_route, x_offset, y_offset,
+  )
+  let routes_input = route_points_from_graph(
+    raw_source_route, x_offset, y_offset,
+  )
   let (from_boundary, to_boundary) = get_connection_boundaries(
-    ctx, conn.src_id, conn.dst_id,
+    ctx,
+    conn.src_id,
+    conn.dst_id,
   )
   let routes = process_route(ctx, routes_input, from_boundary, to_boundary)
   let turn_dir = calculate_turn_directions(routes)
 
-  let label_pos =
-    if conn.label.trim() != "" {
-      calculate_best_label_position(ctx, routes, conn.label)
-    } else {
-      None
-    }
+  let label_pos = if conn.label.trim() != "" {
+    calculate_best_label_position(ctx, routes, conn.label)
+  } else {
+    None
+  }
 
   let corners = build_corner_map(ctx.chars)
   let arrows = build_arrow_map(ctx.chars)
@@ -63,7 +72,7 @@ fn draw_connection_route(
       routes[i - 1],
       routes[i],
       i,
-      routes.length(),
+      source_routes.length(),
       source_routes,
       conn,
       corners,
@@ -84,10 +93,7 @@ fn route_points_from_graph(
 ) -> Array[RoutePoint] {
   let routes : Array[RoutePoint] = []
   for p in points {
-    routes.push({
-      x: p.x + x_offset.to_double(),
-      y: p.y + y_offset.to_double(),
-    })
+    routes.push({ x: p.x + x_offset.to_double(), y: p.y + y_offset.to_double() })
   }
   routes
 }
@@ -116,7 +122,8 @@ fn merge_routes(routes : Array[RoutePoint]) -> Array[RoutePoint] {
   }
   let merged : Array[RoutePoint] = [routes[0]]
   let mut pt = routes[0]
-  let mut dir = sign(routes[0].x - routes[1].x) + sign(routes[0].y - routes[1].y) * 2
+  let mut dir = sign(routes[0].x - routes[1].x) +
+    sign(routes[0].y - routes[1].y) * 2
   for j = 1; j < routes.length(); j = j + 1 {
     let current = routes[j]
     let new_dir = sign(pt.x - current.x) + sign(pt.y - current.y) * 2
@@ -142,7 +149,9 @@ fn calibrate_routes(ctx : RouteDrawContext, routes : Array[RoutePoint]) -> Unit 
 }
 
 ///|
-fn force_horizontal_vertical_route(routes : Array[RoutePoint]) -> Array[RoutePoint] {
+fn force_horizontal_vertical_route(
+  routes : Array[RoutePoint],
+) -> Array[RoutePoint] {
   if routes.length() < 2 {
     return routes
   }
@@ -185,22 +194,12 @@ fn get_connection_boundaries(
   let mut to_boundary = { tl_x: 0, tl_y: 0, br_x: 0, br_y: 0 }
   for shape in ctx.diagram.shapes {
     if shape.id == src_id {
-      match
-        get_shape_boundary(
-          ctx.shape_ctx,
-          shape,
-          ctx.diagram.connections,
-        ) {
+      match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => from_boundary = b
         None => ()
       }
     } else if shape.id == dst_id {
-      match
-        get_shape_boundary(
-          ctx.shape_ctx,
-          shape,
-          ctx.diagram.connections,
-        ) {
+      match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => to_boundary = b
         None => ()
       }
@@ -361,8 +360,7 @@ fn calculate_turn_directions(routes : Array[RoutePoint]) -> Map[String, String] 
     let prev = routes[i - 1]
     let next = routes[i + 1]
     let key = point_key(round_int(curr.x), round_int(curr.y))
-    let dir =
-      "\{sign(curr.x - prev.x)}\{sign(curr.y - prev.y)}\{sign(next.x - curr.x)}\{sign(next.y - curr.y)}"
+    let dir = "\{sign(curr.x - prev.x)}\{sign(curr.y - prev.y)}\{sign(next.x - curr.x)}\{sign(next.y - curr.y)}"
     turns[key] = dir
   }
   turns
@@ -435,7 +433,8 @@ fn draw_segment_between_points(
 
   while true {
     attempt += 1
-    if (x == round_int(cx) && y == round_int(cy)) || attempt == MAX_ROUTE_ATTEMPTS {
+    if (x == round_int(cx) && y == round_int(cy)) ||
+      attempt == MAX_ROUTE_ATTEMPTS {
       break
     }
     x = round_int(fx)
@@ -453,23 +452,8 @@ fn draw_segment_between_points(
     }
 
     draw_route_point(
-      ctx,
-      x,
-      y,
-      sx,
-      sy,
-      segment_index,
-      source_route_count,
-      ax,
-      ay,
-      cx,
-      cy,
-      conn,
-      corners,
-      arrows,
-      turn_dir,
-      from_boundary,
-      to_boundary,
+      ctx, x, y, sx, sy, segment_index, source_route_count, ax, ay, cx, cy, conn,
+      corners, arrows, turn_dir, from_boundary, to_boundary,
     )
 
     match label_pos {
@@ -528,20 +512,18 @@ fn draw_route_point(
     None => ()
   }
 
-  if
-    segment_index == route_len - 1 &&
+  if segment_index == route_len - 1 &&
     x == round_int(cx) &&
     y == round_int(cy) &&
-    arrow_exists(conn.dst_arrowhead) {
+    conn.dst_arrow {
     draw_arrowhead(ctx, x, y, sx, sy, arrows)
     return
   }
 
-  if
-    segment_index == 1 &&
+  if segment_index == 1 &&
     x == round_int(ax) &&
     y == round_int(ay) &&
-    arrow_exists(conn.src_arrowhead) {
+    conn.src_arrow {
     let arrow_key = "\{sign(sx) * -1}\{sign(sy) * -1}"
     match arrows.get(arrow_key) {
       Some(ch) => ctx.canvas.set(x, y, ch)
@@ -569,27 +551,28 @@ fn draw_route_segment(
   let existing = ctx.canvas.get(x, y)
   let overwrite = existing != ' '
   if sx == 0.0 {
-    if overwrite && should_draw_t_junction(ctx, x, y, from_boundary, to_boundary, true) {
+    if overwrite &&
+      should_draw_t_junction(ctx, x, y, from_boundary, to_boundary, true) {
       if sy > 0.0 {
         ctx.canvas.set(x, y, ctx.chars.t_down())
       } else {
         ctx.canvas.set(x, y, ctx.chars.t_up())
       }
-    } else if overwrite && should_skip_overwrite(ctx, x, y, from_boundary, to_boundary) {
+    } else if overwrite &&
+      should_skip_overwrite(ctx, x, y, from_boundary, to_boundary) {
       ()
     } else {
       ctx.canvas.set(x, y, ctx.chars.vertical())
     }
-  } else {
-    if overwrite && should_draw_t_junction(ctx, x, y, from_boundary, to_boundary, false) {
-      if sx > 0.0 {
-        ctx.canvas.set(x, y, ctx.chars.t_right())
-      } else {
-        ctx.canvas.set(x, y, ctx.chars.t_left())
-      }
+  } else if overwrite &&
+    should_draw_t_junction(ctx, x, y, from_boundary, to_boundary, false) {
+    if sx > 0.0 {
+      ctx.canvas.set(x, y, ctx.chars.t_right())
     } else {
-      ctx.canvas.set(x, y, ctx.chars.horizontal())
+      ctx.canvas.set(x, y, ctx.chars.t_left())
     }
+  } else {
+    ctx.canvas.set(x, y, ctx.chars.horizontal())
   }
 }
 
@@ -607,8 +590,7 @@ fn draw_arrowhead(
     Some(v) => v
     None => ' '
   }
-  if
-    ctx.canvas.is_in_bounds(x, y) &&
+  if ctx.canvas.is_in_bounds(x, y) &&
     is_shape_boundary_char(ctx.chars, ctx.canvas.get(x, y)) {
     let arrow_x = x - round_int(sx)
     let arrow_y = y - round_int(sy)
@@ -646,24 +628,20 @@ fn should_draw_t_junction(
   is_vertical : Bool,
 ) -> Bool {
   if is_vertical {
-    if
-      (y == from_boundary.br_y || y == from_boundary.tl_y) &&
+    if (y == from_boundary.br_y || y == from_boundary.tl_y) &&
       ctx.canvas.get(x, y) == ctx.chars.horizontal() {
       return true
     }
-    if
-      (y == to_boundary.br_y || y == to_boundary.tl_y) &&
+    if (y == to_boundary.br_y || y == to_boundary.tl_y) &&
       ctx.canvas.get(x, y) == ctx.chars.horizontal() {
       return true
     }
   } else {
-    if
-      (x == from_boundary.br_x - 1 || x == from_boundary.tl_x - 1) &&
+    if (x == from_boundary.br_x - 1 || x == from_boundary.tl_x - 1) &&
       ctx.canvas.get(x, y) == ctx.chars.vertical() {
       return true
     }
-    if
-      (x == to_boundary.br_x - 1 || x == to_boundary.tl_x - 1) &&
+    if (x == to_boundary.br_x - 1 || x == to_boundary.tl_x - 1) &&
       ctx.canvas.get(x, y) == ctx.chars.vertical() {
       return true
     }
@@ -679,10 +657,14 @@ fn should_skip_overwrite(
   from_boundary : Boundary,
   to_boundary : Boundary,
 ) -> Bool {
-  (ctx.canvas.get(x, y) == ctx.chars.underscore() &&
-  (y == from_boundary.br_y || y == to_boundary.br_y)) ||
-  (ctx.canvas.get(x, y) == ctx.chars.overline() &&
-  (y == from_boundary.tl_y || y == to_boundary.tl_y))
+  (
+    ctx.canvas.get(x, y) == ctx.chars.underscore() &&
+    (y == from_boundary.br_y || y == to_boundary.br_y)
+  ) ||
+  (
+    ctx.canvas.get(x, y) == ctx.chars.overline() &&
+    (y == from_boundary.tl_y || y == to_boundary.tl_y)
+  )
 }
 
 ///|
@@ -728,8 +710,8 @@ fn calculate_best_label_position(
     let diff_y = (routes[i].y - routes[i + 1].y).abs()
     let diff_x = (routes[i].x - routes[i + 1].x).abs()
     let diff = max_double(diff_y, diff_x)
-    let scale =
-      sign(diff_x).to_double().abs() * fw + sign(diff_y).to_double().abs() * fh
+    let scale = sign(diff_x).to_double().abs() * fw +
+      sign(diff_y).to_double().abs() * fh
     if diff * scale > max_diff * scale_old {
       max_diff = diff
       best_index = i
@@ -806,7 +788,7 @@ fn draw_connection_label(
           max_line_len = line.length()
         }
       }
-      let idx = pos.i + ((sign(sx) + 1) / 2)
+      let idx = pos.i + (sign(sx) + 1) / 2
       if idx >= 0 && idx < routes.length() {
         x_pos = routes[idx].x.to_int() - max_line_len / 2
       }

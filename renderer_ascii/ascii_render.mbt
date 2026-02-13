@@ -70,8 +70,12 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
 
   let width = max_x - min_x
   let height = max_y - min_y
-  let width_chars = round_int((width.to_double() / config.font_width) * config.scale)
-  let height_chars = round_int((height.to_double() / config.font_height) * config.scale)
+  let width_chars = round_int(
+    width.to_double() / config.font_width * config.scale,
+  )
+  let height_chars = round_int(
+    height.to_double() / config.font_height * config.scale,
+  )
 
   let mut max_label_len = 0
   for shape in diagram.shapes {
@@ -80,7 +84,10 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
     }
   }
   let padding = max_label_len + MIN_LABEL_PADDING
-  let canvas = @ascii.Grid::new(width_chars + padding + 1, height_chars + padding + 1)
+  let canvas = @ascii.Grid::new(
+    width_chars + padding + 1,
+    height_chars + padding + 1,
+  )
 
   let shape_ctx = {
     canvas,
@@ -122,58 +129,94 @@ fn calculate_extended_bounds(
   fw : Double,
   fh : Double,
 ) -> (Int, Int, Int, Int) {
-  let mut first = true
-  let mut min_x = 0
-  let mut min_y = 0
-  let mut max_x = 0
-  let mut max_y = 0
+  let mut min_x = 2147483647
+  let mut min_y = 2147483647
+  let mut max_x = -2147483648
+  let mut max_y = -2147483648
 
   for shape in diagram.shapes {
     match shape.box {
       Some(box) => {
-        let mut x = box.x.to_int()
-        let y = box.y.to_int()
-        let mut w = box.width.to_int()
-        let mut h = box.height.to_int()
-        if style_is_multiple(shape.style) {
-          x -= 10
-          w += 10
-          h += 10
+        let stroke_width = style_stroke_width(shape.style, 2)
+        let stroke_half = ceil_int(stroke_width.to_double() / 2.0)
+
+        let shape_left = floor_int(box.x) - stroke_half
+        let shape_top = floor_int(box.y) - stroke_half
+        let shape_right = ceil_int(box.x + box.width) + stroke_half
+        let shape_bottom = ceil_int(box.y + box.height) + stroke_half
+        min_x = min_int(min_x, shape_left)
+        min_y = min_int(min_y, shape_top)
+        max_x = max_int(max_x, shape_right)
+        max_y = max_int(max_y, shape_bottom)
+
+        if shape.shape_type == @graph.Person {
+          let head_radius = (box.width * 0.22).to_int()
+          let head_center_y = (box.height * 0.18).to_int()
+          let head_top = box.y.to_int() + head_center_y - head_radius
+          min_y = min_int(min_y, head_top - stroke_width)
         }
-        let left = x
-        let top = y
-        let right = x + w
-        let bottom = y + h
-        if first {
-          min_x = left
-          min_y = top
-          max_x = right
-          max_y = bottom
-          first = false
-        } else {
-          if left < min_x {
-            min_x = left
+
+        if style_bool_local(shape.style.shadow, false) {
+          max_x = max_int(max_x, ceil_int(box.x + box.width) + stroke_half + 3)
+          max_y = max_int(max_y, ceil_int(box.y + box.height) + stroke_half + 5)
+        }
+
+        if style_bool_local(shape.style.three_d, false) {
+          let offset_y = if shape.shape_type == @graph.Hexagon { 7 } else { 15 }
+          min_y = min_int(min_y, floor_int(box.y) - offset_y - stroke_width)
+          max_x = max_int(
+            max_x,
+            ceil_int(box.x + box.width) + 15 + stroke_width,
+          )
+        }
+
+        if style_is_multiple(shape.style) {
+          min_y = min_int(min_y, floor_int(box.y) - 10 - stroke_width)
+          max_x = max_int(
+            max_x,
+            ceil_int(box.x + box.width) + 10 + stroke_width,
+          )
+        }
+
+        match shape.label_box {
+          Some(lb) => {
+            min_x = min_int(min_x, floor_int(lb.x))
+            min_y = min_int(min_y, floor_int(lb.y))
+            max_x = max_int(max_x, ceil_int(lb.x + lb.width))
+            max_y = max_int(max_y, ceil_int(lb.y + lb.height))
           }
-          if top < min_y {
-            min_y = top
-          }
-          if right > max_x {
-            max_x = right
-          }
-          if bottom > max_y {
-            max_y = bottom
-          }
+          None => ()
         }
       }
       None => ()
     }
   }
 
-  if first {
+  if min_x == 2147483647 {
     return (0, 0, 0, 0)
   }
 
   for conn in diagram.connections {
+    let route = connection_route_points(conn)
+    let stroke_width = style_stroke_width(conn.style, 2)
+    let stroke_half = ceil_int(stroke_width.to_double() / 2.0)
+    for point in route {
+      min_x = min_int(min_x, floor_int(point.x) - stroke_half)
+      min_y = min_int(min_y, floor_int(point.y) - stroke_half)
+      max_x = max_int(max_x, ceil_int(point.x) + stroke_half)
+      max_y = max_int(max_y, ceil_int(point.y) + stroke_half)
+    }
+
+    match conn.label_box {
+      Some(lb) => {
+        min_x = min_int(min_x, floor_int(lb.x))
+        min_y = min_int(min_y, floor_int(lb.y))
+        max_x = max_int(max_x, ceil_int(lb.x + lb.width))
+        max_y = max_int(max_y, ceil_int(lb.y + lb.height))
+      }
+      None => ()
+    }
+
     let route = connection_route_points(conn)
     if conn.label != "" && route.length() > 1 {
       let mut max_diff = 0.0
@@ -217,4 +260,64 @@ fn calculate_extended_bounds(
   }
 
   (min_x, min_y, max_x, max_y)
+}
+
+///|
+fn min_int(a : Int, b : Int) -> Int {
+  if a < b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
+fn ceil_int(v : Double) -> Int {
+  let i = v.to_int()
+  if i.to_double() < v {
+    i + 1
+  } else {
+    i
+  }
+}
+
+///|
+fn floor_int(v : Double) -> Int {
+  let i = v.to_int()
+  if i.to_double() > v {
+    i - 1
+  } else {
+    i
+  }
+}
+
+///|
+fn style_bool_local(value : @graph.StyleValue?, default : Bool) -> Bool {
+  match value {
+    Some(v) => v.as_bool().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
+fn style_stroke_width(style : @graph.StyleInput, default : Int) -> Int {
+  match style.stroke_width {
+    Some(v) =>
+      match v.as_int() {
+        Some(i) => if i > 0 { i } else { default }
+        None =>
+          match v.as_double() {
+            Some(d) => {
+              let i = d.to_int()
+              if i > 0 {
+                i
+              } else {
+                default
+              }
+            }
+            None => default
+          }
+      }
+    None => default
+  }
 }

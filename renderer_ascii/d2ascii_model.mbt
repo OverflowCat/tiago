@@ -89,17 +89,15 @@ fn ShapeDrawContext::calibrate(
   w : Double,
   h : Double,
 ) -> (Int, Int, Int, Int) {
-  let x_c = round_int((x / self.font_width) * self.scale)
-  let y_c = round_int((y / self.font_height) * self.scale)
-  let w_c = round_int((w / self.font_width) * self.scale)
-  let h_c = round_int((h / self.font_height) * self.scale)
+  let x_c = round_int(x / self.font_width * self.scale)
+  let y_c = round_int(y / self.font_height * self.scale)
+  let w_c = round_int(w / self.font_width * self.scale)
+  let h_c = round_int(h / self.font_height * self.scale)
   (x_c, y_c, w_c, h_c)
 }
 
 ///|
-fn connection_route_points(
-  conn : @diagram.Connection,
-) -> Array[@graph.Point] {
+fn connection_route_points(conn : @diagram.Connection) -> Array[@graph.Point] {
   conn.route
 }
 
@@ -110,7 +108,8 @@ fn simplify_graph_route(points : Array[@graph.Point]) -> Array[@graph.Point] {
   }
   let merged : Array[@graph.Point] = [points[0]]
   let mut pt = points[0]
-  let mut dir = sign(points[0].x - points[1].x) + sign(points[0].y - points[1].y) * 2
+  let mut dir = sign(points[0].x - points[1].x) +
+    sign(points[0].y - points[1].y) * 2
   for j = 1; j < points.length(); j = j + 1 {
     let current = points[j]
     let new_dir = sign(pt.x - current.x) + sign(pt.y - current.y) * 2
@@ -134,7 +133,7 @@ fn arrow_exists(arrow : @graph.ArrowheadType) -> Bool {
 
 ///|
 fn connection_has_arrow(conn : @diagram.Connection) -> Bool {
-  arrow_exists(conn.src_arrowhead) || arrow_exists(conn.dst_arrowhead)
+  conn.src_arrow || conn.dst_arrow
 }
 
 ///|

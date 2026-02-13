@@ -40,7 +40,8 @@ fn style_is_mono(value : @graph.StyleValue?) -> Bool {
 
 ///|
 fn has_outside_bottom_label(shape_type : @graph.ShapeType) -> Bool {
-  shape_type == @graph.ShapeType::Person || shape_type == @graph.ShapeType::Image
+  shape_type == @graph.ShapeType::Person ||
+  shape_type == @graph.ShapeType::Image
 }
 
 ///|
@@ -158,12 +159,8 @@ fn infer_label_position_from_boxes(
 
 ///|
 fn resolve_shape_label_position(shape : @diagram.Shape) -> String {
-  guard shape.label != "" else {
-    return DEFAULT_LABEL_POSITION
-  }
-  guard shape.box is Some(box) else {
-    return DEFAULT_LABEL_POSITION
-  }
+  guard shape.label != "" else { return DEFAULT_LABEL_POSITION }
+  guard shape.box is Some(box) else { return DEFAULT_LABEL_POSITION }
   match shape.label_box {
     Some(label_box) => infer_label_position_from_boxes(box, label_box)
     None => default_shape_label_position(shape, box)
@@ -192,13 +189,19 @@ fn draw_diagram_shape(
         draw_h += 10.0
       }
 
-      let preserve_width =
-        has_connections_at_right_edge(shape, connections, ctx.font_width)
-      let preserve_height =
-        has_connections_at_top_edge(shape, connections, ctx.font_height)
+      let preserve_width = has_connections_at_right_edge(
+        shape,
+        connections,
+        ctx.font_width,
+      )
+      let preserve_height = has_connections_at_top_edge(
+        shape,
+        connections,
+        ctx.font_height,
+      )
 
       if preserve_width && shape.label != "" {
-        let w_c = round_int((draw_w / ctx.font_width) * ctx.scale)
+        let w_c = round_int(draw_w / ctx.font_width * ctx.scale)
         let available_space = w_c - shape.label.length()
         if available_space >= MIN_LABEL_PADDING && available_space % 2 == 1 {
           draw_w += (ctx.font_width / ctx.scale).to_int().to_double()
@@ -216,77 +219,135 @@ fn draw_diagram_shape(
             shape.label,
             label_position,
             "",
-            preserve_height=preserve_height,
+            preserve_height~,
           )
         @graph.ShapeType::Page =>
           draw_page(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Hexagon =>
           draw_hex(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Person =>
           draw_person(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::StoredData =>
           draw_stored_data(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Cylinder =>
           draw_cylinder(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Package =>
           draw_package(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Parallelogram =>
           draw_parallelogram(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Queue =>
           draw_queue(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Step =>
           draw_step(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Callout =>
           draw_callout(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Document =>
           draw_document(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Diamond =>
           draw_diamond(
-            ctx, draw_x, draw_y, draw_w, draw_h, shape.label, label_position,
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            shape.label,
+            label_position,
           )
         @graph.ShapeType::Class =>
           draw_class_shape(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape,
-            all_shapes,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, shape, all_shapes, label_position,
           )
         @graph.ShapeType::SqlTable =>
           draw_sql_table_shape(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape,
-            all_shapes,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, shape, all_shapes, label_position,
           )
         @graph.ShapeType::Cloud =>
           draw_rect(
@@ -298,7 +359,7 @@ fn draw_diagram_shape(
             shape.label,
             label_position,
             ctx.chars.cloud().to_string(),
-            preserve_height=preserve_height,
+            preserve_height~,
           )
         @graph.ShapeType::Circle =>
           draw_rect(
@@ -309,8 +370,8 @@ fn draw_diagram_shape(
             draw_h,
             shape.label,
             label_position,
-            ctx.chars.circle().to_string(),
-            preserve_height=preserve_height,
+            ctx.chars.oval().to_string(),
+            preserve_height~,
           )
         @graph.ShapeType::Oval =>
           draw_rect(
@@ -322,7 +383,7 @@ fn draw_diagram_shape(
             shape.label,
             label_position,
             ctx.chars.oval().to_string(),
-            preserve_height=preserve_height,
+            preserve_height~,
           )
         _ =>
           draw_rect(
@@ -334,7 +395,7 @@ fn draw_diagram_shape(
             shape.label,
             label_position,
             "",
-            preserve_height=preserve_height,
+            preserve_height~,
           )
       }
     }
@@ -359,23 +420,29 @@ fn get_shape_boundary(
         w += 10.0
         h += 10.0
       }
-      let mut x1 = round_int((x / ctx.font_width) * ctx.scale)
-      let mut y1 = round_int((y / ctx.font_height) * ctx.scale)
-      let mut w_c = round_int((w / ctx.font_width) * ctx.scale)
-      let mut h_c = round_int((h / ctx.font_height) * ctx.scale)
+      let mut x1 = round_int(x / ctx.font_width * ctx.scale)
+      let mut y1 = round_int(y / ctx.font_height * ctx.scale)
+      let mut w_c = round_int(w / ctx.font_width * ctx.scale)
+      let mut h_c = round_int(h / ctx.font_height * ctx.scale)
 
-      let preserve_width =
-        has_connections_at_right_edge(shape, connections, ctx.font_width)
-      let preserve_height =
-        has_connections_at_top_edge(shape, connections, ctx.font_height)
+      let preserve_width = has_connections_at_right_edge(
+        shape,
+        connections,
+        ctx.font_width,
+      )
+      let preserve_height = has_connections_at_top_edge(
+        shape,
+        connections,
+        ctx.font_height,
+      )
       if preserve_width && shape.label != "" {
         let available_space = w_c - shape.label.length()
         if available_space >= MIN_LABEL_PADDING && available_space % 2 == 1 {
           w += (ctx.font_width / ctx.scale).to_int().to_double()
-          x1 = round_int((x / ctx.font_width) * ctx.scale)
-          y1 = round_int((y / ctx.font_height) * ctx.scale)
-          w_c = round_int((w / ctx.font_width) * ctx.scale)
-          h_c = round_int((h / ctx.font_height) * ctx.scale)
+          x1 = round_int(x / ctx.font_width * ctx.scale)
+          y1 = round_int(y / ctx.font_height * ctx.scale)
+          w_c = round_int(w / ctx.font_width * ctx.scale)
+          h_c = round_int(h / ctx.font_height * ctx.scale)
         }
       }
 
@@ -388,12 +455,7 @@ fn get_shape_boundary(
         }
       }
       w_c = adjust_width_for_label(w_c, shape.label)
-      Some({
-        tl_x: x1,
-        tl_y: y1,
-        br_x: x1 + w_c,
-        br_y: y1 + h_c,
-      })
+      Some({ tl_x: x1, tl_y: y1, br_x: x1 + w_c, br_y: y1 + h_c })
     }
     None => None
   }
@@ -419,14 +481,12 @@ fn has_connections_at_right_edge(
         }
         let first_point = route[0]
         let last_point = route[route.length() - 1]
-        if
-          (first_point.x - shape_right).abs() < tolerance &&
+        if (first_point.x - shape_right).abs() < tolerance &&
           first_point.y >= shape_top &&
           first_point.y <= shape_bottom {
           return true
         }
-        if
-          (last_point.x - shape_right).abs() < tolerance &&
+        if (last_point.x - shape_right).abs() < tolerance &&
           last_point.y >= shape_top &&
           last_point.y <= shape_bottom {
           return true
@@ -461,8 +521,7 @@ fn has_connections_at_top_edge(
             let segment_y = p1.y
             let segment_left = min_double(p1.x, p2.x)
             let segment_right = max_double(p1.x, p2.x)
-            if
-              (segment_y - shape_top).abs() < font_height &&
+            if (segment_y - shape_top).abs() < font_height &&
               segment_right >= shape_left &&
               segment_left <= shape_right {
               return true
@@ -743,15 +802,19 @@ fn draw_hex(
 
   for i = x1; i <= x2; i = i + 1 {
     for j = y1; j <= y2; j = j + 1 {
-      if j == y1 && i >= (x1 + h_offset) && i <= (x2 - h_offset) {
+      if j == y1 && i >= x1 + h_offset && i <= x2 - h_offset {
         ctx.canvas.set(i, j, ctx.chars.overline())
-      } else if j == y2 && i >= (x1 + h_offset) && i <= (x2 - h_offset) {
+      } else if j == y2 && i >= x1 + h_offset && i <= x2 - h_offset {
         ctx.canvas.set(i, j, ctx.chars.underscore())
-      } else if h_offset % 2 == 1 && (i == x1 || i == x2) && (y1 + h_offset - 1) == j {
+      } else if h_offset % 2 == 1 &&
+        (i == x1 || i == x2) &&
+        y1 + h_offset - 1 == j {
         ctx.canvas.set(i, j, ctx.chars.cross())
-      } else if ((j - y1) + (i - x1) + 1) == h_offset || ((y2 - j) + (x2 - i) + 1) == h_offset {
+      } else if j - y1 + (i - x1) + 1 == h_offset ||
+        y2 - j + (x2 - i) + 1 == h_offset {
         ctx.canvas.set(i, j, ctx.chars.forwardslash())
-      } else if ((j - y1) + (x2 - i) + 1) == h_offset || ((y2 - j) + (i - x1) + 1) == h_offset {
+      } else if j - y1 + (x2 - i) + 1 == h_offset ||
+        y2 - j + (i - x1) + 1 == h_offset {
         ctx.canvas.set(i, j, ctx.chars.backslash())
       }
     }
@@ -793,8 +856,7 @@ fn draw_person(
       } else if yy >= y1 + head && yy < y2 {
         if rel_x + rel_y == body {
           ctx.canvas.set(xx, yy, ctx.chars.forwardslash())
-        } else if
-          (rel_x_body - rel_y_body - 1).to_double().abs() ==
+        } else if (rel_x_body - rel_y_body - 1).to_double().abs() ==
           (w_i - (h_i - head)).to_double().abs() {
           ctx.canvas.set(xx, yy, ctx.chars.backslash())
         } else if yy == y1 + head && xx >= x1 + s && xx <= x2 - s {
@@ -807,13 +869,11 @@ fn draw_person(
         if yy == y1 + head - 1 && xx >= x1 + h_offset && xx <= x2 - h_offset {
           ctx.canvas.set(xx, yy, ctx.chars.underscore())
         }
-        if
-          (yy == y1 && xx == x1 + h_offset - 1) ||
+        if (yy == y1 && xx == x1 + h_offset - 1) ||
           (yy == y1 + head - 1 && xx == x2 - h_offset + 1) {
           ctx.canvas.set(xx, yy, ctx.chars.forwardslash())
         }
-        if
-          (yy == y1 + head - 1 && xx == x1 + h_offset - 1) ||
+        if (yy == y1 + head - 1 && xx == x1 + h_offset - 1) ||
           (yy == y1 && xx == x2 - h_offset + 1) {
           ctx.canvas.set(xx, yy, ctx.chars.backslash())
         }
@@ -851,10 +911,9 @@ fn draw_stored_data(
       if yy == y1 + h_offset - 1 && xx == x1 {
         ctx.canvas.set(xx, yy, ctx.chars.vertical())
       } else if xx < x1 + h_offset {
-        if yy < y1 + h_offset && (rel_x + rel_y) == h_offset - 1 {
+        if yy < y1 + h_offset && rel_x + rel_y == h_offset - 1 {
           ctx.canvas.set(xx, yy, ctx.chars.forwardslash())
-        } else if
-          yy >= y1 + h_offset &&
+        } else if yy >= y1 + h_offset &&
           (rel_x - rel_y).to_double().abs() == (h_offset - 1).to_double() {
           ctx.canvas.set(xx, yy, ctx.chars.backslash())
         }
@@ -866,10 +925,9 @@ fn draw_stored_data(
         } else if xx > x2 - h_offset {
           if yy == y1 + h_offset - 1 && xx == x2 - (h_offset - 1) {
             ctx.canvas.set(xx, yy, ctx.chars.vertical())
-          } else if (rel_x + rel_y) == w_i - 1 {
+          } else if rel_x + rel_y == w_i - 1 {
             ctx.canvas.set(xx, yy, ctx.chars.forwardslash())
-          } else if
-            (rel_x - rel_y).to_double().abs() ==
+          } else if (rel_x - rel_y).to_double().abs() ==
             (w_i - h_i).to_double().abs() {
             ctx.canvas.set(xx, yy, ctx.chars.backslash())
           }
@@ -961,13 +1019,11 @@ fn draw_package(
         ctx.canvas.set(ix, iy, ctx.chars.bottom_left())
       } else if ix == x2 && iy == y2 {
         ctx.canvas.set(ix, iy, ctx.chars.bottom_right())
-      } else if
-        (iy == y1 && ix > x1 && ix < x3) ||
+      } else if (iy == y1 && ix > x1 && ix < x3) ||
         (iy == y2 && ix > x1 && ix < x2) ||
         (iy == y3 && ix > x3 && ix < x2) {
         ctx.canvas.set(ix, iy, ctx.chars.horizontal())
-      } else if
-        (ix == x1 && iy > y1 && iy < y2) ||
+      } else if (ix == x1 && iy > y1 && iy < y2) ||
         (ix == x2 && iy > y3 && iy < y2) {
         ctx.canvas.set(ix, iy, ctx.chars.vertical())
       }
@@ -993,7 +1049,7 @@ fn draw_parallelogram(
     for iy = y1; iy <= y2; iy = iy + 1 {
       let rx = ix - x1
       let ry = iy - y1
-      if (rx + ry == h_i - 1) || (rx + ry == w_i - 1) {
+      if rx + ry == h_i - 1 || rx + ry == w_i - 1 {
         ctx.canvas.set(ix, iy, ctx.chars.forwardslash())
       } else if iy == y1 && ix >= x1 + h_i && ix < x2 {
         ctx.canvas.set(ix, iy, ctx.chars.overline())
@@ -1020,11 +1076,13 @@ fn draw_queue(
   let y2 = y1 + h_i - 1
   for ix = x1; ix <= x2; ix = ix + 1 {
     for iy = y1; iy <= y2; iy = iy + 1 {
-      if (iy == y1 && (ix == x1 + 1 || ix == x2 - 2)) || (iy == y2 && ix == x2 - 1) {
+      if (iy == y1 && (ix == x1 + 1 || ix == x2 - 2)) ||
+        (iy == y2 && ix == x2 - 1) {
         ctx.canvas.set(ix, iy, ctx.chars.forwardslash())
-      } else if (iy == y1 && ix == x2 - 1) || (iy == y2 && (ix == x1 + 1 || ix == x2 - 2)) {
+      } else if (iy == y1 && ix == x2 - 1) ||
+        (iy == y2 && (ix == x1 + 1 || ix == x2 - 2)) {
         ctx.canvas.set(ix, iy, ctx.chars.backslash())
-      } else if (ix == x1 || ix == x2 || ix == x2 - 3) && (iy > y1 && iy < y2) {
+      } else if (ix == x1 || ix == x2 || ix == x2 - 3) && iy > y1 && iy < y2 {
         ctx.canvas.set(ix, iy, ctx.chars.vertical())
       } else if iy == y1 && ix > x1 + 1 && ix < x2 - 1 {
         ctx.canvas.set(ix, iy, ctx.chars.overline())
@@ -1058,12 +1116,10 @@ fn draw_step(
     for yy = y1; yy <= y2; yy = yy + 1 {
       let rx = xx - x1
       let ry = yy - y1
-      if
-        (xx < x1 + h_i / 2 && rx - ry == 0) ||
+      if (xx < x1 + h_i / 2 && rx - ry == 0) ||
         (xx > x2 - h_i / 2 && abs_int(rx - ry) == w_i - h_i / 2) {
         ctx.canvas.set(xx, yy, ctx.chars.backslash())
-      } else if
-        (xx < x1 + h_i / 2 && rx + ry == h_i - 1) ||
+      } else if (xx < x1 + h_i / 2 && rx + ry == h_i - 1) ||
         (xx > x2 - h_i / 2 && rx + ry == w_i - 1 + h_i / 2) {
         ctx.canvas.set(xx, yy, ctx.chars.forwardslash())
       } else if yy == y1 && xx > x1 && xx < x2 - h_i / 2 {
@@ -1175,13 +1231,16 @@ fn draw_document(
         ctx.canvas.set(xx, yy, ctx.chars.horizontal())
       } else if (xx == x1 || xx == x2) && yy > y1 && yy < y2 {
         ctx.canvas.set(xx, yy, ctx.chars.vertical())
-      } else if yy == y2 && xx > x1 && rel_x <= n && curve_index >= 0 && curve_index < l_curve.length() {
+      } else if yy == y2 &&
+        xx > x1 &&
+        rel_x <= n &&
+        curve_index >= 0 &&
+        curve_index < l_curve.length() {
         ctx.canvas.set(xx, yy, l_curve[curve_index])
-      } else if
-        yy == y2 - 1 &&
+      } else if yy == y2 - 1 &&
         rel_x > n &&
         xx < x2 &&
-        (rel_x - w_i / 2) < r_curve.length() {
+        rel_x - w_i / 2 < r_curve.length() {
         ctx.canvas.set(xx, yy, r_curve[rel_x - w_i / 2])
       }
     }
