@@ -1,4 +1,5 @@
 import {
+  "Milky2018/diago",
   "Milky2018/diago/parser",
   "Milky2018/diago/ir",
   "Milky2018/diago/graph",

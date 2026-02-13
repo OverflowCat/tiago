@@ -26,6 +26,8 @@ pub struct CharSet {
   // Lines
   horizontal : Char
   vertical : Char
+  left_vertical : Char
+  right_vertical : Char
   // Rounded corners (arcs)
   top_left_arc : Char
   top_right_arc : Char
@@ -49,8 +51,14 @@ pub struct CharSet {
   // Cylinder/special characters
   dot : Char
   hyphen : Char
+  tilde : Char
   overline : Char
   underscore : Char
+  // Shape symbols
+  cloud : Char
+  circle : Char
+  oval : Char
+  star : Char
 } derive(Show)
 
 ///|
@@ -65,6 +73,8 @@ pub fn CharSet::ascii() -> CharSet {
     // Lines
     horizontal: '-',
     vertical: '|',
+    left_vertical: '|',
+    right_vertical: '|',
     // Rounded corners (ASCII approximation)
     top_left_arc: '.',
     top_right_arc: '.',
@@ -81,15 +91,21 @@ pub fn CharSet::ascii() -> CharSet {
     t_right: '+',
     t_left: '+',
     // Cross
-    cross: '+',
+    cross: 'X',
     // Diagonals
     diagonal_down: '\\',
     diagonal_up: '/',
     // Cylinder/special
     dot: '.',
     hyphen: '-',
+    tilde: '~',
     overline: '-',
     underscore: '_',
+    // Shape symbols
+    cloud: '@',
+    circle: 'o',
+    oval: 'O',
+    star: '*',
   }
 }
 
@@ -105,6 +121,8 @@ pub fn CharSet::unicode() -> CharSet {
     // Lines
     horizontal: '─',
     vertical: '│',
+    left_vertical: '▏',
+    right_vertical: '▕',
     // Rounded corners
     top_left_arc: '╭',
     top_right_arc: '╮',
@@ -121,15 +139,21 @@ pub fn CharSet::unicode() -> CharSet {
     t_right: '├',
     t_left: '┤',
     // Cross
-    cross: '┼',
+    cross: '╳',
     // Diagonals
     diagonal_down: '╲',
     diagonal_up: '╱',
     // Cylinder/special
     dot: '.',
     hyphen: '-',
+    tilde: '`',
     overline: '‾',
     underscore: '_',
+    // Shape symbols
+    cloud: '☁',
+    circle: '●',
+    oval: '⬭',
+    star: '*',
   }
 }
 
@@ -163,6 +187,16 @@ pub fn CharSet::horizontal(self : CharSet) -> Char {
 ///|
 pub fn CharSet::vertical(self : CharSet) -> Char {
   self.vertical
+}
+
+///|
+pub fn CharSet::left_vertical(self : CharSet) -> Char {
+  self.left_vertical
+}
+
+///|
+pub fn CharSet::right_vertical(self : CharSet) -> Char {
+  self.right_vertical
 }
 
 ///|
@@ -246,6 +280,16 @@ pub fn CharSet::diagonal_up(self : CharSet) -> Char {
 }
 
 ///|
+pub fn CharSet::backslash(self : CharSet) -> Char {
+  self.diagonal_down
+}
+
+///|
+pub fn CharSet::forwardslash(self : CharSet) -> Char {
+  self.diagonal_up
+}
+
+///|
 /// Accessors for cylinder/special characters
 pub fn CharSet::dot(self : CharSet) -> Char {
   self.dot
@@ -257,6 +301,11 @@ pub fn CharSet::hyphen(self : CharSet) -> Char {
 }
 
 ///|
+pub fn CharSet::tilde(self : CharSet) -> Char {
+  self.tilde
+}
+
+///|
 pub fn CharSet::overline(self : CharSet) -> Char {
   self.overline
 }
@@ -264,4 +313,24 @@ pub fn CharSet::overline(self : CharSet) -> Char {
 ///|
 pub fn CharSet::underscore(self : CharSet) -> Char {
   self.underscore
+}
+
+///|
+pub fn CharSet::cloud(self : CharSet) -> Char {
+  self.cloud
+}
+
+///|
+pub fn CharSet::circle(self : CharSet) -> Char {
+  self.circle
+}
+
+///|
+pub fn CharSet::oval(self : CharSet) -> Char {
+  self.oval
+}
+
+///|
+pub fn CharSet::star(self : CharSet) -> Char {
+  self.star
 }

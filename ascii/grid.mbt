@@ -70,6 +70,11 @@ pub fn Grid::get(self : Grid, x : Int, y : Int) -> Char {
 }
 
 ///|
+pub fn Grid::is_in_bounds(self : Grid, x : Int, y : Int) -> Bool {
+  y >= 0 && y < self.height && x >= 0 && x < self.width
+}
+
+///|
 /// Write text starting at position (x, y)
 pub fn Grid::text(self : Grid, x : Int, y : Int, text : String) -> Unit {
   let mut col = x
@@ -77,6 +82,30 @@ pub fn Grid::text(self : Grid, x : Int, y : Int, text : String) -> Unit {
     self.set(col, y, ch)
     col = col + 1
   }
+}
+
+///|
+pub fn Grid::draw_label(self : Grid, x : Int, y : Int, label : String) -> Unit {
+  if not(self.is_in_bounds(x, y)) {
+    return
+  }
+  let lines = label.split("\n")
+  for line_index, line in lines {
+    let mut col = x
+    for ch in line {
+      self.set(col, y + line_index, ch)
+      col += 1
+    }
+  }
+}
+
+///|
+pub fn Grid::contains_alphanumeric(self : Grid, x : Int, y : Int) -> Bool {
+  let ch = self.get(x, y)
+  let code = ch.to_int()
+  (code >= 'a'.to_int() && code <= 'z'.to_int()) ||
+  (code >= 'A'.to_int() && code <= 'Z'.to_int()) ||
+  (code >= '0'.to_int() && code <= '9'.to_int())
 }
 
 ///|
@@ -257,6 +286,132 @@ pub fn Grid::to_string(self : Grid) -> String {
     sb.write_char('\n')
   }
   sb.to_string()
+}
+
+///|
+/// Convert grid to trimmed output and collapse repeated route-only rows.
+pub fn Grid::to_compact_string(self : Grid, cs : CharSet) -> String {
+  if self.height == 0 || self.width == 0 {
+    return ""
+  }
+
+  let mut start_row = 0
+  let mut end_row = self.height - 1
+
+  for row = 0; row < self.height; row = row + 1 {
+    if row_has_content(self.cells[row]) {
+      start_row = row
+      break
+    }
+  }
+  for row = self.height - 1; row >= 0; row = row - 1 {
+    if row_has_content(self.cells[row]) {
+      end_row = row
+      break
+    }
+  }
+
+  let mut start_col = 0
+  let mut end_col = 0
+  if self.width > 0 {
+    for col = 0; col < self.width; col = col + 1 {
+      let mut has_content = false
+      for row = start_row; row <= end_row; row = row + 1 {
+        if self.cells[row][col] != ' ' {
+          has_content = true
+          break
+        }
+      }
+      if has_content {
+        start_col = col
+        break
+      }
+    }
+    for col = self.width - 1; col >= 0; col = col - 1 {
+      let mut has_content = false
+      for row = start_row; row <= end_row; row = row + 1 {
+        if self.cells[row][col] != ' ' {
+          has_content = true
+          break
+        }
+      }
+      if has_content {
+        end_col = col
+        break
+      }
+    }
+  }
+
+  let mut prev_route_columns : Array[Int] = []
+  let mut prev_route_type : Char = ' '
+  let sb = StringBuilder::new()
+
+  for row = start_row; row <= end_row; row = row + 1 {
+    let row_data = self.cells[row]
+    let route_columns : Array[Int] = []
+    let mut route_type : Char = ' '
+    let mut route_type_set = false
+    let mut only_route_chars = true
+
+    for col = start_col; col <= end_col; col = col + 1 {
+      let ch = row_data[col]
+      let out_col = col - start_col
+      if ch == cs.vertical() || ch == cs.horizontal() {
+        route_columns.push(out_col)
+        if not(route_type_set) {
+          route_type = ch
+          route_type_set = true
+        } else if route_type != ch {
+          only_route_chars = false
+          break
+        }
+      } else if ch != ' ' {
+        only_route_chars = false
+      }
+    }
+
+    let has_routes = route_columns.length() > 0
+    let mut same_pattern =
+      route_columns.length() == prev_route_columns.length() &&
+      route_type == prev_route_type
+    if same_pattern {
+      for i = 0; i < route_columns.length(); i = i + 1 {
+        if route_columns[i] != prev_route_columns[i] {
+          same_pattern = false
+          break
+        }
+      }
+    }
+
+    if only_route_chars && has_routes && same_pattern && prev_route_columns.length() > 0 {
+      continue
+    }
+
+    if only_route_chars && has_routes {
+      prev_route_columns = route_columns
+      prev_route_type = route_type
+    } else {
+      prev_route_columns = []
+      prev_route_type = ' '
+    }
+
+    for col = start_col; col <= end_col; col = col + 1 {
+      sb.write_char(row_data[col])
+    }
+    sb.write_char('\n')
+  }
+
+  sb.to_string()
+}
+
+///|
+fn row_has_content(row : Array[Char]) -> Bool {
+  for ch in row {
+    if ch != ' ' {
+      return true
+    }
+  }
+  false
 }
 
 ///|

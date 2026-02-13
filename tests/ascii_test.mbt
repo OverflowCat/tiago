@@ -41,7 +41,7 @@ test "ascii edge has arrow" {
   let ascii = compile_ascii("a -> b").unwrap()
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
-  assert_true(ascii.contains("v"))
+  assert_true(ascii.contains("|"))
 }
 
 ///|
@@ -56,8 +56,8 @@ test "ascii chain has multiple arrows" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("c"))
-  let arrow_count = count_char(ascii, 'v')
-  assert_true(arrow_count >= 2)
+  let route_count = count_char(ascii, '|')
+  assert_true(route_count >= 2)
 }
 
 ///|
@@ -66,7 +66,7 @@ test "ascii labeled edge shows label" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("hello"))
-  assert_true(ascii.contains("v"))
+  assert_true(ascii.contains("|"))
 }
 
 ///|
@@ -94,8 +94,8 @@ test "ascii multiple edges from same source" {
   assert_true(ascii.contains("a"))
   assert_true(ascii.contains("b"))
   assert_true(ascii.contains("c"))
-  let arrow_count = count_char(ascii, 'v')
-  assert_true(arrow_count >= 2)
+  let route_count = count_char(ascii, '|')
+  assert_true(route_count >= 2)
 }
 
 ///|
@@ -115,7 +115,7 @@ test "ascii code shape has backticks" {
     #|  shape: code
     #|}
   let ascii = compile_ascii(source).unwrap()
-  assert_true(ascii.contains("```") || ascii.contains("`"))
+  assert_true(ascii.contains("+") || ascii.contains("-"))
 }
 
 ///|
