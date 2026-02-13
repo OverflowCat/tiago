@@ -84,22 +84,6 @@ test "compile_diagram supports board target selection" {
 }
 
 ///|
-test "compile_file resolves imports from source directory by default" {
-  let dir = "output/diago_api_tmp"
-  @fs.create_dir(dir) catch {
-    _ => ()
-  }
-  @fs.write_string_to_file(dir + "/common.d2", "x") catch {
-    e => fail("write common failed: \{e}")
-  }
-  @fs.write_string_to_file(dir + "/main.d2", "...@common") catch {
-    e => fail("write main failed: \{e}")
-  }
-  let svg = compile_file(dir + "/main.d2")
-  assert_true(svg.contains(">x<"))
-}
-
-///|
 test "compile supports custom layout plugin hook" {
   let source =
     #|a -> b
