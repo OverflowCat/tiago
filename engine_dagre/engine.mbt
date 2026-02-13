@@ -240,7 +240,6 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
       maybe_unmirror_layout(patch, graph, direction, parent_id_by_child_id),
     )
   }
-  snapshot_text_routes(patch, graph)
   trace_routes_to_object_boundaries(patch, graph)
   convert_dagre_routes_to_d2_curves(patch, graph)
   recompute_edge_label_boxes(patch, graph)
@@ -5747,84 +5746,6 @@ fn extend_segment_from_start(
 }
 
 ///|
-fn snapshot_text_routes(
-  patch : @graph.LayoutPatch,
-  graph : @graph.GraphInput,
-) -> Unit {
-  let explicit_bend_points : Map[Int, Array[@graph.Point]] = {}
-  for edge in graph.edges {
-    match edge.bend_points {
-      Some(points) =>
-        if points.length() >= 2 {
-          explicit_bend_points[edge.index] = points
-        }
-      None => ()
-    }
-  }
-  for edge_index, route in patch.edges {
-    match explicit_bend_points.get(edge_index) {
-      Some(points) => patch.edge_bend_points[edge_index] = points
-      None => patch.edge_bend_points[edge_index] = orthogonalize_text_route(route)
-    }
-  }
-}
-
-///|
-fn normalize_text_route(
-  route : Array[@graph.Point],
-) -> Array[@graph.Point] {
-  if route.length() == 3 {
-    let start = route[0]
-    let mid = route[1]
-    let end = route[2]
-    let first_diag = abs_double(mid.x - start.x) > 0.000001 &&
-      abs_double(mid.y - start.y) > 0.000001
-    let second_diag = abs_double(end.x - mid.x) > 0.000001 &&
-      abs_double(end.y - mid.y) > 0.000001
-    if first_diag && second_diag {
-      if abs_double(start.x - end.x) <= 0.000001 {
-        return [
-          start,
-          @graph.Point::new(mid.x, start.y),
-          @graph.Point::new(mid.x, end.y),
-          end,
-        ]
-      }
-      if abs_double(start.y - end.y) <= 0.000001 {
-        return [
-          start,
-          @graph.Point::new(start.x, mid.y),
-          @graph.Point::new(end.x, mid.y),
-          end,
-        ]
-      }
-    }
-  }
-  orthogonalize_text_route(route)
-}
-
-///|
-fn orthogonalize_text_route(
-  route : Array[@graph.Point],
-) -> Array[@graph.Point] {
-  if route.length() < 2 {
-    return route
-  }
-  let out : Array[@graph.Point] = [route[0]]
-  let mut i = 1
-  while i < route.length() {
-    let prev = out[out.length() - 1]
-    let curr = route[i]
-    let dx = abs_double(curr.x - prev.x)
-    let dy = abs_double(curr.y - prev.y)
-    if dx > 0.000001 && dy > 0.000001 {
-      out.push(@graph.Point::new(curr.x, prev.y))
-    }
-    out.push(curr)
-    i = i + 1
-  }
-  out
-}
 
 ///|
 fn convert_dagre_routes_to_d2_curves(

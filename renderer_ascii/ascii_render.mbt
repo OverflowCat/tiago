@@ -149,7 +149,7 @@ fn calculate_extended_bounds(
         max_x = max_int(max_x, shape_right)
         max_y = max_int(max_y, shape_bottom)
 
-        if shape.shape_type == @graph.C4Person {
+        if shape.shape_type == @graph.ShapeType::C4Person {
           let head_radius = (box.width * 0.22).to_int()
           let head_center_y = (box.height * 0.18).to_int()
           let head_top = box.y.to_int() + head_center_y - head_radius
@@ -162,7 +162,11 @@ fn calculate_extended_bounds(
         }
 
         if style_bool_local(shape.style.three_d, false) {
-          let offset_y = if shape.shape_type == @graph.Hexagon { 7 } else { 15 }
+          let offset_y = if shape.shape_type == @graph.ShapeType::Hexagon {
+            7
+          } else {
+            15
+          }
           min_y = min_int(min_y, floor_int(box.y) - offset_y - stroke_width)
           max_x = max_int(
             max_x,
