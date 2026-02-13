@@ -2,7 +2,7 @@
       │ a  │      │ c  │      │ e  │      │ user  │     │students │      │ g  │
       │    │      │    │      │    │      │       │     │         │      │    │
       └────┘      └────┘      └────┘      └───────┘     └─────────┘      └────┘
-         │           │          │             ▲               ▲             ▲  
+         │           │          │             │               │             ▲  
          │           │          │             │               │             │  
 triangle (default)diamond    circle      one to many    many to many      mixed
          │           │          │             │               │             │  

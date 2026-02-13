@@ -672,12 +672,9 @@ fn restore_grid_semantics(
         }
         let cell_w = plan.column_widths[col]
         let cell_h = plan.row_heights[row]
-        override_boxes[child_id] = @graph.Box::new(
-          x + (cell_w - child_w) / 2.0,
-          y + (cell_h - child_h) / 2.0,
-          child_w,
-          child_h,
-        )
+        let _ = child_w
+        let _ = child_h
+        override_boxes[child_id] = @graph.Box::new(x, y, cell_w, cell_h)
         x = x + cell_w + plan.hgap
       }
       y = y + plan.row_heights[row] + plan.vgap

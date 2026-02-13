@@ -2,32 +2,16 @@
 | Alice  |      |  Bob   |        | Server  |
 |        |      |        |        |         |
 +--------+      +--------+        +---------+
-                                             
-                                             
-                                             
-     ------Hello----->                       
-                                             
-                                             
-                                             
-                                             
-     <---Hi-there!----                       
-                                             
-                                             
-                                             
-                                             
-     -----------Request-data----------->     
-                                             
-                                             
-                                             
-                                             
-     <------------Response--------------     
-                                             
-                                             
-                                             
-                                             
-                     --Another request->     
-                                             
-                                             
-                                             
-                                             
-                     <Another-response--     
+     |               |                 |     
+     |-----Hello---->|                 |     
+     |               |                 |     
+     |<--Hi-there!---|                 |     
+     |               |                 |     
+     |----------Request-data---------->|     
+     |               |                 |     
+     |<-----------Response-------------|     
+     |               |                 |     
+     |               |-Another request>|     
+     |               |                 |     
+     |               |Another-response-|     
+     |               |                 |     

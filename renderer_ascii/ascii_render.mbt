@@ -149,7 +149,7 @@ fn calculate_extended_bounds(
         max_x = max_int(max_x, shape_right)
         max_y = max_int(max_y, shape_bottom)
 
-        if shape.shape_type == @graph.Person {
+        if shape.shape_type == @graph.C4Person {
           let head_radius = (box.width * 0.22).to_int()
           let head_center_y = (box.height * 0.18).to_int()
           let head_top = box.y.to_int() + head_center_y - head_radius
@@ -185,7 +185,16 @@ fn calculate_extended_bounds(
             max_x = max_int(max_x, ceil_int(lb.x + lb.width))
             max_y = max_int(max_y, ceil_int(lb.y + lb.height))
           }
-          None => ()
+          None =>
+            match estimate_shape_label_bounds(shape, box) {
+              Some((lx1, ly1, lx2, ly2)) => {
+                min_x = min_int(min_x, lx1)
+                min_y = min_int(min_y, ly1)
+                max_x = max_int(max_x, lx2)
+                max_y = max_int(max_y, ly2)
+              }
+              None => ()
+            }
         }
       }
       None => ()
@@ -320,4 +329,172 @@ fn style_stroke_width(style : @graph.StyleInput, default : Int) -> Int {
       }
     None => default
   }
+}
+
+///|
+const BOUNDS_LABEL_PADDING : Double = 5.0
+
+///|
+fn estimate_shape_label_bounds(
+  shape : @diagram.Shape,
+  box : @graph.Box,
+) -> (Int, Int, Int, Int)? {
+  if shape.label == "" {
+    return None
+  }
+
+  let font_size = match shape.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool_local(shape.style.bold, false)
+  let is_italic = style_bool_local(shape.style.italic, false)
+  let is_mono = shape.shape_type == @graph.ShapeType::Code ||
+    style_is_mono_local(shape.style.font_family)
+  let dims = @text_metrics.measure_label(
+    shape.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let label_width = if dims.width > 0.0 {
+    dims.width
+  } else {
+    shape.label.length().to_double() * 7.0
+  }
+  let label_height = if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double()
+  }
+
+  let label_position = default_shape_label_position_for_bounds(shape, box)
+  let (label_x, label_y) = label_top_left_for_position(
+    label_position,
+    box,
+    label_width,
+    label_height,
+  )
+  Some((
+    floor_int(label_x),
+    floor_int(label_y),
+    ceil_int(label_x + label_width),
+    ceil_int(label_y + label_height),
+  ))
+}
+
+///|
+fn style_is_mono_local(value : @graph.StyleValue?) -> Bool {
+  match value {
+    Some(v) =>
+      match v.get_value().to_lower() {
+        "mono" | "monospace" | "code" => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn default_shape_label_position_for_bounds(
+  shape : @diagram.Shape,
+  box : @graph.Box,
+) -> String {
+  let font_size = match shape.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool_local(shape.style.bold, false)
+  let is_italic = style_bool_local(shape.style.italic, false)
+  let is_mono = shape.shape_type == @graph.ShapeType::Code ||
+    style_is_mono_local(shape.style.font_family)
+  let dims = @text_metrics.measure_label(
+    shape.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let label_width = if dims.width > 0.0 {
+    dims.width + BOUNDS_LABEL_PADDING * 2.0
+  } else {
+    shape.label.length().to_double() * 7.0 + BOUNDS_LABEL_PADDING * 2.0
+  }
+  let label_height = if dims.height > 0.0 {
+    dims.height + BOUNDS_LABEL_PADDING * 2.0
+  } else {
+    font_size.to_double() + BOUNDS_LABEL_PADDING * 2.0
+  }
+  let is_container = !shape.child_ids.is_empty()
+  let is_grid_container = is_container &&
+    (shape.grid_rows is Some(_) || shape.grid_columns is Some(_))
+  let mut pos = if is_container {
+    if is_grid_container {
+      "INSIDE_TOP_CENTER"
+    } else {
+      "OUTSIDE_TOP_CENTER"
+    }
+  } else if shape.shape_type == @graph.ShapeType::Person ||
+    shape.shape_type == @graph.ShapeType::Image {
+    "OUTSIDE_BOTTOM_CENTER"
+  } else if shape.icon is Some(_) {
+    "INSIDE_TOP_CENTER"
+  } else {
+    "INSIDE_MIDDLE_CENTER"
+  }
+  if label_width > box.width || label_height > box.height {
+    pos = if is_container {
+      if is_grid_container {
+        "INSIDE_TOP_CENTER"
+      } else {
+        "OUTSIDE_TOP_CENTER"
+      }
+    } else {
+      "OUTSIDE_BOTTOM_CENTER"
+    }
+  }
+  pos
+}
+
+///|
+fn label_top_left_for_position(
+  label_position : String,
+  box : @graph.Box,
+  label_width : Double,
+  label_height : Double,
+) -> (Double, Double) {
+  let x = if label_position.contains("LEFT") {
+    if label_position.contains("OUTSIDE") {
+      box.x - BOUNDS_LABEL_PADDING - label_width
+    } else {
+      box.x + BOUNDS_LABEL_PADDING
+    }
+  } else if label_position.contains("RIGHT") {
+    if label_position.contains("OUTSIDE") {
+      box.x + box.width + BOUNDS_LABEL_PADDING
+    } else {
+      box.x + box.width - BOUNDS_LABEL_PADDING - label_width
+    }
+  } else {
+    box.x + (box.width - label_width) / 2.0
+  }
+
+  let y = if label_position.contains("TOP") {
+    if label_position.contains("OUTSIDE") {
+      box.y - BOUNDS_LABEL_PADDING - label_height
+    } else {
+      box.y + BOUNDS_LABEL_PADDING
+    }
+  } else if label_position.contains("BOTTOM") {
+    if label_position.contains("OUTSIDE") {
+      box.y + box.height + BOUNDS_LABEL_PADDING
+    } else {
+      box.y + box.height - BOUNDS_LABEL_PADDING - label_height
+    }
+  } else {
+    box.y + (box.height - label_height) / 2.0
+  }
+
+  (x, y)
 }

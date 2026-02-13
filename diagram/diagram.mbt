@@ -376,6 +376,133 @@ fn connection_from_edge(edge : @graph.EdgeInput) -> Connection {
 }
 
 ///|
+fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
+  if !graph.root.child_ids.is_empty() {
+    let ids : Array[String] = []
+    let exists : Map[String, Bool] = {}
+    for obj in graph.objects {
+      exists[obj.id] = true
+    }
+    for id in graph.root.child_ids {
+      if exists.contains(id) {
+        ids.push(id)
+      }
+    }
+    if !ids.is_empty() {
+      return ids
+    }
+  }
+  let child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      child_ids[child_id] = true
+    }
+  }
+  let ids : Array[String] = []
+  for obj in graph.objects {
+    if !child_ids.contains(obj.id) {
+      ids.push(obj.id)
+    }
+  }
+  ids
+}
+
+///|
+fn append_sequence_lifeline_connections(
+  graph : @graph.GraphInput,
+  shapes : Array[Shape],
+  connections : Array[Connection],
+) -> Unit {
+  if graph.root.shape_type != @graph.SequenceDiagram {
+    return
+  }
+
+  let box_by_id : Map[String, @graph.Box] = {}
+  for shape in shapes {
+    match shape.box {
+      Some(box) => box_by_id[shape.id] = box
+      None => ()
+    }
+  }
+
+  let participant_ids = sequence_participant_ids(graph)
+  if participant_ids.is_empty() {
+    return
+  }
+
+  let mut max_route_y = 0.0
+  for conn in connections {
+    for point in conn.route {
+      if point.y > max_route_y {
+        max_route_y = point.y
+      }
+    }
+  }
+
+  let mut max_start_y = 0.0
+  for id in participant_ids {
+    match box_by_id.get(id) {
+      Some(box) => {
+        let start_y = box.y + box.height
+        if start_y > max_start_y {
+          max_start_y = start_y
+        }
+      }
+      None => ()
+    }
+  }
+  if max_start_y <= 0.0 {
+    return
+  }
+
+  let lifeline_end_y = if max_route_y > 0.0 {
+    max_route_y + 70.0
+  } else {
+    max_start_y + 120.0
+  }
+
+  let mut next_index = 0
+  for conn in connections {
+    if conn.index >= next_index {
+      next_index = conn.index + 1
+    }
+  }
+
+  for id in participant_ids {
+    match box_by_id.get(id) {
+      Some(box) => {
+        let x = box.x + box.width / 2.0
+        let start_y = box.y + box.height
+        let dst_id = "\{id}-lifeline-end-\{next_index}"
+        connections.push({
+          index: next_index,
+          src_id: id,
+          dst_id,
+          src_arrow: false,
+          dst_arrow: false,
+          src_arrowhead: @graph.None,
+          dst_arrowhead: @graph.None,
+          src_anchor: None,
+          dst_anchor: None,
+          label: "",
+          style: @graph.StyleInput::new(),
+          route: [@graph.Point::new(x, start_y), @graph.Point::new(x, lifeline_end_y)],
+          bend_points: None,
+          is_curve: false,
+          z_index: 0,
+          reference_count: 1,
+          label_box: None,
+          src_column_index: None,
+          dst_column_index: None,
+        })
+        next_index += 1
+      }
+      None => ()
+    }
+  }
+}
+
+///|
 /// Convert a laid-out graph to a render-ready diagram.
 ///
 /// This is the only conversion renderers should need.
@@ -388,6 +515,7 @@ pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
   for edge in graph.edges {
     connections.push(connection_from_edge(edge))
   }
+  append_sequence_lifeline_connections(graph, shapes, connections)
   let layers : Array[Diagram] = []
   for layer in graph.layers {
     layers.push(from_graph(layer.graph, config))

@@ -1267,6 +1267,24 @@ fn compile_edges_in_map(
   next_index : Int,
 ) -> Int raise GraphCompileError {
   let mut next_index = next_index
+  for field in ir.fields {
+    if is_reserved_keyword(field.name) {
+      continue
+    }
+    match field.composite {
+      Some(@ir.Composite::Map(inner)) => {
+        let child_prefix = if prefix == "" {
+          field.name
+        } else {
+          prefix + "." + field.name
+        }
+        next_index = compile_edges_in_map(
+          graph, inner, child_prefix, next_index,
+        )
+      }
+      _ => ()
+    }
+  }
   for edge in ir.edges {
     let src_id = join_path(prefix, edge.id.src_path)
     let dst_id = join_path(prefix, edge.id.dst_path)
@@ -1388,24 +1406,6 @@ fn compile_edges_in_map(
       None => ()
     }
     graph.add_edge(graph_edge)
-  }
-  for field in ir.fields {
-    if is_reserved_keyword(field.name) {
-      continue
-    }
-    match field.composite {
-      Some(@ir.Composite::Map(inner)) => {
-        let child_prefix = if prefix == "" {
-          field.name
-        } else {
-          prefix + "." + field.name
-        }
-        next_index = compile_edges_in_map(
-          graph, inner, child_prefix, next_index,
-        )
-      }
-      _ => ()
-    }
   }
   next_index
 }
