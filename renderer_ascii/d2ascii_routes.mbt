@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-struct RouteDrawContext {
+priv struct RouteDrawContext {
   canvas : @ascii.Grid
   chars : @ascii.CharSet
   diagram : @diagram.Diagram
@@ -728,12 +728,7 @@ fn calculate_best_label_position(
       max_line_len = line.length()
     }
   }
-  Some({
-    i: best_index,
-    x: round_int(best_x) - max_line_len / 2,
-    y: round_int(max_diff / 2.0),
-    max_diff,
-  })
+  Some({ i: best_index, x: round_int(best_x) - max_line_len / 2, max_diff })
 }
 
 ///|

@@ -28,16 +28,10 @@ const DEFAULT_SCALE = 1.0
 const MIN_LABEL_PADDING = 2
 
 ///|
-const LABEL_OFFSET_X = 2
-
-///|
 const MAX_ROUTE_ATTEMPTS = 200
 
 ///|
 const HEAD_HEIGHT = 2
-
-///|
-const MIN_CYLINDER_HEIGHT = 5
 
 ///|
 const MIN_STORED_DATA_HEIGHT = 5
@@ -46,7 +40,7 @@ const MIN_STORED_DATA_HEIGHT = 5
 const MAX_CURVE_HEIGHT = 3
 
 ///|
-struct Boundary {
+priv struct Boundary {
   tl_x : Int
   tl_y : Int
   br_x : Int
@@ -59,21 +53,20 @@ fn Boundary::contains(self : Boundary, x : Int, y : Int) -> Bool {
 }
 
 ///|
-struct RoutePoint {
+priv struct RoutePoint {
   x : Double
   y : Double
 }
 
 ///|
-struct RouteLabelPosition {
+priv struct RouteLabelPosition {
   i : Int
   x : Int
-  y : Int
   max_diff : Double
 }
 
 ///|
-struct ShapeDrawContext {
+priv struct ShapeDrawContext {
   canvas : @ascii.Grid
   chars : @ascii.CharSet
   font_width : Double
@@ -99,36 +92,6 @@ fn ShapeDrawContext::calibrate(
 ///|
 fn connection_route_points(conn : @diagram.Connection) -> Array[@graph.Point] {
   conn.route
-}
-
-///|
-fn simplify_graph_route(points : Array[@graph.Point]) -> Array[@graph.Point] {
-  if points.length() < 2 {
-    return points
-  }
-  let merged : Array[@graph.Point] = [points[0]]
-  let mut pt = points[0]
-  let mut dir = sign(points[0].x - points[1].x) +
-    sign(points[0].y - points[1].y) * 2
-  for j = 1; j < points.length(); j = j + 1 {
-    let current = points[j]
-    let new_dir = sign(pt.x - current.x) + sign(pt.y - current.y) * 2
-    if dir != new_dir {
-      merged.push(pt)
-      dir = new_dir
-    }
-    pt = current
-  }
-  let last = merged[merged.length() - 1]
-  if last.x != pt.x || last.y != pt.y {
-    merged.push(pt)
-  }
-  merged
-}
-
-///|
-fn arrow_exists(arrow : @graph.ArrowheadType) -> Bool {
-  arrow.marker_id(false) != ""
 }
 
 ///|
@@ -236,11 +199,3 @@ fn style_is_multiple(style : @graph.StyleInput) -> Bool {
 }
 
 ///|
-fn style_has_class(shape : @diagram.Shape, class_name : String) -> Bool {
-  for c in shape.classes {
-    if c == class_name {
-      return true
-    }
-  }
-  false
-}

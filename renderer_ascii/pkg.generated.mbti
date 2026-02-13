@@ -16,14 +16,10 @@ pub fn render_ascii(@diagram.Diagram, AsciiConfig) -> String
 
 // Types and methods
 pub struct AsciiConfig {
-  min_box_width : Int
-  box_height : Int
-  h_padding : Int
-  v_spacing : Int
-  h_spacing : Int
-  min_width : Int
-  min_height : Int
   charset : @ascii.CharSet
+  font_width : Double
+  font_height : Double
+  scale : Double
 }
 pub fn AsciiConfig::new() -> Self
 pub fn AsciiConfig::unicode() -> Self

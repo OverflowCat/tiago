@@ -371,8 +371,7 @@ pub fn Grid::to_compact_string(self : Grid, cs : CharSet) -> String {
     }
 
     let has_routes = route_columns.length() > 0
-    let mut same_pattern =
-      route_columns.length() == prev_route_columns.length() &&
+    let mut same_pattern = route_columns.length() == prev_route_columns.length() &&
       route_type == prev_route_type
     if same_pattern {
       for i = 0; i < route_columns.length(); i = i + 1 {
@@ -383,7 +382,10 @@ pub fn Grid::to_compact_string(self : Grid, cs : CharSet) -> String {
       }
     }
 
-    if only_route_chars && has_routes && same_pattern && prev_route_columns.length() > 0 {
+    if only_route_chars &&
+      has_routes &&
+      same_pattern &&
+      prev_route_columns.length() > 0 {
       continue
     }
 

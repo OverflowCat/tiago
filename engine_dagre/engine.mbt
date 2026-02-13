@@ -127,9 +127,6 @@ const D2_DOC_PATH_HEIGHT : Double = 18.925
 const D2_DOC_PATH_INNER_BOTTOM : Double = 14.0
 
 ///|
-const D2_PERSON_SHOULDER_FACTOR : Double = 20.2 / 68.3
-
-///|
 const D2_PERSON_AR_LIMIT : Double = 1.5
 
 ///|
@@ -145,12 +142,6 @@ const D2_C4_HEAD_RADIUS_FACTOR : Double = 0.22
 const D2_C4_BODY_TOP_FACTOR : Double = 0.8
 
 ///|
-const CLOUD_WIDE_INNER_X : Double = 0.085
-
-///|
-const CLOUD_WIDE_INNER_Y : Double = 0.409
-
-///|
 const CLOUD_WIDE_INNER_WIDTH : Double = 0.819
 
 ///|
@@ -163,12 +154,6 @@ const CLOUD_WIDE_ASPECT_BOUNDARY : Double = (
   2.0
 
 ///|
-const CLOUD_TALL_INNER_X : Double = 0.228
-
-///|
-const CLOUD_TALL_INNER_Y : Double = 0.179
-
-///|
 const CLOUD_TALL_INNER_WIDTH : Double = 0.549
 
 ///|
@@ -179,12 +164,6 @@ const CLOUD_TALL_ASPECT_BOUNDARY : Double = (
     1.0 + CLOUD_TALL_INNER_WIDTH / CLOUD_TALL_INNER_HEIGHT
   ) /
   2.0
-
-///|
-const CLOUD_SQUARE_INNER_X : Double = 0.167
-
-///|
-const CLOUD_SQUARE_INNER_Y : Double = 0.335
 
 ///|
 const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
@@ -231,7 +210,6 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
     patch,
     graph,
     parent_id_by_child_id,
-    d2_ranksep(graph, direction),
     !(direction == Right || direction == Left),
   )
   fit_container_boxes(patch, graph, parent_id_by_child_id)
@@ -482,71 +460,6 @@ fn copy_passthrough_layout_data(
   for fragment in graph.sequence_fragments_layout {
     patch.sequence_fragments.push(fragment)
   }
-}
-
-///|
-fn apply_layout_graph_result(
-  input_graph : @moon_dagre.Graph,
-  layout_graph : @moon_dagre.Graph,
-) -> Unit {
-  for v in input_graph.nodes() {
-    let input_label = input_graph.node(v)
-    match layout_graph.node_opt(v) {
-      Some(layout_label) => {
-        match layout_label.get_float("x") {
-          Some(x) => input_label.set_float("x", x)
-          None => ()
-        }
-        match layout_label.get_float("y") {
-          Some(y) => input_label.set_float("y", y)
-          None => ()
-        }
-        match layout_label.get_int("order") {
-          Some(order) => input_label.set_int("order", order)
-          None => ()
-        }
-        match layout_label.get_int("rank") {
-          Some(rank) => input_label.set_int("rank", rank)
-          None => ()
-        }
-        if !layout_graph.children(v~).is_empty() {
-          match layout_label.get_float("width") {
-            Some(width) => input_label.set_float("width", width)
-            None => ()
-          }
-          match layout_label.get_float("height") {
-            Some(height) => input_label.set_float("height", height)
-            None => ()
-          }
-        }
-      }
-      None => ()
-    }
-  }
-
-  for e in input_graph.edges() {
-    let input_label = @moon_dagre.value_as_attrs(input_graph.edge_obj(e)).unwrap()
-    let layout_label = @moon_dagre.value_as_attrs(layout_graph.edge_obj(e)).unwrap()
-    match layout_label.get_points("points") {
-      Some(points) => input_label.set_points("points", points)
-      None => ()
-    }
-    match layout_label.get_float("x") {
-      Some(x) => {
-        input_label.set_float("x", x)
-        input_label.set_float("y", layout_label.get_float_or("y", 0.0))
-      }
-      None => ()
-    }
-    input_graph.set_edge_obj(e, label=@moon_dagre.attrs_value(input_label))
-  }
-
-  input_graph
-  .graph()
-  .set_float("width", layout_graph.graph().get_float_or("width", 0.0))
-  input_graph
-  .graph()
-  .set_float("height", layout_graph.graph().get_float_or("height", 0.0))
 }
 
 ///|
@@ -1627,11 +1540,6 @@ fn unordered_edge_pair_key(a : String, b : String) -> String {
 }
 
 ///|
-fn directed_edge_pair_key(a : String, b : String) -> String {
-  a + "\u0003" + b
-}
-
-///|
 fn edge_label_size(edge : @graph.EdgeInput) -> (Double, Double)? {
   match edge.label_box {
     Some(box) => {
@@ -2316,12 +2224,7 @@ priv struct LayoutSpacing {
 priv enum DefaultLabelPosition {
   OutsideTop
   OutsideBottom
-  OutsideLeft
-  OutsideRight
   InsideTop
-  InsideBottom
-  InsideLeft
-  InsideRight
   InsideMiddle
 }
 
@@ -2460,12 +2363,7 @@ fn object_layout_spacing(
     match default_label_position(obj, box, label_width, label_height) {
       OutsideTop => margin.top = label_height
       OutsideBottom => margin.bottom = label_height
-      OutsideLeft => margin.left = label_width
-      OutsideRight => margin.right = label_width
       InsideTop => padding.top = label_height
-      InsideBottom => padding.bottom = label_height
-      InsideLeft => padding.left = label_width
-      InsideRight => padding.right = label_width
       InsideMiddle => ()
     }
   }
@@ -2486,15 +2384,7 @@ fn object_layout_spacing(
         if icon_size > margin.bottom {
           margin.bottom = icon_size
         }
-      OutsideLeft => if icon_size > margin.left { margin.left = icon_size }
-      OutsideRight => if icon_size > margin.right { margin.right = icon_size }
       InsideTop => if icon_size > padding.top { padding.top = icon_size }
-      InsideBottom =>
-        if icon_size > padding.bottom {
-          padding.bottom = icon_size
-        }
-      InsideLeft => if icon_size > padding.left { padding.left = icon_size }
-      InsideRight => if icon_size > padding.right { padding.right = icon_size }
       InsideMiddle => ()
     }
   }
@@ -3530,7 +3420,6 @@ fn adjust_cross_rank_spacing(
   patch : @graph.LayoutPatch,
   graph : @graph.GraphInput,
   parent_id_by_child_id : Map[String, String],
-  rank_sep : Double,
   is_horizontal : Bool,
 ) -> Unit {
   let children_by_parent_id = build_children_by_parent_id(parent_id_by_child_id)
@@ -5576,16 +5465,6 @@ fn outside_label_box(
         box.x + (box.width - label_width) / 2.0,
         box.y + box.height + D2_LABEL_PADDING,
       )
-    OutsideLeft =>
-      (
-        box.x - D2_LABEL_PADDING - label_width,
-        box.y + (box.height - label_height) / 2.0,
-      )
-    OutsideRight =>
-      (
-        box.x + box.width + D2_LABEL_PADDING,
-        box.y + (box.height - label_height) / 2.0,
-      )
     _ => return None
   }
   Some(
@@ -5691,8 +5570,6 @@ fn pick_outside_intersection(
     match pos {
       OutsideTop => if p.y < best.y { best = p }
       OutsideBottom => if p.y > best.y { best = p }
-      OutsideLeft => if p.x < best.x { best = p }
-      OutsideRight => if p.x > best.x { best = p }
       _ => ()
     }
   }

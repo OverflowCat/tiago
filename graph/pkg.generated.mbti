@@ -189,6 +189,7 @@ pub impl Show for LayerModel
 pub struct LayoutPatch {
   nodes : Map[String, Box]
   edges : Map[Int, Array[Point]]
+  edge_bend_points : Map[Int, Array[Point]]
   edge_curves : Map[Int, Bool]
   edge_labels : Map[Int, Box]
   activation_boxes : Array[(String, Box)]

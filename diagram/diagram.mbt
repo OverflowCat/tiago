@@ -486,7 +486,10 @@ fn append_sequence_lifeline_connections(
           dst_anchor: None,
           label: "",
           style: @graph.StyleInput::new(),
-          route: [@graph.Point::new(x, start_y), @graph.Point::new(x, lifeline_end_y)],
+          route: [
+            @graph.Point::new(x, start_y),
+            @graph.Point::new(x, lifeline_end_y),
+          ],
           bend_points: None,
           is_curve: false,
           z_index: 0,
