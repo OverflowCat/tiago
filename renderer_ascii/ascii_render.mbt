@@ -371,17 +371,16 @@ fn estimate_shape_label_bounds(
 
   let label_position = default_shape_label_position_for_bounds(shape, box)
   let (label_x, label_y) = label_top_left_for_position(
-    label_position,
-    box,
-    label_width,
-    label_height,
+    label_position, box, label_width, label_height,
   )
-  Some((
-    floor_int(label_x),
-    floor_int(label_y),
-    ceil_int(label_x + label_width),
-    ceil_int(label_y + label_height),
-  ))
+  Some(
+    (
+      floor_int(label_x),
+      floor_int(label_y),
+      ceil_int(label_x + label_width),
+      ceil_int(label_y + label_height),
+    ),
+  )
 }
 
 ///|
@@ -401,6 +400,10 @@ fn default_shape_label_position_for_bounds(
   shape : @diagram.Shape,
   box : @graph.Box,
 ) -> String {
+  if shape.shape_type == @graph.ShapeType::SqlTable ||
+    shape.shape_type == @graph.ShapeType::Class {
+    return "INSIDE_TOP_CENTER"
+  }
   let font_size = match shape.style.font_size {
     Some(v) => v.as_int().unwrap_or(16)
     None => 16

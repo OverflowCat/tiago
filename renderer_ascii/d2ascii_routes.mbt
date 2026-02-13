@@ -190,15 +190,17 @@ fn get_connection_boundaries(
   src_id : String,
   dst_id : String,
 ) -> (Boundary, Boundary) {
+  let resolved_src_id = resolve_boundary_shape_id(ctx.diagram.shapes, src_id)
+  let resolved_dst_id = resolve_boundary_shape_id(ctx.diagram.shapes, dst_id)
   let mut from_boundary = { tl_x: 0, tl_y: 0, br_x: 0, br_y: 0 }
   let mut to_boundary = { tl_x: 0, tl_y: 0, br_x: 0, br_y: 0 }
   for shape in ctx.diagram.shapes {
-    if shape.id == src_id {
+    if shape.id == resolved_src_id {
       match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => from_boundary = b
         None => ()
       }
-    } else if shape.id == dst_id {
+    } else if shape.id == resolved_dst_id {
       match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => to_boundary = b
         None => ()
@@ -206,6 +208,64 @@ fn get_connection_boundaries(
     }
   }
   (from_boundary, to_boundary)
+}
+
+///|
+fn resolve_boundary_shape_id(
+  shapes : Array[@diagram.Shape],
+  id : String,
+) -> String {
+  if shape_id_exists(shapes, id) {
+    return id
+  }
+  let original_id = id
+  let mut candidate = id
+  while true {
+    let parent = parent_id(candidate)
+    match parent {
+      Some(pid) =>
+        if shape_id_exists(shapes, pid) {
+          return pid
+        } else {
+          candidate = pid
+        }
+      None => break
+    }
+  }
+  original_id
+}
+
+///|
+fn shape_id_exists(shapes : Array[@diagram.Shape], id : String) -> Bool {
+  for shape in shapes {
+    if shape.id == id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn parent_id(id : String) -> String? {
+  let mut last_dot = -1
+  let mut i = 0
+  while i < id.length() {
+    if id.code_unit_at(i).to_int() == '.'.to_int() {
+      last_dot = i
+    }
+    i = i + 1
+  }
+  if last_dot <= 0 {
+    None
+  } else {
+    let sb = StringBuilder::new()
+    let mut j = 0
+    while j < last_dot {
+      sb.write_char(id.code_unit_at(j).to_int().unsafe_to_char())
+      j = j + 1
+    }
+    Some(sb.to_string())
+  }
 }
 
 ///|

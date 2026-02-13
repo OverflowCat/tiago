@@ -14,15 +14,14 @@
 |           posts            |   |       
 |                            |   |       
 +----------------------------+   |       
-|id                      int |   |       
-|user_id                 int |+--+       
+|id                      int |+--+       
+|user_id                 int ||          
 |title          varchar(255) ||          
 |content                text ||          
 |published           boolean ||          
 |                            ||          
 +----------------------------+|          
               ^               |          
-              |               |          
               +---+           |          
                   |           |          
                   v           |          
