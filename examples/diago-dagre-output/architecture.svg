@@ -56,6 +56,12 @@
 <rect x="536" y="1329" width="108" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="704" y="1329" width="108" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="492" y="845" width="135" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 348.4341420811715 1701.2442222382042 C 276 1758.8 257.6 1785.6 257.9669432776504 1830.000136595694" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="266" y="1744" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="281.5" y="1760" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<path d="M 447.1528689488651 1710.634286751688 C 482.4 1760.6 491.6 1785.6 491.9669432776504 1830.000136595694" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="469" y="1756" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="484.5" y="1772" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <path d="M 441 99 C 441 120.2 441 136 441 172" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 441 262 C 441 300 441 320 441 356" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 386.25483654283806 424.976936286452 C 309.4 468 289.75 539 289.75 575" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
@@ -76,12 +82,6 @@
 <path d="M 620.0879294632449 1396.4865882924944 C 654.75 1435 663.75 1455 663.75 1470 C 663.75 1485 675.6 1560.2 720.540647090968 1617.8453869858831" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 757.75 1397 C 757.75 1435 757.75 1455 757.75 1470 C 757.75 1485 756.4 1560.2 751.3538701922205 1617.0156837616653" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 575.7255350312898 1396.8439642112148 C 559.7 1435 555.5 1455 555.5 1470 C 555.5 1485 537.8 1558 470.2238819380463 1607.6321771076496" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 348.4341420811715 1701.2442222382042 C 276 1758.8 257.6 1785.6 257.9669432776504 1830.000136595694" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="266" y="1744" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="281.5" y="1760" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
-<path d="M 447.1528689488651 1710.634286751688 C 482.4 1760.6 491.6 1785.6 491.9669432776504 1830.000136595694" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="469" y="1756" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="484.5" y="1772" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <text x="177" y="46.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
 <text x="441" y="92" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
 <text x="440.674" y="239.516" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CDN</text>

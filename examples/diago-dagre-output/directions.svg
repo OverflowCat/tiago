@@ -43,9 +43,6 @@
 <rect x="40" y="1844" width="53" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="2010" width="53" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="2176" width="53" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 66.5 480 C 66.5 534 66.5 553.8 66.5 573" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 66.5 1078 C 66.5 1132 66.5 1151.8 66.5 1171" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 66.5 1676 C 66.5 1730 66.5 1749.8 66.5 1769" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 66.5 118 C 66.5 156 66.5 176 66.5 212" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 66.5 284 C 66.5 322 66.5 342 66.5 378" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 66.5 716 C 66.5 754 66.5 774 66.5 810" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
@@ -54,6 +51,9 @@
 <path d="M 66.5 1480 C 66.5 1518 66.5 1538 66.5 1574" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 66.5 1912 C 66.5 1950 66.5 1970 66.5 2006" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 66.5 2078 C 66.5 2116 66.5 2136 66.5 2172" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 66.5 480 C 66.5 534 66.5 553.8 66.5 573" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 66.5 1078 C 66.5 1132 66.5 1151.8 66.5 1171" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 66.5 1676 C 66.5 1730 66.5 1749.8 66.5 1769" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="66.5" y="7" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Down (default)</text>
 <text x="66.5" y="605" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Right</text>
 <text x="66.5" y="1203" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Left</text>
