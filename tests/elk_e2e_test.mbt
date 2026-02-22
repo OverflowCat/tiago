@@ -17,7 +17,7 @@
 ///
 /// This suite validates all bundled examples:
 /// 1) Diago ELK output is snapshot-stable
-/// 2) SVG label coverage is aligned to D2 ELK SVG references
+/// 2) Diago outputs are strictly aligned to D2 ELK references
 
 ///|
 let elk_example_names : Array[String] = [
@@ -58,6 +58,17 @@ test "examples: elk svg e2e snapshots and d2 semantic parity" {
       msg="\{name}: missing d2 labels in diago elk svg: \{mismatch_text}",
     )
 
+    let diago_semantic_snapshot = d2_semantic_snapshot(actual_svg)
+    let d2_semantic = d2_semantic_snapshot(d2_svg)
+    let semantic_diff = semantic_snapshot_mismatch_summary(
+      diago_semantic_snapshot, d2_semantic,
+    )
+    assert_eq(
+      diago_semantic_snapshot,
+      d2_semantic,
+      msg="\{name}: semantic snapshot diverges from d2 elk output (\{semantic_diff})",
+    )
+
     assert_true(
       d2_svg.contains("<svg"),
       msg="\{name}: d2 elk svg reference missing <svg>",
@@ -83,7 +94,11 @@ test "examples: elk ascii e2e snapshots" {
     let d2_ascii = read_required_file(
       "examples/d2-elk-ascii-output/" + name + ".txt",
     ).unwrap()
-    assert_true(not(normalize_text_snapshot(d2_ascii).is_empty()))
+    assert_eq(
+      normalize_text_snapshot(actual_ascii),
+      normalize_text_snapshot(d2_ascii),
+      msg="\{name}: elk ascii diverges from d2 reference",
+    )
   }
 }
 
@@ -105,7 +120,11 @@ test "examples: elk unicode e2e snapshots" {
     let d2_unicode = read_required_file(
       "examples/d2-elk-unicode-output/" + name + ".txt",
     ).unwrap()
-    assert_true(not(normalize_text_snapshot(d2_unicode).is_empty()))
+    assert_eq(
+      normalize_text_snapshot(actual_unicode),
+      normalize_text_snapshot(d2_unicode),
+      msg="\{name}: elk unicode diverges from d2 reference",
+    )
   }
 }
 
