@@ -41,6 +41,24 @@ test "auto layout honors vars.d2-config layout-engine" {
 }
 
 ///|
+test "elk layout can be selected from options and vars.d2-config" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    layout-engine: elk
+    #|  }
+    #|}
+    #|a -> b
+  let auto_svg = compile(source)
+  let elk_svg = compile(
+    source,
+    options=CompileOptions::new().with_layout_engine(LayoutEngine::Elk),
+  )
+  assert_true(auto_svg.contains("<svg"))
+  assert_eq(auto_svg, elk_svg)
+}
+
+///|
 test "parse supports custom import resolver hook" {
   let source = "@common"
   let resolver = @ir.ImportResolver::new(fn(path) {

@@ -141,6 +141,7 @@ fn is_stdout_format_request_compatible(
 ///|
 enum LayoutEngineChoice {
   Dagre
+  Elk
   Railway
 }
 
@@ -148,6 +149,7 @@ enum LayoutEngineChoice {
 fn parse_layout_engine(name : String) -> LayoutEngineChoice? {
   match name.to_lower() {
     "dagre" => Some(LayoutEngineChoice::Dagre)
+    "elk" => Some(LayoutEngineChoice::Elk)
     "railway" => Some(LayoutEngineChoice::Railway)
     _ => None
   }
@@ -157,6 +159,7 @@ fn parse_layout_engine(name : String) -> LayoutEngineChoice? {
 fn layout_engine_name(engine : LayoutEngineChoice) -> String {
   match engine {
     LayoutEngineChoice::Dagre => "dagre"
+    LayoutEngineChoice::Elk => "elk"
     LayoutEngineChoice::Railway => "railway"
   }
 }
@@ -280,7 +283,7 @@ fn main {
           }
           None => {
             println(
-              "Error: unsupported layout engine '\{args[i]}'. Expected dagre or railway.",
+              "Error: unsupported layout engine '\{args[i]}'. Expected dagre, elk, or railway.",
             )
             @sys.exit(1)
             return
@@ -296,7 +299,7 @@ fn main {
         }
         None => {
           println(
-            "Error: unsupported layout engine '\{value}'. Expected dagre or railway.",
+            "Error: unsupported layout engine '\{value}'. Expected dagre, elk, or railway.",
           )
           @sys.exit(1)
           return
@@ -844,7 +847,9 @@ fn print_usage() -> Unit {
   println(
     "  --stdout-format F Output format for stdout: svg|png|ascii|txt|pdf|pptx|gif|unicode",
   )
-  println("  --layout, -l NAME Layout engine: dagre, railway (default: dagre)")
+  println(
+    "  --layout, -l NAME Layout engine: dagre, elk, railway (default: dagre)",
+  )
   println(
     "  --target PATH     Render a specific board path (e.g., layers.core)",
   )
@@ -1324,7 +1329,7 @@ fn run_watch(args : Array[String]) -> Unit {
           }
           None => {
             println(
-              "Error: unsupported layout engine '\{args[i]}'. Expected dagre or railway.",
+              "Error: unsupported layout engine '\{args[i]}'. Expected dagre, elk, or railway.",
             )
             @sys.exit(1)
             return
@@ -1340,7 +1345,7 @@ fn run_watch(args : Array[String]) -> Unit {
         }
         None => {
           println(
-            "Error: unsupported layout engine '\{value}'. Expected dagre or railway.",
+            "Error: unsupported layout engine '\{value}'. Expected dagre, elk, or railway.",
           )
           @sys.exit(1)
           return
@@ -2007,6 +2012,15 @@ fn compile_to_diagram(
       ) catch {
         e => return Err("Layout error: \{e}")
       }
+    LayoutEngineChoice::Elk =>
+      @engine_api.layout_with_engine(
+        @engine_elk.ElkEngine::new(),
+        graph_input,
+        config,
+        @engine_api.Down,
+      ) catch {
+        e => return Err("Layout error: \{e}")
+      }
     LayoutEngineChoice::Railway =>
       @engine_api.layout_with_engine(
         @engine_railway.RailwayEngine::new(),
@@ -2133,7 +2147,7 @@ fn resolve_layout_engine(
             Some(engine) => Ok(engine)
             None =>
               Err(
-                "Error: unsupported layout engine '\{layout_name}' from vars.d2-config.layout-engine. Expected dagre or railway.",
+                "Error: unsupported layout engine '\{layout_name}' from vars.d2-config.layout-engine. Expected dagre, elk, or railway.",
               )
           }
         None => Ok(cli_layout_engine)

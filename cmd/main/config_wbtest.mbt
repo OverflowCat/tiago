@@ -688,6 +688,23 @@ test "ascii-mode parser supports standard and extended" {
 }
 
 ///|
+test "layout parser supports dagre elk railway" {
+  guard parse_layout_engine("dagre") is Some(LayoutEngineChoice::Dagre) else {
+    fail("dagre should parse")
+  }
+  guard parse_layout_engine("elk") is Some(LayoutEngineChoice::Elk) else {
+    fail("elk should parse")
+  }
+  guard parse_layout_engine("railway") is Some(LayoutEngineChoice::Railway) else {
+    fail("railway should parse")
+  }
+  guard parse_layout_engine("bad-layout") is None else {
+    fail("unknown layout should fail")
+  }
+  assert_eq(layout_engine_name(LayoutEngineChoice::Elk), "elk")
+}
+
+///|
 test "txt output mode honors ascii-mode" {
   let source =
     #|a -> b

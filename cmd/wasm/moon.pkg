@@ -4,6 +4,7 @@ import {
   "Milky2018/diago/exporter",
   "Milky2018/diago/engine_api",
   "Milky2018/diago/engine_dagre",
+  "Milky2018/diago/engine_elk",
   "Milky2018/diago/engine_railway",
   "Milky2018/diago/diagram",
   "Milky2018/diago/renderer_svg",

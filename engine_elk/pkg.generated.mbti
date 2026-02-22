@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/engine_elk"
+
+import {
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/graph",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct ElkEngine {
+  _marker : Unit
+}
+pub fn ElkEngine::new() -> Self
+pub impl @engine_api.LayoutEngine for ElkEngine
+pub impl Show for ElkEngine
+
+// Type aliases
+
+// Traits
+

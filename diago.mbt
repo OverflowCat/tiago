@@ -26,6 +26,7 @@ pub(all) enum OutputMode {
 pub(all) enum LayoutEngine {
   Auto
   Dagre
+  Elk
   Railway
 } derive(Show, Eq)
 
@@ -342,6 +343,15 @@ pub fn compile_diagram(
           ) catch {
             e => raise LayoutError(e.to_string())
           }
+        Elk =>
+          @engine_api.layout_with_engine(
+            @engine_elk.ElkEngine::new(),
+            graph_input,
+            config,
+            options.direction,
+          ) catch {
+            e => raise LayoutError(e.to_string())
+          }
         Railway =>
           @engine_api.layout_with_engine(
             @engine_railway.RailwayEngine::new(),
@@ -419,7 +429,7 @@ fn resolve_layout_engine(
             Some(engine) => engine
             None =>
               raise ConfigError(
-                "unsupported layout engine '\{layout_name}' from vars.d2-config.layout-engine. Expected dagre or railway.",
+                "unsupported layout engine '\{layout_name}' from vars.d2-config.layout-engine. Expected dagre, elk, or railway.",
               )
           }
         None => Dagre
@@ -433,6 +443,7 @@ fn parse_layout_engine_name(name : String) -> LayoutEngine? {
   match name.to_lower() {
     "auto" => Some(Auto)
     "dagre" => Some(Dagre)
+    "elk" => Some(Elk)
     "railway" => Some(Railway)
     _ => None
   }

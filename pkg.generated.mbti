@@ -96,6 +96,7 @@ pub impl Show for CompletionKind
 pub(all) enum LayoutEngine {
   Auto
   Dagre
+  Elk
   Railway
 }
 pub impl Eq for LayoutEngine
