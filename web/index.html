@@ -307,6 +307,7 @@ server -> database: queries"></textarea>
             <span class="toolbar-label">Engine</span>
             <div class="engine-tabs">
               <button class="engine-tab active" data-engine="dagre">Dagre</button>
+              <button class="engine-tab" data-engine="elk">ELK</button>
               <button class="engine-tab" data-engine="railway">Railway</button>
             </div>
             <div class="spacer"></div>
@@ -374,12 +375,13 @@ server -> database: queries"></textarea>
       return selectedEngine;
     }
     function getEngineId() {
+      if (selectedEngine === 'elk') return 1;
       if (selectedEngine === 'railway') return 2;
-      return 1; // dagre
+      return 0; // dagre
     }
     // Restore last engine preference
     const savedEngine = localStorage.getItem(ENGINE_STORAGE_KEY);
-    if (savedEngine === 'dagre' || savedEngine === 'railway') {
+    if (savedEngine === 'dagre' || savedEngine === 'elk' || savedEngine === 'railway') {
       selectedEngine = savedEngine;
       engineTabs.forEach(tab => {
         tab.classList.toggle('active', tab.dataset.engine === savedEngine);
