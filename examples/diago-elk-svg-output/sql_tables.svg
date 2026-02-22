@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="315" height="580" viewBox="-50 -50 315 580" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<rect x="50" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="50" width="100" height="12" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="50" y1="62" x2="150" y2="62" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="74" x2="150" y2="74" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="86" x2="150" y2="86" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="98" x2="150" y2="98" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="210" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="210" width="100" height="10" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="50" y1="220" x2="150" y2="220" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="230" x2="150" y2="230" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="240" x2="150" y2="240" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="250" x2="150" y2="250" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="260" x2="150" y2="260" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="370" width="113" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="50" y="370" width="113" height="12" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="50" y1="382" x2="163" y2="382" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="394" x2="163" y2="394" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="406" x2="163" y2="406" stroke="#0A0F25" stroke-width="2"/>
+<line x1="50" y1="418" x2="163" y2="418" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 62.22436883822506 53.9200390919975 C 74.58021211350967 114.78400781839952 80.75813375115199 145.2159921816005 93.1139770264366 206.0799609080025" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
+<path d="M 88.64309417416679 213.98169616474104 C 94.48102158082878 274.7963392329482 97.39998528415978 305.2036607670518 103.23791269082177 366.01830383525896" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
+<path d="M 61.939454863177794 53.96724061738695 C 78.01401342161516 178.7934481234774 86.05129270083384 241.2065518765226 102.1258512592712 366.03275938261305" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
+<text x="62" y="63.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">users</text>
+<text x="62" y="73" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="172" y="73" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="141" y="73" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="62" y="85" text-anchor="start" font-family="Arial, sans-serif" font-size="20">name</text>
+<text x="172" y="85" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="62" y="97" text-anchor="start" font-family="Arial, sans-serif" font-size="20">email</text>
+<text x="172" y="97" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="141" y="97" text-anchor="end" font-family="Arial, sans-serif" font-size="20">UNQ</text>
+<text x="62" y="109" text-anchor="start" font-family="Arial, sans-serif" font-size="20">created_at</text>
+<text x="172" y="109" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+<text x="62" y="222.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">posts</text>
+<text x="62" y="230" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="164" y="230" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="141" y="230" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="62" y="240" text-anchor="start" font-family="Arial, sans-serif" font-size="20">user_id</text>
+<text x="164" y="240" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="141" y="240" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="62" y="250" text-anchor="start" font-family="Arial, sans-serif" font-size="20">title</text>
+<text x="164" y="250" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="62" y="260" text-anchor="start" font-family="Arial, sans-serif" font-size="20">content</text>
+<text x="164" y="260" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
+<text x="62" y="270" text-anchor="start" font-family="Arial, sans-serif" font-size="20">published</text>
+<text x="164" y="270" text-anchor="start" font-family="Arial, sans-serif" font-size="20">boolean</text>
+<text x="62" y="383.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">comments</text>
+<text x="62" y="393" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="143" y="393" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="154" y="393" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="62" y="405" text-anchor="start" font-family="Arial, sans-serif" font-size="20">post_id</text>
+<text x="143" y="405" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="154" y="405" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="62" y="417" text-anchor="start" font-family="Arial, sans-serif" font-size="20">user_id</text>
+<text x="143" y="417" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="154" y="417" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="62" y="429" text-anchor="start" font-family="Arial, sans-serif" font-size="20">body</text>
+<text x="143" y="429" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
+</g>
+</svg>

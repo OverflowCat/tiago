@@ -1,0 +1,18 @@
+     /--+                     
+     \__|                     
+  ------|---                  
+   Customer                   
+     browses                  
+        |                     
+       E|Commerce System      
+  +.----+------+---+---------+
+  |\-___||/|ayt|on |         |
+  |Database    |   |         |
+  +-----++-----+---+---------+
+processes payments            
+        ||                    
+    external                  
+  +--------------+--+         
+  |Email Serviced|r |         
+  |           |  |  |         
+  +--------------+--+         

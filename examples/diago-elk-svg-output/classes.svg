@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="316" height="1060" viewBox="-50 -50 316 1060" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<rect x="50" y="50" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
+<rect x="50" y="210" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 50 394 C 50 370 96.80000000000001 370 102 370 C 107.19999999999999 370 154 370 154 394 L 154 406 C 154 430 107.19999999999999 430 102 430 C 96.80000000000001 430 50 430 50 406 L 50 394 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
+<ellipse cx="102" cy="394" rx="52" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 50 394 C 50 418 96.80000000000001 418 102 418 C 107.19999999999999 418 154 418 154 394" fill="none" stroke="#FFA000" stroke-width="2"/>
+<path d="M 50 554 C 50 530 95 530 100 530 C 105 530 150 530 150 554 L 150 566 C 150 590 105 590 100 590 C 95 590 50 590 50 566 L 50 554 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
+<ellipse cx="100" cy="554" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 50 554 C 50 578 95 578 100 578 C 105 578 150 578 150 554" fill="none" stroke="#FFA000" stroke-width="2"/>
+<path d="M 150 750 H 50 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 68.74084919472914 721.7054263565891 63.0307467057101 715.8914728682171 63.0307467057101 709.5348837209302 C 63.0307467057101 698.7596899224807 79.57540263543191 690 99.9267935578331 690 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 150 910 H 50 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 68.74084919472914 881.7054263565891 63.0307467057101 875.8914728682171 63.0307467057101 869.5348837209302 C 63.0307467057101 858.7596899224807 79.57540263543191 850 99.9267935578331 850 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 96.23587361713977 688.0003742740766 C 100.67838519345035 458.3999251451846 102.89964098160566 343.59970058073867 107.34215255791624 113.99925145184669" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 96.932950443154 848.0003312441172 C 101.11222280000685 618.3999337511766 103.20185897843326 503.59973500470625 107.38113133528611 273.99933751176565" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 66.20463465812695 51.989503620678605 C 79.12478735408891 177.6020992758643 85.58486370206987 240.40839710345716 98.50501639803183 366.0209927586428" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 95.2887417373683 211.9987268737143 C 97.48778940996343 273.60025462525715 98.58731324626098 304.40101850102855 100.7863609188561 366.0025462525714" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 94.97649915047784 371.9992863890948 C 96.62251393508662 433.60014272218103 97.445521327391 464.4005708887242 99.09153611199979 526.0014272218104" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="61.56072874493927" y="439.5" width="71" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="97.06072874493927" y="455.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">replication</text>
+<text x="108" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
+<text x="108" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
+<text x="102" y="405.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
+<text x="100" y="565.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica DB</text>
+<text x="100" y="771" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Alice</text>
+<text x="100" y="931" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Bob</text>
+</g>
+</svg>
