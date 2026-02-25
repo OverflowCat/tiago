@@ -296,7 +296,7 @@ test "railway layout fans out shared source ports" {
 }
 
 ///|
-test "railway layout keeps straight edges straight" {
+test "railway layout keeps endpoint tangents vertical" {
   let x = @graph.ObjectInput::new("x")
   let x1 = @graph.ObjectInput::new("x1")
   let y = @graph.ObjectInput::new("y")
@@ -322,11 +322,26 @@ test "railway layout keeps straight edges straight" {
   let r_xy = patch.edges.get(e_xy.index).unwrap_or([])
   let r_x1z = patch.edges.get(e_x1z.index).unwrap_or([])
   assert_true(r_xy.length() >= 2 && r_x1z.length() >= 2)
-  let end_xy = r_xy[r_xy.length() - 1]
-  let end_x1z = r_x1z[r_x1z.length() - 1]
-  // For the vertical edges, keep the port x aligned (no horizontal detour).
-  assert_true(r_xy[0].x == end_xy.x, msg="x->y should stay vertical")
-  assert_true(r_x1z[0].x == end_x1z.x, msg="x1->z should stay vertical")
+  // With dagre-driven node placement, we only require vertical tangents at
+  // endpoints, not fully straight columns.
+  assert_true(
+    (r_xy[0].x - r_xy[1].x).abs() <= 0.000001,
+    msg="x->y should start vertically",
+  )
+  assert_true(
+    (r_x1z[0].x - r_x1z[1].x).abs() <= 0.000001,
+    msg="x1->z should start vertically",
+  )
+  let n_xy = r_xy.length()
+  let n_x1z = r_x1z.length()
+  assert_true(
+    (r_xy[n_xy - 1].x - r_xy[n_xy - 2].x).abs() <= 0.000001,
+    msg="x->y should end vertically",
+  )
+  assert_true(
+    (r_x1z[n_x1z - 1].x - r_x1z[n_x1z - 2].x).abs() <= 0.000001,
+    msg="x1->z should end vertically",
+  )
 }
 
 ///|
@@ -706,4 +721,114 @@ test "railway keeps external node outside container bounds" {
   let overlap_x = !(out.x + out.width <= ctn.x || ctn.x + ctn.width <= out.x)
   let overlap_y = !(out.y + out.height <= ctn.y || ctn.y + ctn.height <= out.y)
   assert_true(!(overlap_x && overlap_y))
+}
+
+///|
+test "railway spreads overlapping siblings in same container" {
+  let container = @graph.ObjectInput::from_parts(
+    "container",
+    "container",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["left", "right"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let left = @graph.ObjectInput::new("left")
+  let right = @graph.ObjectInput::new("right")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([container, left, right])
+  let (object_by_id, parent_id_by_child_id) = build_object_maps_railway(g)
+  let boxes : Map[String, @graph.Box] = {}
+  boxes["left"] = @graph.Box::new(100.0, 200.0, 120.0, 60.0)
+  boxes["right"] = @graph.Box::new(150.0, 200.0, 100.0, 60.0)
+  spread_sibling_boxes_railway(
+    boxes,
+    object_by_id,
+    parent_id_by_child_id,
+    @engine_api.Down,
+    @engine_api.LayoutConfig::new(),
+  )
+  let l = boxes.get("left").unwrap()
+  let r = boxes.get("right").unwrap()
+  assert_true(r.x >= l.x + l.width + 12.0)
+}
+
+///|
+test "railway readability gate on architecture style DAG" {
+  let users = @graph.ObjectInput::new("users")
+  let cdn = @graph.ObjectInput::new("cdn")
+  let lb = @graph.ObjectInput::new("lb")
+  let web1 = @graph.ObjectInput::new("web1")
+  let web2 = @graph.ObjectInput::new("web2")
+  let web3 = @graph.ObjectInput::new("web3")
+  let app1 = @graph.ObjectInput::new("app1")
+  let app2 = @graph.ObjectInput::new("app2")
+  let cache = @graph.ObjectInput::new("cache")
+  let primary = @graph.ObjectInput::new("primary")
+  let queue = @graph.ObjectInput::new("queue")
+  let worker1 = @graph.ObjectInput::new("worker1")
+  let worker2 = @graph.ObjectInput::new("worker2")
+  let storage = @graph.ObjectInput::new("storage")
+
+  let g = @graph.GraphInput::new("architecture_gate")
+  g.objects.append([
+    users, cdn, lb, web1, web2, web3, app1, app2, cache, primary, queue, worker1,
+    worker2, storage,
+  ])
+  g.edges.push(@graph.EdgeInput::new(0, "users", "cdn", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "cdn", "lb", false, true))
+  g.edges.push(@graph.EdgeInput::new(2, "lb", "web1", false, true))
+  g.edges.push(@graph.EdgeInput::new(3, "lb", "web2", false, true))
+  g.edges.push(@graph.EdgeInput::new(4, "lb", "web3", false, true))
+  g.edges.push(@graph.EdgeInput::new(5, "web1", "app1", false, true))
+  g.edges.push(@graph.EdgeInput::new(6, "web2", "app1", false, true))
+  g.edges.push(@graph.EdgeInput::new(7, "web2", "app2", false, true))
+  g.edges.push(@graph.EdgeInput::new(8, "web3", "app2", false, true))
+  g.edges.push(@graph.EdgeInput::new(9, "app1", "cache", false, true))
+  g.edges.push(@graph.EdgeInput::new(10, "app2", "cache", false, true))
+  g.edges.push(@graph.EdgeInput::new(11, "app1", "primary", false, true))
+  g.edges.push(@graph.EdgeInput::new(12, "app2", "primary", false, true))
+  g.edges.push(@graph.EdgeInput::new(13, "app1", "queue", false, true))
+  g.edges.push(@graph.EdgeInput::new(14, "app2", "queue", false, true))
+  g.edges.push(@graph.EdgeInput::new(15, "queue", "worker1", false, true))
+  g.edges.push(@graph.EdgeInput::new(16, "queue", "worker2", false, true))
+  g.edges.push(@graph.EdgeInput::new(17, "worker1", "storage", false, true))
+  g.edges.push(@graph.EdgeInput::new(18, "worker2", "storage", false, true))
+  g.edges.push(@graph.EdgeInput::new(19, "worker1", "primary", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let (
+    crossing_count,
+    label_overlap_count,
+    node_overlap_count,
+    long_detour_count,
+    edge_total_length,
+  ) = railway_readability_metrics(g, patch)
+  assert_true(node_overlap_count == 0, msg="nodes should not overlap")
+  assert_true(label_overlap_count == 0, msg="edge labels should not overlap")
+  assert_true(
+    crossing_count <= 12,
+    msg="crossing gate exceeded: \{crossing_count}",
+  )
+  assert_true(
+    long_detour_count <= 4,
+    msg="detour gate exceeded: \{long_detour_count}",
+  )
+  assert_true(edge_total_length > 0.0)
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1215" height="580" viewBox="94.5 -100 1215 580" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="1133" height="580" viewBox="-100 -100 1133 580" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,53 +27,53 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="194.5" y="0" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="227" y="160" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 332 320 L 412 320 L 432 340 L 432 380 L 332 380 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 412 320 L 412 340 L 432 340" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<polygon points="392,0 489,0 463,60 366,60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 397 211.6776750330251 L 397 160 L 497 160 L 497 211.6776750330251 C 480.33333333333337 200.58124174372523 463.66666666666663 200.58124174372523 447 211.6776750330251 C 430.3333333333333 222.77410832232496 413.6666666666667 222.77410832232496 397 211.6776750330251 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 492 344 C 492 320 537 320 542 320 C 547 320 592 320 592 344 L 592 356 C 592 380 547 380 542 380 C 537 380 492 380 492 356 L 492 344 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="542" cy="344" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 492 344 C 492 368 537 368 542 368 C 547 368 592 368 592 344" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 575.5 0 L 645.5 0 C 653.75 0 660.5 15 660.5 30 C 660.5 45 653.75 60 645.5 60 L 575.5 60 C 567.25 60 560.5 45 560.5 30 C 560.5 15 567.25 0 575.5 0 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 567 160 L 617 160 L 617 172 L 667 172 L 667 220 L 567 220 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<polygon points="652,320 717,320 752,350 717,380 652,380 687,350" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 743.5 0 L 743.5 30 L 794 30 L 794 60 L 824 30 L 843.5 30 L 843.5 0 L 743.5 0 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 747 160 L 827 160 C 837.95 160 842 175 842 190 C 842 205 837.95 220 827 220 L 747 220 C 736.05 220 732 205 732 190 C 732 175 736.05 160 747 160 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 912 380 H 812 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 830.7408491947291 351.70542635658916 825.0307467057102 345.8914728682171 825.0307467057102 339.5348837209302 C 825.0307467057102 328.7596899224806 841.5754026354319 320 861.9267935578331 320 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<polygon points="976.5,0 1026.5,30 976.5,60 926.5,30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="957" cy="190" rx="50" ry="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="1022" cy="350" rx="50" ry="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<polygon points="1134.5,0 1184.5,0 1209.5,30 1184.5,60 1134.5,60 1109.5,30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 1093.5267386091127 180.9751051625239 C 1093.5267386091127 181.61250478011473 1092.860551558753 182.2497896749522 1092.19448441247 182.2497896749522 C 1083.7013189448442 183.0464244741874 1077.0399280575539 191.17269598470364 1077.0399280575539 201.05158699808797 C 1077.0399280575539 211.5678776290631 1084.533932853717 220.01273422562144 1094.0263788968823 220.01273422562144 H 1158.4748201438847 C 1168.6334532374099 220.01273422562144 1176.960071942446 210.9304780114723 1176.960071942446 199.9362523900574 C 1176.960071942446 189.41996175908227 1169.2994004796162 180.65640535372853 1159.6406474820142 180.01912045889105 C 1158.9744604316545 180.01912045889105 1158.3083932853715 179.54107074569794 1158.1418465227816 178.74443594646274 C 1155.9768585131892 168.06891013384325 1145.9847721822541 160.1019885277247 1134.3275779376497 160.1019885277247 C 1126.6670263788967 160.1019885277247 1119.8390887290166 163.44810707456983 1115.5093525179855 168.70619502868072 C 1115.0097122302157 169.34359464627155 1114.1770983213428 169.50294455066924 1113.677458033573 169.34359464627155 C 1112.0121103117503 168.70619502868072 1110.1803357314147 168.38760994263868 1108.1818944844124 168.38760994263868 C 1100.5212230215827 168.22814531548758 1094.1929256594724 173.80493307839387 1093.5267386091127 180.9751051625239 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 244.5 62 C 244.5 77.2 244.5 84.8 244.5 100 C 244.5 100 244.5 110 254.5 110 C 259.5 110 262 110 267 110 C 267 110 277 110 277 120 C 277 134.4 277 141.6 277 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 277 222 C 277 237.2 277 244.8 277 260 C 277 260 277 270 287 270 C 321 270 338 270 372 270 C 372 270 382 270 382 280 C 382 294.4 382 301.6 382 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 427.5 62 C 427.5 77.3 427.5 84.95 427.5 100.25 C 427.5 100.25 427.5 110 437.25 110 C 437.25 110 437.25 110 437.25 110 C 437.25 110 447 110 447 119.75 C 447 134.25 447 141.5 447 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 447 222 C 447 237.2 447 244.8 447 260 C 447 260 447 270 457 270 C 487 270 502 270 532 270 C 532 270 542 270 542 280 C 542 294.4 542 301.6 542 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 610.5 62 C 610.5 79.9 610.5 88.85 610.5 106.75 C 610.5 106.75 610.5 110 613.75 110 C 613.75 110 613.75 110 613.75 110 C 613.75 110 617 110 617 113.25 C 617 130.35 617 138.9 617 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 617 222 C 617 237.2 617 244.8 617 260 C 617 260 617 270 627 270 C 653 270 666 270 692 270 C 692 270 702 270 702 280 C 702 294.4 702 301.6 702 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 793.5 62 C 793.5 79.9 793.5 88.85 793.5 106.75 C 793.5 106.75 793.5 110 790.25 110 C 790.25 110 790.25 110 790.25 110 C 790.25 110 787 110 787 113.25 C 787 130.35 787 138.9 787 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 787 222 C 787 237.2 787 244.8 787 260 C 787 260 787 270 797 270 C 819 270 830 270 852 270 C 852 270 862 270 862 280 C 862 294.4 862 301.6 862 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 976.5 62 C 976.5 77.3 976.5 84.95 976.5 100.25 C 976.5 100.25 976.5 110 966.75 110 C 966.75 110 966.75 110 966.75 110 C 966.75 110 957 110 957 119.75 C 957 134.25 957 141.5 957 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 957 222 C 957 237.2 957 244.8 957 260 C 957 260 957 270 967 270 C 985 270 994 270 1012 270 C 1012 270 1022 270 1022 280 C 1022 294.4 1022 301.6 1022 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 1159.5 62 C 1159.5 77.2 1159.5 84.8 1159.5 100 C 1159.5 100 1159.5 110 1149.5 110 C 1144.5 110 1142 110 1137 110 C 1137 110 1127 110 1127 120 C 1127 134.4 1127 141.6 1127 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="244.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">rectangle</text>
-<text x="277" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">square</text>
-<text x="382" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">page</text>
-<text x="427.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">parallelogram</text>
-<text x="447" y="187.69286657859973" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">document</text>
-<text x="542" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cylinder</text>
-<text x="598.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">queue</text>
-<text x="617" y="201.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">package</text>
-<text x="702" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">step</text>
-<text x="793.5" y="20.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">callout</text>
-<text x="787" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">stored_data</text>
-<text x="862" y="401" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">person</text>
-<text x="976.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">diamond</text>
-<text x="957" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">oval</text>
-<text x="1022" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">circle</text>
-<text x="1159.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">hexagon</text>
-<text x="1126.95" y="206.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cloud</text>
+<rect x="0" y="0" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="160" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 0 320 L 80 320 L 100 340 L 100 380 L 0 380 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 80 320 L 80 340 L 100 340" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="186,0 283,0 257,60 160,60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 172 211.6776750330251 L 172 160 L 272 160 L 272 211.6776750330251 C 255.33333333333334 200.58124174372523 238.66666666666666 200.58124174372523 222 211.6776750330251 C 205.33333333333331 222.77410832232496 188.66666666666666 222.77410832232496 172 211.6776750330251 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 172 344 C 172 320 217 320 222 320 C 227 320 272 320 272 344 L 272 356 C 272 380 227 380 222 380 C 217 380 172 380 172 356 L 172 344 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="222" cy="344" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 172 344 C 172 368 217 368 222 368 C 227 368 272 368 272 344" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 358 0 L 428 0 C 436.25 0 443 15 443 30 C 443 45 436.25 60 428 60 L 358 60 C 349.75 60 343 45 343 30 C 343 15 349.75 0 358 0 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 343 160 L 393 160 L 393 172 L 443 172 L 443 220 L 343 220 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="343,320 408,320 443,350 408,380 343,380 378,350" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 508 0 L 508 30 L 558 30 L 558 60 L 588 30 L 608 30 L 608 0 L 508 0 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 518 160 L 598 160 C 608.95 160 613 175 613 190 C 613 205 608.95 220 598 220 L 518 220 C 507.05 220 503 205 503 190 C 503 175 507.05 160 518 160 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 608 380 H 508 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 526.7408491947291 351.70542635658916 521.0307467057102 345.8914728682171 521.0307467057102 339.5348837209302 C 521.0307467057102 328.7596899224806 537.5754026354319 320 557.9267935578331 320 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="723,0 773,30 723,60 673,30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="723" cy="190" rx="50" ry="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="723" cy="350" rx="50" ry="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="858,0 908,0 933,30 908,60 858,60 833,30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 849.5267386091127 180.9751051625239 C 849.5267386091127 181.61250478011473 848.8605515587531 182.2497896749522 848.19448441247 182.2497896749522 C 839.7013189448442 183.0464244741874 833.039928057554 191.17269598470364 833.039928057554 201.05158699808797 C 833.039928057554 211.5678776290631 840.533932853717 220.01273422562144 850.0263788968825 220.01273422562144 H 914.4748201438849 C 924.6334532374101 220.01273422562144 932.9600719424461 210.9304780114723 932.9600719424461 199.9362523900574 C 932.9600719424461 189.41996175908227 925.2994004796163 180.65640535372853 915.6406474820145 180.01912045889105 C 914.9744604316548 180.01912045889105 914.3083932853718 179.54107074569794 914.1418465227819 178.74443594646274 C 911.9768585131895 168.06891013384325 901.9847721822542 160.1019885277247 890.32757793765 160.1019885277247 C 882.6670263788969 160.1019885277247 875.8390887290169 163.44810707456983 871.5093525179857 168.70619502868072 C 871.0097122302159 169.34359464627155 870.177098321343 169.50294455066924 869.6774580335732 169.34359464627155 C 868.0121103117507 168.70619502868072 866.180335731415 168.38760994263868 864.1818944844125 168.38760994263868 C 856.5212230215827 168.22814531548758 850.1929256594724 173.80493307839387 849.5267386091127 180.9751051625239 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 50 62 C 50 99.6 50 118.4 50 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 50 222 C 50 259.6 50 278.4 50 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 221.5 62 C 221.5 81.2 221.5 90.8 221.5 110 C 221.7 110 221.8 110 222 110 C 222 128.4 222 137.6 222 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 222 222 C 222 259.6 222 278.4 222 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 393 62 C 393 99.6 393 118.4 393 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 393 222 C 393 259.6 393 278.4 393 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 558 62 C 558 99.6 558 118.4 558 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 558 222 C 558 259.6 558 278.4 558 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 723 62 C 723 99.6 723 118.4 723 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 723 222 C 723 259.6 723 278.4 723 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 883 62 C 883 99.6 883 118.4 883 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">rectangle</text>
+<text x="50" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">square</text>
+<text x="50" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">page</text>
+<text x="221.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">parallelogram</text>
+<text x="222" y="187.69286657859973" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">document</text>
+<text x="222" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cylinder</text>
+<text x="381" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">queue</text>
+<text x="393" y="201.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">package</text>
+<text x="393" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">step</text>
+<text x="558" y="20.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">callout</text>
+<text x="558" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">stored_data</text>
+<text x="558" y="401" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">person</text>
+<text x="723" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">diamond</text>
+<text x="723" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">oval</text>
+<text x="723" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">circle</text>
+<text x="883" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">hexagon</text>
+<text x="882.95" y="206.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cloud</text>
 </g>
 </svg>

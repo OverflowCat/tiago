@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="492" height="740" viewBox="76 -100 492 740" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="492" height="761" viewBox="-100 -100 492 761" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -28,27 +28,27 @@
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
 <rect x="176" y="160" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
-<rect x="352" y="160" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 270 344 C 270 320 316.8 320 322 320 C 327.2 320 374 320 374 344 L 374 356 C 374 380 327.2 380 322 380 C 316.8 380 270 380 270 356 L 270 344 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
-<ellipse cx="322" cy="344" rx="52" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 270 344 C 270 368 316.8 368 322 368 C 327.2 368 374 368 374 344" fill="none" stroke="#FFA000" stroke-width="2"/>
-<path d="M 272 504 C 272 480 317 480 322 480 C 327 480 372 480 372 504 L 372 516 C 372 540 327 540 322 540 C 317 540 272 540 272 516 L 272 504 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
-<ellipse cx="322" cy="504" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 272 504 C 272 528 317 528 322 528 C 327 528 372 528 372 504" fill="none" stroke="#FFA000" stroke-width="2"/>
-<path d="M 292 60 H 192 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 210.74084919472915 31.705426356589143 205.0307467057101 25.89147286821705 205.0307467057101 19.53488372093023 C 205.0307467057101 8.75968992248062 221.5754026354319 0 241.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 452 60 H 352 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 370.74084919472915 31.705426356589143 365.0307467057101 25.89147286821705 365.0307467057101 19.53488372093023 C 365.0307467057101 8.75968992248062 381.57540263543194 0 401.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 242 62 C 242 79.6 242 88.4 242 106 C 242 106 242 110 238 110 C 238 110 238 110 238 110 C 238 110 234 110 234 114 C 234 130.8 234 139.2 234 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 402 62 C 402 79.6 402 88.4 402 106 C 402 106 402 110 406 110 C 406 110 406 110 406 110 C 406 110 410 110 410 114 C 410 130.8 410 139.2 410 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 234 222 C 234 237.2 234 244.8 234 260 C 234 260 234 270 244 270 C 254.4 270 259.6 270 270 270 C 270 270 280 270 280 280 C 280 294.4 280 301.6 280 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 410 222 C 410 237.2 410 244.8 410 260 C 410 260 410 270 400 270 C 389.6 270 384.4 270 374 270 C 374 270 364 270 364 280 C 364 294.4 364 301.6 364 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 322 382 C 322 419.6 322 438.4 322 476" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="286.5" y="419.5" width="71" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="322" y="435.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">replication</text>
+<rect x="0" y="160" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 94 344 C 94 320 140.8 320 146 320 C 151.2 320 198 320 198 344 L 198 356 C 198 380 151.2 380 146 380 C 140.8 380 94 380 94 356 L 94 344 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
+<ellipse cx="146" cy="344" rx="52" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 94 344 C 94 368 140.8 368 146 368 C 151.2 368 198 368 198 344" fill="none" stroke="#FFA000" stroke-width="2"/>
+<path d="M 96 525 C 96 501 141 501 146 501 C 151 501 196 501 196 525 L 196 537 C 196 561 151 561 146 561 C 141 561 96 561 96 537 L 96 525 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
+<ellipse cx="146" cy="525" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 96 525 C 96 549 141 549 146 549 C 151 549 196 549 196 525" fill="none" stroke="#FFA000" stroke-width="2"/>
+<path d="M 284 60 H 184 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 202.74084919472915 31.705426356589143 197.0307467057101 25.89147286821705 197.0307467057101 19.53488372093023 C 197.0307467057101 8.75968992248062 213.5754026354319 0 233.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 108 60 H 8 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 26.740849194729137 31.705426356589143 21.0307467057101 25.89147286821705 21.0307467057101 19.53488372093023 C 21.0307467057101 8.75968992248062 37.575402635431914 0 57.92679355783309 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 234 62 C 234 99.6 234 118.4 234 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 58 62 C 58 99.6 58 118.4 58 156" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 234 222 C 234 237.2 234 244.8 234 260 C 234 260 234 270 224 270 C 213.6 270 208.4 270 198 270 C 198 270 188 270 188 280 C 188 294.4 188 301.6 188 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 58 222 C 58 237.2 58 244.8 58 260 C 58 260 58 270 68 270 C 78.4 270 83.6 270 94 270 C 94 270 104 270 104 280 C 104 294.4 104 301.6 104 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 146 382 C 146 428 146 451 146 497" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="110.5" y="430" width="71" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="146" y="446" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">replication</text>
 <text x="234" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
-<text x="410" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
-<text x="322" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
-<text x="322" y="515.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica DB</text>
-<text x="242" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Alice</text>
-<text x="402" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Bob</text>
+<text x="58" y="195.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
+<text x="146" y="355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
+<text x="146" y="536.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica DB</text>
+<text x="234" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Alice</text>
+<text x="58" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Bob</text>
 </g>
 </svg>
