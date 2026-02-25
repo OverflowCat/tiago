@@ -44,8 +44,8 @@ fn object_size_with_objects(
         Some(v) => v.as_int().unwrap_or(16)
         None => 16
       }
-      let is_bold = style_bool(obj.style.bold, false)
-      let is_italic = style_bool(obj.style.italic, true)
+      let is_bold = style_bool(obj.style.bold, default_object_bold_for_sizing(obj))
+      let is_italic = style_bool(obj.style.italic, false)
       let is_mono = style_is_mono(obj.style.font_family)
       let dims = @text_metrics.measure_label(
         obj.label,
@@ -64,12 +64,31 @@ fn object_size_with_objects(
       } else {
         config.default_height
       }
+      let queue_min_width = if obj.shape_type == @graph.Queue {
+        // Queue labels are placed in a narrower inner box.
+        // Keep width generous enough to avoid clipping/overflow.
+        dims.width + 80.0
+      } else {
+        0.0
+      }
       (
-        @cmp.maximum(config.default_width, label_width),
+        @cmp.maximum(
+          config.default_width,
+          @cmp.maximum(label_width, queue_min_width),
+        ),
         @cmp.maximum(config.default_height, label_height),
       )
     }
   }
+}
+
+///|
+fn default_object_bold_for_sizing(obj : @graph.ObjectInput) -> Bool {
+  // Keep sizing assumptions aligned with SVG object-label defaults.
+  obj.child_ids.is_empty() &&
+  obj.shape_type != @graph.Text &&
+  obj.shape_type != @graph.Class &&
+  obj.shape_type != @graph.SqlTable
 }
 
 ///|
