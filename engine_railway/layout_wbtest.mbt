@@ -472,6 +472,64 @@ test "railway layout computes edge label boxes" {
 }
 
 ///|
+test "railway layout separates reciprocal edge labels" {
+  fn labeled_edge(
+    index : Int,
+    src : String,
+    dst : String,
+    label : String,
+  ) -> @graph.EdgeInput {
+    let base = @graph.EdgeInput::new(index, src, dst, false, true)
+    @graph.EdgeInput::from_parts(
+      base.index,
+      base.src_id,
+      base.dst_id,
+      base.src_arrow,
+      base.dst_arrow,
+      base.src_arrowhead,
+      base.dst_arrowhead,
+      base.src_anchor,
+      base.dst_anchor,
+      label,
+      base.style,
+      base.route,
+      base.bend_points,
+      base.is_curve,
+      base.z_index,
+      base.reference_count,
+      base.label_box,
+      base.src_column_index,
+      base.dst_column_index,
+    )
+  }
+
+  fn overlap(a : @graph.Box, b : @graph.Box) -> Bool {
+    !(a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y)
+  }
+
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(labeled_edge(0, "a", "b", "request"))
+  g.edges.push(labeled_edge(1, "b", "a", "response"))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let l0 = patch.edge_labels
+    .get(0)
+    .unwrap_or(@graph.Box::new(0.0, 0.0, 0.0, 0.0))
+  let l1 = patch.edge_labels
+    .get(1)
+    .unwrap_or(@graph.Box::new(0.0, 0.0, 0.0, 0.0))
+  assert_true(l0.width > 0.0 && l0.height > 0.0)
+  assert_true(l1.width > 0.0 && l1.height > 0.0)
+  assert_true(!overlap(l0, l1), msg="reciprocal labels should not overlap")
+}
+
+///|
 test "railway layout keeps passthrough layout data" {
   let a = @graph.ObjectInput::new("a")
   let b = @graph.ObjectInput::new("b")

@@ -234,7 +234,10 @@ fn short_name_from_id(id : String) -> String {
 fn recompute_edge_label_boxes(
   patch : @graph.LayoutPatch,
   graph : @graph.GraphInput,
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
 ) -> Unit {
+  let label_boxes : Map[Int, @graph.Box] = {}
   for edge in graph.edges {
     let route = match patch.edges.get(edge.index) {
       Some(v) => v
@@ -248,12 +251,122 @@ fn recompute_edge_label_boxes(
       None => continue
     }
     let center = route_point_at_percent(route, 0.5)
-    patch.edge_labels[edge.index] = @graph.Box::new(
+    label_boxes[edge.index] = @graph.Box::new(
       center.x - width / 2.0,
       center.y - height / 2.0,
       width,
       height,
     )
+  }
+  resolve_edge_label_collisions(label_boxes, direction, config)
+  for entry in label_boxes {
+    patch.edge_labels[entry.0] = entry.1
+  }
+}
+
+///|
+priv struct LabelInterval {
+  edge_index : Int
+  minor_start : Double
+  minor_end : Double
+  major_span : Double
+}
+
+///|
+fn resolve_edge_label_collisions(
+  label_boxes : Map[Int, @graph.Box],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+) -> Unit {
+  let vertical = match direction {
+    Down | Up => true
+    Right | Left => false
+  }
+  let bucket_size = @cmp.maximum(16.0, config.edge_padding)
+  let grouped : Map[Int, Array[LabelInterval]] = {}
+  for entry in label_boxes {
+    let edge_index = entry.0
+    let box = entry.1
+    let major_center = if vertical {
+      box.y + box.height / 2.0
+    } else {
+      box.x + box.width / 2.0
+    }
+    let minor_start = if vertical { box.x } else { box.y }
+    let minor_end = if vertical {
+      box.x + box.width
+    } else {
+      box.y + box.height
+    }
+    let major_span = if vertical { box.height } else { box.width }
+    let bucket = (major_center / bucket_size + 0.5).to_int()
+    let interval = { edge_index, minor_start, minor_end, major_span }
+    match grouped.get(bucket) {
+      Some(items) => items.push(interval)
+      None => grouped[bucket] = [interval]
+    }
+  }
+  for bucket_entry in grouped {
+    let items = bucket_entry.1
+    if items.length() <= 1 {
+      continue
+    }
+    let ordered = items.copy()
+    ordered.sort_by(fn(a, b) {
+      if a.minor_start < b.minor_start {
+        -1
+      } else if a.minor_start > b.minor_start {
+        1
+      } else if a.minor_end < b.minor_end {
+        -1
+      } else if a.minor_end > b.minor_end {
+        1
+      } else {
+        a.edge_index - b.edge_index
+      }
+    })
+    let lane_ends : Array[Double] = []
+    let lane_by_edge : Map[Int, Int] = {}
+    let mut max_major_span = 0.0
+    for item in ordered {
+      if item.major_span > max_major_span {
+        max_major_span = item.major_span
+      }
+      let mut lane = -1
+      for i in 0..<lane_ends.length() {
+        if lane_ends[i] <= item.minor_start + 1.0e-6 {
+          lane = i
+          break
+        }
+      }
+      if lane == -1 {
+        lane = lane_ends.length()
+        lane_ends.push(item.minor_end)
+      } else {
+        lane_ends[lane] = item.minor_end
+      }
+      lane_by_edge[item.edge_index] = lane
+    }
+    let lane_count = lane_ends.length()
+    if lane_count <= 1 {
+      continue
+    }
+    let center = (lane_count - 1).to_double() / 2.0
+    let spacing = @cmp.maximum(max_major_span + 4.0, config.edge_padding / 2.0)
+    for lane_entry in lane_by_edge {
+      let edge_index = lane_entry.0
+      let lane = lane_entry.1
+      let shift = (lane.to_double() - center) * spacing
+      match label_boxes.get(edge_index) {
+        Some(box) =>
+          label_boxes[edge_index] = if vertical {
+            @graph.Box::new(box.x, box.y + shift, box.width, box.height)
+          } else {
+            @graph.Box::new(box.x + shift, box.y, box.width, box.height)
+          }
+        None => ()
+      }
+    }
   }
 }
 

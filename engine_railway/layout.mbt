@@ -120,7 +120,7 @@ fn layout_graph(
       level_heights,
     )
   }
-  recompute_edge_label_boxes(patch, graph)
+  recompute_edge_label_boxes(patch, graph, direction, config)
   fit_container_boxes_railway(
     patch, graph, object_by_id, parent_id_by_child_id, config,
   )
