@@ -44,7 +44,10 @@ fn object_size_with_objects(
         Some(v) => v.as_int().unwrap_or(16)
         None => 16
       }
-      let is_bold = style_bool(obj.style.bold, default_object_bold_for_sizing(obj))
+      let is_bold = style_bool(
+        obj.style.bold,
+        default_object_bold_for_sizing(obj),
+      )
       let is_italic = style_bool(obj.style.italic, false)
       let is_mono = style_is_mono(obj.style.font_family)
       let dims = @text_metrics.measure_label(
