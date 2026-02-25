@@ -832,3 +832,112 @@ test "railway readability gate on architecture style DAG" {
   )
   assert_true(edge_total_length > 0.0)
 }
+
+///|
+test "railway sequence layout keeps participants aligned and messages horizontal" {
+  let root = @graph.ObjectInput::from_parts(
+    "root",
+    "root",
+    @graph.SequenceDiagram,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["alice", "bob", "server"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let alice = @graph.ObjectInput::new("alice")
+  let bob = @graph.ObjectInput::new("bob")
+  let server = @graph.ObjectInput::new("server")
+  fn seq_edge(
+    index : Int,
+    src : String,
+    dst : String,
+    label : String,
+  ) -> @graph.EdgeInput {
+    @graph.EdgeInput::from_parts(
+      index,
+      src,
+      dst,
+      false,
+      true,
+      @graph.None,
+      @graph.Triangle,
+      None,
+      None,
+      label,
+      @graph.StyleInput::new(),
+      [],
+      None,
+      false,
+      0,
+      1,
+      None,
+      None,
+      None,
+    )
+  }
+
+  let graph = @graph.GraphInput::from_parts(
+    "sequence_test",
+    root,
+    [alice, bob, server],
+    [
+      seq_edge(0, "alice", "bob", "Hello"),
+      seq_edge(1, "bob", "alice", "Hi there!"),
+      seq_edge(2, "alice", "server", "Request data"),
+      seq_edge(3, "server", "alice", "Response"),
+    ],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    None,
+  )
+  let patch = layout_graph(
+    graph,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Down,
+  )
+  let a = patch.nodes.get("alice").unwrap()
+  let b = patch.nodes.get("bob").unwrap()
+  let s = patch.nodes.get("server").unwrap()
+  assert_true(a.y == b.y && b.y == s.y, msg="participants should share top y")
+  assert_true(
+    a.x < b.x && b.x < s.x,
+    msg="participants should be in declared order",
+  )
+
+  for edge in graph.edges {
+    let route = patch.edges.get(edge.index).unwrap_or([])
+    assert_true(route.length() >= 2)
+    assert_true(
+      route[0].y == route[1].y,
+      msg="message edge should start horizontal",
+    )
+  }
+
+  let l0 = patch.edge_labels.get(0).unwrap()
+  let l1 = patch.edge_labels.get(1).unwrap()
+  let overlap = !(l0.x + l0.width <= l1.x ||
+    l1.x + l1.width <= l0.x ||
+    l0.y + l0.height <= l1.y ||
+    l1.y + l1.height <= l0.y)
+  assert_true(!overlap, msg="adjacent sequence labels should not overlap")
+}

@@ -19,6 +19,9 @@ fn layout_graph(
   direction : @engine_api.Direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
   keep_legacy_railway_symbols_alive()
+  if graph.root.shape_type == @graph.SequenceDiagram {
+    return layout_sequence_diagram_railway(graph, config)
+  }
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
   let (layout_input, object_by_id, parent_id_by_child_id) = build_railway_layout_input(
