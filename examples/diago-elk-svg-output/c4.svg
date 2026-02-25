@@ -46,12 +46,12 @@
 <path d="M 381.30923460222016 381.2718370224031 C 446.4003887291028 390.20179965708985 478.94596579254414 394.6667809744332 544.0371199194268 403.59674360912" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="422.1638972809668" y="382.07020882696304" width="83" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="463.6638972809668" y="398.07020882696304" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
-<path d="M 367.5 443 C 367.5 464 367.5 474.5 367.5 495.5 C 367.5 495.5 367.5 501 373 501 C 373 501 373 501 373 501 C 373 501 378.5 501 378.5 506.5 C 378.5 550.5 378.5 572.5 378.5 616.5 C 378.5 616.5 378.5 622 373 622 C 373 622 373 622 373 622 C 373 622 367.5 622 367.5 627.5 C 367.5 679.7 367.5 705.8 367.5 758" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="311.5" y="591" width="134" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="378.5" y="607" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
-<path d="M 367.5 443 C 367.5 601 367.5 680 367.5 838" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="305.5" y="631" width="124" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="367.5" y="647" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
+<path d="M 367.5 443 C 367.5 485.1 367.5 506.15 367.5 548.25 C 367.5 548.25 367.5 551 364.75 551 C 364.75 551 364.75 551 364.75 551 C 364.75 551 362 551 362 553.75 C 362 599.95 362 623.05 362 669.25 C 362 669.25 362 672 364.75 672 C 364.75 672 364.75 672 364.75 672 C 364.75 672 367.5 672 367.5 674.75 C 367.5 708.05 367.5 724.7 367.5 758" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="295" y="591" width="134" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="362" y="607" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
+<path d="M 367.5 443 C 367.5 465.1 367.5 476.15 367.5 498.25 C 367.5 498.25 367.5 501 370.25 501 C 370.25 501 370.25 501 370.25 501 C 370.25 501 373 501 373 503.75 C 373 549.95 373 573.05 373 619.25 C 373 619.25 373 622 370.25 622 C 370.25 622 370.25 622 370.25 622 C 370.25 622 367.5 622 367.5 624.75 C 367.5 710.05 367.5 752.7 367.5 838" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="305.5" y="625.5" width="124" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="367.5" y="641.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
 <text x="169.5" y="131" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Customer</text>
 <text x="374" y="318" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
 <text x="367.5" y="699" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>
