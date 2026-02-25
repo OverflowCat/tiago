@@ -220,6 +220,75 @@ test "railway layout offsets overlapping gap rails" {
 }
 
 ///|
+test "railway lane optimizer minimizes fanout rail crossings" {
+  let x1 = @graph.ObjectInput::new("x1")
+  let x2 = @graph.ObjectInput::new("x2")
+  let y1 = @graph.ObjectInput::new("y1")
+  let y2 = @graph.ObjectInput::new("y2")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([x1, x2, y1, y2])
+  let e_x1_y1 = @graph.EdgeInput::new(0, "x1", "y1", false, true)
+  let e_x2_y2 = @graph.EdgeInput::new(1, "x2", "y2", false, true)
+  let e_x1_y2 = @graph.EdgeInput::new(2, "x1", "y2", false, true)
+  let e_x2_y1 = @graph.EdgeInput::new(3, "x2", "y1", false, true)
+  g.edges.append([e_x1_y1, e_x2_y2, e_x1_y2, e_x2_y1])
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let left_route = patch.edges.get(e_x1_y2.index).unwrap_or([])
+  let right_route = patch.edges.get(e_x2_y1.index).unwrap_or([])
+  assert_true(left_route.length() >= 4 && right_route.length() >= 4)
+
+  fn between_open(v : Double, a : Double, b : Double) -> Bool {
+    let lo = @cmp.minimum(a, b)
+    let hi = @cmp.maximum(a, b)
+    v > lo + 1.0e-6 && v < hi - 1.0e-6
+  }
+
+  fn crossings_between(
+    r1 : Array[@graph.Point],
+    r2 : Array[@graph.Point],
+  ) -> Int {
+    let mut count = 0
+    for i in 0..<(r1.length() - 1) {
+      let a0 = r1[i]
+      let a1 = r1[i + 1]
+      let a_vertical = (a0.x - a1.x).abs() <= 1.0e-6
+      let a_horizontal = (a0.y - a1.y).abs() <= 1.0e-6
+      if !(a_vertical || a_horizontal) {
+        continue
+      }
+      for j in 0..<(r2.length() - 1) {
+        let b0 = r2[j]
+        let b1 = r2[j + 1]
+        let b_vertical = (b0.x - b1.x).abs() <= 1.0e-6
+        let b_horizontal = (b0.y - b1.y).abs() <= 1.0e-6
+        if !(b_vertical || b_horizontal) {
+          continue
+        }
+        if a_vertical == b_vertical {
+          continue
+        }
+        let vertical = if a_vertical { (a0, a1) } else { (b0, b1) }
+        let horizontal = if a_vertical { (b0, b1) } else { (a0, a1) }
+        let x = vertical.0.x
+        let y = horizontal.0.y
+        if between_open(x, horizontal.0.x, horizontal.1.x) &&
+          between_open(y, vertical.0.y, vertical.1.y) {
+          count = count + 1
+        }
+      }
+    }
+    count
+  }
+
+  let crossings = crossings_between(left_route, right_route)
+  assert_true(
+    crossings == 0,
+    msg="crossing fanout rails should be untangled, got \{crossings}",
+  )
+}
+
+///|
 test "railway layout respects Right direction" {
   let a = @graph.ObjectInput::new("a")
   let b = @graph.ObjectInput::new("b")

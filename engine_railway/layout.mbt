@@ -56,7 +56,7 @@ fn layout_graph(
   let rail_tracks = assign_rail_tracks(
     layout_input, id_to_idx, depths, self_loop, direction, src_ports, dst_ports,
   )
-  let rail_shifts = assign_gap_lane_offsets(
+  let lane_plan = plan_gap_lanes(
     layout_input, id_to_idx, depths, self_loop, direction, config, src_ports, dst_ports,
   )
   for obj in layout_input.objects {
@@ -111,7 +111,7 @@ fn layout_graph(
       du,
       dv,
       rail_tracks.get(edge.index).unwrap_or(0),
-      rail_shifts.get(edge.index).unwrap_or(0.0),
+      lane_plan.shift_by_edge.get(edge.index).unwrap_or(0.0),
       start,
       end,
       boxes,
@@ -120,7 +120,13 @@ fn layout_graph(
       level_heights,
     )
   }
-  recompute_edge_label_boxes(patch, graph, direction, config)
+  recompute_edge_label_boxes(
+    patch,
+    graph,
+    direction,
+    config,
+    lane_plan.lane_by_edge,
+  )
   fit_container_boxes_railway(
     patch, graph, object_by_id, parent_id_by_child_id, config,
   )

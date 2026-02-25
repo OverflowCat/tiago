@@ -43,15 +43,15 @@
 <path d="M 218.5 263 C 218.5 301 218.5 320 218.5 358" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="203" y="301" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="218.5" y="317" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">calls</text>
-<path d="M 171 424 C 171 442.4 171 451.6 171 470 C 171 470 171 480 161 480 C 136.6 480 124.4 480 100 480 C 100 480 90 480 90 490 C 90 517.6 90 531.4 90 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="76.5" y="469.5" width="83" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="118" y="485.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
-<path d="M 242.25 424 C 242.25 442.4 242.25 451.6 242.25 470 C 242.25 470 242.25 480 252.25 480 C 381.75 480 446.5 480 576 480 C 576 480 586 480 586 490 C 586 517.6 586 531.4 586 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="359.625" y="469.5" width="134" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="426.625" y="485.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
-<path d="M 266 424 C 266 452.4 266 466.6 266 495 C 266 495 266 505 276 505 C 474 505 573 505 771 505 C 771 505 781 505 781 515 C 781 532.6 781 541.4 781 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="449" y="494.5" width="124" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="511" y="510.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
+<path d="M 171 424 C 171 452.4 171 466.6 171 495 C 171 495 171 505 161 505 C 136.6 505 124.4 505 100 505 C 100 505 90 505 90 515 C 90 532.6 90 541.4 90 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="101.5" y="494.5" width="83" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="143" y="510.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
+<path d="M 242.25 424 C 242.25 452.4 242.25 466.6 242.25 495 C 242.25 495 242.25 505 252.25 505 C 381.75 505 446.5 505 576 505 C 576 505 586 505 586 515 C 586 532.6 586 541.4 586 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="334.625" y="494.5" width="134" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="401.625" y="510.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
+<path d="M 266 424 C 266 442.4 266 451.6 266 470 C 266 470 266 480 276 480 C 474 480 573 480 771 480 C 771 480 781 480 781 490 C 781 517.6 781 531.4 781 559" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="474" y="469.5" width="124" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="536" y="485.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
 <text x="219" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Customer</text>
 <text x="164" y="158" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
 <text x="675" y="520" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>

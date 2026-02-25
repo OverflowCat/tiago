@@ -574,6 +574,36 @@ priv struct EdgeSpan {
 }
 
 ///|
+pub struct RailwayLanePlan {
+  lane_by_edge : Map[Int, Int]
+  shift_by_edge : Map[Int, Double]
+}
+
+///|
+priv struct GapLaneEdge {
+  edge_index : Int
+  src_axis : Double
+  dst_axis : Double
+  span_start : Double
+  span_end : Double
+  label_major_span : Double
+  flow : @engine_api.Direction
+}
+
+///|
+priv struct LaneOrderScore {
+  crossings : Int
+  displacement : Int
+}
+
+///|
+priv struct SyntheticSegment {
+  a : @graph.Point
+  b : @graph.Point
+  vertical : Bool
+}
+
+///|
 priv struct LaneUsage {
   end : Double
   lane : Int
@@ -627,7 +657,309 @@ fn allocate_span_lanes(spans : Array[EdgeSpan]) -> (Map[Int, Int], Int) {
 }
 
 ///|
-fn assign_gap_lane_offsets(
+fn edge_label_major_span(
+  edge : @graph.EdgeInput,
+  direction : @engine_api.Direction,
+) -> Double {
+  match edge_label_size(edge) {
+    Some((width, height)) =>
+      match direction {
+        Down | Up => height
+        Right | Left => width
+      }
+    None => 0.0
+  }
+}
+
+///|
+fn lane_order_score_less(a : LaneOrderScore, b : LaneOrderScore) -> Bool {
+  if a.crossings != b.crossings {
+    a.crossings < b.crossings
+  } else {
+    a.displacement < b.displacement
+  }
+}
+
+///|
+fn identity_lane_order(lane_count : Int) -> Array[Int] {
+  let order : Array[Int] = []
+  for lane in 0..<lane_count {
+    order.push(lane)
+  }
+  order
+}
+
+///|
+fn lane_rank_by_lane(order : Array[Int], lane_count : Int) -> Array[Int] {
+  let rank_by_lane = Array::make(lane_count, 0)
+  for rank, lane in order {
+    if lane >= 0 && lane < lane_count {
+      rank_by_lane[lane] = rank
+    }
+  }
+  rank_by_lane
+}
+
+///|
+fn synthetic_endpoints_for_lane_edge(
+  edge : GapLaneEdge,
+) -> (@graph.Point, @graph.Point) {
+  match edge.flow {
+    Down =>
+      (
+        @graph.Point::new(edge.src_axis, 0.0),
+        @graph.Point::new(edge.dst_axis, 2.0),
+      )
+    Up =>
+      (
+        @graph.Point::new(edge.src_axis, 2.0),
+        @graph.Point::new(edge.dst_axis, 0.0),
+      )
+    Right =>
+      (
+        @graph.Point::new(0.0, edge.src_axis),
+        @graph.Point::new(2.0, edge.dst_axis),
+      )
+    Left =>
+      (
+        @graph.Point::new(2.0, edge.src_axis),
+        @graph.Point::new(0.0, edge.dst_axis),
+      )
+  }
+}
+
+///|
+fn synthetic_route_for_lane_edge(
+  edge : GapLaneEdge,
+  lane_rank : Int,
+  lane_count : Int,
+) -> Array[@graph.Point] {
+  let (start, end) = synthetic_endpoints_for_lane_edge(edge)
+  let center = (lane_count - 1).to_double() / 2.0
+  let lane_step = 0.8 / (lane_count.to_double() + 1.0)
+  let rail = 1.0 + (lane_rank.to_double() - center) * lane_step
+  let route : Array[@graph.Point] = [start]
+  let middle = waypoints_between(start, end, rail, edge.flow)
+  route.append(middle)
+  push_if_new(route, end)
+  route
+}
+
+///|
+fn synthetic_segments(route : Array[@graph.Point]) -> Array[SyntheticSegment] {
+  let segs : Array[SyntheticSegment] = []
+  if route.length() < 2 {
+    return segs
+  }
+  for i in 0..<(route.length() - 1) {
+    let a = route[i]
+    let b = route[i + 1]
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    if dx.abs() <= 1.0e-6 && dy.abs() <= 1.0e-6 {
+      continue
+    }
+    if dx.abs() <= 1.0e-6 {
+      segs.push({ a, b, vertical: true })
+    } else if dy.abs() <= 1.0e-6 {
+      segs.push({ a, b, vertical: false })
+    }
+  }
+  segs
+}
+
+///|
+fn between_open(v : Double, a : Double, b : Double) -> Bool {
+  let lo = @cmp.minimum(a, b)
+  let hi = @cmp.maximum(a, b)
+  v > lo + 1.0e-6 && v < hi - 1.0e-6
+}
+
+///|
+fn segment_crosses(sa : SyntheticSegment, sb : SyntheticSegment) -> Bool {
+  if sa.vertical == sb.vertical {
+    return false
+  }
+  let vertical = if sa.vertical { sa } else { sb }
+  let horizontal = if sa.vertical { sb } else { sa }
+  let x = vertical.a.x
+  let y = horizontal.a.y
+  between_open(x, horizontal.a.x, horizontal.b.x) &&
+  between_open(y, vertical.a.y, vertical.b.y)
+}
+
+///|
+fn synthetic_route_crossings(
+  a : Array[@graph.Point],
+  b : Array[@graph.Point],
+) -> Int {
+  let segs_a = synthetic_segments(a)
+  let segs_b = synthetic_segments(b)
+  let mut crossings = 0
+  for sa in segs_a {
+    for sb in segs_b {
+      if segment_crosses(sa, sb) {
+        crossings = crossings + 1
+      }
+    }
+  }
+  crossings
+}
+
+///|
+fn evaluate_lane_order(
+  edges : Array[GapLaneEdge],
+  base_lane_by_edge : Map[Int, Int],
+  lane_count : Int,
+  order : Array[Int],
+) -> LaneOrderScore {
+  let rank_by_lane = lane_rank_by_lane(order, lane_count)
+  let route_by_edge : Map[Int, Array[@graph.Point]] = {}
+  let mut displacement = 0
+  for edge in edges {
+    let base_lane = base_lane_by_edge.get(edge.edge_index).unwrap_or(0)
+    let rank = rank_by_lane[base_lane]
+    displacement = displacement + (rank - base_lane).abs()
+    route_by_edge[edge.edge_index] = synthetic_route_for_lane_edge(
+      edge, rank, lane_count,
+    )
+  }
+  let mut crossings = 0
+  for i in 0..<edges.length() {
+    for j in (i + 1)..<edges.length() {
+      let ri = route_by_edge.get(edges[i].edge_index).unwrap_or([])
+      let rj = route_by_edge.get(edges[j].edge_index).unwrap_or([])
+      crossings = crossings + synthetic_route_crossings(ri, rj)
+    }
+  }
+  { crossings, displacement }
+}
+
+///|
+fn optimize_lane_order_exhaustive(
+  edges : Array[GapLaneEdge],
+  base_lane_by_edge : Map[Int, Int],
+  lane_count : Int,
+) -> Array[Int] {
+  let used = Array::make(lane_count, false)
+  let current = Array::make(lane_count, 0)
+  let best_order = identity_lane_order(lane_count)
+  let best_score = evaluate_lane_order(
+    edges, base_lane_by_edge, lane_count, best_order,
+  )
+  let has_best = false
+
+  fn dfs(
+    pos : Int,
+    used : Array[Bool],
+    current : Array[Int],
+    lane_count : Int,
+    edges : Array[GapLaneEdge],
+    base_lane_by_edge : Map[Int, Int],
+    best_order_ref : Ref[Array[Int]],
+    best_score_ref : Ref[LaneOrderScore],
+    has_best_ref : Ref[Bool],
+  ) -> Unit {
+    if pos == lane_count {
+      let order = current.copy()
+      let score = evaluate_lane_order(
+        edges, base_lane_by_edge, lane_count, order,
+      )
+      if !has_best_ref.val || lane_order_score_less(score, best_score_ref.val) {
+        best_order_ref.val = order
+        best_score_ref.val = score
+        has_best_ref.val = true
+      }
+      return
+    }
+    for lane in 0..<lane_count {
+      if used[lane] {
+        continue
+      }
+      used[lane] = true
+      current[pos] = lane
+      dfs(
+        pos + 1,
+        used,
+        current,
+        lane_count,
+        edges,
+        base_lane_by_edge,
+        best_order_ref,
+        best_score_ref,
+        has_best_ref,
+      )
+      used[lane] = false
+    }
+  }
+
+  let best_order_ref = Ref::new(best_order)
+  let best_score_ref = Ref::new(best_score)
+  let has_best_ref = Ref::new(has_best)
+  dfs(
+    0, used, current, lane_count, edges, base_lane_by_edge, best_order_ref, best_score_ref,
+    has_best_ref,
+  )
+  best_order_ref.val
+}
+
+///|
+fn optimize_lane_order_local_search(
+  edges : Array[GapLaneEdge],
+  base_lane_by_edge : Map[Int, Int],
+  lane_count : Int,
+) -> Array[Int] {
+  let order = identity_lane_order(lane_count)
+  let mut best_score = evaluate_lane_order(
+    edges, base_lane_by_edge, lane_count, order,
+  )
+  let mut improved = true
+  while improved {
+    improved = false
+    let mut best_swap = -1
+    let mut swap_score = best_score
+    for i in 0..<(lane_count - 1) {
+      let candidate = order.copy()
+      let t = candidate[i]
+      candidate[i] = candidate[i + 1]
+      candidate[i + 1] = t
+      let score = evaluate_lane_order(
+        edges, base_lane_by_edge, lane_count, candidate,
+      )
+      if lane_order_score_less(score, swap_score) {
+        swap_score = score
+        best_swap = i
+      }
+    }
+    if best_swap >= 0 {
+      let t = order[best_swap]
+      order[best_swap] = order[best_swap + 1]
+      order[best_swap + 1] = t
+      best_score = swap_score
+      improved = true
+    }
+  }
+  order
+}
+
+///|
+fn optimize_lane_order(
+  edges : Array[GapLaneEdge],
+  base_lane_by_edge : Map[Int, Int],
+  lane_count : Int,
+) -> Array[Int] {
+  if lane_count <= 1 {
+    return identity_lane_order(lane_count)
+  }
+  if lane_count <= 7 {
+    optimize_lane_order_exhaustive(edges, base_lane_by_edge, lane_count)
+  } else {
+    optimize_lane_order_local_search(edges, base_lane_by_edge, lane_count)
+  }
+}
+
+///|
+fn plan_gap_lanes(
   graph : @graph.GraphInput,
   id_to_idx : Map[String, Int],
   depths : Array[Int],
@@ -636,22 +968,8 @@ fn assign_gap_lane_offsets(
   config : @engine_api.LayoutConfig,
   src_ports : Map[Int, @graph.Point],
   dst_ports : Map[Int, @graph.Point],
-) -> Map[Int, Double] raise @engine_api.LayoutError {
-  let spans_by_gap : Map[Int, Array[EdgeSpan]] = {}
-  fn edge_label_major_span(
-    edge : @graph.EdgeInput,
-    direction : @engine_api.Direction,
-  ) -> Double {
-    match edge_label_size(edge) {
-      Some((width, height)) =>
-        match direction {
-          Down | Up => height
-          Right | Left => width
-        }
-      None => 0.0
-    }
-  }
-
+) -> RailwayLanePlan raise @engine_api.LayoutError {
+  let bundles_by_gap : Map[Int, Array[GapLaneEdge]] = {}
   for e in graph.edges {
     if self_loop.contains(e.index) {
       continue
@@ -677,7 +995,7 @@ fn assign_gap_lane_offsets(
       Some(p) => p
       None => raise Unsupported("missing dst port for edge: \{e.index}")
     }
-    let (a0, a1, needs_rail) = match flow {
+    let (a0, a1, needs_rail) = match direction {
       Down | Up =>
         (
           @cmp.minimum(start.x, end.x),
@@ -695,23 +1013,44 @@ fn assign_gap_lane_offsets(
       continue
     }
     let gap = @cmp.minimum(src_level, dst_level)
-    let label_major_span = edge_label_major_span(e, direction)
-    match spans_by_gap.get(gap) {
-      Some(arr) =>
-        arr.push({ start: a0, end: a1, edge_index: e.index, label_major_span })
-      None =>
-        spans_by_gap[gap] = [
-          { start: a0, end: a1, edge_index: e.index, label_major_span },
-        ]
+    let item : GapLaneEdge = {
+      edge_index: e.index,
+      src_axis: port_axis(start, flow),
+      dst_axis: port_axis(end, flow),
+      span_start: a0,
+      span_end: a1,
+      label_major_span: edge_label_major_span(e, direction),
+      flow,
+    }
+    match bundles_by_gap.get(gap) {
+      Some(arr) => arr.push(item)
+      None => bundles_by_gap[gap] = [item]
     }
   }
+
+  let lane_by_edge : Map[Int, Int] = {}
   let shift_by_edge : Map[Int, Double] = {}
-  for entry in spans_by_gap {
-    let spans = entry.1
-    let (lane_by_edge, lane_count) = allocate_span_lanes(spans)
+
+  for entry in bundles_by_gap {
+    let edges = entry.1
+    let spans : Array[EdgeSpan] = []
+    for edge in edges {
+      spans.push({
+        start: edge.span_start,
+        end: edge.span_end,
+        edge_index: edge.edge_index,
+        label_major_span: edge.label_major_span,
+      })
+    }
+    let (base_lane_by_edge, lane_count) = allocate_span_lanes(spans)
     if lane_count <= 1 {
+      for edge in edges {
+        lane_by_edge[edge.edge_index] = 0
+      }
       continue
     }
+    let order = optimize_lane_order(edges, base_lane_by_edge, lane_count)
+    let rank_by_lane = lane_rank_by_lane(order, lane_count)
     let center = (lane_count - 1).to_double() / 2.0
     // Keep rails away from node boundaries so rounded corners don't start
     // immediately at the box exit/entry.
@@ -734,13 +1073,15 @@ fn assign_gap_lane_offsets(
     if center > 0.0 && spacing * center > max_offset {
       spacing = max_offset / center
     }
-    for lane_entry in lane_by_edge {
-      let lane = lane_entry.1
+    for edge in edges {
+      let base_lane = base_lane_by_edge.get(edge.edge_index).unwrap_or(0)
+      let lane = rank_by_lane[base_lane]
       let offset = (lane.to_double() - center) * spacing
-      shift_by_edge[lane_entry.0] = offset
+      lane_by_edge[edge.edge_index] = lane
+      shift_by_edge[edge.edge_index] = offset
     }
   }
-  shift_by_edge
+  { lane_by_edge, shift_by_edge }
 }
 
 ///|

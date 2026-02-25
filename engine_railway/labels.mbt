@@ -236,6 +236,7 @@ fn recompute_edge_label_boxes(
   graph : @graph.GraphInput,
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
+  lane_by_edge : Map[Int, Int],
 ) -> Unit {
   let label_boxes : Map[Int, @graph.Box] = {}
   for edge in graph.edges {
@@ -258,7 +259,7 @@ fn recompute_edge_label_boxes(
       height,
     )
   }
-  resolve_edge_label_collisions(label_boxes, direction, config)
+  resolve_edge_label_collisions(label_boxes, direction, config, lane_by_edge)
   for entry in label_boxes {
     patch.edge_labels[entry.0] = entry.1
   }
@@ -277,6 +278,7 @@ fn resolve_edge_label_collisions(
   label_boxes : Map[Int, @graph.Box],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
+  lane_by_edge : Map[Int, Int],
 ) -> Unit {
   let vertical = match direction {
     Down | Up => true
@@ -322,7 +324,13 @@ fn resolve_edge_label_collisions(
       } else if a.minor_end > b.minor_end {
         1
       } else {
-        a.edge_index - b.edge_index
+        let lane_a = lane_by_edge.get(a.edge_index).unwrap_or(0)
+        let lane_b = lane_by_edge.get(b.edge_index).unwrap_or(0)
+        if lane_a != lane_b {
+          lane_a - lane_b
+        } else {
+          a.edge_index - b.edge_index
+        }
       }
     })
     let lane_ends : Array[Double] = []

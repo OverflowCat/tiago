@@ -18,6 +18,11 @@ pub fn RailwayEngine::new() -> Self
 pub impl @engine_api.LayoutEngine for RailwayEngine
 pub impl Show for RailwayEngine
 
+pub struct RailwayLanePlan {
+  lane_by_edge : Map[Int, Int]
+  shift_by_edge : Map[Int, Double]
+}
+
 // Type aliases
 
 // Traits
