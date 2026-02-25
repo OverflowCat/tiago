@@ -577,8 +577,12 @@ fn assign_rail_tracks(
   depths : Array[Int],
   self_loop : @hashset.HashSet[Int],
   direction : @engine_api.Direction,
+  src_ports : Map[Int, @graph.Point],
+  dst_ports : Map[Int, @graph.Point],
 ) -> Map[Int, Int] raise @engine_api.LayoutError {
-  let forward_long : Array[EdgeInterval] = []
+  let forward_long_left : Array[EdgeInterval] = []
+  let forward_long_center : Array[EdgeInterval] = []
+  let forward_long_right : Array[EdgeInterval] = []
   let back_edges : Array[EdgeInterval] = []
   for e in graph.edges {
     if self_loop.contains(e.index) {
@@ -598,17 +602,56 @@ fn assign_rail_tracks(
     if flow != direction {
       back_edges.push({ start, end, edge_index: e.index })
     } else if span > 1 {
-      forward_long.push({ start, end, edge_index: e.index })
+      let src = match src_ports.get(e.index) {
+        Some(v) => v
+        None => raise Unsupported("missing src port for edge: \{e.index}")
+      }
+      let dst = match dst_ports.get(e.index) {
+        Some(v) => v
+        None => raise Unsupported("missing dst port for edge: \{e.index}")
+      }
+      let side = long_edge_lateral_side(direction, src, dst)
+      match side {
+        -1 => forward_long_left.push({ start, end, edge_index: e.index })
+        1 => forward_long_right.push({ start, end, edge_index: e.index })
+        _ => forward_long_center.push({ start, end, edge_index: e.index })
+      }
     }
   }
   let tracks : Map[Int, Int] = {}
   for entry in allocate_interval_tracks(back_edges) {
     tracks[entry.0] = entry.1
   }
-  for entry in allocate_interval_tracks(forward_long) {
+  for entry in allocate_interval_tracks(forward_long_center) {
+    tracks[entry.0] = entry.1
+  }
+  for entry in allocate_interval_tracks(forward_long_left) {
+    tracks[entry.0] = entry.1
+  }
+  for entry in allocate_interval_tracks(forward_long_right) {
     tracks[entry.0] = entry.1
   }
   tracks
+}
+
+///|
+fn long_edge_lateral_side(
+  direction : @engine_api.Direction,
+  start : @graph.Point,
+  end : @graph.Point,
+) -> Int {
+  let tol = 1.0e-6
+  let delta = match direction {
+    Down | Up => end.x - start.x
+    Right | Left => end.y - start.y
+  }
+  if delta > tol {
+    1
+  } else if delta < -tol {
+    -1
+  } else {
+    0
+  }
 }
 
 ///|
@@ -820,14 +863,25 @@ fn long_edge_channel_anchor(
     Right | Left => (start.y, end.y)
   }
   let spacing = track_spacing(config)
-  let detour = (dst_axis - src_axis).abs()
   let center_axis = (src_axis + dst_axis) / 2.0
-  let preferred = if detour <= spacing * 2.0 { center_axis } else { src_axis }
-  let offset = zigzag_track_offset(rail_track, spacing)
-  let unclamped = preferred + offset
-  let margin = major_axis_spacing(direction, config) * 0.8
+  let lateral = dst_axis - src_axis
+  let side_tol = spacing * 0.75
+  let side_clearance = @cmp.maximum(config.edge_padding * 1.8, spacing * 2.0)
+  let preferred = if lateral.abs() <= side_tol {
+    center_axis + zigzag_track_offset(rail_track, spacing)
+  } else if lateral > 0.0 {
+    @cmp.maximum(src_axis, dst_axis) +
+    side_clearance +
+    rail_track.to_double() * spacing
+  } else {
+    @cmp.minimum(src_axis, dst_axis) -
+    side_clearance -
+    rail_track.to_double() * spacing
+  }
+  let margin = major_axis_spacing(direction, config) * 1.2 + spacing * 4.0
   let lo = @cmp.minimum(src_axis, dst_axis) - margin
   let hi = @cmp.maximum(src_axis, dst_axis) + margin
+  let unclamped = preferred
   @cmp.maximum(lo, @cmp.minimum(unclamped, hi))
 }
 

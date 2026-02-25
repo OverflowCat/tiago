@@ -51,7 +51,7 @@ fn layout_graph(
     layout_input, id_to_idx, depths, self_loop, direction, config, boxes,
   )
   let rail_tracks = assign_rail_tracks(
-    layout_input, id_to_idx, depths, self_loop, direction,
+    layout_input, id_to_idx, depths, self_loop, direction, src_ports, dst_ports,
   )
   let rail_shifts = assign_gap_lane_offsets(
     layout_input, id_to_idx, depths, self_loop, direction, config, src_ports, dst_ports,

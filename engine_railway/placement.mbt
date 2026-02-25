@@ -768,8 +768,8 @@ fn railway_ranksep(
     Right | Left => max_label_width + 40.0
     Down | Up => max_label_height + 40.0
   }
-  if base < 100.0 {
-    100.0
+  if base < 80.0 {
+    80.0
   } else {
     base
   }
