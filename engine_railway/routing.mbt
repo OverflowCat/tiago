@@ -747,9 +747,6 @@ fn route_edge(
   level_heights : Array[Double],
 ) -> Array[@graph.Point] raise @engine_api.LayoutError {
   ignore(edge_index)
-  ignore(src_id)
-  ignore(dst_id)
-  ignore(boxes)
   if dst_level == src_level {
     raise Unsupported(
       "route_edge: dst_level is \{dst_level}, src_level is \{src_level}",
@@ -830,7 +827,7 @@ fn route_edge(
   // virtual-node anchor. This keeps long edges compact and avoids sweeping
   // detours that hurt readability on deep graphs.
   let anchor = long_edge_channel_anchor(
-    start, end, flow, direction, rail_track, config,
+    start, end, flow, direction, rail_track, config, boxes, src_id, dst_id,
   )
 
   // Go from src exit to the first rail.
@@ -857,6 +854,9 @@ fn long_edge_channel_anchor(
   direction : @engine_api.Direction,
   rail_track : Int,
   config : @engine_api.LayoutConfig,
+  boxes : Map[String, @graph.Box],
+  src_id : String,
+  dst_id : String,
 ) -> Double {
   let (src_axis, dst_axis) = match flow {
     Down | Up => (start.x, end.x)
@@ -867,8 +867,42 @@ fn long_edge_channel_anchor(
   let lateral = dst_axis - src_axis
   let side_tol = spacing * 0.75
   let side_clearance = @cmp.maximum(config.edge_padding * 1.8, spacing * 2.0)
+  let blocked_center = long_edge_center_axis_blocked(
+    center_axis,
+    start,
+    end,
+    flow,
+    boxes,
+    src_id,
+    dst_id,
+    config.edge_padding,
+  )
   let preferred = if lateral.abs() <= side_tol {
-    center_axis + zigzag_track_offset(rail_track, spacing)
+    if blocked_center {
+      let (block_min, block_max) = long_edge_blocking_axis_bounds(
+        start, end, flow, boxes, src_id, dst_id,
+      )
+      match (block_min, block_max) {
+        (Some(lo), Some(hi)) => {
+          let left_anchor = lo -
+            side_clearance -
+            rail_track.to_double() * spacing
+          let right_anchor = hi +
+            side_clearance +
+            rail_track.to_double() * spacing
+          let left_cost = (center_axis - left_anchor).abs()
+          let right_cost = (right_anchor - center_axis).abs()
+          if right_cost <= left_cost {
+            right_anchor
+          } else {
+            left_anchor
+          }
+        }
+        _ => center_axis + side_clearance + rail_track.to_double() * spacing
+      }
+    } else {
+      center_axis + zigzag_track_offset(rail_track, spacing)
+    }
   } else if lateral > 0.0 {
     @cmp.maximum(src_axis, dst_axis) +
     side_clearance +
@@ -883,6 +917,95 @@ fn long_edge_channel_anchor(
   let hi = @cmp.maximum(src_axis, dst_axis) + margin
   let unclamped = preferred
   @cmp.maximum(lo, @cmp.minimum(unclamped, hi))
+}
+
+///|
+fn long_edge_center_axis_blocked(
+  axis : Double,
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  src_id : String,
+  dst_id : String,
+  padding : Double,
+) -> Bool {
+  let (major_lo, major_hi) = match flow {
+    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
+    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+  }
+  let inner_lo = major_lo + padding
+  let inner_hi = major_hi - padding
+  for entry in boxes {
+    let id = entry.0
+    if id == src_id || id == dst_id {
+      continue
+    }
+    let b = entry.1
+    let intersects_major = match flow {
+      Down | Up => !(b.y + b.height <= inner_lo || inner_hi <= b.y)
+      Right | Left => !(b.x + b.width <= inner_lo || inner_hi <= b.x)
+    }
+    if !intersects_major {
+      continue
+    }
+    let contains_axis = match flow {
+      Down | Up => b.x <= axis && axis <= b.x + b.width
+      Right | Left => b.y <= axis && axis <= b.y + b.height
+    }
+    if contains_axis {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn long_edge_blocking_axis_bounds(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  src_id : String,
+  dst_id : String,
+) -> (Double?, Double?) {
+  let (major_lo, major_hi) = match flow {
+    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
+    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+  }
+  let mut min_axis : Double? = None
+  let mut max_axis : Double? = None
+  for entry in boxes {
+    let id = entry.0
+    if id == src_id || id == dst_id {
+      continue
+    }
+    let b = entry.1
+    let intersects_major = match flow {
+      Down | Up => !(b.y + b.height <= major_lo || major_hi <= b.y)
+      Right | Left => !(b.x + b.width <= major_lo || major_hi <= b.x)
+    }
+    if !intersects_major {
+      continue
+    }
+    let (axis_lo, axis_hi) = match flow {
+      Down | Up => (b.x, b.x + b.width)
+      Right | Left => (b.y, b.y + b.height)
+    }
+    min_axis = Some(
+      match min_axis {
+        Some(v) => @cmp.minimum(v, axis_lo)
+        None => axis_lo
+      },
+    )
+    max_axis = Some(
+      match max_axis {
+        Some(v) => @cmp.maximum(v, axis_hi)
+        None => axis_hi
+      },
+    )
+  }
+  (min_axis, max_axis)
 }
 
 ///|

@@ -32,7 +32,7 @@ fn layout_graph(
     id_to_idx.set(layout_input.objects[i].id, i)
   }
   ignore(reversed_set)
-  let node_layout = place_nodes(layout_input, config, direction)
+  let node_layout = place_nodes(layout_input, config, direction, object_by_id)
   let boxes = node_layout.boxes
   let level_heights = node_layout.level_heights
   let depths = rank_array_for_layout(
@@ -126,6 +126,7 @@ fn layout_graph(
 
 ///|
 fn keep_legacy_railway_symbols_alive() -> Unit {
+  ignore(object_size)
   ignore(relax_layout_nodes_against_containers)
   ignore(spread_sibling_boxes_railway)
   ignore(place_nodes_grid)

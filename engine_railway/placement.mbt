@@ -17,8 +17,9 @@ fn place_nodes(
   graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
+  object_by_id : Map[String, @graph.ObjectInput],
 ) -> RailwayNodeLayout raise @engine_api.LayoutError {
-  place_nodes_dagre(graph, config, direction)
+  place_nodes_dagre(graph, config, direction, object_by_id)
 }
 
 ///|
@@ -26,6 +27,7 @@ fn place_nodes_dagre(
   graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
+  object_by_id : Map[String, @graph.ObjectInput],
 ) -> RailwayNodeLayout raise @engine_api.LayoutError {
   let dagre_graph = @moon_dagre.new_graph(multigraph=true, compound=true)
   dagre_graph.set_graph(
@@ -37,7 +39,7 @@ fn place_nodes_dagre(
   for i, obj in graph.objects {
     let dagre_id = railway_dagre_node_id(i)
     dagre_node_id_by_object_id[obj.id] = dagre_id
-    let (width, height) = object_size(obj, config)
+    let (width, height) = object_size_with_objects(obj, config, object_by_id)
     node_size_by_id[obj.id] = (width, height)
     let node_attrs = @moon_dagre.empty_attrs()
     node_attrs.set_float("width", width)
@@ -854,7 +856,7 @@ fn place_nodes_grid(
       let mut mw = 0.0
       let mut mh = 0.0
       for obj in level_objects {
-        let (w, h) = object_size(obj, config)
+        let (w, h) = object_size_with_objects(obj, config, object_by_id)
         mw = @cmp.maximum(w, mw)
         mh = @cmp.maximum(h, mh)
       }
@@ -926,7 +928,7 @@ fn place_nodes_grid(
 
     // put physical nodes
     for obj in level_objects {
-      let (w, h) = object_size(obj, config)
+      let (w, h) = object_size_with_objects(obj, config, object_by_id)
       let box = match direction {
         Down | Up =>
           @graph.Box::new(
