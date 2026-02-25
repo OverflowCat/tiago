@@ -19,6 +19,12 @@ priv struct PortItem {
 }
 
 ///|
+priv struct ReciprocalPortEntry {
+  edge_index : Int
+  sign : Int
+}
+
+///|
 fn port_axis(p : @graph.Point, flow : @engine_api.Direction) -> Double {
   match flow {
     Down | Up => p.x
@@ -312,7 +318,174 @@ fn assign_ports(
     }
   }
 
+  apply_reciprocal_port_offsets(
+    graph, id_to_idx, depths, self_loop, direction, config, boxes, src_ports, dst_ports,
+  )
+
   (src_ports, dst_ports)
+}
+
+///|
+fn unordered_pair_key(a : String, b : String) -> String {
+  if a < b {
+    "\{a}|\{b}"
+  } else {
+    "\{b}|\{a}"
+  }
+}
+
+///|
+fn clamp_port_axis_by_direction(
+  p : @graph.Point,
+  box : @graph.Box,
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+) -> @graph.Point {
+  let m = match direction {
+    Down | Up => port_margin(box, Down, config)
+    Right | Left => port_margin(box, Right, config)
+  }
+  match direction {
+    Down | Up => {
+      let lo = box.x + m
+      let hi = box.x + box.width - m
+      let x = @cmp.maximum(lo, @cmp.minimum(p.x, hi))
+      @graph.Point::new(x, p.y)
+    }
+    Right | Left => {
+      let lo = box.y + m
+      let hi = box.y + box.height - m
+      let y = @cmp.maximum(lo, @cmp.minimum(p.y, hi))
+      @graph.Point::new(p.x, y)
+    }
+  }
+}
+
+///|
+fn apply_reciprocal_port_offsets(
+  graph : @graph.GraphInput,
+  id_to_idx : Map[String, Int],
+  depths : Array[Int],
+  self_loop : @hashset.HashSet[Int],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+  boxes : Map[String, @graph.Box],
+  src_ports : Map[Int, @graph.Point],
+  dst_ports : Map[Int, @graph.Point],
+) -> Unit raise @engine_api.LayoutError {
+  let entries_by_pair : Map[String, Array[ReciprocalPortEntry]] = {}
+  let edge_by_index : Map[Int, @graph.EdgeInput] = {}
+  for edge in graph.edges {
+    edge_by_index[edge.index] = edge
+    if self_loop.contains(edge.index) || edge.src_id == edge.dst_id {
+      continue
+    }
+    let su = require_index(id_to_idx, edge.src_id)
+    let sv = require_index(id_to_idx, edge.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    let span = Int::abs(dst_level - src_level)
+    if span != 1 {
+      continue
+    }
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    let sign = if flow == direction { -1 } else { 1 }
+    let key = unordered_pair_key(edge.src_id, edge.dst_id)
+    let entry = { edge_index: edge.index, sign }
+    match entries_by_pair.get(key) {
+      Some(arr) => arr.push(entry)
+      None => entries_by_pair[key] = [entry]
+    }
+  }
+
+  let base_offset = @cmp.maximum(12.0, config.edge_padding / 2.0)
+  for pair_entry in entries_by_pair {
+    let entries = pair_entry.1
+    if entries.length() <= 1 {
+      continue
+    }
+    let neg : Array[ReciprocalPortEntry] = []
+    let pos : Array[ReciprocalPortEntry] = []
+    for entry in entries {
+      if entry.sign < 0 {
+        neg.push(entry)
+      } else {
+        pos.push(entry)
+      }
+    }
+    if neg.is_empty() || pos.is_empty() {
+      continue
+    }
+    neg.sort_by(fn(a, b) { a.edge_index - b.edge_index })
+    pos.sort_by(fn(a, b) { a.edge_index - b.edge_index })
+    fn apply_group(
+      group : Array[ReciprocalPortEntry],
+      sign : Int,
+    ) -> Unit raise @engine_api.LayoutError {
+      let local_center = (group.length() - 1).to_double() / 2.0
+      for i, entry in group {
+        let lane_offset = (i.to_double() - local_center) * (base_offset / 2.0)
+        let delta = sign.to_double() * (base_offset + lane_offset)
+        match edge_by_index.get(entry.edge_index) {
+          Some(edge) => {
+            let src_box = match boxes.get(edge.src_id) {
+              Some(v) => v
+              None => raise Unsupported("missing box for node: \{edge.src_id}")
+            }
+            let dst_box = match boxes.get(edge.dst_id) {
+              Some(v) => v
+              None => raise Unsupported("missing box for node: \{edge.dst_id}")
+            }
+            let src_shifted = match src_ports.get(edge.index) {
+              Some(p) =>
+                match direction {
+                  Down | Up =>
+                    clamp_port_axis_by_direction(
+                      @graph.Point::new(p.x + delta, p.y),
+                      src_box,
+                      direction,
+                      config,
+                    )
+                  Right | Left =>
+                    clamp_port_axis_by_direction(
+                      @graph.Point::new(p.x, p.y + delta),
+                      src_box,
+                      direction,
+                      config,
+                    )
+                }
+              None => continue
+            }
+            let dst_shifted = match dst_ports.get(edge.index) {
+              Some(p) =>
+                match direction {
+                  Down | Up =>
+                    clamp_port_axis_by_direction(
+                      @graph.Point::new(p.x + delta, p.y),
+                      dst_box,
+                      direction,
+                      config,
+                    )
+                  Right | Left =>
+                    clamp_port_axis_by_direction(
+                      @graph.Point::new(p.x, p.y + delta),
+                      dst_box,
+                      direction,
+                      config,
+                    )
+                }
+              None => continue
+            }
+            src_ports[edge.index] = src_shifted
+            dst_ports[edge.index] = dst_shifted
+          }
+          None => ()
+        }
+      }
+    }
+    apply_group(neg, -1)
+    apply_group(pos, 1)
+  }
 }
 
 ///|

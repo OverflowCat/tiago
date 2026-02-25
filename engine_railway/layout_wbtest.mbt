@@ -530,6 +530,76 @@ test "railway layout separates reciprocal edge labels" {
 }
 
 ///|
+test "railway layout splits reciprocal edge channels at endpoints" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "b", "a", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let r0 = patch.edges.get(0).unwrap_or([])
+  let r1 = patch.edges.get(1).unwrap_or([])
+  assert_true(r0.length() >= 2 && r1.length() >= 2)
+  let start_dx = (r0[0].x - r1[r1.length() - 1].x).abs()
+  let end_dx = (r0[r0.length() - 1].x - r1[0].x).abs()
+  assert_true(
+    start_dx >= 8.0 || end_dx >= 8.0,
+    msg="reciprocal edges should not share exact endpoint channel",
+  )
+}
+
+///|
+test "railway layout splits reciprocal channels in legend_auto pattern" {
+  let t = @graph.ObjectInput::new("true")
+  let client = @graph.ObjectInput::new("client")
+  let server = @graph.ObjectInput::new("server")
+  let db = @graph.ObjectInput::from_parts(
+    "db",
+    "db",
+    @graph.Cylinder,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    [],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let g = @graph.GraphInput::new("legend_auto_like")
+  g.objects.append([t, client, server, db])
+  g.edges.push(@graph.EdgeInput::new(0, "client", "server", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "server", "db", false, true))
+  g.edges.push(@graph.EdgeInput::new(2, "db", "server", false, true))
+  g.edges.push(@graph.EdgeInput::new(3, "server", "client", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let forward = patch.edges.get(0).unwrap_or([])
+  let backward = patch.edges.get(3).unwrap_or([])
+  assert_true(forward.length() >= 2 && backward.length() >= 2)
+  let client_channel_dx = (forward[0].x - backward[backward.length() - 1].x).abs()
+  let server_channel_dx = (forward[forward.length() - 1].x - backward[0].x).abs()
+  assert_true(
+    client_channel_dx >= 8.0 || server_channel_dx >= 8.0,
+    msg=
+      "legend_auto reciprocal edge should split channels (client=\{client_channel_dx}, server=\{server_channel_dx})",
+  )
+}
+
+///|
 test "railway layout keeps passthrough layout data" {
   let a = @graph.ObjectInput::new("a")
   let b = @graph.ObjectInput::new("b")
