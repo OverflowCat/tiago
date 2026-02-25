@@ -31,15 +31,15 @@
 <rect x="50" y="210" width="106" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="50" y="370" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="50" y="530" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 63.270572550943626 51.95680246532035 C 76.2962614296609 113.60863950693593 82.80910586901955 144.43455802774372 95.83479474773682 206.0863950693593" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="55.25939849624061" y="119.5" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="79.7593984962406" y="135.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 93.20682799177682 366.0021099673582 C 96.48221440472142 265.20042199347165 98.11990761119371 214.79957800652838 101.39529402413831 113.99789003264182" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
-<rect x="79.30106100795757" y="229.5" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="97.30106100795757" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
-<path d="M 95.16637977551052 528.0014244633325 C 96.58630446447832 490.39971510733346 97.29626680896222 471.59886042933397 98.71619149793001 433.997151073335" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 93.14187553434995 368.00105498367907 C 96.4432429302653 266.3997890032642 98.09392662822296 215.59915601305673 101.39529402413831 113.99789003264182" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 63.270572550943626 51.95680246532035 C 76.2962614296609 113.60863950693593 82.80910586901955 144.43455802774372 95.83479474773682 206.0863950693593" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 102.62130174925107 111.99999124686255 C 102.7325443838776 149.60000175062748 102.78816570119086 168.40000700250997 102.89940833581738 206.0000175062749" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="78.26331360946745" y="149.5" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="102.76331360946745" y="165.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 100.2035457626879 366.00012894132504 C 101.01292590130606 265.200025788265 101.41761597061513 214.799974211735 102.2269961092333 113.99987105867497" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
+<rect x="83.2152709359606" y="229.5" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="101.2152709359606" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
+<path d="M 100 528 C 100 490.4 100 471.6 100 434" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 100.18748716705824 368.0000644706625 C 101.00329074392826 266.39998710586747 101.41119253236327 215.59994842346998 102.2269961092333 113.99987105867497" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 102.62130174925107 111.99999124686255 C 102.7325443838776 149.60000175062748 102.78816570119086 168.40000700250997 102.89940833581738 206.0000175062749" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="102.5" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
 <text x="103" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">PostgreSQL</text>
 <text x="100" y="405.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">client</text>

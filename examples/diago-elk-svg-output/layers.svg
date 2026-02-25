@@ -30,8 +30,8 @@
 <rect x="50" y="50" width="105" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="50" y="210" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="50" y="370" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 63.240857062434024 51.96284574245094 C 75.29167821157336 113.60743085150982 81.31708878614302 144.42972340603927 93.36790993528234 206.07430851509812" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 63.06820260780356 51.988832265841204 C 76.39860437639848 177.60223354683177 83.06380526069593 240.40893418732702 96.39420702929084 366.0223354683176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 101.89349436085746 111.99978120603544 C 101.33727745918945 149.6000437587929 101.05916900835545 168.40017503517166 100.50295210668745 206.00043758792913" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 102.22592198366866 111.999940266871 C 101.44066578162537 213.6000119466258 101.04803768060371 264.4000477865032 100.26278147856043 366.000119466258" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="102.5" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
 <text x="100" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
 <text x="100" y="405.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Cache</text>

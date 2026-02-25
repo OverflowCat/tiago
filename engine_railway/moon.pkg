@@ -1,6 +1,7 @@
 import {
   "Milky2018/diago/engine_api",
   "Milky2018/diago/graph",
+  "Milky2018/diago/text_metrics",
   "moonbitlang/core/hashset",
   "moonbitlang/core/cmp",
   "moonbitlang/core/priority_queue",

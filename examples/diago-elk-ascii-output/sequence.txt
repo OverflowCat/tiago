@@ -1,22 +1,22 @@
-     +--------+   
-     | Alice  |   
-     |    |   |   
-    <----+|---+   
-      |  ||       
-     Hi there!    
-      |  ||       
-    Hello||       
-      |  ||       
-    <-|---|---+   
-     || Bob   |   
-Request data  |   
-     +|---|---+   
-      |  ||       
-  Another response
-      |  ||       
-  Another request 
-      |  ||       
-    <----+|----+  
-     | Server  |  
-     |    |    |  
-     +---------+  
+   +--------+   
+   | Alice  |   
+   |    |   |   
+   +----|---+   
+        |       
+        ^       
+      Hello     
+        v       
+        |       
+   +----|---+   
+   |  Bob   |   
+  Request data  
+   +----|---+   
+        |       
+        ^       
+Another response
+        v       
+        |       
+   +----|----+  
+   | Server  |  
+   |    |    |  
+   +---------+  

@@ -289,6 +289,10 @@ test "railway layout fans out shared source ports" {
     r0[0].x != r1[0].x,
     msg="shared source should have distinct exit x",
   )
+  assert_true(
+    (r0[0].x - r1[0].x).abs() >= 12.0,
+    msg="shared source port fan-out should be visually separated",
+  )
 }
 
 ///|
@@ -406,4 +410,300 @@ test "A -> B" {
   assert_true(a_box.y < b_box.y)
   assert_true(start.y == a_box.y + a_box.height)
   assert_true(end.y == b_box.y)
+}
+
+///|
+test "railway layout computes edge label boxes" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let base_edge = @graph.EdgeInput::new(0, "a", "b", false, true)
+  let edge = @graph.EdgeInput::from_parts(
+    base_edge.index,
+    base_edge.src_id,
+    base_edge.dst_id,
+    base_edge.src_arrow,
+    base_edge.dst_arrow,
+    base_edge.src_arrowhead,
+    base_edge.dst_arrowhead,
+    base_edge.src_anchor,
+    base_edge.dst_anchor,
+    "hello",
+    base_edge.style,
+    base_edge.route,
+    base_edge.bend_points,
+    base_edge.is_curve,
+    base_edge.z_index,
+    base_edge.reference_count,
+    base_edge.label_box,
+    base_edge.src_column_index,
+    base_edge.dst_column_index,
+  )
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(edge)
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let label_box = patch.edge_labels
+    .get(edge.index)
+    .unwrap_or(@graph.Box::new(0.0, 0.0, 0.0, 0.0))
+  assert_true(
+    patch.edge_labels.contains(edge.index),
+    msg="labeled edges should have computed label boxes",
+  )
+  assert_true(
+    label_box.width > 0.0 && label_box.height > 0.0,
+    msg="label box should have positive size",
+  )
+}
+
+///|
+test "railway layout keeps passthrough layout data" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  g.activation_boxes.push(("a", @graph.Box::new(0.0, 0.0, 10.0, 10.0)))
+  g.sequence_notes.push(("a", "note", @graph.Box::new(5.0, 5.0, 30.0, 20.0)))
+  g.sequence_fragments_layout.push(
+    @graph.SequenceFragmentLayout::new(
+      "alt",
+      Some("x"),
+      Some(@graph.Box::new(0.0, 0.0, 60.0, 40.0)),
+      0,
+      0,
+      [],
+    ),
+  )
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  assert_true(patch.activation_boxes.length() == 1)
+  assert_true(patch.sequence_notes.length() == 1)
+  assert_true(patch.sequence_fragments.length() == 1)
+}
+
+///|
+test "railway levels reduce simple bipartite crossing" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let c = @graph.ObjectInput::new("c")
+  let d = @graph.ObjectInput::new("d")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b, c, d])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "d", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "b", "c", false, true))
+
+  let n = g.objects.length()
+  let id_to_idx : Map[String, Int] = Map::new(capacity=n * 2)
+  for i in 0..<n {
+    id_to_idx[g.objects[i].id] = i
+  }
+  let plan = els_tarjan_plan(g)
+  let (self_loop, reversed) = dag_edge_index_sets(plan)
+  let depths = compute_depths(n, g, id_to_idx, plan, self_loop, reversed)
+  let levels = make_levels(g, depths)
+  assert_true(levels.length() == 2)
+  let upper_pos : Map[String, Int] = {}
+  let lower_pos : Map[String, Int] = {}
+  for i, id in levels[0] {
+    upper_pos[id] = i
+  }
+  for i, id in levels[1] {
+    lower_pos[id] = i
+  }
+  let a_before_b = upper_pos.get("a").unwrap_or(0) <
+    upper_pos.get("b").unwrap_or(0)
+  let d_before_c = lower_pos.get("d").unwrap_or(0) <
+    lower_pos.get("c").unwrap_or(0)
+  assert_true(
+    a_before_b == d_before_c,
+    msg="layer ordering should align edge pairs to avoid the simple crossing",
+  )
+}
+
+///|
+test "railway object size expands for long labels" {
+  let cfg = @engine_api.LayoutConfig::new()
+  let obj = @graph.ObjectInput::new(
+    "this_is_a_super_long_node_label_for_railway_engine",
+  )
+  let (w, h) = object_size(obj, cfg)
+  assert_true(w > cfg.default_width)
+  assert_true(h >= cfg.default_height)
+}
+
+///|
+test "railway parallel vertical edges avoid endpoint zig-zag" {
+  let user = @graph.ObjectInput::new("user")
+  let client = @graph.ObjectInput::new("client")
+  let server = @graph.ObjectInput::new("server")
+  let database = @graph.ObjectInput::new("database")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([user, client, server, database])
+  // user -> client -> server -> database
+  g.edges.push(@graph.EdgeInput::new(0, "user", "client", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "client", "server", true, true))
+  g.edges.push(@graph.EdgeInput::new(2, "client", "server", false, true))
+  g.edges.push(@graph.EdgeInput::new(3, "server", "database", false, true))
+  g.edges.push(@graph.EdgeInput::new(4, "server", "database", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  fn route_is_straight_vertical(route : Array[@graph.Point]) -> Bool {
+    if route.length() < 2 {
+      return false
+    }
+    let start = route[0]
+    let end = route[route.length() - 1]
+    (start.x - end.x).abs() <= 0.000001
+  }
+  assert_true(route_is_straight_vertical(patch.edges.get(2).unwrap_or([])))
+  assert_true(route_is_straight_vertical(patch.edges.get(4).unwrap_or([])))
+}
+
+///|
+test "railway vertical flow keeps arrow tangent vertical" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let c = @graph.ObjectInput::new("c")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b, c])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "b", "c", false, true))
+  g.edges.push(@graph.EdgeInput::new(2, "c", "a", false, true))
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  fn has_vertical_end_tangent(route : Array[@graph.Point]) -> Bool {
+    if route.length() < 2 {
+      return false
+    }
+    let n = route.length()
+    let prev = route[n - 2]
+    let end = route[n - 1]
+    (prev.x - end.x).abs() <= 0.000001
+  }
+  fn has_vertical_start_tangent(route : Array[@graph.Point]) -> Bool {
+    if route.length() < 2 {
+      return false
+    }
+    let first = route[0]
+    let second = route[1]
+    (first.x - second.x).abs() <= 0.000001
+  }
+  for edge in g.edges {
+    let route = patch.edges.get(edge.index).unwrap_or([])
+    assert_true(
+      has_vertical_end_tangent(route),
+      msg="edge \{edge.index} should keep vertical tangent at end",
+    )
+    if route.length() >= 2 {
+      let first = route[0]
+      let last = route[route.length() - 1]
+      if last.y >= first.y {
+        assert_true(
+          has_vertical_start_tangent(route),
+          msg="forward edge \{edge.index} should keep vertical start tangent",
+        )
+      }
+    }
+  }
+}
+
+///|
+test "railway keeps parallel same-endpoint edges separated" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "a", "b", false, true))
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let r0 = patch.edges.get(0).unwrap_or([])
+  let r1 = patch.edges.get(1).unwrap_or([])
+  assert_true(r0.length() >= 2 && r1.length() >= 2)
+  assert_true((r0[0].x - r1[0].x).abs() >= 12.0)
+}
+
+///|
+test "railway fits container box around children" {
+  let container = @graph.ObjectInput::from_parts(
+    "container",
+    "container",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["a", "b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([container, a, b])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let c_box = patch.nodes.get("container").unwrap()
+  let a_box = patch.nodes.get("a").unwrap()
+  let b_box = patch.nodes.get("b").unwrap()
+  let child_min_x = @cmp.minimum(a_box.x, b_box.x)
+  let child_max_x = @cmp.maximum(a_box.x + a_box.width, b_box.x + b_box.width)
+  let child_min_y = @cmp.minimum(a_box.y, b_box.y)
+  let child_max_y = @cmp.maximum(a_box.y + a_box.height, b_box.y + b_box.height)
+  assert_true(c_box.x <= child_min_x)
+  assert_true(c_box.y <= child_min_y)
+  assert_true(c_box.x + c_box.width >= child_max_x)
+  assert_true(c_box.y + c_box.height >= child_max_y)
+}
+
+///|
+test "railway keeps external node outside container bounds" {
+  let container = @graph.ObjectInput::from_parts(
+    "container",
+    "container",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["a", "b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let c = @graph.ObjectInput::new("c")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([container, a, b, c])
+  g.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "b", "c", false, true))
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let ctn = patch.nodes.get("container").unwrap()
+  let out = patch.nodes.get("c").unwrap()
+  let overlap_x = !(out.x + out.width <= ctn.x || ctn.x + ctn.width <= out.x)
+  let overlap_y = !(out.y + out.height <= ctn.y || ctn.y + ctn.height <= out.y)
+  assert_true(!(overlap_x && overlap_y))
 }

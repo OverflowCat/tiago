@@ -128,6 +128,91 @@ fn order_layer_by_barycenter(
 }
 
 ///|
+fn push_neighbor(
+  neighbors : Map[String, Array[String]],
+  key : String,
+  value : String,
+) -> Unit {
+  match neighbors.get(key) {
+    Some(arr) => arr.push(value)
+    None => neighbors[key] = [value]
+  }
+}
+
+///|
+fn crossing_count(
+  layer : Array[String],
+  fixed_layer : Array[String],
+  neighbors : Map[String, Array[String]],
+) -> Int {
+  if layer.length() <= 1 || fixed_layer.length() <= 1 {
+    return 0
+  }
+  let fixed_pos : Map[String, Int] = {}
+  for i, node in fixed_layer {
+    fixed_pos[node] = i
+  }
+  let edge_pairs : Array[(Int, Int)] = []
+  for i, node in layer {
+    match neighbors.get(node) {
+      Some(ns) =>
+        for nid in ns {
+          match fixed_pos.get(nid) {
+            Some(j) => edge_pairs.push((i, j))
+            None => ()
+          }
+        }
+      None => ()
+    }
+  }
+  let mut crossings = 0
+  for i in 0..<edge_pairs.length() {
+    let (a0, b0) = edge_pairs[i]
+    for j in (i + 1)..<edge_pairs.length() {
+      let (a1, b1) = edge_pairs[j]
+      if (a0 < a1 && b0 > b1) || (a0 > a1 && b0 < b1) {
+        crossings = crossings + 1
+      }
+    }
+  }
+  crossings
+}
+
+///|
+fn improve_layer_by_adjacent_swaps(
+  layer : Array[String],
+  fixed_layer : Array[String],
+  neighbors : Map[String, Array[String]],
+) -> Unit {
+  if layer.length() <= 1 || fixed_layer.length() <= 1 {
+    return
+  }
+  let max_passes = layer.length() * 2
+  let mut pass = 0
+  let mut improved = true
+  while improved && pass < max_passes {
+    improved = false
+    pass = pass + 1
+    let mut i = 0
+    while i + 1 < layer.length() {
+      let before = crossing_count(layer, fixed_layer, neighbors)
+      let left = layer[i]
+      let right = layer[i + 1]
+      layer[i] = right
+      layer[i + 1] = left
+      let after = crossing_count(layer, fixed_layer, neighbors)
+      if after < before {
+        improved = true
+      } else {
+        layer[i] = left
+        layer[i + 1] = right
+      }
+      i = i + 1
+    }
+  }
+}
+
+///|
 type Level = Array[String]
 
 ///|
@@ -176,6 +261,10 @@ fn make_levels(
     if du >= dv {
       raise Unsupported("make_levels: \{du} >= \{dv}")
     }
+    let src_id = ids[u]
+    let dst_id = ids[v]
+    push_neighbor(outgoing, src_id, dst_id)
+    push_neighbor(incoming, dst_id, src_id)
   }
   let thoroughness = 4
   if nodes_by_level.length() > 1 {
@@ -186,9 +275,19 @@ fn make_levels(
           nodes_by_level[i - 1],
           incoming,
         )
+        improve_layer_by_adjacent_swaps(
+          nodes_by_level[i],
+          nodes_by_level[i - 1],
+          incoming,
+        )
       }
       for i = nodes_by_level.length() - 2; i >= 0; i = i - 1 {
         order_layer_by_barycenter(
+          nodes_by_level[i],
+          nodes_by_level[i + 1],
+          outgoing,
+        )
+        improve_layer_by_adjacent_swaps(
           nodes_by_level[i],
           nodes_by_level[i + 1],
           outgoing,

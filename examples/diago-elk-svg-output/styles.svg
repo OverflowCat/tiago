@@ -34,12 +34,12 @@
 <rect x="50" y="370" width="150" height="60" fill="#ffebee" stroke="red" stroke-width="2" rx="0" ry="0"/>
 <path d="M 65 530 L 141 530 C 149.25 530 156 545 156 560 C 156 575 149.25 590 141 590 L 65 590 C 56.75 590 50 575 50 560 C 50 545 56.75 530 65 530 Z" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2"/>
 <rect x="50" y="690" width="100" height="60" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 63.240857062434024 51.96284574245094 C 75.29167821157336 113.60743085150982 81.31708878614302 144.42972340603927 93.36790993528234 206.07430851509812" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
-<rect x="53.99624060150376" y="119.5" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="78.49624060150376" y="135.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 63.014080423822094 51.99383314250837 C 77.93836038582381 241.60123337149832 85.40050036682467 336.4049334859933 100.3247803288264 526.0123337149832" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 98.33502813613659 528.0420072710701 C 106.17579157556989 490.391598545786 110.09617329528653 471.56639418314387 117.93693673471984 433.91598545785973" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 88.30689318025404 211.99947038659215 C 92.67110218236351 401.60010592268156 94.85320668341825 496.40042369072626 99.21741568552773 686.0010592268158" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 101.89349436085746 111.99978120603544 C 101.33727745918945 149.6000437587929 101.05916900835545 168.40017503517166 100.50295210668745 206.00043758792913" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
+<rect x="76.68343195266272" y="149.5" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="101.18343195266272" y="165.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 102.53540740629212 111.99999892455506 C 102.7071407409638 277.60000021508904 102.79300740829962 360.400000860356 102.96474074297129 526.0000021508899" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 106.755853547997 528.0200049330891 C 112.11765520133177 490.39599901338215 114.79855602799914 471.5839960535287 120.1603576813339 433.95999013382175" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 100 272 C 100 437.6 100 520.4 100 686" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="102.5" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
 <text x="100" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
 <text x="125" y="406.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="18" style="fill: #0A0F25; font-weight: 700">Important Node</text>
