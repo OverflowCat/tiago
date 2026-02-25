@@ -365,9 +365,22 @@ fn make_root_layout_options(
     "algorithm": Json::string("layered"),
     "elk.direction": Json::string(elk_direction(direction)),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
+    "elk.edgeRouting": Json::string("ORTHOGONAL"),
+    "elk.layered.mergeEdges": Json::boolean(false),
+    "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
+    "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
+    "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
+    "elk.layered.thoroughness": Json::number(8.0),
+    "elk.layered.spacing.edgeEdgeBetweenLayers": Json::number(50.0),
+    "elk.spacing.edgeNode": Json::number(40.0),
+    "elk.nodeSize.constraints": Json::string("MINIMUM_SIZE"),
+    "elk.contentAlignment": Json::string("H_CENTER V_CENTER"),
+    "spacing.nodeNodeBetweenLayers": Json::number(spacing.to_double()),
     "elk.layered.spacing.nodeNodeBetweenLayers": Json::number(
       spacing.to_double(),
     ),
+    "spacing.edgeNodeBetweenLayers": Json::number(40.0),
+    "elk.spacing.nodeSelfLoop": Json::number(50.0),
     "elk.padding": Json::string(
       "[left=\{padding}, top=\{padding}, right=\{padding}, bottom=\{padding}]",
     ),
@@ -380,7 +393,20 @@ fn make_container_layout_options(
 ) -> Map[String, Json] {
   let padding = layout_padding_value(config)
   {
+    "elk.layered.crossingMinimization.forceNodeModelOrder": Json::boolean(true),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
+    "elk.edgeRouting": Json::string("ORTHOGONAL"),
+    "elk.layered.mergeEdges": Json::boolean(false),
+    "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
+    "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
+    "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
+    "elk.layered.thoroughness": Json::number(8.0),
+    "elk.layered.spacing.edgeEdgeBetweenLayers": Json::number(50.0),
+    "elk.spacing.edgeNode": Json::number(40.0),
+    "spacing.edgeNodeBetweenLayers": Json::number(40.0),
+    "elk.spacing.nodeSelfLoop": Json::number(50.0),
+    "elk.nodeSize.constraints": Json::string("MINIMUM_SIZE"),
+    "elk.contentAlignment": Json::string("H_CENTER V_CENTER"),
     "elk.padding": Json::string(
       "[left=\{padding}, top=\{padding}, right=\{padding}, bottom=\{padding}]",
     ),
