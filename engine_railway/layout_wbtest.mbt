@@ -594,8 +594,7 @@ test "railway layout splits reciprocal channels in legend_auto pattern" {
   let server_channel_dx = (forward[forward.length() - 1].x - backward[0].x).abs()
   assert_true(
     client_channel_dx >= 8.0 || server_channel_dx >= 8.0,
-    msg=
-      "legend_auto reciprocal edge should split channels (client=\{client_channel_dx}, server=\{server_channel_dx})",
+    msg="legend_auto reciprocal edge should split channels (client=\{client_channel_dx}, server=\{server_channel_dx})",
   )
 }
 

@@ -2,20 +2,20 @@
 |  true   |      | Client  |  
 |         |      |         |  
 +---------+      +---------+  
-                      |       
-                  resp^nse    
-                   request+   
-                      |   |   
-                      v   |   
-                 +--------+--+
+                    |  ^      
+                   response   
+                 request---+  
+                    |      |  
+                    v      |  
+                 +---------+-+
                  |API Server |
                  |           |
                  +-----------+
-                      |       
-                   res^lts    
-                    query-+   
-                      |   |   
-                      v   |   
-                  .-------+   
+                    |  ^      
+                    results   
+                  query+---+  
+                    |      |  
+                    v      |  
+                  .--------+  
                  |\-____-/|   
                   Database    

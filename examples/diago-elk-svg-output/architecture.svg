@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="533" height="3220" viewBox="-50 -50 533 3220" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="773" height="2180" viewBox="-50 -50 773 2180" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,81 +27,81 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="50" y="50" width="333" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 150 270 H 50 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 68.74084919472914 241.70542635658916 63.0307467057101 235.89147286821705 63.0307467057101 229.53488372093022 C 63.0307467057101 218.75968992248062 79.57540263543191 210 99.9267935578331 210 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 66.52673860911271 390.9751051625239 C 66.52673860911271 391.6125047801147 65.860551558753 392.2497896749522 65.19448441247003 392.2497896749522 C 56.70131894484413 393.04642447418735 50.039928057553965 401.17269598470364 50.039928057553965 411.05158699808794 C 50.039928057553965 421.5678776290631 57.53393285371703 430.0127342256214 67.0263788968825 430.0127342256214 H 131.47482014388493 C 141.6334532374101 430.0127342256214 149.96007194244606 420.93047801147225 149.96007194244606 409.93625239005735 C 149.96007194244606 399.4199617590822 142.29940047961634 390.6564053537285 132.6406474820144 390.019120458891 C 131.97446043165468 390.019120458891 131.30839328537172 389.5410707456979 131.14184652278178 388.7444359464627 C 128.97685851318946 378.0689101338432 118.9847721822542 370.10198852772464 107.32757793764988 370.10198852772464 C 99.66702637889688 370.10198852772464 92.83908872901678 373.44810707456975 88.5093525179856 378.70619502868067 C 88.00971223021583 379.34359464627147 87.17709832134292 379.5029445506692 86.67745803357313 379.34359464627147 C 85.01211031175059 378.70619502868067 83.18033573141486 378.38760994263856 81.18189448441245 378.38760994263856 C 73.52122302158273 378.22814531548755 67.19292565947242 383.8049330783939 66.52673860911271 390.9751051625239 Z" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2"/>
-<polygon points="81.25,530 143.75,530 175,560 143.75,590 81.25,590 50,560" fill="#fff3e0" stroke="#0A0F25" stroke-width="2"/>
-<rect x="50" y="690" width="216" height="480" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1270" width="214" height="320" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 50 1714 C 50 1690 98.6 1690 104 1690 C 109.4 1690 158 1690 158 1714 L 158 1726 C 158 1750 109.4 1750 104 1750 C 98.6 1750 50 1750 50 1726 L 50 1714 Z" fill="#ffebee" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="104" cy="1714" rx="54" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 50 1714 C 50 1738 98.6 1738 104 1738 C 109.4 1738 158 1738 158 1714" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<rect x="50" y="1850" width="204" height="480" fill="#fff8e1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 65 2430 L 167 2430 C 175.25 2430 182 2445 182 2460 C 182 2475 175.25 2490 167 2490 L 65 2490 C 56.75 2490 50 2475 50 2460 C 50 2445 56.75 2430 65 2430 Z" fill="#e0f2f1" stroke="#0A0F25" stroke-width="2"/>
-<rect x="50" y="2590" width="200" height="320" fill="#fce4ec" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 65 3010 L 164 3010 C 174.95 3010 179 3025 179 3040 C 179 3055 174.95 3070 164 3070 L 65 3070 C 54.05 3070 50 3055 50 3040 C 50 3025 54.05 3010 65 3010 Z" fill="#f5f5f5" stroke="#0A0F25" stroke-width="2"/>
-<rect x="100" y="900" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="100" y="1060" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 100 1924 C 100 1900 146.8 1900 152 1900 C 157.2 1900 204 1900 204 1924 L 204 1936 C 204 1960 157.2 1960 152 1960 C 146.8 1960 100 1960 100 1936 L 100 1924 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="152" cy="1924" rx="52" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 100 1924 C 100 1948 146.8 1948 152 1948 C 157.2 1948 204 1948 204 1924" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 100 2084 C 100 2060 145 2060 150 2060 C 155 2060 200 2060 200 2084 L 200 2096 C 200 2120 155 2120 150 2120 C 145 2120 100 2120 100 2096 L 100 2084 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="150" cy="2084" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 100 2084 C 100 2108 145 2108 150 2108 C 155 2108 200 2108 200 2084" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 100 2244 C 100 2220 145 2220 150 2220 C 155 2220 200 2220 200 2244 L 200 2256 C 200 2280 155 2280 150 2280 C 145 2280 100 2280 100 2256 L 100 2244 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<ellipse cx="150" cy="2244" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
-<path d="M 100 2244 C 100 2268 145 2268 150 2268 C 155 2268 200 2268 200 2244" fill="none" stroke="#0A0F25" stroke-width="2"/>
-<rect x="100" y="740" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="100" y="1320" width="114" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="100" y="2640" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="100" y="2800" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="100" y="1480" width="114" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 151.51479455664392 1961.9998599635903 C 151.06982215376 1999.600028007282 150.84733595231805 2018.4001120291277 150.4023635494341 2056.0002800728194" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="135.4467455621302" y="1999.5" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="150.9467455621302" y="2015.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
-<path d="M 151.78073745397748 1961.9999617701808 C 151.1525326518918 2063.600007645964 150.83843025084892 2114.4000305838554 150.21022544876323 2216.0000764596384" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="135.48929845422117" y="2079.5" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="150.98929845422117" y="2095.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
-<path d="M 100 272 C 100 309.6 100 328.4 100 366" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 102.91851728173799 431.994420601875 C 105.73345630696602 469.601115879625 107.14092581958003 488.4044635185 109.95586484480806 526.01115879625" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 120.49558260569009 591.9570514907487 C 132.63977236775085 649.6085897018503 138.71186724878126 678.4343588074012 150.85605701084202 736.0858970185028" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 116.7569405157001 591.9852763994988 C 131.59618975153126 713.6029447201003 139.01581436944684 774.4117788804009 153.85506360527802 896.0294472010023" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 115.40045751002127 591.9927228199821 C 131.27742849799574 777.6014554360036 139.21591399198297 870.4058217440142 155.09288497995746 1056.0145543600358" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 157.94201653400526 801.9999970450172 C 157.58858842873613 1007.6000005909966 157.4118743761016 1110.4000023639862 157.05844627083246 1316.0000059099657" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 157.9183432085255 961.9999943979788 C 157.58319526362035 1103.6000011204042 157.41562129116778 1174.400004481617 157.08047334626264 1316.0000112040425" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 157.94201653400526 961.9999970450172 C 157.58858842873613 1167.6000005909966 157.4118743761016 1270.4000023639862 157.05844627083246 1476.0000059099657" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 157.9183432085255 1121.9999943979788 C 157.58319526362035 1263.6000011204042 157.41562129116778 1334.400004481617 157.08047334626264 1476.0000112040425" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 152.042101618479 1381.9801006027892 C 134.7559395378959 1503.6039798794422 126.11285849760434 1564.4159195177685 108.82669641702122 1686.0397987944216" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 147.69006357135365 1541.9423824261814 C 133.53976506350705 1599.6115235147638 126.46461580958373 1628.446094059055 112.31431730173713 1686.1152351476373" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 156.7100832795493 1381.9999261293576 C 154.94294202177608 1587.6000147741286 154.0593713928895 1690.400059096514 152.29223013511626 1896.000147741285" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 156.591717633567 1541.9998599635903 C 154.91597599991383 1683.600028007282 154.07810518308725 1754.4001120291277 152.40236354943409 1896.0002800728194" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 155.78734446525112 1381.9986391575167 C 140.37432123040657 1799.6002721684968 132.66780961298429 2008.4010886739866 117.25478637813971 2426.0027216849667" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 155.57689948907705 1541.9981439420442 C 140.3323989301619 1895.6003712115912 132.71014865070435 2072.401484846365 117.4656480917892 2426.0037121159116" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 121.9776523937985 2491.9756740311905 C 131.04891396568473 2549.6048651937617 135.58454475162787 2578.419460775048 144.65580632351413 2636.048651937619" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 119.18159967090617 2491.9917383260677 C 130.26956241875993 2613.6016523347866 135.81354379268683 2674.4066093391457 146.9015065405406 2796.0165233478647" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 146.6342444725273 2701.9910226547627 C 135.0728050847333 2823.6017954690474 129.29208539083626 2884.40718187619 117.73064600304224 3006.0179546904747" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 143.67653746970305 2861.973669676388 C 134.23135917272606 2919.6052660647224 129.50877002423755 2948.4210642588896 120.06359172726054 3006.052660647224" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 150.0833363620882 2638.000007328632 C 150.81318456588488 2368.399998534274 151.17810866778325 2233.5999941370947 151.90795687157993 1963.9999853427366" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<text x="216.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
-<text x="100" y="291" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
-<text x="99.94999999999999" y="416.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CDN</text>
-<text x="112.5" y="565.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Load Balancer</text>
-<text x="158" y="677" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Web Tier</text>
-<text x="157" y="1257" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Application Tier</text>
-<text x="104" y="1725.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Redis Cache</text>
-<text x="152" y="1837" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
-<text x="104" y="2465.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Message Queue</text>
-<text x="150" y="2577" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Background Workers</text>
-<text x="114.5" y="3045.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Object Storage</text>
-<text x="158" y="935.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
-<text x="158" y="1095.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 3</text>
-<text x="152" y="1935.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
-<text x="150" y="2095.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 1</text>
-<text x="150" y="2255.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 2</text>
-<text x="158" y="775.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
-<text x="157" y="1355.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 1</text>
-<text x="150" y="2675.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 1</text>
-<text x="150" y="2835.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 2</text>
-<text x="157" y="1515.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 2</text>
+<rect x="143.25" y="50" width="333" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 596.25 110 H 496.25 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 514.9908491947291 81.70542635658914 509.2807467057101 75.89147286821705 509.2807467057101 69.53488372093022 C 509.2807467057101 58.75968992248062 525.8254026354319 50 546.1767935578331 50 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 512.7767386091127 230.9751051625239 C 512.7767386091127 231.61250478011473 512.1105515587531 232.2497896749522 511.44448441247005 232.2497896749522 C 502.95131894484416 233.0464244741874 496.289928057554 241.17269598470364 496.289928057554 251.05158699808797 C 496.289928057554 261.5678776290631 503.7839328537171 270.01273422562144 513.2763788968825 270.01273422562144 H 577.7248201438849 C 587.8834532374101 270.01273422562144 596.2100719424461 260.9304780114723 596.2100719424461 249.9362523900574 C 596.2100719424461 239.41996175908227 588.5494004796163 230.65640535372853 578.8906474820145 230.01912045889105 C 578.2244604316548 230.01912045889105 577.5583932853718 229.54107074569794 577.3918465227819 228.74443594646274 C 575.2268585131895 218.06891013384325 565.2347721822542 210.1019885277247 553.57757793765 210.1019885277247 C 545.9170263788969 210.1019885277247 539.0890887290169 213.44810707456983 534.7593525179857 218.70619502868072 C 534.2597122302159 219.34359464627155 533.427098321343 219.50294455066924 532.9274580335732 219.34359464627155 C 531.2621103117507 218.70619502868072 529.430335731415 218.38760994263868 527.4318944844125 218.38760994263868 C 519.7712230215827 218.22814531548758 513.4429256594724 223.80493307839387 512.7767386091127 230.9751051625239 Z" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2"/>
+<polygon points="515,370 577.5,370 608.75,400 577.5,430 515,430 483.75,400" fill="#fff3e0" stroke="#0A0F25" stroke-width="2"/>
+<rect x="407" y="530" width="216" height="320" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="408" y="950" width="214" height="240" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 50 1314 C 50 1290 98.6 1290 104 1290 C 109.4 1290 158 1290 158 1314 L 158 1326 C 158 1350 109.4 1350 104 1350 C 98.6 1350 50 1350 50 1326 L 50 1314 Z" fill="#ffebee" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="104" cy="1314" rx="54" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 50 1314 C 50 1338 98.6 1338 104 1338 C 109.4 1338 158 1338 158 1314" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="77" y="1790" width="375" height="240" fill="#fff8e1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 486 1290 L 588 1290 C 596.25 1290 603 1305 603 1320 C 603 1335 596.25 1350 588 1350 L 486 1350 C 477.75 1350 471 1335 471 1320 C 471 1305 477.75 1290 486 1290 Z" fill="#e0f2f1" stroke="#0A0F25" stroke-width="2"/>
+<rect x="415" y="1450" width="200" height="240" fill="#fce4ec" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 487 1790 L 586 1790 C 596.95 1790 601 1805 601 1820 C 601 1835 596.95 1850 586 1850 L 487 1850 C 476.05 1850 472 1835 472 1820 C 472 1805 476.05 1790 487 1790 Z" fill="#f5f5f5" stroke="#0A0F25" stroke-width="2"/>
+<rect x="457" y="740" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="457" y="580" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 127 1874 C 127 1850 173.8 1850 179 1850 C 184.2 1850 231 1850 231 1874 L 231 1886 C 231 1910 184.2 1910 179 1910 C 173.8 1910 127 1910 127 1886 L 127 1874 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="179" cy="1874" rx="52" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 127 1874 C 127 1898 173.8 1898 179 1898 C 184.2 1898 231 1898 231 1874" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 302 1864 C 302 1840 347 1840 352 1840 C 357 1840 402 1840 402 1864 L 402 1876 C 402 1900 357 1900 352 1900 C 347 1900 302 1900 302 1876 L 302 1864 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="352" cy="1864" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 302 1864 C 302 1888 347 1888 352 1888 C 357 1888 402 1888 402 1864" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 302 1944 C 302 1920 347 1920 352 1920 C 357 1920 402 1920 402 1944 L 402 1956 C 402 1980 357 1980 352 1980 C 347 1980 302 1980 302 1956 L 302 1944 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="352" cy="1944" rx="50" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 302 1944 C 302 1968 347 1968 352 1968 C 357 1968 402 1968 402 1944" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<rect x="457" y="660" width="116" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="458" y="1000" width="114" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="465" y="1500" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="465" y="1580" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="458" y="1080" width="114" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 181.75331730798877 1850.2306929329966 C 228.2626698717356 1855.6314306024851 251.517346153609 1858.3317994372296 298.0266987173558 1863.7325371067182" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="225.38333333333333" y="1846.5969614863557" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="240.88333333333333" y="1862.5969614863557" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<path d="M 178.73033767705036 1848.000071009979 C 172.87190927460136 1152.7999005860295 169.94269507337685 805.1998153740549 164.08426667092786 109.99964495010552 C 164.08426667092786 109.99964495010552 164 100 164 110 C 164 126 164 134 164 150 C 164 150 164 160 165.0445340718922 169.9452978121651 C 238.39925979610183 868.3759310373528 275.07662265820665 1217.5912476499464 348.4313483824163 1916.021880875134" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="148.5" y="129.30920189576477" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="164" y="145.30920189576477" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<path d="M 546.25 112 C 546.25 149.6 546.25 168.4 546.25 206" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 546.25 272 C 546.25 309.6 546.25 328.4 546.25 366" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 566.0599978800063 431.69599660801015 C 568.5160029679911 435.62560474878575 569.7440055119835 437.59040881917355 572.2000105999682 441.52001695994915 C 572.2000105999682 441.52001695994915 577.5 450 567.5 450 C 550.5 450 542 450 525 450 C 525 450 515 450 515 460 C 515 538.4 515 577.6 515 656" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 546.25 432 C 546.25 433.6 546.25 434.4 546.25 436 C 546.25 436 546.25 440 542.25 440 C 535.35 440 531.9 440 525 440 C 525 440 515 440 515 450 C 515 564.4 515 621.6 515 736" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 538.7737179132525 431.98240026556476 C 531.0785897506828 489.60351994688705 527.2310256693979 518.4140797875482 519.5358975068282 576.0351994688705" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 722 C 515 831.6 515 886.4 515 996" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 802 C 515 879.6 515 918.4 515 996" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 802 C 515 911.6 515 966.4 515 1076" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 642 C 515 815.6 515 902.4 515 1076" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1062 C 515 1113.2 515 1138.8 515 1190 C 515 1190 515 1200 505 1200 C 341.4 1200 259.6 1200 96 1200 C 96 1200 86 1200 87.48340452930245 1209.889363528683 C 92.05269799289307 1240.3513199526205 94.33734472468839 1255.5822981645892 98.90663818827902 1286.0442545885269" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1142 C 515 1165.2 515 1176.8 515 1200 C 515 1200 515 1210 505 1210 C 355.79999999999995 1210 281.20000000000005 1210 132 1210 C 132 1210 122 1210 120.3851143188946 1219.8687458289776 C 116.05308666394998 1246.3422481647501 113.88707283647769 1259.5789993326364 109.55504518153307 1286.052501668409" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1062 C 515 1121.2 515 1150.8 515 1210 C 515 1210 515 1220 505 1220 C 374.2 1220 308.8 1220 178 1220 C 178 1220 168 1220 168 1230 C 168 1419.8 168 1514.7 168 1704.5 C 168 1704.5 168 1710 173.5 1710 C 173.5 1710 173.5 1710 173.5 1710 C 173.5 1710 179 1710 179 1715.5 C 179 1767.7 179 1793.8 179 1846" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1142 C 515 1177.2 515 1194.8 515 1230 C 515 1230 515 1240 505 1240 C 378.6 1240 315.4 1240 189 1240 C 189 1240 179 1240 179 1250 C 179 1488.4 179 1607.6 179 1846" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515.1686281769938 1061.9928784553815 C 522.7508897492166 1151.6014243089237 526.542020535328 1196.4056972356948 534.1242821075508 1286.014243089237" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1142 C 515 1173.2 515 1188.8 515 1220 C 515 1220 515 1230 525 1230 C 534.6 1230 539.4 1230 549 1230 C 549 1230 559 1230 556.6254690952301 1239.7139900649677 C 552.0885397352346 1258.2741556285857 549.8200750552368 1267.5542384103949 545.2831456952413 1286.114403974013" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 554.4638374995443 1351.7524318173532 C 555.3710699996354 1353.4019454538825 555.824686249681 1354.2267022721473 556.7319187497721 1355.8762159086766 C 556.7319187497721 1355.8762159086766 559 1360 554.2936438947434 1360 C 542.576186336846 1360 536.7174575578973 1360 525 1360 C 525 1360 515 1360 515 1370 C 515 1420.4 515 1445.6 515 1496" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 531.7931742867271 1351.9957768675554 C 525.9608917698735 1441.6008446264889 523.0447505114466 1486.4033785059557 517.212467994593 1576.0084462648892" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515.1648220474156 1561.9931968524672 C 522.5747278982092 1651.6013606295064 526.279680823606 1696.4054425180261 533.6895866743996 1786.0136062950653" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1642 C 515 1665.2 515 1676.8 515 1700 C 515 1700 515 1710 525 1710 C 534.2 1710 538.8 1710 548 1710 C 548 1710 558 1710 556.0817520448552 1719.8142918635317 C 550.9014254451909 1746.318288419954 548.3112621453587 1759.570286698165 543.1309355456943 1786.0742832545873" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 515 1562 C 515 1613.2 515 1638.8 515 1690 C 515 1690 515 1700 505 1700 C 378.6 1700 315.4 1700 189 1700 C 189 1700 179 1700 179 1710 C 179 1764.4 179 1791.6 179 1846" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="309.75" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
+<text x="546.25" y="131" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
+<text x="546.2" y="256.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CDN</text>
+<text x="546.25" y="405.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Load Balancer</text>
+<text x="515" y="517" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Web Tier</text>
+<text x="515" y="937" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Application Tier</text>
+<text x="104" y="1325.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Redis Cache</text>
+<text x="264.5" y="1777" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
+<text x="525" y="1325.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Message Queue</text>
+<text x="515" y="1437" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Background Workers</text>
+<text x="536.5" y="1825.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Object Storage</text>
+<text x="515" y="775.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
+<text x="515" y="615.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 3</text>
+<text x="179" y="1885.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
+<text x="352" y="1875.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 1</text>
+<text x="352" y="1955.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 2</text>
+<text x="515" y="695.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
+<text x="515" y="1035.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 1</text>
+<text x="515" y="1535.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 1</text>
+<text x="515" y="1615.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 2</text>
+<text x="515" y="1115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 2</text>
 </g>
 </svg>

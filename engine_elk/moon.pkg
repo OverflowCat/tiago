@@ -3,5 +3,6 @@ import {
   "Milky2018/diago/graph",
   "Milky2018/diago/text_metrics",
   "Milky2018/moon_elk/core" @moon_elk_core,
+  "Milky2018/moon_elk/graph/json" @moon_elk_json,
   "moonbitlang/core/json",
 }

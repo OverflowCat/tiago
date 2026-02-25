@@ -37,6 +37,7 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   config,
   direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  ensure_moon_elk_json_bootstrap_linked()
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
 
@@ -60,6 +61,13 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   )
 
   patch
+}
+
+///|
+fn ensure_moon_elk_json_bootstrap_linked() -> Unit {
+  // `moon_elk/graph/json` registers the core layout delegate in package init.
+  // Keep a direct reference so tree-shaking does not drop the import.
+  ignore(@moon_elk_json.new_json_adapter)
 }
 
 ///|

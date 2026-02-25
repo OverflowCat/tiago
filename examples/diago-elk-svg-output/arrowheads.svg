@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="300" height="2020" viewBox="-50 -50 300 2020" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="904" height="541" viewBox="-50 -50 904 541" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,47 +27,47 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
+<rect x="534" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="534" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="654" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="654" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="50" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="210" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="370" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="530" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="690" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="850" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1010" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1170" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1330" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1490" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1650" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="50" y="1810" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 100 112 C 100 149.6 100 168.4 100 206" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="44.5" y="149.5" width="111" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="165.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">triangle (default)</text>
-<path d="M 100 432 C 100 469.6 100 488.4 100 526" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-diamond)"/>
-<rect x="70" y="469.5" width="60" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="485.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">diamond</text>
-<path d="M 100 752 C 100 789.6 100 808.4 100 846" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-circle)"/>
-<rect x="82" y="789.5" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="805.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">circle</text>
-<path d="M 100 1072 C 100 1109.6 100 1128.4 100 1166" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-cf-one-reverse)" marker-end="url(#arrow-cf-many)"/>
-<rect x="59" y="1109.5" width="82" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="1125.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">one to many</text>
-<path d="M 100 1392 C 100 1429.6 100 1448.4 100 1486" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-cf-many-reverse)" marker-end="url(#arrow-cf-many)"/>
-<rect x="52.5" y="1429.5" width="95" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="1445.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">many to many</text>
-<path d="M 100 1714 C 100 1750.8 100 1769.2 100 1806" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-circle-reverse)" marker-end="url(#arrow-diamond)"/>
-<rect x="79.5" y="1749.5" width="41" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="100" y="1765.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">mixed</text>
-<text x="100" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
-<text x="100" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
-<text x="100" y="405.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
-<text x="100" y="565.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">d</text>
-<text x="100" y="725.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">e</text>
-<text x="100" y="885.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">f</text>
-<text x="100" y="1045.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
-<text x="100" y="1205.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">orders</text>
-<text x="100" y="1365.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">students</text>
-<text x="100" y="1525.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">courses</text>
-<text x="100" y="1685.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">g</text>
-<text x="100" y="1845.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">h</text>
+<rect x="50" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="170" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="170" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="290" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="290" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="410" y="50" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="410" y="331" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<path d="M 584 112 C 584 198 584 241 584 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="528.5" y="210" width="111" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="584" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">triangle (default)</text>
+<path d="M 704 112 C 704 198 704 241 704 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-diamond)"/>
+<rect x="674" y="210" width="60" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="704" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">diamond</text>
+<path d="M 100 112 C 100 198 100 241 100 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-circle)"/>
+<rect x="82" y="210" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="100" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">circle</text>
+<path d="M 220 112 C 220 198 220 241 220 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-cf-one-reverse)" marker-end="url(#arrow-cf-many)"/>
+<rect x="179" y="210" width="82" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="220" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">one to many</text>
+<path d="M 340 112 C 340 198 340 241 340 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-cf-many-reverse)" marker-end="url(#arrow-cf-many)"/>
+<rect x="292.5" y="210" width="95" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="340" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">many to many</text>
+<path d="M 460 114 C 460 199.2 460 241.8 460 327" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-circle-reverse)" marker-end="url(#arrow-diamond)"/>
+<rect x="439.5" y="210" width="41" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="460" y="226" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">mixed</text>
+<text x="584" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
+<text x="584" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
+<text x="704" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
+<text x="704" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">d</text>
+<text x="100" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">e</text>
+<text x="100" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">f</text>
+<text x="220" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
+<text x="220" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">orders</text>
+<text x="340" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">students</text>
+<text x="340" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">courses</text>
+<text x="460" y="85.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">g</text>
+<text x="460" y="366.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">h</text>
 </g>
 </svg>
