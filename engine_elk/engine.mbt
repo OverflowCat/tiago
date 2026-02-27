@@ -54,7 +54,9 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   fill_patch_nodes(patch, graph, node_box_by_id, node_size_by_id, config)
 
   let routes_by_edge_id : Map[String, Array[@graph.Point]] = {}
-  collect_edge_routes(laid_out_json, 0.0, 0.0, routes_by_edge_id)
+  collect_edge_routes(
+    laid_out_json, 0.0, 0.0, node_box_by_id, routes_by_edge_id,
+  )
   fill_patch_edges(
     patch, graph, edge_id_by_index, edge_endpoints_by_index, node_box_by_id, routes_by_edge_id,
     direction,
@@ -109,9 +111,18 @@ fn build_elk_graph(
     }
 
     if !obj.child_ids.is_empty() {
-      node_json["layoutOptions"] = Json::object(
-        make_container_layout_options(config),
+      let self_loop_spacing = self_loop_spacing_for_parent(
+        graph,
+        obj.child_ids,
+        direction,
       )
+      node_json["layoutOptions"] = Json::object(
+        make_container_layout_options(
+          config, direction, width, height, self_loop_spacing,
+        ),
+      )
+    } else {
+      node_json["layoutOptions"] = Json::object(make_leaf_layout_options())
     }
 
     node_json_by_id[obj.id] = node_json
@@ -214,9 +225,16 @@ fn build_elk_graph(
   }
 
   let root_id = if graph.name.is_empty() { graph.root.id } else { graph.name }
+  let root_self_loop_spacing = self_loop_spacing_for_parent(
+    graph,
+    graph.root.child_ids,
+    direction,
+  )
   let root_json : Map[String, Json] = {
     "id": Json::string(root_id),
-    "layoutOptions": Json::object(make_root_layout_options(config, direction)),
+    "layoutOptions": Json::object(
+      make_root_layout_options(config, direction, root_self_loop_spacing),
+    ),
     "children": Json::array(root_children),
     "edges": Json::array(edges_json),
   }
@@ -358,15 +376,13 @@ fn copy_passthrough_layout_data(
 fn make_root_layout_options(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
+  self_loop_spacing : Int,
 ) -> Map[String, Json] {
-  let spacing = layout_spacing(config, direction)
-  let padding = layout_padding_value(config)
+  let spacing = layout_node_spacing(config, direction)
   {
-    "algorithm": Json::string("layered"),
+    "elk.algorithm": Json::string("layered"),
     "elk.direction": Json::string(elk_direction(direction)),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
-    "elk.edgeRouting": Json::string("ORTHOGONAL"),
-    "elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
@@ -376,58 +392,134 @@ fn make_root_layout_options(
     "elk.nodeSize.constraints": Json::string("MINIMUM_SIZE"),
     "elk.contentAlignment": Json::string("H_CENTER V_CENTER"),
     "spacing.nodeNodeBetweenLayers": Json::number(spacing.to_double()),
-    "elk.layered.spacing.nodeNodeBetweenLayers": Json::number(
-      spacing.to_double(),
-    ),
     "spacing.edgeNodeBetweenLayers": Json::number(40.0),
-    "elk.spacing.nodeSelfLoop": Json::number(50.0),
-    "elk.padding": Json::string(
-      "[left=\{padding}, top=\{padding}, right=\{padding}, bottom=\{padding}]",
-    ),
+    "elk.spacing.nodeSelfLoop": Json::number(self_loop_spacing.to_double()),
   }
 }
 
 ///|
 fn make_container_layout_options(
   config : @engine_api.LayoutConfig,
+  direction : @engine_api.Direction,
+  width : Double,
+  height : Double,
+  self_loop_spacing : Int,
 ) -> Map[String, Json] {
+  let spacing = layout_node_spacing(config, direction)
   let padding = layout_padding_value(config)
   {
     "elk.layered.crossingMinimization.forceNodeModelOrder": Json::boolean(true),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
-    "elk.edgeRouting": Json::string("ORTHOGONAL"),
-    "elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
     "elk.layered.thoroughness": Json::number(8.0),
     "elk.layered.spacing.edgeEdgeBetweenLayers": Json::number(50.0),
     "elk.spacing.edgeNode": Json::number(40.0),
+    "spacing.nodeNodeBetweenLayers": Json::number(spacing.to_double()),
     "spacing.edgeNodeBetweenLayers": Json::number(40.0),
-    "elk.spacing.nodeSelfLoop": Json::number(50.0),
+    "elk.spacing.nodeSelfLoop": Json::number(self_loop_spacing.to_double()),
     "elk.nodeSize.constraints": Json::string("MINIMUM_SIZE"),
+    "elk.nodeSize.minimum": Json::string(
+      node_size_minimum(direction, width, height),
+    ),
     "elk.contentAlignment": Json::string("H_CENTER V_CENTER"),
     "elk.padding": Json::string(
-      "[left=\{padding}, top=\{padding}, right=\{padding}, bottom=\{padding}]",
+      "[top=\{padding},left=\{padding},bottom=\{padding},right=\{padding}]",
     ),
   }
 }
 
 ///|
-fn layout_spacing(
+fn make_leaf_layout_options() -> Map[String, Json] {
+  { "elk.layered.edgeRouting.selfLoopDistribution": Json::string("EQUALLY") }
+}
+
+///|
+fn layout_node_spacing(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> Int {
-  let raw = match direction {
-    @engine_api.Down | @engine_api.Up => config.vertical_spacing
-    @engine_api.Right | @engine_api.Left => config.horizontal_spacing
+  let raw = match
+    (direction, config.horizontal_spacing, config.vertical_spacing) {
+    // Align default ELK spacing with d2 (70) while preserving explicit config overrides.
+    (@engine_api.Down | @engine_api.Up, _, v) if approx_eq(v, 100.0) => 70.0
+    (@engine_api.Right | @engine_api.Left, h, _) if approx_eq(h, 60.0) => 70.0
+    (@engine_api.Down | @engine_api.Up, _, v) => v
+    (@engine_api.Right | @engine_api.Left, h, _) => h
   }
-  positive_int(raw, 80)
+  positive_int(raw, 70)
 }
 
 ///|
 fn layout_padding_value(config : @engine_api.LayoutConfig) -> Int {
   positive_int(config.container_padding, 40)
+}
+
+///|
+fn node_size_minimum(
+  direction : @engine_api.Direction,
+  width : Double,
+  height : Double,
+) -> String {
+  let min_w = width.ceil().to_int()
+  let min_h = height.ceil().to_int()
+  match direction {
+    @engine_api.Down | @engine_api.Up => "(\{min_h}, \{min_w})"
+    @engine_api.Right | @engine_api.Left => "(\{min_w}, \{min_h})"
+  }
+}
+
+///|
+fn self_loop_spacing_for_parent(
+  graph : @graph.GraphInput,
+  child_ids : Array[String],
+  direction : @engine_api.Direction,
+) -> Int {
+  let base = 50
+  if child_ids.is_empty() {
+    return base
+  }
+  let child_set : Map[String, Bool] = {}
+  for child_id in child_ids {
+    child_set[child_id] = true
+  }
+  let prefer_width = match direction {
+    @engine_api.Down | @engine_api.Up => true
+    @engine_api.Right | @engine_api.Left => false
+  }
+  let mut max_label = 0
+  for edge in graph.edges {
+    if edge.src_id != edge.dst_id {
+      continue
+    }
+    if !child_set.contains(edge.src_id) || edge.label.is_empty() {
+      continue
+    }
+    match edge_label_size(edge) {
+      Some((w, h)) => {
+        let candidate = if prefer_width {
+          w.ceil().to_int()
+        } else {
+          h.ceil().to_int()
+        }
+        if candidate > max_label {
+          max_label = candidate
+        }
+      }
+      None => ()
+    }
+  }
+  max_int(base, max_label / 2 + 5)
+}
+
+///|
+fn max_int(a : Int, b : Int) -> Int {
+  if a > b {
+    a
+  } else {
+    b
+  }
 }
 
 ///|
@@ -544,6 +636,7 @@ fn collect_edge_routes(
   json_graph : Json,
   parent_x : Double,
   parent_y : Double,
+  node_box_by_id : Map[String, @graph.Box],
   routes_by_edge_id : Map[String, Array[@graph.Point]],
 ) -> Unit {
   let graph_obj = match json_graph {
@@ -561,7 +654,10 @@ fn collect_edge_routes(
       Some(id) => id
       None => continue
     }
-    let route = parse_edge_route(edge_obj, parent_x, parent_y)
+    let (section_base_x, section_base_y) = edge_section_base_offset(
+      edge_obj, parent_x, parent_y, node_box_by_id,
+    )
+    let route = parse_edge_route(edge_obj, section_base_x, section_base_y)
     if route.length() >= 2 {
       routes_by_edge_id[edge_id] = route
     }
@@ -579,16 +675,42 @@ fn collect_edge_routes(
       Json::object(child_obj),
       parent_x + child_x,
       parent_y + child_y,
+      node_box_by_id,
       routes_by_edge_id,
     )
   }
 }
 
 ///|
-fn parse_edge_route(
+fn edge_section_base_offset(
   edge_obj : Map[String, Json],
   parent_x : Double,
   parent_y : Double,
+  node_box_by_id : Map[String, @graph.Box],
+) -> (Double, Double) {
+  match edge_container_id(edge_obj) {
+    Some(container_id) =>
+      match node_box_by_id.get(container_id) {
+        Some(box) => (box.x, box.y)
+        None => (parent_x, parent_y)
+      }
+    None => (parent_x, parent_y)
+  }
+}
+
+///|
+fn edge_container_id(edge_obj : Map[String, Json]) -> String? {
+  match edge_obj.get("container") {
+    Some(String(container_id)) if !container_id.is_empty() => Some(container_id)
+    _ => None
+  }
+}
+
+///|
+fn parse_edge_route(
+  edge_obj : Map[String, Json],
+  section_base_x : Double,
+  section_base_y : Double,
 ) -> Array[@graph.Point] {
   let points : Array[@graph.Point] = []
   let sections = json_array_field(edge_obj, "sections")
@@ -597,20 +719,24 @@ fn parse_edge_route(
       Object(obj) => obj
       _ => continue
     }
-    match json_point_field(section_obj, "startPoint", parent_x, parent_y) {
+    match
+      json_point_field(
+        section_obj, "startPoint", section_base_x, section_base_y,
+      ) {
       Some(point) => push_unique_route_point(points, point)
       None => ()
     }
 
     let bend_points = json_array_field(section_obj, "bendPoints")
     for bend_json in bend_points {
-      match json_point_from_json(bend_json, parent_x, parent_y) {
+      match json_point_from_json(bend_json, section_base_x, section_base_y) {
         Some(point) => push_unique_route_point(points, point)
         None => ()
       }
     }
 
-    match json_point_field(section_obj, "endPoint", parent_x, parent_y) {
+    match
+      json_point_field(section_obj, "endPoint", section_base_x, section_base_y) {
       Some(point) => push_unique_route_point(points, point)
       None => ()
     }
