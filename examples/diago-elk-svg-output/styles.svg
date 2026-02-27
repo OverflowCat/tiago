@@ -34,10 +34,10 @@
 <rect x="132" y="282" width="150" height="60" fill="#ffebee" stroke="red" stroke-width="2" rx="0" ry="0"/>
 <path d="M 169 152 L 245 152 C 253.25 152 260 167 260 182 C 260 197 253.25 212 245 212 L 169 212 C 160.75 212 154 197 154 182 C 154 167 160.75 152 169 152 Z" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2"/>
 <rect x="12" y="412" width="100" height="60" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 126.51492874992734 73.94028500029066 C 123.67909975010174 85.28360099959306 122.26118525018893 90.95525899924428 119.42535625036334 102.29857499854668 C 119.42535625036334 102.29857499854668 117 112 107 112 C 93 112 86 112 72 112 C 72 112 62 112 62 122 C 62 184.4 62 215.6 62 278" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
-<rect x="37.5" y="138.3844718719117" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="62" y="154.3844718719117" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 142.48507125007268 73.94028500029066 C 145.32090024989827 85.28360099959306 146.73881474981107 90.95525899924428 149.57464374963666 102.29857499854668 C 149.57464374963666 102.29857499854668 152 112 162 112 C 176 112 183 112 197 112 C 197 112 207 112 207 122 C 207 132.4 207 137.6 207 148" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 117 74 C 117 85.2 117 90.8 117 102 C 117 102 117 112 107 112 C 93 112 86 112 72 112 C 72 112 62 112 62 122 C 62 184.4 62 215.6 62 278" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow-triangle)" stroke-dasharray="5"/>
+<rect x="37.5" y="139" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="62" y="155" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 152 74 C 152 85.2 152 90.8 152 102 C 152 102 152 112 162 112 C 176 112 183 112 197 112 C 197 112 207 112 207 122 C 207 132.4 207 137.6 207 148" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 207 214 C 207 239.6 207 252.4 207 278" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 62 344 C 62 369.6 62 382.4 62 408" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="134.5" y="47.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>

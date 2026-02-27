@@ -37,8 +37,8 @@
 <rect x="162" y="437" width="113" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <path d="M 218.5 74 C 218.5 121.6 218.5 145.39999999999998 218.5 193" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <path d="M 218.5 259 C 218.5 328.6 218.5 363.4 218.5 433" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 227.09104569578363 498.9313202852135 C 230.1487265020934 510.2961516007012 231.6775669052483 515.9785672584451 234.7352477115581 527.3433985739327 C 234.7352477115581 527.3433985739327 237.33333333333334 537 247.33333333333334 537 C 250 537 251.33333333333334 537 254 537 C 254 537 264 537 264 547 C 264 557.4 264 562.6 264 573" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 209.90895430421637 498.9313202852135 C 206.8512734979066 510.2961516007012 205.3224330947517 515.9785672584451 202.2647522884419 527.3433985739327 C 202.2647522884419 527.3433985739327 199.66666666666666 537 189.66666666666666 537 C 187 537 185.66666666666666 537 183 537 C 183 537 173 537 173 547 C 173 653.4 173 706.6 173 813" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 264 499 C 264 528.6 264 543.4 264 573" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 173 499 C 173 624.6 173 687.4 173 813" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="238" y="134" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
 <text x="218.5" y="47.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
 <text x="218.5" y="232.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
