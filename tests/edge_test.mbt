@@ -57,6 +57,22 @@ test "edge chain" {
   assert_true(svg.contains(">c<"))
 }
 
+///|
+test "edge glob endpoint expands to matched nodes" {
+  let source =
+    #|x
+    #|y
+    #|z
+    #|
+    #|*.style.fill: yellow
+    #|x -> *
+  let svg = compile(source).unwrap()
+  assert_true(svg.contains(">x<"))
+  assert_true(svg.contains(">y<"))
+  assert_true(svg.contains(">z<"))
+  assert_false(svg.contains(">*<"))
+}
+
 // =============================================================================
 // Arrowhead tests
 // =============================================================================

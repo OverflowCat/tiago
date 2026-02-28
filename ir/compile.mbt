@@ -334,16 +334,138 @@ fn collect_filters_from_value(key : @ast.Key) -> Array[(Bool, String, String)] {
 }
 
 ///|
+fn edge_endpoint_paths(
+  ir : Map,
+  key_path : @ast.KeyPath,
+) -> Array[Array[String]] {
+  if !key_path.has_glob() {
+    return [key_path.to_strings()]
+  }
+  let out : Array[Array[String]] = []
+  expand_edge_endpoint_paths(ir, key_path.path, 0, [], out)
+  out
+}
+
+///|
+fn expand_edge_endpoint_paths(
+  current_map : Map,
+  segments : Array[@ast.StringValue],
+  index : Int,
+  current_path : Array[String],
+  out : Array[Array[String]],
+) -> Unit {
+  if index >= segments.length() {
+    out.push(current_path)
+    return
+  }
+  let segment = segments[index]
+  let is_last = index == segments.length() - 1
+  match segment {
+    @ast.StringValue::Unquoted(us) =>
+      if us.pattern.length() > 0 {
+        let candidates = current_map.single_glob(us.pattern)
+        for field in candidates {
+          let next_path = append_path_segment(current_path, field.name)
+          if is_last {
+            out.push(next_path)
+          } else {
+            match field.composite {
+              Some(Composite::Map(m)) =>
+                expand_edge_endpoint_paths(
+                  m,
+                  segments,
+                  index + 1,
+                  next_path,
+                  out,
+                )
+              _ => ()
+            }
+          }
+        }
+      } else {
+        let segment_name = segment.content()
+        match current_map.get_field(segment_name) {
+          Some(field) => {
+            let next_path = append_path_segment(current_path, segment_name)
+            if is_last {
+              out.push(next_path)
+            } else {
+              match field.composite {
+                Some(Composite::Map(m)) =>
+                  expand_edge_endpoint_paths(
+                    m,
+                    segments,
+                    index + 1,
+                    next_path,
+                    out,
+                  )
+                _ => ()
+              }
+            }
+          }
+          None => ()
+        }
+      }
+    _ => {
+      let segment_name = segment.content()
+      match current_map.get_field(segment_name) {
+        Some(field) => {
+          let next_path = append_path_segment(current_path, segment_name)
+          if is_last {
+            out.push(next_path)
+          } else {
+            match field.composite {
+              Some(Composite::Map(m)) =>
+                expand_edge_endpoint_paths(
+                  m,
+                  segments,
+                  index + 1,
+                  next_path,
+                  out,
+                )
+              _ => ()
+            }
+          }
+        }
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+fn append_path_segment(path : Array[String], segment : String) -> Array[String] {
+  let out : Array[String] = []
+  for p in path {
+    out.push(p)
+  }
+  out.push(segment)
+  out
+}
+
+///|
+fn string_path_equal(a : Array[String], b : Array[String]) -> Bool {
+  if a.length() != b.length() {
+    return false
+  }
+  for i = 0; i < a.length(); i = i + 1 {
+    if a[i] != b[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
 fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
   for edge in key.edges {
-    let src_path = edge.src.to_strings()
-    let dst_path = edge.dst.to_strings()
-    let base_id = EdgeID::new(
-      src_path,
-      dst_path,
-      edge.src_arrow == "<",
-      edge.dst_arrow == ">",
-    )
+    let src_paths = edge_endpoint_paths(ir, edge.src)
+    let dst_paths = edge_endpoint_paths(ir, edge.dst)
+    let src_has_glob = edge.src.has_glob()
+    let dst_has_glob = edge.dst.has_glob()
+    if src_paths.is_empty() || dst_paths.is_empty() {
+      continue
+    }
     fn next_index_for_group(ir : Map, base_id : EdgeID) -> Int {
       let existing = ir.find_edges(base_id)
       let mut max_idx = -1
@@ -414,64 +536,81 @@ fn compile_edges(ir : Map, key : @ast.Key) -> Unit raise CompileError {
       }
     }
 
-    // D2 preserves multiple edges between the same endpoints. When no explicit
-    // `[index]` is given, allocate the next index and create a new edge.
-    // When `[index]` is provided, update that edge if it exists; otherwise
-    // create it at that index.
-    match key.edge_index {
-      Some(ei) =>
-        if ei.glob {
-          // Apply the value block to all edges in the group.
-          let existing = ir.find_edges(base_id)
-          for e in existing {
-            e.references.push(
-              EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+    for src_path in src_paths {
+      for dst_path in dst_paths {
+        if (src_has_glob || dst_has_glob) &&
+          string_path_equal(src_path, dst_path) {
+          continue
+        }
+        let base_id = EdgeID::new(
+          src_path,
+          dst_path,
+          edge.src_arrow == "<",
+          edge.dst_arrow == ">",
+        )
+        // D2 preserves multiple edges between the same endpoints. When no explicit
+        // `[index]` is given, allocate the next index and create a new edge.
+        // When `[index]` is provided, update that edge if it exists; otherwise
+        // create it at that index.
+        match key.edge_index {
+          Some(ei) =>
+            if ei.glob {
+              // Apply the value block to all edges in the group.
+              let existing = ir.find_edges(base_id)
+              for e in existing {
+                e.references.push(
+                  EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+                )
+                let (primary, edge_map) = compile_edge_value(Some(e), key.value)
+                ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+              }
+            } else {
+              let idx = ei.index.unwrap_or(0)
+              let edge_id = EdgeID::with_index(
+                base_id.src_path,
+                base_id.dst_path,
+                base_id.src_arrow,
+                base_id.dst_arrow,
+                idx,
+              )
+              match find_exact_edge(ir, edge_id) {
+                Some(e) => {
+                  e.references.push(EdgeReference::new(edge.range, idx, true))
+                  let (primary, edge_map) = compile_edge_value(
+                    Some(e),
+                    key.value,
+                  )
+                  ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+                }
+                None => {
+                  let (primary, edge_map) = compile_edge_value(None, key.value)
+                  let new_edge = Edge::new(edge_id, primary, edge_map, [
+                    EdgeReference::new(edge.range, idx, true),
+                  ])
+                  ir.add_edge(new_edge)
+                  ensure_field_path(ir, src_path)
+                  ensure_field_path(ir, dst_path)
+                }
+              }
+            }
+          None => {
+            let idx = next_index_for_group(ir, base_id)
+            let edge_id = EdgeID::with_index(
+              base_id.src_path,
+              base_id.dst_path,
+              base_id.src_arrow,
+              base_id.dst_arrow,
+              idx,
             )
-            let (primary, edge_map) = compile_edge_value(Some(e), key.value)
-            ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
-          }
-        } else {
-          let idx = ei.index.unwrap_or(0)
-          let edge_id = EdgeID::with_index(
-            base_id.src_path,
-            base_id.dst_path,
-            base_id.src_arrow,
-            base_id.dst_arrow,
-            idx,
-          )
-          match find_exact_edge(ir, edge_id) {
-            Some(e) => {
-              e.references.push(EdgeReference::new(edge.range, idx, true))
-              let (primary, edge_map) = compile_edge_value(Some(e), key.value)
-              ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
-            }
-            None => {
-              let (primary, edge_map) = compile_edge_value(None, key.value)
-              let new_edge = Edge::new(edge_id, primary, edge_map, [
-                EdgeReference::new(edge.range, idx, true),
-              ])
-              ir.add_edge(new_edge)
-              ensure_field_path(ir, src_path)
-              ensure_field_path(ir, dst_path)
-            }
+            let (primary, edge_map) = compile_edge_value(None, key.value)
+            let new_edge = Edge::new(edge_id, primary, edge_map, [
+              EdgeReference::new(edge.range, idx, true),
+            ])
+            ir.add_edge(new_edge)
+            ensure_field_path(ir, src_path)
+            ensure_field_path(ir, dst_path)
           }
         }
-      None => {
-        let idx = next_index_for_group(ir, base_id)
-        let edge_id = EdgeID::with_index(
-          base_id.src_path,
-          base_id.dst_path,
-          base_id.src_arrow,
-          base_id.dst_arrow,
-          idx,
-        )
-        let (primary, edge_map) = compile_edge_value(None, key.value)
-        let new_edge = Edge::new(edge_id, primary, edge_map, [
-          EdgeReference::new(edge.range, idx, true),
-        ])
-        ir.add_edge(new_edge)
-        ensure_field_path(ir, src_path)
-        ensure_field_path(ir, dst_path)
       }
     }
   }

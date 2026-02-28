@@ -613,14 +613,13 @@ fn compile_edges_with_imports(
   import_stack : Array[String],
 ) -> Unit raise CompileError {
   for edge in key.edges {
-    let src_path = edge.src.to_strings()
-    let dst_path = edge.dst.to_strings()
-    let base_id = EdgeID::new(
-      src_path,
-      dst_path,
-      edge.src_arrow == "<",
-      edge.dst_arrow == ">",
-    )
+    let src_paths = edge_endpoint_paths(ir, edge.src)
+    let dst_paths = edge_endpoint_paths(ir, edge.dst)
+    let src_has_glob = edge.src.has_glob()
+    let dst_has_glob = edge.dst.has_glob()
+    if src_paths.is_empty() || dst_paths.is_empty() {
+      continue
+    }
     fn next_index_for_group(ir : Map, base_id : EdgeID) -> Int {
       let existing = ir.find_edges(base_id)
       let mut max_idx = -1
@@ -713,79 +712,93 @@ fn compile_edges_with_imports(
       }
     }
 
-    match key.edge_index {
-      Some(ei) =>
-        if ei.glob {
-          let existing = ir.find_edges(base_id)
-          for e in existing {
-            e.references.push(
-              EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+    for src_path in src_paths {
+      for dst_path in dst_paths {
+        if (src_has_glob || dst_has_glob) &&
+          string_path_equal(src_path, dst_path) {
+          continue
+        }
+        let base_id = EdgeID::new(
+          src_path,
+          dst_path,
+          edge.src_arrow == "<",
+          edge.dst_arrow == ">",
+        )
+        match key.edge_index {
+          Some(ei) =>
+            if ei.glob {
+              let existing = ir.find_edges(base_id)
+              for e in existing {
+                e.references.push(
+                  EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+                )
+                let (primary, edge_map) = compile_edge_value(
+                  Some(e),
+                  key.value,
+                  resolver,
+                  import_stack,
+                )
+                ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+              }
+            } else {
+              let idx = ei.index.unwrap_or(0)
+              let edge_id = EdgeID::with_index(
+                base_id.src_path,
+                base_id.dst_path,
+                base_id.src_arrow,
+                base_id.dst_arrow,
+                idx,
+              )
+              match find_exact_edge(ir, edge_id) {
+                Some(e) => {
+                  e.references.push(EdgeReference::new(edge.range, idx, true))
+                  let (primary, edge_map) = compile_edge_value(
+                    Some(e),
+                    key.value,
+                    resolver,
+                    import_stack,
+                  )
+                  ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
+                }
+                None => {
+                  let (primary, edge_map) = compile_edge_value(
+                    None,
+                    key.value,
+                    resolver,
+                    import_stack,
+                  )
+                  let new_edge = Edge::new(edge_id, primary, edge_map, [
+                    EdgeReference::new(edge.range, idx, true),
+                  ])
+                  ir.add_edge(new_edge)
+                  ensure_field_path(ir, src_path)
+                  ensure_field_path(ir, dst_path)
+                }
+              }
+            }
+          None => {
+            let idx = next_index_for_group(ir, base_id)
+            let edge_id = EdgeID::with_index(
+              base_id.src_path,
+              base_id.dst_path,
+              base_id.src_arrow,
+              base_id.dst_arrow,
+              idx,
             )
             let (primary, edge_map) = compile_edge_value(
-              Some(e),
+              None,
               key.value,
               resolver,
               import_stack,
             )
-            ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
-          }
-        } else {
-          let idx = ei.index.unwrap_or(0)
-          let edge_id = EdgeID::with_index(
-            base_id.src_path,
-            base_id.dst_path,
-            base_id.src_arrow,
-            base_id.dst_arrow,
-            idx,
-          )
-          match find_exact_edge(ir, edge_id) {
-            Some(e) => {
-              e.references.push(EdgeReference::new(edge.range, idx, true))
-              let (primary, edge_map) = compile_edge_value(
-                Some(e),
-                key.value,
-                resolver,
-                import_stack,
-              )
-              ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
-            }
-            None => {
-              let (primary, edge_map) = compile_edge_value(
-                None,
-                key.value,
-                resolver,
-                import_stack,
-              )
-              let new_edge = Edge::new(edge_id, primary, edge_map, [
-                EdgeReference::new(edge.range, idx, true),
-              ])
-              ir.add_edge(new_edge)
-              ensure_field_path(ir, src_path)
-              ensure_field_path(ir, dst_path)
-            }
+            let new_edge = Edge::new(edge_id, primary, edge_map, [
+              EdgeReference::new(edge.range, idx, true),
+            ])
+            ir.add_edge(new_edge)
+            ensure_field_path(ir, src_path)
+            ensure_field_path(ir, dst_path)
           }
         }
-      None => {
-        let idx = next_index_for_group(ir, base_id)
-        let edge_id = EdgeID::with_index(
-          base_id.src_path,
-          base_id.dst_path,
-          base_id.src_arrow,
-          base_id.dst_arrow,
-          idx,
-        )
-        let (primary, edge_map) = compile_edge_value(
-          None,
-          key.value,
-          resolver,
-          import_stack,
-        )
-        let new_edge = Edge::new(edge_id, primary, edge_map, [
-          EdgeReference::new(edge.range, idx, true),
-        ])
-        ir.add_edge(new_edge)
-        ensure_field_path(ir, src_path)
-        ensure_field_path(ir, dst_path)
       }
     }
   }
