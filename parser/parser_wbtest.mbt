@@ -339,6 +339,24 @@ test "parse edge with property" {
 }
 
 ///|
+test "parse edge line continuation with escaped newline" {
+  let source =
+    #|super long shape id here --\
+    #|  -> super long shape id even longer here
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  assert_eq(key.edges.length(), 1)
+  let edge = key.edges[0]
+  assert_eq(edge.src.to_strings(), ["super long shape id here"])
+  assert_eq(edge.dst.to_strings(), ["super long shape id even longer here"])
+  assert_eq(edge.src_arrow, "")
+  assert_eq(edge.dst_arrow, ">")
+}
+
+///|
 test "parse ampersand filter" {
   let (ast, errors) = parse("&x")
   assert_true(errors.is_empty())
@@ -346,4 +364,84 @@ test "parse ampersand filter" {
     fail("expected Key node")
   }
   assert_true(key.ampersand)
+}
+
+///|
+test "parse not ampersand filter" {
+  let (ast, errors) = parse("!&x")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  assert_true(key.not_ampersand)
+}
+
+///|
+test "parse key with spaces and apostrophe" {
+  let (ast, errors) = parse("i'm a shape")
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.key is Some(kp) else { fail("expected key path") }
+  assert_eq(kp.to_strings(), ["i'm a shape"])
+}
+
+///|
+test "parse scalar with comma punctuation" {
+  let (ast, errors) = parse("x: To err is human, to moo bovine!")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string value")
+  }
+  assert_eq(sv.content(), "To err is human, to moo bovine!")
+}
+
+///|
+test "parse star block scalar value" {
+  let source =
+    #|x: * {
+    #|  shape: diamond
+    #|}
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.value is Some(@ast.Value::BlockScalar(label, props)) else {
+    fail("expected block scalar")
+  }
+  guard label is @ast.Value::Scalar(@ast.Scalar::String(sv)) else {
+    fail("expected scalar label")
+  }
+  assert_eq(sv.content(), "*")
+  assert_eq(props.nodes.length(), 1)
+}
+
+///|
+test "parse scalar starting with left parenthesis" {
+  let (ast, errors) = parse("x: (s string, eof bool)")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string value")
+  }
+  assert_eq(sv.content(), "(s string, eof bool)")
+}
+
+///|
+test "parse key with trailing dot without error" {
+  let (ast, errors) = parse("golf as if they were games.")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.key is Some(kp) else { fail("expected key path") }
+  assert_eq(kp.to_strings(), ["golf as if they were games"])
 }

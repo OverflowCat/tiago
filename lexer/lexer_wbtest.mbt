@@ -188,8 +188,9 @@ test "tokenize dollar brace substitution" {
 ///|
 test "tokenize at for import" {
   let (tokens, _) = tokenize("@path/to/file")
-  assert_eq(tokens.length(), 5)
+  assert_eq(tokens.length(), 3) // @, path/to/file, EOF
   assert_eq(tokens[0].kind, At)
+  assert_eq(tokens[1].kind, Ident("path/to/file"))
 }
 
 ///|

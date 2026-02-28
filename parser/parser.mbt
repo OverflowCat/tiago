@@ -21,6 +21,8 @@ struct Parser {
   tokens : Array[@lexer.Token]
   mut pos : Int
   mut depth : Int
+  mut in_edge_group : Bool
+  mut in_array : Bool
   errors : ParseErrors
 } derive(Show)
 
@@ -48,7 +50,15 @@ pub fn parse_with_path(
 
 ///|
 pub fn Parser::new(source : String, tokens : Array[@lexer.Token]) -> Parser {
-  { source, tokens, pos: 0, depth: 0, errors: ParseErrors::new() }
+  {
+    source,
+    tokens,
+    pos: 0,
+    depth: 0,
+    in_edge_group: false,
+    in_array: false,
+    errors: ParseErrors::new(),
+  }
 }
 
 ///|
@@ -245,7 +255,7 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
 
   // Collect all the values we need for Key::new
   let mut ampersand = false
-  let not_ampersand = false
+  let mut not_ampersand = false
   let mut key_path : @ast.KeyPath? = None
   let edges : Array[@ast.Edge] = []
   let mut edge_index : @ast.EdgeIndex? = None
@@ -259,6 +269,19 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
       let _ = self.advance()
       ampersand = true
     }
+    @lexer.Ident(text) =>
+      if text == "!" && self.pos + 1 < self.tokens.length() {
+        match self.tokens[self.pos + 1].kind {
+          @lexer.Ampersand => {
+            let _ = self.advance() // consume !
+            let _ = self.advance() // consume &
+            not_ampersand = true
+          }
+          _ => ()
+        }
+      } else {
+        ()
+      }
     _ => ()
   }
 
@@ -392,10 +415,7 @@ fn Parser::parse_key_path(self : Parser) -> @ast.KeyPath? {
         let _ = self.advance()
         match self.parse_string_for_key() {
           Some(s) => path.push(s)
-          None => {
-            self.error("expected identifier after .")
-            break
-          }
+          None => break
         }
       }
       _ => break
@@ -408,21 +428,9 @@ fn Parser::parse_key_path(self : Parser) -> @ast.KeyPath? {
 ///|
 fn Parser::parse_string_for_key(self : Parser) -> @ast.StringValue? {
   match self.peek() {
-    @lexer.Ident(name) => {
-      let token = self.advance()
-      Some(
-        @ast.StringValue::Unquoted(
-          @ast.UnquotedString::new(
-            token.range,
-            [@ast.Interpolation::Text(name)],
-            [],
-          ),
-        ),
-      )
-    }
     @lexer.StringLit(style, content) => {
       let token = self.advance()
-      match style {
+      return match style {
         @lexer.SingleQuoted =>
           Some(@ast.StringValue::SingleQuoted(token.range, content))
         @lexer.DoubleQuoted =>
@@ -435,51 +443,64 @@ fn Parser::parse_string_for_key(self : Parser) -> @ast.StringValue? {
           )
       }
     }
-    @lexer.Number(n) => {
-      let token = self.advance()
-      Some(
-        @ast.StringValue::Unquoted(
-          @ast.UnquotedString::new(token.range, [@ast.Interpolation::Text(n)], []),
-        ),
-      )
-    }
-    @lexer.Star => {
-      let token = self.advance()
-      Some(
-        @ast.StringValue::Unquoted(
-          @ast.UnquotedString::new(
-            token.range,
-            [@ast.Interpolation::Text("*")],
-            ["*"],
-          ),
-        ),
-      )
-    }
-    @lexer.DoubleStar => {
-      let token = self.advance()
-      Some(
-        @ast.StringValue::Unquoted(
-          @ast.UnquotedString::new(
-            token.range,
-            [@ast.Interpolation::Text("**")],
-            ["*", "", "*"],
-          ),
-        ),
-      )
-    }
-    @lexer.TripleStar => {
-      let token = self.advance()
-      Some(
-        @ast.StringValue::Unquoted(
-          @ast.UnquotedString::new(
-            token.range,
-            [@ast.Interpolation::Text("***")],
-            ["*", "", "*", "", "*"],
-          ),
-        ),
-      )
-    }
-    _ => None
+    _ => ()
+  }
+
+  if self.is_key_segment_delimiter() {
+    return None
+  }
+
+  let start = self.current().range.start
+  let mut end = start
+  let mut consumed = false
+  while not(self.is_at_end()) && not(self.is_key_segment_delimiter()) {
+    let token = self.advance()
+    consumed = true
+    end = token.range.end
+  }
+  if not(consumed) {
+    return None
+  }
+
+  let text = trim_right_ws(self.extract_source(start, end))
+  if text.length() == 0 {
+    return None
+  }
+
+  let range = @lexer.Range::new(start, end)
+  Some(
+    @ast.StringValue::Unquoted(
+      @ast.UnquotedString::new(
+        range,
+        [@ast.Interpolation::Text(text)],
+        key_glob_pattern_from_text(text),
+      ),
+    ),
+  )
+}
+
+///|
+fn Parser::is_key_segment_delimiter(self : Parser) -> Bool {
+  match self.peek() {
+    @lexer.Newline
+    | @lexer.Semicolon
+    | @lexer.Comma
+    | @lexer.Colon
+    | @lexer.Dot
+    | @lexer.LeftBrace
+    | @lexer.RightBrace
+    | @lexer.LeftBracket
+    | @lexer.RightBracket
+    | @lexer.Arrow
+    | @lexer.ReverseArrow
+    | @lexer.BidirectionalArrow
+    | @lexer.DoubleDash
+    | @lexer.Ampersand
+    | @lexer.Comment(_)
+    | @lexer.BlockComment(_)
+    | @lexer.Eof => true
+    @lexer.RightParen => self.in_edge_group
+    _ => false
   }
 }
 
@@ -493,26 +514,70 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
     }
   }
   let start = self.current().range.start
-  let (src_arrow, dst_arrow) = match self.peek() {
+  let mut src_arrow = ""
+  let mut dst_arrow = ""
+  match self.peek() {
     @lexer.Arrow => {
       let _ = self.advance()
-      ("", ">")
+      dst_arrow = ">"
     }
     @lexer.ReverseArrow => {
       let _ = self.advance()
-      ("<", "")
+      src_arrow = "<"
     }
     @lexer.BidirectionalArrow => {
       let _ = self.advance()
-      ("<", ">")
+      src_arrow = "<"
+      dst_arrow = ">"
     }
     @lexer.DoubleDash => {
       let _ = self.advance()
-      ("", "")
     }
     _ => return None
   }
   self.skip_whitespace_not_newline()
+  // Support d2-style edge operator line continuation:
+  // src --\
+  //   -> dst
+  while not(self.is_at_end()) {
+    match self.peek() {
+      @lexer.Ident(text) =>
+        if text == "\\" && self.pos + 1 < self.tokens.length() {
+          match self.tokens[self.pos + 1].kind {
+            @lexer.Newline => {
+              let _ = self.advance() // consume "\"
+              let _ = self.advance() // consume newline
+              self.skip_trivia()
+              if self.is_at_end() {
+                break
+              }
+              if self.current().is_edge_op() {
+                match self.peek() {
+                  @lexer.Arrow => dst_arrow = ">"
+                  @lexer.ReverseArrow => src_arrow = "<"
+                  @lexer.BidirectionalArrow => {
+                    src_arrow = "<"
+                    dst_arrow = ">"
+                  }
+                  @lexer.DoubleDash => ()
+                  _ => ()
+                }
+                let _ = self.advance()
+                self.skip_whitespace_not_newline()
+                continue
+              } else {
+                self.skip_whitespace_not_newline()
+                continue
+              }
+            }
+            _ => break
+          }
+        } else {
+          break
+        }
+      _ => break
+    }
+  }
   let dst = match self.parse_key_path() {
     Some(kp) => kp
     None => {
@@ -549,11 +614,14 @@ fn Parser::parse_edge_group(
   let mut edge_index : @ast.EdgeIndex? = None
   let mut edge_key : @ast.KeyPath? = None
   let mut value : @ast.Value? = None
+  let prev_in_edge_group = self.in_edge_group
+  self.in_edge_group = true
   self.skip_trivia()
   match self.parse_key_path() {
     Some(kp) => key_path = Some(kp)
     None => {
       self.error("expected key in edge group")
+      self.in_edge_group = prev_in_edge_group
       return (None, edges, None, None, None)
     }
   }
@@ -615,6 +683,7 @@ fn Parser::parse_edge_group(
       }
     _ => ()
   }
+  self.in_edge_group = prev_in_edge_group
   (key_path, edges, edge_index, edge_key, value)
 }
 
@@ -713,6 +782,8 @@ fn Parser::parse_block(self : Parser) -> @ast.Map? {
 fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
   let start = self.current().range.start
   let _ = self.advance() // consume [
+  let prev_in_array = self.in_array
+  self.in_array = true
   let nodes : Array[@ast.ArrayNode] = []
   self.skip_trivia()
   while not(self.is_at_end()) {
@@ -787,6 +858,7 @@ fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
     _ => self.error("expected ] to close array")
   }
   let end = self.current().range.end
+  self.in_array = prev_in_array
   Some(@ast.ArrayValue::new(@lexer.Range::new(start, end), nodes))
 }
 
@@ -823,8 +895,14 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
                 }
                 None => break
               }
+            @lexer.Comma =>
+              if self.in_array {
+                break
+              } else {
+                let token = self.advance()
+                end_pos = token.range.end
+              }
             @lexer.Newline
-            | @lexer.Comma
             | @lexer.Semicolon
             | @lexer.LeftBrace
             | @lexer.RightBrace
@@ -876,8 +954,14 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
                   }
                   None => break
                 }
+              @lexer.Comma =>
+                if self.in_array {
+                  break
+                } else {
+                  let token = self.advance()
+                  end_pos = token.range.end
+                }
               @lexer.Newline
-              | @lexer.Comma
               | @lexer.Semicolon
               | @lexer.LeftBrace
               | @lexer.RightBrace
@@ -927,6 +1011,48 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
           )
       }
     }
+    @lexer.Star => {
+      let token = self.advance()
+      Some(
+        @ast.Scalar::String(
+          @ast.StringValue::Unquoted(
+            @ast.UnquotedString::new(
+              token.range,
+              [@ast.Interpolation::Text("*")],
+              ["*"],
+            ),
+          ),
+        ),
+      )
+    }
+    @lexer.DoubleStar => {
+      let token = self.advance()
+      Some(
+        @ast.Scalar::String(
+          @ast.StringValue::Unquoted(
+            @ast.UnquotedString::new(
+              token.range,
+              [@ast.Interpolation::Text("**")],
+              ["*", "", "*"],
+            ),
+          ),
+        ),
+      )
+    }
+    @lexer.TripleStar => {
+      let token = self.advance()
+      Some(
+        @ast.Scalar::String(
+          @ast.StringValue::Unquoted(
+            @ast.UnquotedString::new(
+              token.range,
+              [@ast.Interpolation::Text("***")],
+              ["*", "", "*", "", "*"],
+            ),
+          ),
+        ),
+      )
+    }
     @lexer.Dollar | @lexer.DollarBrace => {
       // An unquoted scalar can start with a substitution and continue with text,
       // e.g. `${x}-b`. Parse the whole token run into interpolation segments.
@@ -949,9 +1075,15 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
               }
               None => break
             }
+          @lexer.Comma =>
+            if self.in_array {
+              break
+            } else {
+              let token = self.advance()
+              end_pos = token.range.end
+            }
           // Stop at any delimiter.
           @lexer.Newline
-          | @lexer.Comma
           | @lexer.Semicolon
           | @lexer.LeftBrace
           | @lexer.RightBrace
@@ -979,8 +1111,68 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
         Some(bs) => Some(@ast.Scalar::String(@ast.StringValue::Block(bs)))
         None => None
       }
-    _ => None
+    _ => self.parse_unquoted_scalar_run()
   }
+}
+
+///|
+fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
+  let start_pos = self.current().range.start
+  let mut end_pos = start_pos
+  let mut seg_start = start_pos
+  let segs : Array[@ast.Interpolation] = []
+
+  while not(self.is_at_end()) {
+    match self.peek() {
+      @lexer.Dollar | @lexer.DollarBrace =>
+        match self.parse_substitution() {
+          Some(sub) => {
+            let pre = self.extract_source(seg_start, sub.range.start)
+            if pre.length() > 0 {
+              segs.push(@ast.Interpolation::Text(pre))
+            }
+            segs.push(@ast.Interpolation::Sub(sub))
+            seg_start = sub.range.end
+            end_pos = sub.range.end
+          }
+          None => break
+        }
+      @lexer.Comma =>
+        if self.in_array {
+          break
+        } else {
+          let token = self.advance()
+          end_pos = token.range.end
+        }
+      @lexer.Newline
+      | @lexer.Semicolon
+      | @lexer.LeftBrace
+      | @lexer.RightBrace
+      | @lexer.LeftBracket
+      | @lexer.RightBracket
+      | @lexer.Comment(_)
+      | @lexer.BlockComment(_) => break
+      _ => {
+        let token = self.advance()
+        end_pos = token.range.end
+      }
+    }
+  }
+
+  let post = self.extract_source(seg_start, end_pos)
+  if post.length() > 0 {
+    segs.push(@ast.Interpolation::Text(post))
+  }
+  if segs.length() == 0 {
+    return None
+  }
+
+  let range = @lexer.Range::new(start_pos, end_pos)
+  Some(
+    @ast.Scalar::String(
+      @ast.StringValue::Unquoted(@ast.UnquotedString::new(range, segs, [])),
+    ),
+  )
 }
 
 ///|
@@ -1163,6 +1355,46 @@ fn trim_right_ws(s : String) -> String {
     break
   }
   substring_by_offsets(s, 0, end)
+}
+
+///|
+fn key_glob_pattern_from_text(s : String) -> Array[String] {
+  if s == "*" {
+    return ["*"]
+  }
+  if s == "**" {
+    return ["*", "", "*"]
+  }
+  if s == "***" {
+    return ["*", "", "*", "", "*"]
+  }
+
+  let chars = s.to_array()
+  let mut has_star = false
+  let pattern : Array[String] = []
+  let part = StringBuilder::new()
+  for c in chars {
+    if c == '*' {
+      has_star = true
+      let p = part.to_string()
+      if p.length() > 0 {
+        pattern.push(p)
+        part.reset()
+      }
+      pattern.push("*")
+    } else {
+      part.write_char(c)
+    }
+  }
+  let tail = part.to_string()
+  if tail.length() > 0 {
+    pattern.push(tail)
+  }
+  if has_star {
+    pattern
+  } else {
+    []
+  }
 }
 
 ///|
@@ -1383,7 +1615,12 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
     _ => return None
   }
   let path : Array[@ast.StringValue] = []
-  match self.parse_string_for_key() {
+  let first_segment = if is_brace {
+    self.parse_string_for_key()
+  } else {
+    self.parse_substitution_segment()
+  }
+  match first_segment {
     Some(s) => {
       end = s.range().end
       path.push(s)
@@ -1422,6 +1659,48 @@ fn Parser::parse_substitution(self : Parser) -> @ast.Substitution? {
     }
   }
   Some(@ast.Substitution::new(@lexer.Range::new(start, end), false, path))
+}
+
+///|
+fn Parser::parse_substitution_segment(self : Parser) -> @ast.StringValue? {
+  match self.peek() {
+    @lexer.StringLit(style, content) => {
+      let token = self.advance()
+      return match style {
+        @lexer.SingleQuoted =>
+          Some(@ast.StringValue::SingleQuoted(token.range, content))
+        @lexer.DoubleQuoted =>
+          Some(
+            @ast.StringValue::DoubleQuoted(
+              @ast.DoubleQuotedString::new(token.range, [
+                @ast.Interpolation::Text(content),
+              ]),
+            ),
+          )
+      }
+    }
+    _ => ()
+  }
+
+  if self.is_key_segment_delimiter() {
+    return None
+  }
+  let token = self.advance()
+  let text = trim_right_ws(
+    self.extract_source(token.range.start, token.range.end),
+  )
+  if text.length() == 0 {
+    return None
+  }
+  Some(
+    @ast.StringValue::Unquoted(
+      @ast.UnquotedString::new(
+        token.range,
+        [@ast.Interpolation::Text(text)],
+        key_glob_pattern_from_text(text),
+      ),
+    ),
+  )
 }
 
 ///|

@@ -79,9 +79,6 @@ pub enum TokenKind {
 
   // End of file
   Eof
-
-  // Error token for error recovery
-  Error(String)
 } derive(Eq, Show)
 
 ///|

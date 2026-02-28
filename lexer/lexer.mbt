@@ -180,8 +180,9 @@ fn Lexer::scan_token(self : Lexer) -> Unit {
       } else if is_ident_start(c) {
         self.scan_identifier(start, c)
       } else {
-        self.add_error("Unexpected character: " + c.to_string(), start)
-        self.add_token(Error("Unexpected character"), start)
+        // d2 parity: most non-delimiter characters are part of unquoted text.
+        // Keep them as identifier-like tokens so parser-level delimiters decide.
+        self.scan_identifier(start, c)
       }
   }
 }
@@ -403,7 +404,17 @@ fn is_ident_start(c : Char) -> Bool {
 
 ///|
 fn is_ident_continue(c : Char) -> Bool {
-  is_alpha(c) || is_digit(c) || c == '_' || c == '-'
+  is_alpha(c) ||
+  is_digit(c) ||
+  c == '_' ||
+  c == '-' ||
+  c == '\'' ||
+  c == '+' ||
+  c == '!' ||
+  c == '?' ||
+  c == '=' ||
+  c == '/' ||
+  c == '\\'
 }
 
 ///|

@@ -92,7 +92,6 @@ pub enum TokenKind {
   TripleStar
   Newline
   Eof
-  Error(String)
 }
 pub impl Eq for TokenKind
 pub impl Show for TokenKind
