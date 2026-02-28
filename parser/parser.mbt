@@ -206,12 +206,6 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
         Some(sub) => Some(@ast.MapNode::Substitution(sub))
         None => None
       }
-    @lexer.At =>
-      // Import statement: @path
-      match self.parse_import(false) {
-        Some(imp) => Some(@ast.MapNode::Import(imp))
-        None => None
-      }
     @lexer.DotDotDot => {
       // Spread import or spread substitution: ...@path or ...$var
       let dots = self.advance() // consume ...
@@ -249,6 +243,7 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
   }
 }
 
+///|
 fn is_unquoted_string_value(s : @ast.StringValue) -> Bool {
   match s {
     @ast.StringValue::Unquoted(_) => true
@@ -324,7 +319,7 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
 
   // Parse edges (-> <- <->)
   self.skip_whitespace_not_newline()
-  while not(self.is_at_end()) && self.current().is_edge_op() {
+  while not(self.is_at_end()) && can_start_edge_token(self.current()) {
     match self.parse_edge(key_path) {
       Some(edge) => {
         let dst = edge.dst
@@ -372,7 +367,7 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
       self.skip_whitespace_not_newline()
       match self.parse_value() {
         Some(val) => value = Some(val)
-        None => ()
+        None => self.error("missing value after colon")
       }
       // diago allows "name: label { block }" - check for block after scalar
       self.skip_whitespace_not_newline()
@@ -409,11 +404,32 @@ fn Parser::parse_key(self : Parser) -> @ast.Key? {
 }
 
 ///|
+fn can_start_edge_token(token : @lexer.Token) -> Bool {
+  if token.is_edge_op() {
+    return true
+  }
+  match token.kind {
+    @lexer.Ident(text) => {
+      let chars = text.to_array()
+      chars.length() > 0 && chars[0] == '<'
+    }
+    _ => false
+  }
+}
+
+///|
 fn Parser::parse_key_path(self : Parser) -> @ast.KeyPath? {
   let start = self.current().range.start
   let path : Array[@ast.StringValue] = []
   match self.parse_string_for_key() {
-    Some(s) => path.push(s)
+    Some(s) => {
+      if is_unquoted_string_value(s) && s.content().has_prefix("@") {
+        self.error(
+          "\{s.content()} is not a valid import, did you mean ...\{s.content()}?",
+        )
+      }
+      path.push(s)
+    }
     None => return None
   }
   while not(self.is_at_end()) {
@@ -421,7 +437,14 @@ fn Parser::parse_key_path(self : Parser) -> @ast.KeyPath? {
       @lexer.Dot => {
         let _ = self.advance()
         match self.parse_string_for_key() {
-          Some(s) => path.push(s)
+          Some(s) => {
+            if is_unquoted_string_value(s) && s.content().has_prefix("@") {
+              self.error(
+                "\{s.content()} is not a valid import, did you mean ...\{s.content()}?",
+              )
+            }
+            path.push(s)
+          }
           None => break
         }
       }
@@ -468,7 +491,34 @@ fn Parser::parse_string_for_key(self : Parser) -> @ast.StringValue? {
   let start = self.current().range.start
   let mut end = start
   let mut consumed = false
-  while not(self.is_at_end()) && not(self.is_key_segment_delimiter()) {
+  while not(self.is_at_end()) {
+    if self.pos + 1 < self.tokens.length() {
+      match (self.peek(), self.tokens[self.pos + 1].kind) {
+        (@lexer.Ident(text), @lexer.Newline) =>
+          if text == "\\" {
+            if self.pos + 2 < self.tokens.length() {
+              match self.tokens[self.pos + 2].kind {
+                @lexer.Newline => break
+                _ => {
+                  let _ = self.advance() // consume "\"
+                  let token = self.advance() // consume newline
+                  consumed = true
+                  end = token.range.end
+                  continue
+                }
+              }
+            } else {
+              break
+            }
+          } else {
+            ()
+          }
+        _ => ()
+      }
+    }
+    if self.is_key_segment_delimiter() {
+      break
+    }
     let token = self.advance()
     consumed = true
     end = token.range.end
@@ -477,7 +527,9 @@ fn Parser::parse_string_for_key(self : Parser) -> @ast.StringValue? {
     return None
   }
 
-  let text = trim_right_ws(self.extract_source(start, end))
+  let text = decode_unquoted_escapes(
+    trim_right_ws(self.extract_source(start, end)),
+  )
   if text.length() == 0 {
     return None
   }
@@ -514,6 +566,15 @@ fn Parser::is_key_segment_delimiter(self : Parser) -> Bool {
     | @lexer.Comment(_)
     | @lexer.BlockComment(_)
     | @lexer.Eof => true
+    @lexer.Ident(text) => {
+      let chars = text.to_array()
+      if chars.length() == 0 {
+        false
+      } else {
+        let c = chars[0]
+        c == '<' || c == '>' || c == '&'
+      }
+    }
     @lexer.RightParen => self.in_edge_group
     _ => false
   }
@@ -531,6 +592,8 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
   let start = self.current().range.start
   let mut src_arrow = ""
   let mut dst_arrow = ""
+  let mut less_than_compat_start : @lexer.Position? = None
+  let mut less_than_compat_end : @lexer.Position? = None
   match self.peek() {
     @lexer.Arrow => {
       let _ = self.advance()
@@ -547,6 +610,34 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
     }
     @lexer.DoubleDash => {
       let _ = self.advance()
+    }
+    @lexer.Ident(text) => {
+      let chars = text.to_array()
+      if chars.length() == 0 {
+        return None
+      }
+      if chars[0] == '<' {
+        let token = self.advance()
+        src_arrow = "<"
+        if chars.length() > 1 {
+          less_than_compat_start = Some(
+            @lexer.Position::new(
+              token.range.start.line,
+              token.range.start.column + 1,
+              token.range.start.offset + 1,
+            ),
+          )
+          less_than_compat_end = Some(token.range.end)
+        }
+      } else if chars[0] == '>' {
+        if chars.length() > 1 {
+          return None
+        }
+        let _ = self.advance()
+        dst_arrow = ">"
+      } else {
+        return None
+      }
     }
     _ => return None
   }
@@ -566,7 +657,18 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
               if self.is_at_end() {
                 break
               }
-              if self.current().is_edge_op() {
+              let edge_hint_ok = if self.current().is_edge_op() {
+                true
+              } else {
+                match self.peek() {
+                  @lexer.Ident(edge_hint) => {
+                    let chars = edge_hint.to_array()
+                    chars.length() > 0 && (chars[0] == '<' || chars[0] == '>')
+                  }
+                  _ => false
+                }
+              }
+              if edge_hint_ok {
                 match self.peek() {
                   @lexer.Arrow => dst_arrow = ">"
                   @lexer.ReverseArrow => src_arrow = "<"
@@ -575,6 +677,16 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
                     dst_arrow = ">"
                   }
                   @lexer.DoubleDash => ()
+                  @lexer.Ident(edge_hint) => {
+                    let chars = edge_hint.to_array()
+                    if chars.length() > 0 {
+                      if chars[0] == '<' {
+                        src_arrow = "<"
+                      } else if chars[0] == '>' {
+                        dst_arrow = ">"
+                      }
+                    }
+                  }
                   _ => ()
                 }
                 let _ = self.advance()
@@ -593,12 +705,56 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
       _ => break
     }
   }
-  let dst = match self.parse_key_path() {
-    Some(kp) => kp
-    None => {
-      self.error("edge requires a destination")
-      return None
+  let dst = match less_than_compat_start {
+    Some(dst_start) => {
+      let mut dst_end = match less_than_compat_end {
+        Some(v) => v
+        None => dst_start
+      }
+      while not(self.is_at_end()) {
+        match self.peek() {
+          @lexer.Newline
+          | @lexer.Semicolon
+          | @lexer.LeftBrace
+          | @lexer.RightBrace
+          | @lexer.LeftBracket
+          | @lexer.RightBracket
+          | @lexer.Comment(_)
+          | @lexer.BlockComment(_)
+          | @lexer.Arrow
+          | @lexer.ReverseArrow
+          | @lexer.BidirectionalArrow
+          | @lexer.DoubleDash => break
+          _ => {
+            let t = self.advance()
+            dst_end = t.range.end
+          }
+        }
+      }
+      let text = trim_right_ws(self.extract_source(dst_start, dst_end))
+      if text.length() == 0 {
+        self.error("edge requires a destination")
+        return None
+      }
+      let range = @lexer.Range::new(dst_start, dst_end)
+      @ast.KeyPath::new(range, [
+        @ast.StringValue::Unquoted(
+          @ast.UnquotedString::new(
+            range,
+            [@ast.Interpolation::Text(text)],
+            key_glob_pattern_from_text(text),
+          ),
+        ),
+      ])
     }
+    None =>
+      match self.parse_key_path() {
+        Some(kp) => kp
+        None => {
+          self.error("edge requires a destination")
+          return None
+        }
+      }
   }
   let end = self.current().range.end
   Some(
@@ -865,128 +1021,42 @@ fn Parser::parse_array(self : Parser) -> @ast.ArrayValue? {
 ///|
 fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
   match self.peek() {
-    @lexer.Ident(name) => {
-      let start_token = self.advance()
+    @lexer.Ident(name) =>
       if name == "null" {
-        Some(@ast.Scalar::Null(start_token.range))
+        let token = self.advance()
+        Some(@ast.Scalar::Null(token.range))
       } else if name == "true" {
-        Some(@ast.Scalar::Boolean(start_token.range, true))
+        let token = self.advance()
+        Some(@ast.Scalar::Boolean(token.range, true))
       } else if name == "false" {
-        Some(@ast.Scalar::Boolean(start_token.range, false))
+        let token = self.advance()
+        Some(@ast.Scalar::Boolean(token.range, false))
       } else {
-        // Unquoted value may include substitutions, e.g. `pre-${x}-post`.
-        // Build interpolation segments using source extraction to preserve spacing.
-        let start_pos = start_token.range.start
-        let mut end_pos = start_token.range.end
-        let mut seg_start = start_pos
-        let segs : Array[@ast.Interpolation] = []
-        while not(self.is_at_end()) {
-          match self.peek() {
-            @lexer.Dollar | @lexer.DollarBrace =>
-              match self.parse_substitution() {
-                Some(sub) => {
-                  let pre = self.extract_source(seg_start, sub.range.start)
-                  if pre.length() > 0 {
-                    segs.push(@ast.Interpolation::Text(pre))
-                  }
-                  segs.push(@ast.Interpolation::Sub(sub))
-                  seg_start = sub.range.end
-                  end_pos = sub.range.end
-                }
-                None => break
-              }
-            @lexer.Comma =>
-              if self.in_array {
-                break
-              } else {
-                let token = self.advance()
-                end_pos = token.range.end
-              }
-            @lexer.Newline
-            | @lexer.Semicolon
-            | @lexer.LeftBrace
-            | @lexer.RightBrace
-            | @lexer.LeftBracket
-            | @lexer.RightBracket => break
-            _ => {
-              let token = self.advance()
-              end_pos = token.range.end
-            }
-          }
-        }
-        let post = self.extract_source(seg_start, end_pos)
-        if post.length() > 0 {
-          segs.push(@ast.Interpolation::Text(post))
-        }
-        let range = @lexer.Range::new(start_pos, end_pos)
-        Some(
-          @ast.Scalar::String(
-            @ast.StringValue::Unquoted(
-              @ast.UnquotedString::new(range, segs, []),
-            ),
-          ),
-        )
+        self.parse_unquoted_scalar_run()
       }
-    }
     @lexer.Number(n) => {
-      let start_token = self.advance()
-      // Check if there are more words after the number (e.g., "3D Box")
-      // If so, treat as multi-word string, otherwise as number
-      match self.peek() {
-        @lexer.Ident(_) => {
-          // Multi-word value starting with number like "3D Box" (may include substitutions).
-          let start_pos = start_token.range.start
-          let mut end_pos = start_token.range.end
-          let mut seg_start = start_pos
-          let segs : Array[@ast.Interpolation] = []
-          while not(self.is_at_end()) {
-            match self.peek() {
-              @lexer.Dollar | @lexer.DollarBrace =>
-                match self.parse_substitution() {
-                  Some(sub) => {
-                    let pre = self.extract_source(seg_start, sub.range.start)
-                    if pre.length() > 0 {
-                      segs.push(@ast.Interpolation::Text(pre))
-                    }
-                    segs.push(@ast.Interpolation::Sub(sub))
-                    seg_start = sub.range.end
-                    end_pos = sub.range.end
-                  }
-                  None => break
-                }
-              @lexer.Comma =>
-                if self.in_array {
-                  break
-                } else {
-                  let token = self.advance()
-                  end_pos = token.range.end
-                }
-              @lexer.Newline
-              | @lexer.Semicolon
-              | @lexer.LeftBrace
-              | @lexer.RightBrace
-              | @lexer.LeftBracket
-              | @lexer.RightBracket => break
-              _ => {
-                let token = self.advance()
-                end_pos = token.range.end
-              }
-            }
-          }
-          let post = self.extract_source(seg_start, end_pos)
-          if post.length() > 0 {
-            segs.push(@ast.Interpolation::Text(post))
-          }
-          let range = @lexer.Range::new(start_pos, end_pos)
-          Some(
-            @ast.Scalar::String(
-              @ast.StringValue::Unquoted(
-                @ast.UnquotedString::new(range, segs, []),
-              ),
-            ),
-          )
+      let standalone_number = if self.pos + 1 >= self.tokens.length() {
+        true
+      } else {
+        match self.tokens[self.pos + 1].kind {
+          @lexer.Newline
+          | @lexer.Semicolon
+          | @lexer.LeftBrace
+          | @lexer.RightBrace
+          | @lexer.LeftBracket
+          | @lexer.RightBracket
+          | @lexer.Comment(_)
+          | @lexer.BlockComment(_)
+          | @lexer.Eof => true
+          @lexer.Comma => self.in_array
+          _ => false
         }
-        _ => Some(@ast.Scalar::Number(start_token.range, n))
+      }
+      if standalone_number {
+        let token = self.advance()
+        Some(@ast.Scalar::Number(token.range, n))
+      } else {
+        self.parse_unquoted_scalar_run()
       }
     }
     @lexer.StringLit(style, content) => {
@@ -1138,13 +1208,37 @@ fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
   let segs : Array[@ast.Interpolation] = []
 
   while not(self.is_at_end()) {
+    if self.pos + 1 < self.tokens.length() {
+      match (self.peek(), self.tokens[self.pos + 1].kind) {
+        (@lexer.Ident(text), @lexer.Newline) =>
+          if text == "\\" {
+            if self.pos + 2 < self.tokens.length() {
+              match self.tokens[self.pos + 2].kind {
+                @lexer.Newline => break
+                _ => {
+                  let _ = self.advance() // consume "\"
+                  let token = self.advance() // consume newline
+                  end_pos = token.range.end
+                  continue
+                }
+              }
+            } else {
+              break
+            }
+          } else {
+            ()
+          }
+        _ => ()
+      }
+    }
+
     match self.peek() {
       @lexer.Dollar | @lexer.DollarBrace =>
         match self.parse_substitution() {
           Some(sub) => {
             let pre = self.extract_source(seg_start, sub.range.start)
             if pre.length() > 0 {
-              segs.push(@ast.Interpolation::Text(pre))
+              segs.push(@ast.Interpolation::Text(decode_unquoted_escapes(pre)))
             }
             segs.push(@ast.Interpolation::Sub(sub))
             seg_start = sub.range.end
@@ -1176,7 +1270,7 @@ fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
 
   let post = self.extract_source(seg_start, end_pos)
   if post.length() > 0 {
-    segs.push(@ast.Interpolation::Text(post))
+    segs.push(@ast.Interpolation::Text(decode_unquoted_escapes(post)))
   }
   if segs.length() == 0 {
     return None
@@ -1370,6 +1464,57 @@ fn trim_right_ws(s : String) -> String {
     break
   }
   substring_by_offsets(s, 0, end)
+}
+
+///|
+fn decode_unquoted_escape(c : Char) -> Char {
+  match c {
+    'a' => '\u{7}'
+    'b' => '\u{8}'
+    'f' => '\u{c}'
+    'n' => '\n'
+    'r' => '\r'
+    't' => '\t'
+    'v' => '\u{b}'
+    '\\' => '\\'
+    '"' => '"'
+    _ => c
+  }
+}
+
+///|
+fn decode_unquoted_escapes(s : String) -> String {
+  let chars = s.to_array()
+  let out = StringBuilder::new()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if c != '\\' {
+      out.write_char(c)
+      i = i + 1
+      continue
+    }
+    if i + 1 >= chars.length() {
+      out.write_char('\\')
+      break
+    }
+    let next = chars[i + 1]
+    if next == '\n' {
+      i = i + 2
+      while i < chars.length() {
+        let ws = chars[i]
+        if ws == ' ' || ws == '\t' || ws == '\r' {
+          i = i + 1
+          continue
+        }
+        break
+      }
+      continue
+    }
+    out.write_char(decode_unquoted_escape(next))
+    i = i + 2
+  }
+  out.to_string()
 }
 
 ///|

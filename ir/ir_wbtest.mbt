@@ -312,7 +312,7 @@ test "double glob applies to nested fields" {
 
 ///|
 test "compile with imports - basic" {
-  let source = "@common"
+  let source = "common: @common"
   let (ast, _) = @parser.parse(source)
   // Create a resolver that returns content for "common.d2"
   let resolver = ImportResolver::new(fn(path) {
@@ -352,7 +352,7 @@ test "compile with imports - spread" {
 
 ///|
 test "compile with imports - missing import" {
-  let source = "@nonexistent"
+  let source = "missing: @nonexistent"
   let (ast, _) = @parser.parse(source)
   let resolver = ImportResolver::new(fn(_) { None })
   // Should raise an error
@@ -493,7 +493,7 @@ test "compile with imports - pre path normalization" {
 
 ///|
 test "compile - imports require resolver" {
-  let cases = ["@common", "...@common", "x: @common", "x: [@common]"]
+  let cases = ["common: @common", "...@common", "x: @common", "x: [@common]"]
   for src in cases {
     let (ast, _) = @parser.parse(src)
     let result : Result[Map, CompileError] = Ok(compile(ast)) catch {

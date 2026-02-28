@@ -126,6 +126,14 @@ test "tokenize nested block comment" {
 }
 
 ///|
+test "tokenize triple quoted block comment" {
+  let (tokens, _) = tokenize("\"\"\" hi \"\"\" x")
+  assert_eq(tokens.length(), 3)
+  assert_eq(tokens[0].kind, BlockComment("hi"))
+  assert_eq(tokens[1].kind, Ident("x"))
+}
+
+///|
 test "tokenize single quoted string" {
   let (tokens, _) = tokenize("'hello world'")
   assert_eq(tokens.length(), 2) // string, EOF

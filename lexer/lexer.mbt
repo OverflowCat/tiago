@@ -86,6 +86,15 @@ fn Lexer::peek_next(self : Lexer) -> Char {
 }
 
 ///|
+fn Lexer::peek_offset(self : Lexer, n : Int) -> Char {
+  if self.pos + n >= self.chars.length() {
+    '\u{0}'
+  } else {
+    self.chars[self.pos + n]
+  }
+}
+
+///|
 fn Lexer::advance(self : Lexer) -> Char {
   let c = self.peek()
   self.pos += 1
@@ -164,7 +173,14 @@ fn Lexer::scan_token(self : Lexer) -> Unit {
       }
     // Strings
     '\'' => self.scan_single_quoted_string(start)
-    '"' => self.scan_double_quoted_string(start)
+    '"' =>
+      if self.peek() == '"' && self.peek_next() == '"' {
+        let _ = self.advance()
+        let _ = self.advance()
+        self.scan_triple_quoted_block_comment(start)
+      } else {
+        self.scan_double_quoted_string(start)
+      }
     // Dollar for substitutions
     '$' =>
       if self.peek() == '{' {
@@ -350,6 +366,36 @@ fn Lexer::scan_double_quoted_string(self : Lexer, start : Position) -> Unit {
 }
 
 ///|
+fn Lexer::scan_triple_quoted_block_comment(
+  self : Lexer,
+  start : Position,
+) -> Unit {
+  let content_start = self.pos
+  while not(self.is_at_end()) {
+    if self.peek() == '"' &&
+      self.peek_next() == '"' &&
+      self.peek_offset(2) == '"' {
+      let content = trim_block_comment_content(
+        self.slice_source(content_start, self.pos),
+      )
+      let _ = self.advance()
+      let _ = self.advance()
+      let _ = self.advance()
+      self.add_token(BlockComment(content), start)
+      return
+    }
+    let _ = self.advance()
+  }
+  self.add_error("Unterminated block comment", start)
+  self.add_token(
+    BlockComment(
+      trim_block_comment_content(self.slice_source(content_start, self.pos)),
+    ),
+    start,
+  )
+}
+
+///|
 fn Lexer::scan_number(self : Lexer, start : Position, first : Char) -> Unit {
   let buf = StringBuilder::new()
   buf.write_char(first)
@@ -415,6 +461,115 @@ fn is_ident_continue(c : Char) -> Bool {
   c == '=' ||
   c == '/' ||
   c == '\\'
+}
+
+///|
+fn trim_block_comment_content(s : String) -> String {
+  trim_comment_common_indent(trim_comment_space_after_last_newline(s))
+}
+
+///|
+fn trim_comment_space_after_last_newline(s : String) -> String {
+  let chars = s.to_array()
+  let mut last_nl = -1
+  for i, c in chars {
+    if c == '\n' {
+      last_nl = i
+    }
+  }
+  if last_nl < 0 {
+    return trim_comment_right_ws(s)
+  }
+  let last_line = substring_comment_by_offsets(s, last_nl + 1, chars.length())
+  let trimmed_last_line = trim_comment_right_ws(last_line)
+  if trimmed_last_line.length() == 0 {
+    return substring_comment_by_offsets(s, 0, last_nl)
+  }
+  substring_comment_by_offsets(s, 0, last_nl + 1) + trimmed_last_line
+}
+
+///|
+fn trim_comment_right_ws(s : String) -> String {
+  let chars = s.to_array()
+  let mut end = chars.length()
+  while end > 0 {
+    let c = chars[end - 1]
+    if c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+      end = end - 1
+    } else {
+      break
+    }
+  }
+  substring_comment_by_offsets(s, 0, end)
+}
+
+///|
+fn trim_comment_common_indent(s : String) -> String {
+  let lines = s.split("\n").collect()
+  let mut min_spaces = -1
+  for line in lines {
+    let text = line.to_string()
+    if text.length() == 0 {
+      continue
+    }
+    let chars = text.to_array()
+    let mut spaces = 0
+    let mut has_non_space = false
+    for c in chars {
+      if c == ' ' {
+        spaces = spaces + 1
+      } else if c == '\t' {
+        spaces = spaces + 2
+      } else {
+        has_non_space = true
+        break
+      }
+    }
+    if has_non_space {
+      if min_spaces < 0 || spaces < min_spaces {
+        min_spaces = spaces
+      }
+    }
+  }
+  if min_spaces <= 0 {
+    return s
+  }
+  let out : Array[String] = []
+  for line in lines {
+    let text = line.to_string()
+    if text.length() == 0 {
+      out.push(text)
+      continue
+    }
+    let chars = text.to_array()
+    let mut to_drop = min_spaces
+    let mut idx = 0
+    while idx < chars.length() && to_drop > 0 {
+      if chars[idx] == ' ' {
+        to_drop = to_drop - 1
+        idx = idx + 1
+      } else if chars[idx] == '\t' {
+        to_drop = to_drop - 2
+        idx = idx + 1
+      } else {
+        break
+      }
+    }
+    out.push(substring_comment_by_offsets(text, idx, chars.length()))
+  }
+  out.join("\n")
+}
+
+///|
+fn substring_comment_by_offsets(s : String, start : Int, end : Int) -> String {
+  let chars = s.to_array()
+  let buf = StringBuilder::new()
+  let mut i = start
+  while i < end && i < chars.length() {
+    buf.write_char(chars[i])
+    i = i + 1
+  }
+  buf.to_string()
 }
 
 ///|

@@ -287,6 +287,21 @@ test "parse block string with quote (||md ... ||)" {
 }
 
 ///|
+test "parse triple-quote block comment" {
+  let source =
+    #|""" hi """
+    #|x
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected key node")
+  }
+  guard key.key is Some(kp) else { fail("expected key path") }
+  assert_eq(kp.to_strings(), ["x"])
+}
+
+///|
 test "parse multiple keys" {
   let source =
     #|x: 1
@@ -392,6 +407,21 @@ test "parse edge line continuation with escaped newline" {
   assert_eq(edge.dst.to_strings(), ["super long shape id even longer here"])
   assert_eq(edge.src_arrow, "")
   assert_eq(edge.dst_arrow, ">")
+}
+
+///|
+test "parse less-than-edge compatibility (#955)" {
+  let (ast, errors) = parse("x <= y")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected key node")
+  }
+  assert_eq(key.edges.length(), 1)
+  let edge = key.edges[0]
+  assert_eq(edge.src.to_strings(), ["x"])
+  assert_eq(edge.src_arrow, "<")
+  assert_eq(edge.dst_arrow, "")
+  assert_eq(edge.dst.to_strings(), ["= y"])
 }
 
 ///|
@@ -505,4 +535,122 @@ test "parse key with trailing dot without error" {
   }
   guard key.key is Some(kp) else { fail("expected key path") }
   assert_eq(kp.to_strings(), ["golf as if they were games"])
+}
+
+///|
+test "parse edge line continuation compact arrow form" {
+  let source =
+    #|super long shape id here --\
+    #|> super long shape id even longer here
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected key node")
+  }
+  assert_eq(key.edges.length(), 1)
+  let edge = key.edges[0]
+  assert_eq(edge.src.to_strings(), ["super long shape id here"])
+  assert_eq(edge.dst.to_strings(), ["super long shape id even longer here"])
+  assert_eq(edge.src_arrow, "")
+  assert_eq(edge.dst_arrow, ">")
+}
+
+///|
+test "parse field line continuation with escaped newline" {
+  let source =
+    #|meow \
+    #|  ok \
+    #|    super: yes \
+    #|    wow so cool
+    #|  \
+    #|xd \
+    #|\
+    #|  ok does it work: hopefully
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 2)
+  guard ast.nodes[0] is @ast.MapNode::Key(first) else {
+    fail("expected first key node")
+  }
+  guard first.key is Some(first_key) else { fail("expected first key path") }
+  assert_eq(first_key.to_strings(), ["meow ok super"])
+  guard first.value
+    is Some(@ast.Value::Scalar(@ast.Scalar::String(first_value))) else {
+    fail("expected first scalar value")
+  }
+  assert_eq(first_value.content(), "yes wow so cool")
+  guard ast.nodes[1] is @ast.MapNode::Key(second) else {
+    fail("expected second key node")
+  }
+  guard second.key is Some(second_key) else { fail("expected second key path") }
+  assert_eq(second_key.to_strings(), ["xd ok does it work"])
+  guard second.value
+    is Some(@ast.Value::Scalar(@ast.Scalar::String(second_value))) else {
+    fail("expected second scalar value")
+  }
+  assert_eq(second_value.content(), "hopefully")
+}
+
+///|
+test "parse one-line block string" {
+  let source =
+    #|a: |   hello  |
+    #|"""   hello  """
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected key node")
+  }
+  guard key.key is Some(kp) else { fail("expected key path") }
+  assert_eq(kp.to_strings(), ["a"])
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected block string scalar")
+  }
+  guard sv is @ast.StringValue::Block(bs) else { fail("expected block string") }
+  assert_eq(bs.quote, "")
+  assert_eq(bs.tag, "md")
+  assert_eq(bs.value, "hello")
+}
+
+///|
+test "parse block string with embedded delimiters" {
+  let source =
+    #|a: ||
+    #|  |pipe|
+    #|||
+    #|
+    #|"""
+    #|b: ""
+    #|"""
+  let (ast, errors) = parse(source)
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected key node")
+  }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected scalar value")
+  }
+  guard sv is @ast.StringValue::Block(bs) else { fail("expected block string") }
+  assert_eq(bs.quote, "|")
+  assert_eq(bs.value, "|pipe|")
+}
+
+///|
+test "parse missing map value after colon" {
+  let (_, errors) = parse("x:")
+  assert_true(!errors.is_empty())
+  assert_true(errors.to_string().contains("missing value after colon"))
+}
+
+///|
+test "parse plain @ import form reports suggestion error" {
+  let (_, errors) = parse("@file")
+  assert_true(!errors.is_empty())
+  assert_true(
+    errors
+    .to_string()
+    .contains("@file is not a valid import, did you mean ...@file?"),
+  )
 }

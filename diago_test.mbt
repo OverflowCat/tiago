@@ -60,7 +60,7 @@ test "elk layout can be selected from options and vars.d2-config" {
 
 ///|
 test "parse supports custom import resolver hook" {
-  let source = "@common"
+  let source = "common: @common"
   let resolver = @ir.ImportResolver::new(fn(path) {
     if path == "common" || path == "common.d2" {
       Some("server\ndatabase")
