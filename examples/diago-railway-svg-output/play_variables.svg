@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="260" viewBox="-100 -100 300 260" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<rect x="0" y="0" width="100" height="60" fill="#065535" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Joe</text>
+</g>
+</svg>

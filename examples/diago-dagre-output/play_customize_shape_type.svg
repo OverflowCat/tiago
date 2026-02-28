@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="582" height="318" viewBox="-100 -100 582 318" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<ellipse cx="54" cy="59" rx="54" ry="54" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 168 24 C 168 0 217.5 0 223 0 C 228.5 0 278 0 278 24 L 278 94 C 278 118 228.5 118 223 118 C 217.5 118 168 118 168 94 L 168 24 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<ellipse cx="223" cy="24" rx="55" ry="24" fill="none" stroke="none" stroke-width="0"/>
+<path d="M 168 24 C 168 48 217.5 48 223 48 C 228.5 48 278 48 278 24" fill="none" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 382 92 H 338 v -0.937984496124031 c 0 -11.25581395348837 4.831625183016105 -21.4031007751938 12.433382137628112 -26.26356589147287 C 346.2459736456808 60.87596899224806 343.73352855051246 54.48062015503876 343.73352855051246 47.48837209302326 C 343.73352855051246 35.63565891472868 351.01317715959004 26 359.96778916544656 26 c 8.954612005856516 0 16.234260614934115 9.635658914728682 16.234260614934115 21.488372093023255 c 0 6.992248062015503 -2.4480234260614933 13.302325581395348 -6.699853587115666 17.3953488372093 c 7.601756954612006 4.8604651162790695 12.433382137628112 15.007751937984496 12.433382137628112 26.26356589147287 v 0.8527131782945736 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<text x="54" y="64.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">donut</text>
+<text x="223" y="76.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">database</text>
+<text x="360" y="113" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">you</text>
+</g>
+</svg>

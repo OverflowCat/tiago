@@ -21,14 +21,8 @@
 ///    are aligned to D2 Dagre reference SVGs (`examples/d2-dagre-output`)
 
 ///|
-let dagre_example_names : Array[String] = [
-  "architecture", "arrowheads", "basic", "c4", "classes", "containers", "directions",
-  "grid", "hello", "layers", "legend_auto", "legend_custom", "sequence", "shapes",
-  "sql_tables", "styles", "variables",
-]
-
-///|
 test "examples: dagre svg e2e snapshots and d2 semantic parity" {
+  let dagre_example_names = e2e_example_names().unwrap()
   for name in dagre_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
     let actual_svg = compile(source).unwrap()
@@ -68,6 +62,23 @@ test "examples: dagre svg e2e snapshots and d2 semantic parity" {
       msg="\{name}: semantic snapshot diverges from d2 dagre output (\{semantic_diff})",
     )
   }
+}
+
+///|
+fn e2e_example_names() -> Result[Array[String], String] {
+  let entries = @fs.read_dir("examples") catch {
+    e => return Err("failed to read examples directory: \{e}")
+  }
+  let names : Array[String] = []
+  for entry in entries {
+    if entry.has_suffix(".d2") {
+      names.push(slice_string(entry, 0, entry.length() - 3))
+    }
+  }
+  if names.is_empty() {
+    return Err("no .d2 example files found in examples/")
+  }
+  Ok(sort_strings(names))
 }
 
 ///|

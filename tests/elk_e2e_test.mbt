@@ -20,14 +20,8 @@
 /// 2) Diago outputs are strictly aligned to D2 ELK references
 
 ///|
-let elk_example_names : Array[String] = [
-  "architecture", "arrowheads", "basic", "c4", "classes", "containers", "directions",
-  "grid", "hello", "layers", "legend_auto", "legend_custom", "sequence", "shapes",
-  "sql_tables", "styles", "variables",
-]
-
-///|
 test "examples: elk svg e2e snapshots and d2 semantic parity" {
+  let elk_example_names = e2e_example_names().unwrap()
   for name in elk_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
     let actual_svg = compile_elk_svg(source).unwrap()
@@ -78,6 +72,7 @@ test "examples: elk svg e2e snapshots and d2 semantic parity" {
 
 ///|
 test "examples: elk ascii e2e snapshots" {
+  let elk_example_names = e2e_example_names().unwrap()
   for name in elk_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
     let actual_ascii = compile_elk_ascii(source).unwrap()
@@ -104,6 +99,7 @@ test "examples: elk ascii e2e snapshots" {
 
 ///|
 test "examples: elk unicode e2e snapshots" {
+  let elk_example_names = e2e_example_names().unwrap()
   for name in elk_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
     let actual_unicode = compile_elk_unicode(source).unwrap()

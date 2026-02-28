@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="494" height="640" viewBox="-100 -100 494 640" data-d2-version="0.1.0">
+<defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-diamond-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-circle" markerWidth="10" markerHeight="10" refX="6" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-circle-reverse" markerWidth="10" markerHeight="10" refX="4" refY="5" orient="auto" markerUnits="strokeWidth"><circle cx="5" cy="5" r="4" fill="#0A0F25"/></marker>
+<marker id="arrow-cf-one" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-many-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-cf-one-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="3" y1="0" x2="3" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-many-required-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><line x1="7" y1="0" x2="7" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-cf-one-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-one-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L10,0 M0,5 L10,5 M0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="3" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-cf-many-optional-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,5 L0,0 M10,5 L0,5 M10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/><circle cx="7" cy="5" r="2" stroke="#0A0F25" stroke-width="2" fill="white"/></marker>
+<marker id="arrow-line" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="10" y1="0" x2="10" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-line-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><line x1="0" y1="0" x2="0" y2="10" stroke="#0A0F25" stroke-width="2"/></marker>
+<marker id="arrow-open" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
+<marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<g id="base-layer">
+<rect x="0" y="0" width="294" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="0" width="294" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="0" y1="36" x2="294" y2="36" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="72" x2="294" y2="72" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="108" x2="294" y2="108" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="144" x2="294" y2="144" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="260" width="294" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="260" width="294" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
+<line x1="0" y1="296" x2="294" y2="296" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="332" x2="294" y2="332" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="368" x2="294" y2="368" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="404" x2="294" y2="404" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 147 182 C 147 211.6 147 226.4 147 256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<text x="10" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">costumes</text>
+<text x="10" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="141" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="285" y="59" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="10" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">silliness</text>
+<text x="141" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="10" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">monster</text>
+<text x="141" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="10" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">last_updated</text>
+<text x="141" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+<text x="10" y="285.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">monsters</text>
+<text x="10" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="141" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="285" y="319" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="10" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20">movie</text>
+<text x="141" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20">string</text>
+<text x="10" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20">weight</text>
+<text x="141" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="10" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20">last_updated</text>
+<text x="141" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+</g>
+</svg>

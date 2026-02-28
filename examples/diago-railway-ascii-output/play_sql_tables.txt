@@ -1,0 +1,22 @@
++-----------------------------+
+|          costumes           |
+|                             |
++-----------------------------+
+|id                       int |
+|silliness                int |
+|monster                  int |
+|last_updated       timestamp |
+|                             |
++-----------------------------+
+               |               
+               v               
++-----------------------------+
+|          monsters           |
+|                             |
++-----------------------------+
+|id                       int |
+|movie                 string |
+|weight                   int |
+|last_updated       timestamp |
+|                             |
++-----------------------------+
