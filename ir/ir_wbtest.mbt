@@ -477,6 +477,21 @@ test "compile with imports - cyclic import errors" {
 }
 
 ///|
+test "compile with imports - pre path normalization" {
+  let source = "...@./../.././common"
+  let (ast, _) = @parser.parse(source)
+  let resolver = ImportResolver::new(fn(path) {
+    if path == "../../common" || path == "../../common.d2" {
+      Some("server")
+    } else {
+      None
+    }
+  })
+  let ir = compile_with_imports(ast, resolver)
+  assert_true(ir.has_field("server"))
+}
+
+///|
 test "compile - imports require resolver" {
   let cases = ["@common", "...@common", "x: @common", "x: [@common]"]
   for src in cases {

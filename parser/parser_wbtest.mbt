@@ -339,6 +339,44 @@ test "parse edge with property" {
 }
 
 ///|
+test "parse spread import with pre path" {
+  let (ast, errors) = parse("...@../file")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Import(imp) else {
+    fail("expected import node")
+  }
+  assert_true(imp.spread)
+  assert_eq(imp.pre, "../")
+  assert_eq(imp.path.length(), 1)
+  assert_eq(imp.path[0].content(), "file")
+}
+
+///|
+test "parse import strips d2 extension for unquoted path" {
+  let (ast, errors) = parse("x: @file.d2")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else { fail("expected key") }
+  guard key.value is Some(@ast.Value::Import(imp)) else {
+    fail("expected import value")
+  }
+  assert_eq(imp.pre, "")
+  assert_eq(imp.path.length(), 1)
+  assert_eq(imp.path[0].content(), "file")
+}
+
+///|
+test "parse import keeps quoted d2 segment" {
+  let (ast, errors) = parse("...@\"file\".d2")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Import(imp) else {
+    fail("expected import")
+  }
+  assert_eq(imp.path.length(), 2)
+  assert_eq(imp.path[0].content(), "file")
+  assert_eq(imp.path[1].content(), "d2")
+}
+
+///|
 test "parse edge line continuation with escaped newline" {
   let source =
     #|super long shape id here --\
@@ -354,6 +392,29 @@ test "parse edge line continuation with escaped newline" {
   assert_eq(edge.dst.to_strings(), ["super long shape id even longer here"])
   assert_eq(edge.src_arrow, "")
   assert_eq(edge.dst_arrow, ">")
+}
+
+///|
+test "parse unquoted value rejects ...@ prefix" {
+  let (_, errors) = parse("meow: ...@file")
+  assert_true(!errors.is_empty())
+  assert_true(
+    errors
+    .to_string()
+    .contains(
+      "unquoted strings cannot begin with ...@ as that's import spread syntax",
+    ),
+  )
+}
+
+///|
+test "parse key length limit" {
+  let long_key = "a".repeat(519)
+  let (_, errors) = parse(long_key + ": 1")
+  assert_true(!errors.is_empty())
+  assert_true(
+    errors.to_string().contains("exceeds maximum allowed length of 518"),
+  )
 }
 
 ///|

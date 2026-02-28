@@ -249,6 +249,13 @@ fn Parser::parse_map_node(self : Parser) -> @ast.MapNode? {
   }
 }
 
+fn is_unquoted_string_value(s : @ast.StringValue) -> Bool {
+  match s {
+    @ast.StringValue::Unquoted(_) => true
+    _ => false
+  }
+}
+
 ///|
 fn Parser::parse_key(self : Parser) -> @ast.Key? {
   let start = self.current().range.start
@@ -422,6 +429,14 @@ fn Parser::parse_key_path(self : Parser) -> @ast.KeyPath? {
     }
   }
   let end = self.current().range.end
+  for part in path {
+    if part.content().length() > 518 {
+      self.error(
+        "key length \{part.content().length()} exceeds maximum allowed length of 518",
+      )
+      break
+    }
+  }
   Some(@ast.KeyPath::new(@lexer.Range::new(start, end), path))
 }
 
@@ -742,21 +757,6 @@ fn Parser::parse_value(self : Parser) -> @ast.Value? {
         Some(imp) => Some(@ast.Value::Import(imp))
         None => None
       }
-    @lexer.DotDotDot => {
-      // Spread import: ...@path
-      let _ = self.advance() // consume ...
-      match self.peek() {
-        @lexer.At =>
-          match self.parse_import(true) {
-            Some(imp) => Some(@ast.Value::Import(imp))
-            None => None
-          }
-        _ => {
-          self.error("expected @ after ...")
-          None
-        }
-      }
-    }
     _ =>
       match self.parse_scalar() {
         Some(s) => Some(@ast.Value::Scalar(s))
@@ -1117,6 +1117,21 @@ fn Parser::parse_scalar(self : Parser) -> @ast.Scalar? {
 
 ///|
 fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
+  match self.peek() {
+    @lexer.DotDotDot =>
+      if self.pos + 1 < self.tokens.length() {
+        match self.tokens[self.pos + 1].kind {
+          @lexer.At =>
+            self.error(
+              "unquoted strings cannot begin with ...@ as that's import spread syntax",
+            )
+          _ => ()
+        }
+      } else {
+        ()
+      }
+    _ => ()
+  }
   let start_pos = self.current().range.start
   let mut end_pos = start_pos
   let mut seg_start = start_pos
@@ -1708,11 +1723,17 @@ fn Parser::parse_import(self : Parser, spread : Bool) -> @ast.Import? {
   let start = self.current().range.start
   let at = self.advance() // consume @
   let mut end = at.range.end
+  let (pre, first_segment_trim) = self.parse_import_pre()
   let path : Array[@ast.StringValue] = []
   match self.parse_string_for_key() {
-    Some(s) => {
-      end = s.range().end
-      path.push(s)
+    Some(raw_first) => {
+      let first = if first_segment_trim > 0 {
+        trim_import_first_segment(raw_first, first_segment_trim)
+      } else {
+        raw_first
+      }
+      end = first.range().end
+      path.push(first)
     }
     None => {
       self.error("expected path after @")
@@ -1738,5 +1759,77 @@ fn Parser::parse_import(self : Parser, spread : Bool) -> @ast.Import? {
       _ => break
     }
   }
-  Some(@ast.Import::new(@lexer.Range::new(start, end), spread, "", path))
+  if path.length() > 1 &&
+    is_unquoted_string_value(path[0]) &&
+    is_unquoted_string_value(path[1]) &&
+    path[1].content() == "d2" {
+    let compact : Array[@ast.StringValue] = [path[0]]
+    for i = 2; i < path.length(); i = i + 1 {
+      compact.push(path[i])
+    }
+    return Some(
+      @ast.Import::new(@lexer.Range::new(start, end), spread, pre, compact),
+    )
+  }
+  Some(@ast.Import::new(@lexer.Range::new(start, end), spread, pre, path))
+}
+
+///|
+fn Parser::parse_import_pre(self : Parser) -> (String, Int) {
+  if self.is_at_end() {
+    return ("", 0)
+  }
+  let token = self.current()
+  let start_offset = token.range.start.offset
+  let chars = self.source.to_array()
+  let mut offset = start_offset
+  while offset < chars.length() {
+    let c = chars[offset]
+    if c == '.' || c == '/' {
+      offset = offset + 1
+    } else {
+      break
+    }
+  }
+  if offset == start_offset {
+    return ("", 0)
+  }
+  while !self.is_at_end() && self.current().range.end.offset <= offset {
+    let _ = self.advance()
+  }
+  let first_trim = if !self.is_at_end() &&
+    self.current().range.start.offset < offset {
+    offset - self.current().range.start.offset
+  } else {
+    0
+  }
+  (substring_by_offsets(self.source, start_offset, offset), first_trim)
+}
+
+///|
+fn trim_import_first_segment(
+  value : @ast.StringValue,
+  trim_chars : Int,
+) -> @ast.StringValue {
+  if trim_chars <= 0 {
+    return value
+  }
+  match value {
+    @ast.StringValue::Unquoted(s) => {
+      let raw = s.to_string()
+      let chars = raw.to_array()
+      if trim_chars >= chars.length() {
+        return value
+      }
+      let trimmed = substring_by_offsets(raw, trim_chars, chars.length())
+      @ast.StringValue::Unquoted(
+        @ast.UnquotedString::new(
+          s.range,
+          [@ast.Interpolation::Text(trimmed)],
+          key_glob_pattern_from_text(trimmed),
+        ),
+      )
+    }
+    _ => value
+  }
 }

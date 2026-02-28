@@ -115,9 +115,9 @@ fn split_import_file_and_selector(
   // `@a.b.c` means: import file "a", then select path ["b", "c"].
   // The resolver key is the file part only (d2 parity).
   let file = if imp.path.length() > 0 {
-    imp.pre + imp.path[0].content()
+    join_import_pre(imp.pre, imp.path[0].content())
   } else {
-    imp.pre
+    join_import_pre(imp.pre, "")
   }
   let selector : Array[String] = []
   for i = 1; i < imp.path.length(); i = i + 1 {
@@ -129,6 +129,38 @@ fn split_import_file_and_selector(
     file + "." + selector.join(".")
   }
   (file, selector, display)
+}
+
+///|
+fn join_import_pre(pre : String, file : String) -> String {
+  let combined = pre + file
+  let is_abs = combined.length() > 0 && combined.to_array()[0] == '/'
+  let parts : Array[String] = []
+  for seg in combined.split("/").collect() {
+    let s = seg.to_string()
+    if s == "" || s == "." {
+      continue
+    }
+    if s == ".." {
+      if parts.length() > 0 && parts[parts.length() - 1] != ".." {
+        let _ = parts.pop()
+      } else if !is_abs {
+        parts.push("..")
+      }
+      continue
+    }
+    parts.push(s)
+  }
+  let joined = parts.join("/")
+  if is_abs {
+    if joined == "" {
+      "/"
+    } else {
+      "/" + joined
+    }
+  } else {
+    joined
+  }
 }
 
 ///|
