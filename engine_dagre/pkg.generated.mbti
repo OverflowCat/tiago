@@ -7,6 +7,7 @@ import {
 }
 
 // Values
+pub fn debug_build_dagre_input_json(@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Json raise @engine_api.LayoutError
 
 // Errors
 

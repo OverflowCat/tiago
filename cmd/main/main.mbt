@@ -146,6 +146,12 @@ enum LayoutEngineChoice {
 }
 
 ///|
+enum DumpInputEngine {
+  Dagre
+  Elk
+}
+
+///|
 fn parse_layout_engine(name : String) -> LayoutEngineChoice? {
   match name.to_lower() {
     "dagre" => Some(LayoutEngineChoice::Dagre)
@@ -161,6 +167,15 @@ fn layout_engine_name(engine : LayoutEngineChoice) -> String {
     LayoutEngineChoice::Dagre => "dagre"
     LayoutEngineChoice::Elk => "elk"
     LayoutEngineChoice::Railway => "railway"
+  }
+}
+
+///|
+fn parse_dump_input_engine(name : String) -> DumpInputEngine? {
+  match name.to_lower() {
+    "dagre" => Some(DumpInputEngine::Dagre)
+    "elk" => Some(DumpInputEngine::Elk)
+    _ => None
   }
 }
 
@@ -185,8 +200,8 @@ fn main {
     run_watch(args)
     return
   }
-  if first_arg == "dump-elk-input" {
-    run_dump_elk_input(args)
+  if first_arg == "dump-input" {
+    run_dump_input(args)
     return
   }
   // Parse arguments for compile
@@ -841,9 +856,7 @@ fn print_usage() -> Unit {
   println("  validate          Check diago source for errors")
   println("  fmt               Format diago source file")
   println("  watch             Auto-rebuild on file changes")
-  println(
-    "  dump-elk-input    Dump ELK layout input JSON (for moon_elk/elkjs debugging)",
-  )
+  println("  dump-input        Dump layout engine input JSON for debugging")
   println("")
   println("Compile Options:")
   println("  --ascii, -a       Output ASCII art (.txt) instead of SVG")
@@ -895,8 +908,11 @@ fn print_usage() -> Unit {
   println("  --check           Exit non-zero if file is not formatted (for CI)")
   println("  --diff            Show diff between original and formatted")
   println("")
-  println("Dump ELK Input Options (dump-elk-input command):")
-  println("  --out-dir DIR     Output directory (default: /tmp/diag-elk-input)")
+  println("Dump Input Options (dump-input command):")
+  println(
+    "  --engine NAME     Layout engine input to dump: elk|dagre (default: elk)",
+  )
+  println("  --out-dir DIR     Output directory (required)")
   println(
     "  input.d2 ...      Optional input files (default: all examples/*.d2)",
   )
@@ -1093,45 +1109,85 @@ fn run_validate(args : Array[String]) -> Unit {
 }
 
 ///|
-fn print_dump_elk_input_usage() -> Unit {
-  println("Usage: diago dump-elk-input [--out-dir DIR] [input.d2 ...]")
-  println("  Without input files, dumps ELK JSON for all examples/*.d2.")
+fn print_dump_input_usage() -> Unit {
+  println(
+    "Usage: diago dump-input [--engine elk|dagre] --out-dir DIR [input.d2 ...]",
+  )
+  println("  Without input files, dumps input JSON for all examples/*.d2.")
 }
 
 ///|
-fn run_dump_elk_input(args : Array[String]) -> Unit {
-  let mut out_dir = "/tmp/diag-elk-input"
+fn run_dump_input(args : Array[String]) -> Unit {
+  let mut dump_engine = DumpInputEngine::Elk
+  let mut out_dir : String? = None
   let input_paths : Array[String] = []
   let mut i = 2
   while i < args.length() {
     let arg = args[i]
     if arg == "--help" || arg == "-h" {
-      print_dump_elk_input_usage()
+      print_dump_input_usage()
       return
+    } else if arg == "--engine" {
+      i = i + 1
+      if i >= args.length() {
+        println("Error: missing value for --engine")
+        print_dump_input_usage()
+        @sys.exit(1)
+        return
+      }
+      match parse_dump_input_engine(args[i]) {
+        Some(engine) => dump_engine = engine
+        None => {
+          println(
+            "Error: unsupported dump engine '\{args[i]}'. Expected elk or dagre.",
+          )
+          @sys.exit(1)
+          return
+        }
+      }
+    } else if arg.has_prefix("--engine=") {
+      let value = extract_value_after_eq(arg)
+      match parse_dump_input_engine(value) {
+        Some(engine) => dump_engine = engine
+        None => {
+          println(
+            "Error: unsupported dump engine '\{value}'. Expected elk or dagre.",
+          )
+          @sys.exit(1)
+          return
+        }
+      }
     } else if arg == "--out-dir" {
       i = i + 1
       if i >= args.length() {
         println("Error: missing value for --out-dir")
-        print_dump_elk_input_usage()
+        print_dump_input_usage()
         @sys.exit(1)
         return
       }
-      out_dir = args[i]
+      out_dir = Some(args[i])
     } else if arg.has_prefix("--out-dir=") {
-      out_dir = extract_value_after_eq(arg)
+      out_dir = Some(extract_value_after_eq(arg))
     } else if arg.has_suffix(".d2") {
       input_paths.push(arg)
     } else {
-      println("Error: unsupported dump-elk-input argument '\{arg}'")
-      print_dump_elk_input_usage()
+      println("Error: unsupported dump-input argument '\{arg}'")
+      print_dump_input_usage()
       @sys.exit(1)
       return
     }
     i = i + 1
   }
 
+  guard out_dir is Some(out_dir) else {
+    println("Error: --out-dir is required for dump-input.")
+    print_dump_input_usage()
+    @sys.exit(1)
+    return
+  }
+
   let sources_result = if input_paths.is_empty() {
-    collect_default_dump_elk_sources()
+    collect_default_dump_input_sources()
   } else {
     Ok(input_paths)
   }
@@ -1160,7 +1216,7 @@ fn run_dump_elk_input(args : Array[String]) -> Unit {
 
   let mut has_error = false
   for input_path in input_sources {
-    match dump_elk_input_for_file(input_path, out_dir) {
+    match dump_input_for_file(input_path, out_dir, dump_engine) {
       Ok(out_path) => println("Wrote \{out_path}")
       Err(e) => {
         println("Error: \{e}")
@@ -1174,7 +1230,7 @@ fn run_dump_elk_input(args : Array[String]) -> Unit {
 }
 
 ///|
-fn collect_default_dump_elk_sources() -> Result[Array[String], String] {
+fn collect_default_dump_input_sources() -> Result[Array[String], String] {
   let entries = @fs.read_dir("examples") catch {
     e => return Err("Error reading directory 'examples': \{e}")
   }
@@ -1226,9 +1282,10 @@ fn ensure_dir_recursive(path : String) -> Result[Unit, String] {
 }
 
 ///|
-fn dump_elk_input_for_file(
+fn dump_input_for_file(
   input_path : String,
   out_dir : String,
+  dump_engine : DumpInputEngine,
 ) -> Result[String, String] {
   let source = @fs.read_file_to_string(input_path) catch {
     e => return Err("Error reading file '\{input_path}': \{e}")
@@ -1246,14 +1303,25 @@ fn dump_elk_input_for_file(
     e => return Err("Graph error in '\{input_path}': \{e}")
   }
 
-  let elk_json = @engine_elk.debug_build_elk_input_json(
-    graph_input,
-    @engine_api.LayoutConfig::new(),
-    @engine_api.Down,
-  )
+  let input_json = match dump_engine {
+    DumpInputEngine::Elk =>
+      @engine_elk.debug_build_elk_input_json(
+        graph_input,
+        @engine_api.LayoutConfig::new(),
+        @engine_api.Down,
+      )
+    DumpInputEngine::Dagre =>
+      @engine_dagre.debug_build_dagre_input_json(
+        graph_input,
+        @engine_api.LayoutConfig::new(),
+        @engine_api.Down,
+      ) catch {
+        e => return Err("Dagre input build error in '\{input_path}': \{e}")
+      }
+  }
   let output_name = replace_extension(basename_string(input_path), ".json")
   let out_path = @path.Path(out_dir).join(@path.Path(output_name)).to_string()
-  @fs.write_string_to_file(out_path, elk_json.stringify(escape_slash=false)) catch {
+  @fs.write_string_to_file(out_path, input_json.stringify(escape_slash=false)) catch {
     e => return Err("Error writing file '\{out_path}': \{e}")
   }
   Ok(out_path)

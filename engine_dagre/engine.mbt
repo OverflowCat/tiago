@@ -28,6 +28,151 @@ pub fn DagreEngine::new() -> DagreEngine {
 }
 
 ///|
+pub fn debug_build_dagre_input_json(
+  graph : @graph.GraphInput,
+  config : @engine_api.LayoutConfig,
+  direction : @engine_api.Direction,
+) -> Json raise @engine_api.LayoutError {
+  let (dagre_graph, _, _, _, _) = build_dagre_graph(graph, config, direction)
+  dagre_graph_to_json(dagre_graph)
+}
+
+///|
+fn dagre_graph_to_json(graph : @moon_dagre.Graph) -> Json {
+  let graph_json : Map[String, Json] = {
+    "graph": dagre_attrs_to_json(graph.graph()),
+    "directed": Json::boolean(graph.is_directed()),
+    "multigraph": Json::boolean(graph.is_multigraph()),
+    "compound": Json::boolean(graph.is_compound()),
+  }
+
+  let root_children : Array[Json] = []
+  for child_id in graph.children() {
+    root_children.push(Json::string(child_id))
+  }
+  graph_json["rootChildren"] = Json::array(root_children)
+
+  let node_ids = graph.nodes()
+  node_ids.sort_by(fn(a, b) { a.compare(b) })
+  let nodes_json : Array[Json] = []
+  for node_id in node_ids {
+    let node_json : Map[String, Json] = {
+      "id": Json::string(node_id),
+      "attrs": dagre_attrs_to_json(graph.node(node_id)),
+    }
+    match graph.parent(node_id) {
+      Some(parent_id) => node_json["parent"] = Json::string(parent_id)
+      None => ()
+    }
+    nodes_json.push(Json::object(node_json))
+  }
+  graph_json["nodes"] = Json::array(nodes_json)
+
+  let edge_objs = graph.edges()
+  edge_objs.sort_by(fn(a, b) {
+    if a.v != b.v {
+      return a.v.compare(b.v)
+    }
+    if a.w != b.w {
+      return a.w.compare(b.w)
+    }
+    let a_name = match a.name {
+      Some(v) => v
+      None => ""
+    }
+    let b_name = match b.name {
+      Some(v) => v
+      None => ""
+    }
+    a_name.compare(b_name)
+  })
+  let edges_json : Array[Json] = []
+  for edge_obj in edge_objs {
+    let edge_attrs = match
+      @moon_dagre.value_as_attrs(graph.edge_obj(edge_obj)) {
+      Some(attrs) => attrs
+      None => @moon_dagre.empty_attrs()
+    }
+    let edge_json : Map[String, Json] = {
+      "v": Json::string(edge_obj.v),
+      "w": Json::string(edge_obj.w),
+      "attrs": dagre_attrs_to_json(edge_attrs),
+    }
+    match edge_obj.name {
+      Some(name) => edge_json["name"] = Json::string(name)
+      None => ()
+    }
+    edges_json.push(Json::object(edge_json))
+  }
+  graph_json["edges"] = Json::array(edges_json)
+
+  Json::object(graph_json)
+}
+
+///|
+fn dagre_attrs_to_json(attrs : @moon_dagre.Attrs) -> Json {
+  let keys = attrs.keys()
+  keys.sort_by(fn(a, b) { a.compare(b) })
+  let out : Map[String, Json] = {}
+  for key in keys {
+    match attrs.get(key) {
+      Some(attr) => out[key] = dagre_attr_to_json(attr)
+      None => ()
+    }
+  }
+  Json::object(out)
+}
+
+///|
+fn dagre_attr_to_json(attr : @moon_dagre.Attr) -> Json {
+  match attr {
+    @moon_dagre.Bool(v) => Json::boolean(v)
+    @moon_dagre.Edge(v) => dagre_edge_obj_to_json(v)
+    @moon_dagre.Edges(vs) => Json::array(vs.map(dagre_edge_obj_to_json))
+    @moon_dagre.Float(v) => Json::number(v)
+    @moon_dagre.Int(v) => Json::number(v.to_double())
+    @moon_dagre.Ints(vs) =>
+      Json::array(vs.map(fn(v) { Json::number(v.to_double()) }))
+    @moon_dagre.Null => Json::null()
+    @moon_dagre.Point(v) => dagre_point_to_json(v)
+    @moon_dagre.Points(vs) => Json::array(vs.map(dagre_point_to_json))
+    @moon_dagre.String(v) => Json::string(v)
+    @moon_dagre.Strings(vs) => Json::array(vs.map(Json::string))
+    @moon_dagre.Val(v) => dagre_value_to_json(v)
+  }
+}
+
+///|
+fn dagre_value_to_json(value : @moon_dagre.Value) -> Json {
+  match value {
+    @moon_dagre.VAttrs(v) => dagre_attrs_to_json(v)
+    @moon_dagre.VBool(v) => Json::boolean(v)
+    @moon_dagre.VFloat(v) => Json::number(v)
+    @moon_dagre.VInt(v) => Json::number(v.to_double())
+    @moon_dagre.VNull => Json::null()
+    @moon_dagre.VString(v) => Json::string(v)
+  }
+}
+
+///|
+fn dagre_edge_obj_to_json(edge_obj : @moon_dagre.EdgeObj) -> Json {
+  let out : Map[String, Json] = {
+    "v": Json::string(edge_obj.v),
+    "w": Json::string(edge_obj.w),
+  }
+  match edge_obj.name {
+    Some(name) => out["name"] = Json::string(name)
+    None => ()
+  }
+  Json::object(out)
+}
+
+///|
+fn dagre_point_to_json(point : @moon_dagre.Point) -> Json {
+  Json::object({ "x": Json::number(point.x), "y": Json::number(point.y) })
+}
+
+///|
 priv struct EdgeLayoutInfo {
   edge_index : Int
   src_id : String
