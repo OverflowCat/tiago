@@ -129,6 +129,10 @@ pub struct Connection {
   dst_arrow : Bool
   src_arrowhead : @graph.ArrowheadType
   dst_arrowhead : @graph.ArrowheadType
+  src_arrowhead_label : String?
+  dst_arrowhead_label : String?
+  src_arrowhead_label_color : String?
+  dst_arrowhead_label_color : String?
   src_anchor : String?
   dst_anchor : String?
   label : String
@@ -360,6 +364,10 @@ fn connection_from_edge(edge : @graph.EdgeInput) -> Connection {
     dst_arrow: edge.dst_arrow,
     src_arrowhead: edge.src_arrowhead,
     dst_arrowhead: edge.dst_arrowhead,
+    src_arrowhead_label: edge.src_arrowhead_label,
+    dst_arrowhead_label: edge.dst_arrowhead_label,
+    src_arrowhead_label_color: edge.src_arrowhead_label_color,
+    dst_arrowhead_label_color: edge.dst_arrowhead_label_color,
     src_anchor: edge.src_anchor,
     dst_anchor: edge.dst_anchor,
     label: edge.label,
@@ -482,6 +490,10 @@ fn append_sequence_lifeline_connections(
           dst_arrow: false,
           src_arrowhead: @graph.None,
           dst_arrowhead: @graph.None,
+          src_arrowhead_label: None,
+          dst_arrowhead_label: None,
+          src_arrowhead_label_color: None,
+          dst_arrowhead_label_color: None,
           src_anchor: None,
           dst_anchor: None,
           label: "",

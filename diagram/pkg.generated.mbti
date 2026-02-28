@@ -38,6 +38,10 @@ pub struct Connection {
   dst_arrow : Bool
   src_arrowhead : @graph.ArrowheadType
   dst_arrowhead : @graph.ArrowheadType
+  src_arrowhead_label : String?
+  dst_arrowhead_label : String?
+  src_arrowhead_label_color : String?
+  dst_arrowhead_label_color : String?
   src_anchor : String?
   dst_anchor : String?
   label : String

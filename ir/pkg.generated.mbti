@@ -165,7 +165,9 @@ pub struct Scalar {
 pub fn Scalar::as_bool(Self) -> Bool?
 pub fn Scalar::as_double(Self) -> Double?
 pub fn Scalar::as_int(Self) -> Int?
+pub fn Scalar::as_string_value(Self) -> @ast.StringValue?
 pub fn Scalar::at(@lexer.Range, ScalarValue) -> Self
+pub fn Scalar::block_string_tag(Self) -> String?
 pub fn Scalar::bool(Bool) -> Self
 pub fn Scalar::get_range(Self) -> @lexer.Range
 pub fn Scalar::is_bool(Self) -> Bool

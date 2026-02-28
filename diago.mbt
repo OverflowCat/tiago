@@ -317,6 +317,7 @@ pub fn compile_diagram(
   options? : CompileOptions = CompileOptions::new(),
 ) -> @diagram.Diagram raise DiagoError {
   let ir_map = parse(source, options=options.parse_options)
+  let layout_direction = resolve_layout_direction(options.direction, ir_map)
   let source_config = extract_source_config(ir_map)
   let effective_layout_engine = resolve_layout_engine(
     options.layout_engine,
@@ -328,7 +329,7 @@ pub fn compile_diagram(
   let config = @engine_api.LayoutConfig::new()
   let laid_out_graph = match options.layout_plugin {
     Some(plugin) =>
-      match plugin.run(graph_input, config, options.direction) {
+      match plugin.run(graph_input, config, layout_direction) {
         Ok(graph) => graph
         Err(e) => raise LayoutError("Layout plugin error: \{e}")
       }
@@ -339,7 +340,7 @@ pub fn compile_diagram(
             @engine_dagre.DagreEngine::new(),
             graph_input,
             config,
-            options.direction,
+            layout_direction,
           ) catch {
             e => raise LayoutError(e.to_string())
           }
@@ -348,7 +349,7 @@ pub fn compile_diagram(
             @engine_elk.ElkEngine::new(),
             graph_input,
             config,
-            options.direction,
+            layout_direction,
           ) catch {
             e => raise LayoutError(e.to_string())
           }
@@ -357,7 +358,7 @@ pub fn compile_diagram(
             @engine_railway.RailwayEngine::new(),
             graph_input,
             config,
-            options.direction,
+            layout_direction,
           ) catch {
             e => raise LayoutError(e.to_string())
           }
@@ -435,6 +436,36 @@ fn resolve_layout_engine(
         None => Dagre
       }
     None => Dagre
+  }
+}
+
+///|
+fn resolve_layout_direction(
+  fallback : @engine_api.Direction,
+  ir_map : @ir.Map,
+) -> @engine_api.Direction {
+  match extract_source_direction(ir_map) {
+    Some(direction) => direction
+    None => fallback
+  }
+}
+
+///|
+fn extract_source_direction(ir_map : @ir.Map) -> @engine_api.Direction? {
+  let field = match ir_map.get_field("direction") {
+    Some(v) => v
+    None => return None
+  }
+  let scalar = match field.primary {
+    Some(v) => v.to_string().to_lower()
+    None => return None
+  }
+  match scalar {
+    "down" | "vertical" => Some(@engine_api.Direction::Down)
+    "up" => Some(@engine_api.Direction::Up)
+    "left" => Some(@engine_api.Direction::Left)
+    "right" | "horizontal" => Some(@engine_api.Direction::Right)
+    _ => None
   }
 }
 

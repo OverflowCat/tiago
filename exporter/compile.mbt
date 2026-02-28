@@ -87,6 +87,8 @@ priv struct Object {
   mut tooltip : String?
   mut link : String?
   classes : Array[String]
+  mut width : Double?
+  mut height : Double?
   mut grid_rows : Int?
   mut grid_columns : Int?
   mut grid_gap : Double?
@@ -113,6 +115,8 @@ fn Object::new(id : String) -> Object {
     tooltip: None,
     link: None,
     classes: [],
+    width: None,
+    height: None,
     grid_rows: None,
     grid_columns: None,
     grid_gap: None,
@@ -140,6 +144,10 @@ priv struct Edge {
   dst_arrow : Bool
   mut src_arrowhead : ArrowheadType
   mut dst_arrowhead : ArrowheadType
+  mut src_arrowhead_label : String?
+  mut dst_arrowhead_label : String?
+  mut src_arrowhead_label_color : String?
+  mut dst_arrowhead_label_color : String?
   mut src_anchor : String?
   mut dst_anchor : String?
   mut label : String
@@ -176,6 +184,10 @@ fn Edge::new(
     } else {
       None
     },
+    src_arrowhead_label: None,
+    dst_arrowhead_label: None,
+    src_arrowhead_label_color: None,
+    dst_arrowhead_label_color: None,
     src_anchor: None,
     dst_anchor: None,
     label: "",
@@ -470,12 +482,18 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
   for c in obj.classes {
     classes.push(c)
   }
+  let box = match (obj.width, obj.height) {
+    (None, None) => None
+    (Some(w), Some(h)) => Some(@graph.Box::new(0.0, 0.0, w, h))
+    (Some(w), None) => Some(@graph.Box::new(0.0, 0.0, w, 0.0))
+    (None, Some(h)) => Some(@graph.Box::new(0.0, 0.0, 0.0, h))
+  }
   @graph.ObjectInput::from_parts(
     obj.id,
     obj.label,
     obj.shape_type,
     style_to_input(obj.style),
-    None,
+    box,
     None,
     child_ids,
     obj.z_index,
@@ -516,6 +534,10 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
     edge.dst_arrow,
     edge.src_arrowhead,
     edge.dst_arrowhead,
+    edge.src_arrowhead_label,
+    edge.dst_arrowhead_label,
+    edge.src_arrowhead_label_color,
+    edge.dst_arrowhead_label_color,
     edge.src_anchor,
     edge.dst_anchor,
     edge.label,
@@ -537,6 +559,52 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
   for obj in graph.objects {
     objects.push(object_to_input(obj))
   }
+  let nested_child_ids : Map[String, Bool] = {}
+  for obj in graph.objects {
+    for child in obj.children {
+      nested_child_ids[child.id] = true
+    }
+  }
+  let root_child_ids : Array[String] = []
+  for obj in graph.objects {
+    if !nested_child_ids.contains(obj.id) {
+      root_child_ids.push(obj.id)
+    }
+  }
+  let root_classes : Array[String] = []
+  for c in graph.root.classes {
+    root_classes.push(c)
+  }
+  let root_box = match (graph.root.width, graph.root.height) {
+    (None, None) => None
+    (Some(w), Some(h)) => Some(@graph.Box::new(0.0, 0.0, w, h))
+    (Some(w), None) => Some(@graph.Box::new(0.0, 0.0, w, 0.0))
+    (None, Some(h)) => Some(@graph.Box::new(0.0, 0.0, 0.0, h))
+  }
+  let root = @graph.ObjectInput::from_parts(
+    graph.root.id,
+    graph.root.label,
+    graph.root.shape_type,
+    style_to_input(graph.root.style),
+    root_box,
+    None,
+    root_child_ids,
+    graph.root.z_index,
+    graph.root.icon,
+    graph.root.tooltip,
+    graph.root.link,
+    root_classes,
+    graph.root.grid_rows,
+    graph.root.grid_columns,
+    graph.root.grid_gap,
+    graph.root.horizontal_gap,
+    graph.root.vertical_gap,
+    graph.root.grid_column_span,
+    graph.root.grid_row_span,
+    graph.root.near,
+    graph.root.top,
+    graph.root.left,
+  )
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
     edges.push(edge_to_input(e))
@@ -561,7 +629,7 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
   }
   @graph.GraphInput::from_parts(
     graph.name,
-    object_to_input(graph.root),
+    root,
     objects,
     edges,
     [],
@@ -650,7 +718,7 @@ fn compile_objects(
     let obj = Object::new(id)
     // Set label from primary value
     match field.primary {
-      Some(scalar) => obj.label = scalar.to_string()
+      Some(scalar) => set_object_label_from_scalar(obj, scalar)
       None => ()
     }
     // Process composite (nested objects)
@@ -708,7 +776,7 @@ fn compile_children(
     let child = Object::new(id)
     // Set label - use field name as default, or primary value if provided
     match field.primary {
-      Some(scalar) => child.label = scalar.to_string()
+      Some(scalar) => set_object_label_from_scalar(child, scalar)
       None => child.label = field.name // Use field name, not full path
     }
     // Process nested composites
@@ -736,6 +804,32 @@ fn compile_children(
         graph.add_object(child)
       }
     }
+  }
+}
+
+///|
+fn set_object_label_from_scalar(obj : Object, scalar : @ir.Scalar) -> Unit {
+  obj.label = scalar.to_string()
+  match scalar.block_string_tag() {
+    Some(tag_raw) => {
+      let tag = normalize_block_string_language(tag_raw)
+      if tag.length() > 0 {
+        obj.classes.push("lang:" + tag)
+        if tag != "latex" && tag != "markdown" {
+          obj.shape_type = ShapeType::Code
+        }
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn normalize_block_string_language(tag : String) -> String {
+  match tag.to_lower() {
+    "tex" => "latex"
+    "md" => "markdown"
+    other => other
   }
 }
 
@@ -788,6 +882,32 @@ fn process_special_fields(
     Some(f) =>
       match f.primary {
         Some(s) => obj.label = s.to_string()
+        None => ()
+      }
+    None => ()
+  }
+  // Process width
+  match ir.get_field("width") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => obj.width = Some(v)
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  // Process height
+  match ir.get_field("height") {
+    Some(f) =>
+      match f.primary {
+        Some(s) =>
+          match parse_double(s.to_string()) {
+            Some(v) => obj.height = Some(v)
+            None => ()
+          }
         None => ()
       }
     None => ()
@@ -1319,35 +1439,14 @@ fn compile_edges_in_map(
             }
           None => ()
         }
-        // Process source-arrowhead
+        // Process source-arrowhead / target-arrowhead using d2 semantics:
+        // scalar can be either shape or label, map primary is label and shape
+        // comes from `shape`.
         if m.get_field("source-arrowhead") is Some(f) {
-          if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
-            if arrowhead_map.get_field("shape") is Some(shape_f) {
-              if shape_f.primary is Some(s) {
-                graph_edge.src_arrowhead = ArrowheadType::from_string(
-                  s.to_string(),
-                )
-              }
-            }
-          } else if f.primary is Some(s) {
-            // Simple value (shape directly)
-            graph_edge.src_arrowhead = ArrowheadType::from_string(s.to_string())
-          }
+          process_edge_arrowhead_field(graph_edge, f, true)
         }
-        // Process target-arrowhead
         if m.get_field("target-arrowhead") is Some(f) {
-          if f.composite is Some(@ir.Composite::Map(arrowhead_map)) {
-            if arrowhead_map.get_field("shape") is Some(shape_f) {
-              if shape_f.primary is Some(s) {
-                graph_edge.dst_arrowhead = ArrowheadType::from_string(
-                  s.to_string(),
-                )
-              }
-            }
-          } else if f.primary is Some(s) {
-            // Simple value (shape directly)
-            graph_edge.dst_arrowhead = ArrowheadType::from_string(s.to_string())
-          }
+          process_edge_arrowhead_field(graph_edge, f, false)
         }
         // Process source-anchor
         if m.get_field("source-anchor") is Some(f) {
@@ -1408,6 +1507,111 @@ fn compile_edges_in_map(
     graph.add_edge(graph_edge)
   }
   next_index
+}
+
+///|
+fn parse_arrowhead_shape_string(raw : String) -> ArrowheadType? {
+  match raw.to_lower() {
+    "none"
+    | "triangle"
+    | "arrow"
+    | "diamond"
+    | "circle"
+    | "open"
+    | "line"
+    | "cf-one"
+    | "cfone"
+    | "cf-many"
+    | "cfmany"
+    | "cf-one-required"
+    | "cfonerequired"
+    | "cf-many-required"
+    | "cfmanyrequired"
+    | "cf-one-optional"
+    | "cfoneoptional"
+    | "cf-many-optional"
+    | "cfmanyoptional" => Some(ArrowheadType::from_string(raw))
+    _ => None
+  }
+}
+
+///|
+fn process_edge_arrowhead_field(
+  edge : Edge,
+  field : @ir.Field,
+  is_source : Bool,
+) -> Unit {
+  match field.composite {
+    Some(@ir.Composite::Map(arrowhead_map)) => {
+      // In map form, primary value is treated as arrowhead label.
+      if field.primary is Some(p) {
+        if is_source {
+          edge.src_arrowhead_label = Some(p.to_string())
+        } else {
+          edge.dst_arrowhead_label = Some(p.to_string())
+        }
+      }
+      match arrowhead_map.get_field("shape") {
+        Some(shape_f) =>
+          match shape_f.primary {
+            Some(s) =>
+              match parse_arrowhead_shape_string(s.to_string()) {
+                Some(shape) =>
+                  if is_source {
+                    edge.src_arrowhead = shape
+                  } else {
+                    edge.dst_arrowhead = shape
+                  }
+                None => ()
+              }
+            None => ()
+          }
+        None => ()
+      }
+      match arrowhead_map.get_field("style") {
+        Some(style_f) =>
+          match style_f.map() {
+            Some(style_map) =>
+              match style_map.get_field("font-color") {
+                Some(color_f) =>
+                  match color_f.primary {
+                    Some(color) =>
+                      if is_source {
+                        edge.src_arrowhead_label_color = Some(color.to_string())
+                      } else {
+                        edge.dst_arrowhead_label_color = Some(color.to_string())
+                      }
+                    None => ()
+                  }
+                None => ()
+              }
+            None => ()
+          }
+        None => ()
+      }
+    }
+    _ =>
+      match field.primary {
+        Some(s) => {
+          let raw = s.to_string()
+          match parse_arrowhead_shape_string(raw) {
+            Some(shape) =>
+              if is_source {
+                edge.src_arrowhead = shape
+              } else {
+                edge.dst_arrowhead = shape
+              }
+            None =>
+              if is_source {
+                edge.src_arrowhead_label = Some(raw)
+              } else {
+                edge.dst_arrowhead_label = Some(raw)
+              }
+          }
+        }
+        None => ()
+      }
+  }
 }
 
 ///|
@@ -2315,15 +2519,11 @@ fn parse_int(s : String) -> Int? {
 ///
 /// Note: any structural normalization required for layout (like re-parenting
 /// top-level nodes for sequence diagrams) is done in the layout pipeline.
-fn handle_root_shape(graph : Graph, ir : @ir.Map) -> Unit {
-  match ir.get_field("shape") {
-    Some(f) =>
-      match f.primary {
-        Some(s) => graph.root.shape_type = ShapeType::from_string(s.to_string())
-        None => ()
-      }
-    None => ()
-  }
+fn handle_root_shape(
+  graph : Graph,
+  ir : @ir.Map,
+) -> Unit raise GraphCompileError {
+  process_special_fields(graph.root, ir)
 }
 
 ///|

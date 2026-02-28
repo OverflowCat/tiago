@@ -248,6 +248,10 @@ fn assign_sql_column_indices(graph : @graph.GraphInput) -> @graph.GraphInput {
         e.dst_arrow,
         e.src_arrowhead,
         e.dst_arrowhead,
+        e.src_arrowhead_label,
+        e.dst_arrowhead_label,
+        e.src_arrowhead_label_color,
+        e.dst_arrowhead_label_color,
         e.src_anchor,
         e.dst_anchor,
         e.label,
@@ -318,6 +322,10 @@ fn normalize_routes(graph : @graph.GraphInput) -> @graph.GraphInput {
         e.dst_arrow,
         e.src_arrowhead,
         e.dst_arrowhead,
+        e.src_arrowhead_label,
+        e.dst_arrowhead_label,
+        e.src_arrowhead_label_color,
+        e.dst_arrowhead_label_color,
         e.src_anchor,
         e.dst_anchor,
         e.label,
@@ -372,6 +380,29 @@ priv struct GridSemanticPlan {
 }
 
 ///|
+const D2_GRID_STARTING_THRESHOLD : Double = 1.2
+
+///|
+const D2_GRID_THRESHOLD_STEP_SIZE : Double = 0.25
+
+///|
+const D2_GRID_MIN_THRESHOLD_ATTEMPTS : Int = 1
+
+///|
+const D2_GRID_MAX_THRESHOLD_ATTEMPTS : Int = 3
+
+///|
+const D2_GRID_ATTEMPT_LIMIT : Int = 100000
+
+///|
+const D2_GRID_SKIP_LIMIT : Int = 10000000
+
+///|
+priv struct RootGridSemanticLayout {
+  child_boxes : Map[String, @graph.Box]
+}
+
+///|
 priv struct GridSemanticContext {
   groups : Map[String, Array[String]]
   child_ids : Map[String, Bool]
@@ -413,6 +444,7 @@ fn collect_grid_semantic_groups(
   graph : @graph.GraphInput,
 ) -> Map[String, Array[String]] {
   let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.id] = graph.root
   for obj in graph.objects {
     object_by_id[obj.id] = obj
   }
@@ -422,7 +454,11 @@ fn collect_grid_semantic_groups(
     incident_ids[edge.dst_id] = true
   }
   let groups : Map[String, Array[String]] = {}
-  for parent in graph.objects {
+  let parents : Array[@graph.ObjectInput] = [graph.root]
+  for obj in graph.objects {
+    parents.push(obj)
+  }
+  for parent in parents {
     if parent.grid_rows is None && parent.grid_columns is None {
       continue
     }
@@ -478,9 +514,26 @@ fn detach_grid_children(
     }
     objects.push(clone_object_with_parts(obj, obj.box, child_ids))
   }
+  let root_child_ids = match groups.get(graph.root.id) {
+    Some(filtered) => {
+      let removed : Map[String, Bool] = {}
+      for id in filtered {
+        removed[id] = true
+      }
+      let kept : Array[String] = []
+      for id in graph.root.child_ids {
+        if !removed.contains(id) {
+          kept.push(id)
+        }
+      }
+      kept
+    }
+    None => graph.root.child_ids
+  }
+  let root = clone_object_with_parts(graph.root, graph.root.box, root_child_ids)
   @graph.GraphInput::from_parts(
     graph.name,
-    graph.root,
+    root,
     objects,
     graph.edges,
     graph.sequence_fragments,
@@ -608,6 +661,650 @@ fn grid_semantic_paddings(
 }
 
 ///|
+fn root_grid_gaps(parent : @graph.ObjectInput) -> (Double, Double) {
+  let mut vertical_gap = 40.0
+  let mut horizontal_gap = 40.0
+  match parent.grid_gap {
+    Some(v) => {
+      vertical_gap = v
+      horizontal_gap = v
+    }
+    None => ()
+  }
+  match parent.vertical_gap {
+    Some(v) => vertical_gap = v
+    None => ()
+  }
+  match parent.horizontal_gap {
+    Some(v) => horizontal_gap = v
+    None => ()
+  }
+  (horizontal_gap, vertical_gap)
+}
+
+///|
+fn root_grid_segment_size(
+  segment : Array[Int],
+  sizes : Array[Double],
+  gap : Double,
+) -> Double {
+  let mut out = 0.0
+  for i in segment {
+    out = out + sizes[i]
+  }
+  if segment.length() > 1 {
+    out = out + gap * (segment.length() - 1).to_double()
+  }
+  out
+}
+
+///|
+fn root_grid_layout_distance(
+  layout : Array[Array[Int]],
+  target_size : Double,
+  sizes : Array[Double],
+  gap : Double,
+) -> Double {
+  let mut total = 0.0
+  for segment in layout {
+    let segment_size = root_grid_segment_size(segment, sizes, gap)
+    total = total + (segment_size - target_size).abs()
+  }
+  total
+}
+
+///|
+fn root_grid_gen_layout(
+  count : Int,
+  cut_indices : Array[Int],
+) -> Array[Array[Int]] {
+  let layout : Array[Array[Int]] = []
+  let mut obj_index = 0
+  let mut i = 0
+  while i <= cut_indices.length() {
+    let stop = if i < cut_indices.length() { cut_indices[i] } else { count - 1 }
+    let row : Array[Int] = []
+    while obj_index <= stop && obj_index < count {
+      row.push(obj_index)
+      obj_index = obj_index + 1
+    }
+    layout.push(row)
+    i = i + 1
+  }
+  layout
+}
+
+///|
+fn root_grid_cut_combinations(end : Int, cuts_left : Int) -> Array[Array[Int]] {
+  let out : Array[Array[Int]] = []
+  if end < 2 || cuts_left <= 0 {
+    return out
+  }
+  let mut index = end - 1
+  while index >= cuts_left {
+    if cuts_left > 1 {
+      let inner = root_grid_cut_combinations(index, cuts_left - 1)
+      for cut_list in inner {
+        let combined = cut_list.copy()
+        combined.push(index - 1)
+        out.push(combined)
+      }
+    } else {
+      out.push([index - 1])
+    }
+    index = index - 1
+  }
+  out
+}
+
+///|
+fn root_grid_fast_layout(
+  sizes : Array[Double],
+  target_size : Double,
+  n_cuts : Int,
+  gap : Double,
+) -> Array[Array[Int]]? {
+  if n_cuts <= 0 {
+    return Some(root_grid_gen_layout(sizes.length(), []))
+  }
+  let mut debt = 0.0
+  let division : Array[Int] = []
+  let mut row_size = 0.0
+  for i, size in sizes {
+    if row_size == 0.0 {
+      if size > target_size - debt {
+        division.push(i)
+        debt = debt + (size - target_size)
+      } else {
+        row_size = row_size + size
+      }
+      continue
+    }
+    if row_size + gap + size / 2.0 > target_size - debt {
+      division.push(i - 1)
+      debt = debt + (row_size - target_size)
+      row_size = size
+    } else {
+      row_size = row_size + gap + size
+    }
+  }
+  if division.length() == n_cuts {
+    return Some(root_grid_gen_layout(sizes.length(), division))
+  }
+  None
+}
+
+///|
+fn root_grid_sum(values : Array[Double]) -> Double {
+  let mut s = 0.0
+  for v in values {
+    s = s + v
+  }
+  s
+}
+
+///|
+fn root_grid_avg(values : Array[Double]) -> Double {
+  if values.is_empty() {
+    return 0.0
+  }
+  root_grid_sum(values) / values.length().to_double()
+}
+
+///|
+fn root_grid_variance(values : Array[Double]) -> Double {
+  if values.is_empty() {
+    return 0.0
+  }
+  let mean = root_grid_avg(values)
+  let mut total = 0.0
+  for value in values {
+    let dev = mean - value
+    total = total + dev * dev
+  }
+  total / values.length().to_double()
+}
+
+///|
+fn root_grid_stddev(values : Array[Double]) -> Double {
+  root_grid_variance(values).sqrt()
+}
+
+///|
+fn root_grid_best_layout(
+  sizes : Array[Double],
+  target_size : Double,
+  n_cuts : Int,
+  gap : Double,
+) -> Array[Array[Int]] {
+  if n_cuts <= 0 {
+    return root_grid_gen_layout(sizes.length(), [])
+  }
+  let mut best_layout : Array[Array[Int]] = []
+  let mut best_dist = 1000000000000.0
+  let mut has_best = false
+  let mut fast_is_best = false
+
+  match root_grid_fast_layout(sizes, target_size, n_cuts, gap) {
+    Some(fast_layout) => {
+      let dist = root_grid_layout_distance(fast_layout, target_size, sizes, gap)
+      if dist == 0.0 {
+        return fast_layout
+      }
+      best_layout = fast_layout
+      best_dist = dist
+      has_best = true
+      fast_is_best = true
+    }
+    None => ()
+  }
+
+  let sd = root_grid_stddev(sizes)
+  let mut threshold_attempts = sd.ceil().to_int()
+  if threshold_attempts < D2_GRID_MIN_THRESHOLD_ATTEMPTS {
+    threshold_attempts = D2_GRID_MIN_THRESHOLD_ATTEMPTS
+  } else if threshold_attempts > D2_GRID_MAX_THRESHOLD_ATTEMPTS {
+    threshold_attempts = D2_GRID_MAX_THRESHOLD_ATTEMPTS
+  }
+
+  let combinations = root_grid_cut_combinations(sizes.length(), n_cuts)
+  let mut ok_threshold = D2_GRID_STARTING_THRESHOLD
+  let mut attempt = 0
+  while attempt < threshold_attempts || !has_best {
+    let starting_cache : Map[Int, Bool] = {}
+    let mut count = 0
+    let mut skip_count = 0
+    for division in combinations {
+      if count >= D2_GRID_ATTEMPT_LIMIT || skip_count >= D2_GRID_SKIP_LIMIT {
+        break
+      }
+      let layout = root_grid_gen_layout(sizes.length(), division)
+      let mut valid = true
+      for i, segment in layout {
+        let starting = i == 0
+        if starting {
+          let cached = starting_cache.get(segment.length())
+          match cached {
+            Some(ok) =>
+              if !ok {
+                valid = false
+                break
+              }
+            None => {
+              let segment_size = root_grid_segment_size(segment, sizes, gap)
+              let mut ok = true
+              if segment.length() > 1 &&
+                segment_size > ok_threshold * target_size {
+                skip_count = skip_count + 1
+                ok = skip_count >= D2_GRID_SKIP_LIMIT
+              }
+              if ok && segment_size < target_size / ok_threshold {
+                skip_count = skip_count + 1
+                ok = skip_count >= D2_GRID_SKIP_LIMIT
+              }
+              starting_cache[segment.length()] = ok
+              if !ok {
+                valid = false
+                break
+              }
+            }
+          }
+        } else {
+          let segment_size = root_grid_segment_size(segment, sizes, gap)
+          if segment.length() > 1 && segment_size > ok_threshold * target_size {
+            skip_count = skip_count + 1
+            if skip_count < D2_GRID_SKIP_LIMIT {
+              valid = false
+              break
+            }
+          }
+          if segment_size < target_size / ok_threshold {
+            skip_count = skip_count + 1
+            if skip_count < D2_GRID_SKIP_LIMIT {
+              valid = false
+              break
+            }
+          }
+        }
+      }
+      if !valid {
+        continue
+      }
+      let dist = root_grid_layout_distance(layout, target_size, sizes, gap)
+      if dist < best_dist {
+        best_layout = layout
+        best_dist = dist
+        has_best = true
+        fast_is_best = false
+      } else if fast_is_best && dist == best_dist {
+        best_layout = layout
+        fast_is_best = false
+      }
+      count = count + 1
+    }
+    ok_threshold = ok_threshold + D2_GRID_THRESHOLD_STEP_SIZE
+    if skip_count == 0 {
+      break
+    }
+    if count == 0 && threshold_attempts < D2_GRID_MAX_THRESHOLD_ATTEMPTS {
+      threshold_attempts = threshold_attempts + 1
+    }
+    attempt = attempt + 1
+  }
+
+  if has_best {
+    best_layout
+  } else {
+    root_grid_gen_layout(sizes.length(), [])
+  }
+}
+
+///|
+fn estimate_root_grid_semantic_layout(
+  parent : @graph.ObjectInput,
+  child_ids : Array[String],
+  child_size_by_id : Map[String, (Double, Double)],
+) -> RootGridSemanticLayout? {
+  if child_ids.is_empty() {
+    return None
+  }
+  let n = child_ids.length()
+  let mut rows = match parent.grid_rows {
+    Some(v) => if v > 0 { v } else { 0 }
+    None => 0
+  }
+  let mut columns = match parent.grid_columns {
+    Some(v) => if v > 0 { v } else { 0 }
+    None => 0
+  }
+  if rows == 0 && columns == 0 {
+    return None
+  }
+
+  let mut row_directed = false
+  if rows != 0 && columns != 0 {
+    row_directed = true
+    let mut capacity = rows * columns
+    while capacity < n {
+      if row_directed {
+        rows = rows + 1
+        capacity = capacity + columns
+      } else {
+        columns = columns + 1
+        capacity = capacity + rows
+      }
+    }
+  } else if columns == 0 {
+    row_directed = true
+    if n < rows {
+      rows = n
+    }
+  } else if n < columns {
+    columns = n
+  }
+
+  let (horizontal_gap, vertical_gap) = root_grid_gaps(parent)
+  let widths : Array[Double] = []
+  let heights : Array[Double] = []
+  for id in child_ids {
+    match child_size_by_id.get(id) {
+      Some((w, h)) => {
+        widths.push(w)
+        heights.push(h)
+      }
+      None => {
+        widths.push(0.0)
+        heights.push(0.0)
+      }
+    }
+  }
+
+  let final_widths = widths.copy()
+  let final_heights = heights.copy()
+  let final_x : Array[Double] = []
+  let final_y : Array[Double] = []
+  for _ in 0..<n {
+    final_x.push(0.0)
+    final_y.push(0.0)
+  }
+
+  let mut total_width = 0.0
+  let mut total_height = 0.0
+
+  if rows != 0 && columns != 0 {
+    let row_heights : Array[Double] = []
+    let col_widths : Array[Double] = []
+    for _ in 0..<rows {
+      row_heights.push(0.0)
+    }
+    for _ in 0..<columns {
+      col_widths.push(0.0)
+    }
+
+    let get_index = (row_index : Int, column_index : Int) => {
+      if row_directed {
+        let index = row_index * columns + column_index
+        if index < n {
+          Some(index)
+        } else {
+          None
+        }
+      } else {
+        let index = column_index * rows + row_index
+        if index < n {
+          Some(index)
+        } else {
+          None
+        }
+      }
+    }
+
+    for i in 0..<rows {
+      let mut row_height = 0.0
+      for j in 0..<columns {
+        match get_index(i, j) {
+          Some(index) =>
+            if final_heights[index] > row_height {
+              row_height = final_heights[index]
+            }
+          None => break
+        }
+      }
+      row_heights[i] = row_height
+    }
+    for j in 0..<columns {
+      let mut column_width = 0.0
+      for i in 0..<rows {
+        match get_index(i, j) {
+          Some(index) =>
+            if final_widths[index] > column_width {
+              column_width = final_widths[index]
+            }
+          None => break
+        }
+      }
+      col_widths[j] = column_width
+    }
+
+    if row_directed {
+      let mut cursor_y = 0.0
+      for i in 0..<rows {
+        let mut cursor_x = 0.0
+        for j in 0..<columns {
+          match get_index(i, j) {
+            Some(index) => {
+              final_widths[index] = col_widths[j]
+              final_heights[index] = row_heights[i]
+              final_x[index] = cursor_x
+              final_y[index] = cursor_y
+              cursor_x = cursor_x + col_widths[j] + horizontal_gap
+            }
+            None => break
+          }
+        }
+        cursor_y = cursor_y + row_heights[i] + vertical_gap
+      }
+    } else {
+      let mut cursor_x = 0.0
+      for j in 0..<columns {
+        let mut cursor_y = 0.0
+        for i in 0..<rows {
+          match get_index(i, j) {
+            Some(index) => {
+              final_widths[index] = col_widths[j]
+              final_heights[index] = row_heights[i]
+              final_x[index] = cursor_x
+              final_y[index] = cursor_y
+              cursor_y = cursor_y + row_heights[i] + vertical_gap
+            }
+            None => break
+          }
+        }
+        cursor_x = cursor_x + col_widths[j] + horizontal_gap
+      }
+    }
+
+    for w in col_widths {
+      total_width = total_width + w + horizontal_gap
+    }
+    for h in row_heights {
+      total_height = total_height + h + vertical_gap
+    }
+    total_width = total_width - horizontal_gap
+    total_height = total_height - vertical_gap
+  } else if row_directed {
+    let mut sum_width = 0.0
+    for w in final_widths {
+      sum_width = sum_width + w
+    }
+    let target_width = (sum_width + horizontal_gap * (n - rows).to_double()) /
+      rows.to_double()
+    let layout = root_grid_best_layout(
+      final_widths,
+      target_width,
+      rows - 1,
+      horizontal_gap,
+    )
+
+    let row_widths : Array[Double] = []
+    let mut max_x = 0.0
+    for row in layout {
+      let row_width = root_grid_segment_size(row, final_widths, horizontal_gap)
+      row_widths.push(row_width)
+      if row_width > max_x {
+        max_x = row_width
+      }
+    }
+
+    for i, row in layout {
+      let row_width = row_widths[i]
+      if row_width == max_x {
+        continue
+      }
+      let delta = max_x - row_width
+      let mut widest = 0.0
+      for index in row {
+        if final_widths[index] > widest {
+          widest = final_widths[index]
+        }
+      }
+      let diffs : Array[Double] = []
+      let mut total_diff = 0.0
+      for index in row {
+        let diff = widest - final_widths[index]
+        diffs.push(diff)
+        total_diff = total_diff + diff
+      }
+      if total_diff > 0.0 {
+        let growth = if delta < total_diff { delta } else { total_diff }
+        for j, index in row {
+          final_widths[index] = final_widths[index] +
+            diffs[j] / total_diff * growth
+        }
+      }
+      if delta > total_diff {
+        let growth = (delta - total_diff) / row.length().to_double()
+        for index in row {
+          final_widths[index] = final_widths[index] + growth
+        }
+      }
+    }
+
+    let mut cursor_y = 0.0
+    for row in layout {
+      let mut row_height = 0.0
+      let mut cursor_x = 0.0
+      for index in row {
+        final_x[index] = cursor_x
+        final_y[index] = cursor_y
+        cursor_x = cursor_x + final_widths[index] + horizontal_gap
+        if final_heights[index] > row_height {
+          row_height = final_heights[index]
+        }
+      }
+      for index in row {
+        final_heights[index] = row_height
+      }
+      cursor_y = cursor_y + row_height + vertical_gap
+    }
+    total_width = max_x
+    total_height = cursor_y - vertical_gap
+  } else {
+    let mut sum_height = 0.0
+    for h in final_heights {
+      sum_height = sum_height + h
+    }
+    let target_height = (sum_height + vertical_gap * (n - columns).to_double()) /
+      columns.to_double()
+    let layout = root_grid_best_layout(
+      final_heights,
+      target_height,
+      columns - 1,
+      vertical_gap,
+    )
+
+    let column_heights : Array[Double] = []
+    let mut max_y = 0.0
+    for column in layout {
+      let column_height = root_grid_segment_size(
+        column, final_heights, vertical_gap,
+      )
+      column_heights.push(column_height)
+      if column_height > max_y {
+        max_y = column_height
+      }
+    }
+
+    for i, column in layout {
+      let column_height = column_heights[i]
+      if column_height == max_y {
+        continue
+      }
+      let delta = max_y - column_height
+      let mut tallest = 0.0
+      for index in column {
+        if final_heights[index] > tallest {
+          tallest = final_heights[index]
+        }
+      }
+      let diffs : Array[Double] = []
+      let mut total_diff = 0.0
+      for index in column {
+        let diff = tallest - final_heights[index]
+        diffs.push(diff)
+        total_diff = total_diff + diff
+      }
+      if total_diff > 0.0 {
+        let growth = if delta < total_diff { delta } else { total_diff }
+        for j, index in column {
+          final_heights[index] = final_heights[index] +
+            diffs[j] / total_diff * growth
+        }
+      }
+      if delta > total_diff {
+        let growth = (delta - total_diff) / column.length().to_double()
+        for index in column {
+          final_heights[index] = final_heights[index] + growth
+        }
+      }
+    }
+
+    let mut cursor_x = 0.0
+    for column in layout {
+      let mut column_width = 0.0
+      let mut cursor_y = 0.0
+      for index in column {
+        final_x[index] = cursor_x
+        final_y[index] = cursor_y
+        cursor_y = cursor_y + final_heights[index] + vertical_gap
+        if final_widths[index] > column_width {
+          column_width = final_widths[index]
+        }
+      }
+      for index in column {
+        final_widths[index] = column_width
+      }
+      cursor_x = cursor_x + column_width + horizontal_gap
+    }
+    total_width = cursor_x - horizontal_gap
+    total_height = max_y
+  }
+
+  let child_boxes : Map[String, @graph.Box] = {}
+  for i, id in child_ids {
+    child_boxes[id] = @graph.Box::new(
+      final_x[i],
+      final_y[i],
+      final_widths[i],
+      final_heights[i],
+    )
+  }
+  ignore(total_width)
+  ignore(total_height)
+  Some({ child_boxes, })
+}
+
+///|
 fn restore_grid_semantics(
   original_graph : @graph.GraphInput,
   laid_out_graph : @graph.GraphInput,
@@ -615,16 +1312,38 @@ fn restore_grid_semantics(
   config : LayoutConfig,
 ) -> @graph.GraphInput {
   let original_by_id : Map[String, @graph.ObjectInput] = {}
+  original_by_id[original_graph.root.id] = original_graph.root
   for obj in original_graph.objects {
     original_by_id[obj.id] = obj
   }
   let laid_out_by_id : Map[String, @graph.ObjectInput] = {}
+  laid_out_by_id[laid_out_graph.root.id] = laid_out_graph.root
   for obj in laid_out_graph.objects {
     laid_out_by_id[obj.id] = obj
   }
 
   let override_boxes : Map[String, @graph.Box] = {}
   for parent_id, child_ids in context.groups {
+    if parent_id == original_graph.root.id {
+      let parent = original_graph.root
+      let child_size_by_id : Map[String, (Double, Double)] = {}
+      for child_id in child_ids {
+        let child = match original_by_id.get(child_id) {
+          Some(v) => v
+          None => continue
+        }
+        child_size_by_id[child_id] = semantic_object_size(child, config)
+      }
+      match
+        estimate_root_grid_semantic_layout(parent, child_ids, child_size_by_id) {
+        Some(root_layout) =>
+          for child_id, box in root_layout.child_boxes {
+            override_boxes[child_id] = box
+          }
+        None => ()
+      }
+      continue
+    }
     let parent = match laid_out_by_id.get(parent_id) {
       Some(v) => v
       None => continue
@@ -709,9 +1428,20 @@ fn restore_grid_semantics(
     objects.push(clone_object_with_parts(laid_out_obj, box, child_ids))
   }
 
+  let root_child_ids = if context.groups.contains(original_graph.root.id) {
+    original_graph.root.child_ids
+  } else {
+    laid_out_graph.root.child_ids
+  }
+  let root = clone_object_with_parts(
+    laid_out_graph.root,
+    laid_out_graph.root.box,
+    root_child_ids,
+  )
+
   @graph.GraphInput::from_parts(
     laid_out_graph.name,
-    laid_out_graph.root,
+    root,
     objects,
     laid_out_graph.edges,
     laid_out_graph.sequence_fragments,
@@ -851,11 +1581,15 @@ fn semantic_object_size(
   config : LayoutConfig,
 ) -> (Double, Double) {
   match obj.box {
-    Some(box) =>
+    Some(box) => {
+      let (auto_width, auto_height) = estimate_semantic_object_size(obj, config)
+      let width = if box.width > 0.0 { box.width } else { auto_width }
+      let height = if box.height > 0.0 { box.height } else { auto_height }
       (
-        positive_or(box.width, config.default_width),
-        positive_or(box.height, config.default_height),
+        positive_or(width, config.default_width),
+        positive_or(height, config.default_height),
       )
+    }
     None => estimate_semantic_object_size(obj, config)
   }
 }

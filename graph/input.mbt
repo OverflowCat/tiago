@@ -337,6 +337,10 @@ pub struct EdgeInput {
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
   dst_arrowhead : ArrowheadType
+  src_arrowhead_label : String?
+  dst_arrowhead_label : String?
+  src_arrowhead_label_color : String?
+  dst_arrowhead_label_color : String?
   src_anchor : String?
   dst_anchor : String?
   label : String
@@ -375,6 +379,10 @@ pub fn EdgeInput::new(
     } else {
       None
     },
+    src_arrowhead_label: None,
+    dst_arrowhead_label: None,
+    src_arrowhead_label_color: None,
+    dst_arrowhead_label_color: None,
     src_anchor: None,
     dst_anchor: None,
     label: "",
@@ -399,6 +407,10 @@ pub fn EdgeInput::from_parts(
   dst_arrow : Bool,
   src_arrowhead : ArrowheadType,
   dst_arrowhead : ArrowheadType,
+  src_arrowhead_label : String?,
+  dst_arrowhead_label : String?,
+  src_arrowhead_label_color : String?,
+  dst_arrowhead_label_color : String?,
   src_anchor : String?,
   dst_anchor : String?,
   label : String,
@@ -420,6 +432,10 @@ pub fn EdgeInput::from_parts(
     dst_arrow,
     src_arrowhead,
     dst_arrowhead,
+    src_arrowhead_label,
+    dst_arrowhead_label,
+    src_arrowhead_label_color,
+    dst_arrowhead_label_color,
     src_anchor,
     dst_anchor,
     label,
@@ -859,6 +875,10 @@ pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
     edge.dst_arrow,
     edge.src_arrowhead,
     edge.dst_arrowhead,
+    edge.src_arrowhead_label,
+    edge.dst_arrowhead_label,
+    edge.src_arrowhead_label_color,
+    edge.dst_arrowhead_label_color,
     edge.src_anchor,
     edge.dst_anchor,
     edge.label,

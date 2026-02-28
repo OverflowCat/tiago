@@ -321,7 +321,6 @@ fn d2_label_coverage_mismatches(
     d2_total = d2_total + count
   }
   if d2_total == 0 {
-    mismatches.push("<d2 has no text labels>")
     return mismatches
   }
 

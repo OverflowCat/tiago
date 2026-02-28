@@ -527,6 +527,24 @@ pub fn Scalar::to_string(self : Scalar) -> String {
 }
 
 ///|
+/// Get underlying string value (including block-string metadata) if present
+pub fn Scalar::as_string_value(self : Scalar) -> @ast.StringValue? {
+  match self.value {
+    String(s) => Some(s)
+    _ => None
+  }
+}
+
+///|
+/// Get block-string language tag if this scalar is a block string
+pub fn Scalar::block_string_tag(self : Scalar) -> String? {
+  match self.value {
+    String(@ast.StringValue::Block(bs)) => Some(bs.tag)
+    _ => None
+  }
+}
+
+///|
 /// Check if scalar is null
 pub fn Scalar::is_null(self : Scalar) -> Bool {
   self.value is Null

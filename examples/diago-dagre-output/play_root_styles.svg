@@ -28,9 +28,5 @@
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
 <rect x="0" y="0" width="198" height="126" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<text x="99" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700"># Report card
-
-- Computer science: B
-- Diagram making: A+</text>
 </g>
 </svg>

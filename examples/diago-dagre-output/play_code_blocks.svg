@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="774" height="346" viewBox="-100 -100 774 346" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="928" height="388" viewBox="-100 -100 928 388" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,11 +27,13 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="0" y="0" width="574" height="146" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<text x="287" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">awsSession := From(c.Request.Context())
-client := s3.New(awsSession)
-
-ctx, cancelFn := context.WithTimeout(c.Request.Context(), AWS_TIMEOUT)
-defer cancelFn()</text>
+<rect x="0" y="0" width="728" height="188" fill="#1e1e1e" stroke="#0A0F25" stroke-width="2" rx="4" ry="4"/>
+<g transform="translate(8,8)">
+<text x="0" y="1em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start">awsSession&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;From(c.Request.Context())</text>
+<text x="0" y="2.3em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start">client&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;s3.New(awsSession)</text>
+<text x="0" y="3.6em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start"></text>
+<text x="0" y="4.9em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start">ctx,&#160;cancelFn&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;context.WithTimeout(c.Request.Context(),&#160;AWS_TIMEOUT)</text>
+<text x="0" y="6.2em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start"><tspan fill="#000000" class="text-mono-bold">defer</tspan>&#160;cancelFn()</text>
+</g>
 </g>
 </svg>

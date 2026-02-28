@@ -64,6 +64,10 @@ pub struct EdgeInput {
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
   dst_arrowhead : ArrowheadType
+  src_arrowhead_label : String?
+  dst_arrowhead_label : String?
+  src_arrowhead_label_color : String?
+  dst_arrowhead_label_color : String?
   src_anchor : String?
   dst_anchor : String?
   label : String
@@ -78,7 +82,7 @@ pub struct EdgeInput {
   dst_column_index : Int?
 }
 pub fn EdgeInput::from_model(EdgeModel) -> Self
-pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
+pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String?, String?, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
 pub fn EdgeInput::get_dst_id(Self) -> String
 pub fn EdgeInput::get_label_box(Self) -> Box?
 pub fn EdgeInput::get_src_id(Self) -> String
@@ -93,6 +97,10 @@ pub struct EdgeModel {
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
   dst_arrowhead : ArrowheadType
+  src_arrowhead_label : String?
+  dst_arrowhead_label : String?
+  src_arrowhead_label_color : String?
+  dst_arrowhead_label_color : String?
   src_anchor : String?
   dst_anchor : String?
   label : String

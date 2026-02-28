@@ -235,21 +235,13 @@ fn line_height_for(font_size : Int, is_mono : Bool) -> Double {
 }
 
 ///|
-/// Calculate text dimensions following D2's approach (from d2graph.GetTextDimensionsWithMono)
-///
-/// Key aspects from D2 implementation:
-/// 1. For code/mono text: use CODE_LINE_HEIGHT (1.3)
-/// 2. For regular text: use DEFAULT_LINE_HEIGHT_FACTOR (1.0)
-/// 3. Handle empty lines (leading/trailing) by adding font_size for each
-/// 4. Consider font style: bold adds ~10% width, italic adds ~5%
-pub fn measure_text(
+fn measure_text_with_mode(
   text : String,
   font_size : Int,
-  is_mono : Bool,
-  is_bold : Bool,
-  is_italic : Bool,
+  kind : FontKind,
+  bounds_with_dot : Bool,
+  use_code_line_height : Bool,
 ) -> MeasuredText {
-  let kind = select_font_kind(is_mono, is_bold, is_italic)
   let scale = font_size.to_double() / BASE_FONT_SIZE.to_double()
   let fixed_scale = scale / 64.0
   let space = lookup_sized_glyph_metrics(
@@ -264,7 +256,6 @@ pub fn measure_text(
     TAB_SIZE
   let kerning_fixed_scale = space.fixed_scale
   let mut line_count = 0
-  let bounds_with_dot = is_mono
   let mut has_area = false
   let mut bounds_left = 0.0
   let mut bounds_right = 0.0
@@ -381,9 +372,9 @@ pub fn measure_text(
 
   // Calculate height following D2's formula
   let base_height = font_size.to_double()
-  let line_height = line_height_for(font_size, is_mono)
+  let line_height = line_height_for(font_size, use_code_line_height)
   let mut total_height = (line_count + 1).to_double() * line_height
-  if is_mono {
+  if use_code_line_height {
     // D2: if hasLeading && numTrailing < len(lines) { h += t.FontSize }
     if has_leading {
       total_height = total_height + base_height
@@ -402,6 +393,34 @@ pub fn measure_text(
   let width = @math.ceil(max_line_width)
   let height = @math.ceil(total_height)
   { dimensions: { width, height }, line_count, max_line_width }
+}
+
+///|
+/// Calculate text dimensions following D2's approach (from d2graph.GetTextDimensionsWithMono)
+///
+/// Key aspects from D2 implementation:
+/// 1. For code/mono text: use CODE_LINE_HEIGHT (1.3)
+/// 2. For regular text: use DEFAULT_LINE_HEIGHT_FACTOR (1.0)
+/// 3. Handle empty lines (leading/trailing) by adding font_size for each
+/// 4. Consider font style: bold adds ~10% width, italic adds ~5%
+pub fn measure_text(
+  text : String,
+  font_size : Int,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> MeasuredText {
+  let kind = select_font_kind(is_mono, is_bold, is_italic)
+  measure_text_with_mode(text, font_size, kind, is_mono, is_mono)
+}
+
+///|
+/// Measure text using monospace glyph metrics with regular (non-code) line height.
+///
+/// This matches D2's `ruler.Measure(SourceCodePro, ...)` behavior used by
+/// UML class sizing: monospace font, but without code-block line-height logic.
+pub fn measure_text_mono_plain(text : String, font_size : Int) -> MeasuredText {
+  measure_text_with_mode(text, font_size, MonoRegular, false, false)
 }
 
 ///|

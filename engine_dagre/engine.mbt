@@ -230,6 +230,24 @@ const D2_SQL_TABLE_HEADER_PADDING : Double = 10.0
 const D2_SQL_TABLE_HEADER_FONT_ADD : Int = 4
 
 ///|
+const D2_CLASS_PREFIX_PADDING : Double = 10.0
+
+///|
+const D2_CLASS_PREFIX_WIDTH : Double = 20.0
+
+///|
+const D2_CLASS_CENTER_PADDING : Double = 50.0
+
+///|
+const D2_CLASS_HEADER_FONT_ADD : Int = 4
+
+///|
+const D2_CLASS_TYPE_PADDING : Double = 20.0
+
+///|
+const D2_CLASS_VERTICAL_PADDING : Double = 20.0
+
+///|
 const D2_DEFAULT_ARC_DEPTH : Double = 24.0
 
 ///|
@@ -285,6 +303,39 @@ const D2_C4_HEAD_RADIUS_FACTOR : Double = 0.22
 
 ///|
 const D2_C4_BODY_TOP_FACTOR : Double = 0.8
+
+///|
+const D2_NEAR_PAD : Double = 20.0
+
+///|
+const D2_SEQUENCE_HORIZONTAL_PAD : Double = 40.0
+
+///|
+const D2_SEQUENCE_LABEL_HORIZONTAL_PAD : Double = 60.0
+
+///|
+const D2_SEQUENCE_VERTICAL_PAD : Double = 40.0
+
+///|
+const D2_SEQUENCE_MIN_ACTOR_DISTANCE : Double = 150.0
+
+///|
+const D2_SEQUENCE_MIN_ACTOR_WIDTH : Double = 100.0
+
+///|
+const D2_SEQUENCE_MIN_ACTOR_HEIGHT : Double = 66.0
+
+///|
+const D2_SEQUENCE_SELF_MESSAGE_HORIZONTAL_TRAVEL : Double = 80.0
+
+///|
+const D2_SEQUENCE_GROUP_CONTAINER_PADDING : Double = 12.0
+
+///|
+const D2_SEQUENCE_MIN_MESSAGE_DISTANCE : Double = 30.0
+
+///|
+const D2_SEQUENCE_LABEL_Y_OFFSET : Double = 10.0
 
 ///|
 const CLOUD_WIDE_INNER_WIDTH : Double = 0.819
@@ -366,6 +417,7 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   trace_routes_to_object_boundaries(patch, graph)
   convert_dagre_routes_to_d2_curves(patch, graph)
   recompute_edge_label_boxes(patch, graph)
+  apply_constant_near_positions(patch, graph)
   patch
 }
 
@@ -383,117 +435,470 @@ fn layout_sequence_diagram(
   }
 
   let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.id] = graph.root
   for obj in graph.objects {
     object_by_id[obj.id] = obj
   }
+  let parent_id_by_child_id = sequence_parent_id_by_child_id(graph)
 
+  let participant_rank_by_id : Map[String, Int] = {}
+  let participant_exists : Map[String, Bool] = {}
   let widths : Array[Double] = []
   let heights : Array[Double] = []
+  let mut max_actor_height = 0.0
   for id in participant_ids {
+    let rank = widths.length()
+    participant_rank_by_id[id] = rank
+    participant_exists[id] = true
     match object_by_id.get(id) {
       Some(obj) => {
         let (w0, h0) = object_size(obj, config, object_by_id)
-        let width = if w0 < 100.0 { 100.0 } else { w0 }
-        let height = if h0 < 66.0 { 66.0 } else { h0 }
+        let (width, height) = sequence_actor_size(obj.shape_type, w0, h0)
         widths.push(width)
         heights.push(height)
+        if height > max_actor_height {
+          max_actor_height = height
+        }
       }
       None => {
-        widths.push(100.0)
-        heights.push(66.0)
+        widths.push(D2_SEQUENCE_MIN_ACTOR_WIDTH)
+        heights.push(D2_SEQUENCE_MIN_ACTOR_HEIGHT)
+        if D2_SEQUENCE_MIN_ACTOR_HEIGHT > max_actor_height {
+          max_actor_height = D2_SEQUENCE_MIN_ACTOR_HEIGHT
+        }
+      }
+    }
+  }
+
+  let actor_x_step : Array[Double] = []
+  if participant_ids.length() >= 2 {
+    for i = 0; i < participant_ids.length() - 1; i = i + 1 {
+      let actor_hw = widths[i] / 2.0
+      let next_actor_hw = widths[i + 1] / 2.0
+      let base_step = actor_hw + next_actor_hw + D2_SEQUENCE_HORIZONTAL_PAD
+      let step = if base_step < D2_SEQUENCE_MIN_ACTOR_DISTANCE {
+        D2_SEQUENCE_MIN_ACTOR_DISTANCE
+      } else {
+        base_step
+      }
+      actor_x_step.push(step)
+    }
+  }
+
+  let ordered_edges = sequence_edges_in_render_order(graph)
+  for edge in ordered_edges {
+    let src_rank = match
+      participant_rank_by_id.get(
+        sequence_top_participant_id(
+          edge.src_id,
+          participant_exists,
+          parent_id_by_child_id,
+        ),
+      ) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_rank = match
+      participant_rank_by_id.get(
+        sequence_top_participant_id(
+          edge.dst_id,
+          participant_exists,
+          parent_id_by_child_id,
+        ),
+      ) {
+      Some(v) => v
+      None => continue
+    }
+    let (label_width, _) = sequence_edge_text_size(edge)
+    let rank_diff = if src_rank > dst_rank {
+      src_rank - dst_rank
+    } else {
+      dst_rank - src_rank
+    }
+    if rank_diff != 0 {
+      let distributed_label_width = label_width / rank_diff.to_double()
+      let left = if src_rank < dst_rank { src_rank } else { dst_rank }
+      let right = if src_rank < dst_rank { dst_rank } else { src_rank }
+      for rank = left; rank < right; rank = rank + 1 {
+        let required = distributed_label_width +
+          D2_SEQUENCE_LABEL_HORIZONTAL_PAD
+        if required > actor_x_step[rank] {
+          actor_x_step[rank] = required
+        }
+      }
+    } else if src_rank < actor_x_step.length() {
+      let label_adjust = label_width + D2_LABEL_PADDING * 4.0
+      if label_adjust > actor_x_step[src_rank] {
+        actor_x_step[src_rank] = label_adjust
       }
     }
   }
 
   let centers : Array[Double] = []
   if !widths.is_empty() {
-    centers.push(12.0 + widths[0] / 2.0)
+    centers.push(D2_SEQUENCE_GROUP_CONTAINER_PADDING + widths[0] / 2.0)
     for i = 1; i < widths.length(); i = i + 1 {
-      let base_gap = widths[i - 1] / 2.0 + widths[i] / 2.0 + 50.0
-      centers.push(centers[i - 1] + base_gap)
+      centers.push(centers[i - 1] + actor_x_step[i - 1])
     }
   }
 
-  let participant_index_by_id : Map[String, Int] = {}
-  for i, id in participant_ids {
-    participant_index_by_id[id] = i
-  }
-
-  for edge in graph.edges {
-    let src_index = match participant_index_by_id.get(edge.src_id) {
-      Some(v) => v
-      None => continue
-    }
-    let dst_index = match participant_index_by_id.get(edge.dst_id) {
-      Some(v) => v
-      None => continue
-    }
-    if src_index == dst_index {
-      continue
-    }
-    let left = if src_index < dst_index { src_index } else { dst_index }
-    let right = if src_index < dst_index { dst_index } else { src_index }
-    let (label_width, _) = sequence_edge_label_size(edge)
-    let required_span = if label_width > 0.0 { label_width + 56.0 } else { 0.0 }
-    let current_span = centers[right] - centers[left]
-    if required_span > current_span {
-      let delta = required_span - current_span
-      for i = right; i < centers.length(); i = i + 1 {
-        centers[i] = centers[i] + delta
-      }
-    }
-  }
-
-  let participant_top = 52.0
+  let max_actor_height = max_actor_height +
+    D2_SEQUENCE_VERTICAL_PAD +
+    sequence_root_label_height(graph)
+  let y_shift = D2_SEQUENCE_GROUP_CONTAINER_PADDING
   for i, id in participant_ids {
     let width = widths[i]
     let height = heights[i]
+    let mut y = max_actor_height - height + y_shift
+    match object_by_id.get(id) {
+      Some(obj) =>
+        if has_outside_bottom_label(obj.shape_type) {
+          y = y - sequence_label_height(obj)
+        }
+      None => ()
+    }
     patch.nodes[id] = @graph.Box::new(
       centers[i] - width / 2.0,
-      participant_top,
+      y,
       width,
       height,
     )
   }
 
-  let max_participant_height = array_max(heights, 66.0)
-  let lifeline_start_y = participant_top + max_participant_height + 2.0
-  let first_message_y = lifeline_start_y + 78.0
-  let message_gap = 90.0
-
-  for i, edge in graph.edges {
-    let src_index = match participant_index_by_id.get(edge.src_id) {
+  let y_step = D2_SEQUENCE_MIN_MESSAGE_DISTANCE + D2_SEQUENCE_VERTICAL_PAD
+  let mut message_offset = max_actor_height + y_step + y_shift
+  for edge in ordered_edges {
+    let src_x = match
+      sequence_center_x_for_object(edge.src_id, patch, parent_id_by_child_id) {
       Some(v) => v
       None => continue
     }
-    let dst_index = match participant_index_by_id.get(edge.dst_id) {
+    let dst_x = match
+      sequence_center_x_for_object(edge.dst_id, patch, parent_id_by_child_id) {
       Some(v) => v
       None => continue
     }
 
-    let src_x = centers[src_index]
-    let dst_x = centers[dst_index]
-    let y = first_message_y + i.to_double() * message_gap
-    let start_x = src_x
-    let end_x = dst_x
-    patch.edges[edge.index] = [
-      @graph.Point::new(start_x, y),
-      @graph.Point::new(end_x, y),
-    ]
+    let src_top = sequence_top_participant_id(
+      edge.src_id,
+      participant_exists,
+      parent_id_by_child_id,
+    )
+    let dst_top = sequence_top_participant_id(
+      edge.dst_id,
+      participant_exists,
+      parent_id_by_child_id,
+    )
+    let is_to_descendant = is_descendant_of(
+      edge.dst_id,
+      edge.src_id,
+      parent_id_by_child_id,
+    )
+    let is_from_descendant = is_descendant_of(
+      edge.src_id,
+      edge.dst_id,
+      parent_id_by_child_id,
+    )
+    let is_self_message = edge.src_id == edge.dst_id
+    let is_to_sibling = src_top == dst_top
+
+    let (_, text_height) = sequence_edge_text_size(edge)
+    if is_self_message ||
+      is_to_descendant ||
+      is_from_descendant ||
+      is_to_sibling {
+      let (label_width, _) = sequence_edge_text_size(edge)
+      let mid_x = src_x +
+        (if D2_SEQUENCE_SELF_MESSAGE_HORIZONTAL_TRAVEL >
+          label_width / 2.0 + D2_LABEL_PADDING * 2.0 {
+          D2_SEQUENCE_SELF_MESSAGE_HORIZONTAL_TRAVEL
+        } else {
+          label_width / 2.0 + D2_LABEL_PADDING * 2.0
+        })
+      let start_y = message_offset
+      let end_y = start_y +
+        (if text_height > D2_SEQUENCE_MIN_MESSAGE_DISTANCE {
+          text_height * 1.5
+        } else {
+          D2_SEQUENCE_MIN_MESSAGE_DISTANCE * 1.5
+        })
+      patch.edges[edge.index] = [
+        @graph.Point::new(src_x, start_y),
+        @graph.Point::new(mid_x, start_y),
+        @graph.Point::new(mid_x, end_y),
+        @graph.Point::new(dst_x, end_y),
+      ]
+      message_offset = end_y + y_step
+    } else {
+      let start_y = message_offset + text_height / 2.0
+      patch.edges[edge.index] = [
+        @graph.Point::new(src_x, start_y),
+        @graph.Point::new(dst_x, start_y),
+      ]
+      message_offset = start_y + text_height / 2.0 + y_step
+    }
 
     if edge.label != "" {
       let (label_width, label_height) = sequence_edge_label_size(edge)
-      let center_x = (src_x + dst_x) / 2.0
-      patch.edge_labels[edge.index] = @graph.Box::new(
-        center_x - label_width / 2.0,
-        y - 10.0,
-        label_width,
-        label_height,
+      match patch.edges.get(edge.index) {
+        Some(route) =>
+          if !route.is_empty() {
+            let center_x = if route.length() >= 4 {
+              (route[0].x + route[1].x) / 2.0
+            } else {
+              (route[0].x + route[route.length() - 1].x) / 2.0
+            }
+            patch.edge_labels[edge.index] = @graph.Box::new(
+              center_x - label_width / 2.0,
+              route[0].y - D2_SEQUENCE_LABEL_Y_OFFSET,
+              label_width,
+              label_height,
+            )
+          }
+        None => ()
+      }
+    }
+  }
+
+  for edge in ordered_edges {
+    let route = match patch.edges.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    if route.is_empty() {
+      continue
+    }
+    let src_top = sequence_top_participant_id(
+      edge.src_id,
+      participant_exists,
+      parent_id_by_child_id,
+    )
+    let dst_top = sequence_top_participant_id(
+      edge.dst_id,
+      participant_exists,
+      parent_id_by_child_id,
+    )
+    let src_rank = match participant_rank_by_id.get(src_top) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_rank = match participant_rank_by_id.get(dst_top) {
+      Some(v) => v
+      None => continue
+    }
+    if !participant_exists.contains(edge.src_id) {
+      let src_width = sequence_object_width(
+        edge.src_id,
+        patch,
+        object_by_id,
+        config,
       )
+      let first = route[0]
+      if src_rank <= dst_rank {
+        route[0] = @graph.Point::new(first.x + src_width / 2.0, first.y)
+      } else {
+        route[0] = @graph.Point::new(first.x - src_width / 2.0, first.y)
+      }
+    }
+    if !participant_exists.contains(edge.dst_id) {
+      let dst_width = sequence_object_width(
+        edge.dst_id,
+        patch,
+        object_by_id,
+        config,
+      )
+      let last = route.length() - 1
+      let last_point = route[last]
+      if src_rank < dst_rank {
+        route[last] = @graph.Point::new(
+          last_point.x - dst_width / 2.0,
+          last_point.y,
+        )
+      } else {
+        route[last] = @graph.Point::new(
+          last_point.x + dst_width / 2.0,
+          last_point.y,
+        )
+      }
     }
   }
 
   patch
+}
+
+///|
+fn sequence_parent_id_by_child_id(
+  graph : @graph.GraphInput,
+) -> Map[String, String] {
+  let out : Map[String, String] = {}
+  for child_id in graph.root.child_ids {
+    out[child_id] = graph.root.id
+  }
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      out[child_id] = obj.id
+    }
+  }
+  out
+}
+
+///|
+fn sequence_edges_in_render_order(
+  graph : @graph.GraphInput,
+) -> Array[@graph.EdgeInput] {
+  let out : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    out.push(edge)
+  }
+  out.sort_by(fn(a, b) { a.index.compare(b.index) })
+  out
+}
+
+///|
+fn sequence_actor_size(
+  shape_type : @graph.ShapeType,
+  width : Double,
+  height : Double,
+) -> (Double, Double) {
+  let mut w = width
+  let mut h = height
+  if w < D2_SEQUENCE_MIN_ACTOR_WIDTH {
+    match shape_type {
+      @graph.Person | @graph.Oval | @graph.Square | @graph.Circle =>
+        if w > 0.0 {
+          h = h * D2_SEQUENCE_MIN_ACTOR_WIDTH / w
+        }
+      _ => ()
+    }
+    w = D2_SEQUENCE_MIN_ACTOR_WIDTH
+  }
+  if h < D2_SEQUENCE_MIN_ACTOR_HEIGHT {
+    h = D2_SEQUENCE_MIN_ACTOR_HEIGHT
+  }
+  (w, h)
+}
+
+///|
+fn sequence_label_height(obj : @graph.ObjectInput) -> Double {
+  match obj.label_box {
+    Some(box) => if box.height > 0.0 { box.height } else { 0.0 }
+    None =>
+      if obj.label == "" {
+        0.0
+      } else {
+        let font_size = match obj.style.font_size {
+          Some(v) => v.as_int().unwrap_or(16)
+          None => 16
+        }
+        let is_bold = style_bool(obj.style.bold, false)
+        let is_italic = style_bool(obj.style.italic, false)
+        let is_mono = style_is_mono(obj.style.font_family)
+        let dims = @text_metrics.measure_label(
+          obj.label,
+          font_size,
+          is_mono,
+          is_bold,
+          is_italic,
+        )
+        if dims.height > 0.0 {
+          dims.height
+        } else {
+          font_size.to_double() + 5.0
+        }
+      }
+  }
+}
+
+///|
+fn sequence_root_label_height(graph : @graph.GraphInput) -> Double {
+  if graph.root.label == "" || graph.root.label == graph.root.id {
+    0.0
+  } else {
+    sequence_label_height(graph.root)
+  }
+}
+
+///|
+fn sequence_center_x_for_object(
+  id : String,
+  patch : @graph.LayoutPatch,
+  parent_id_by_child_id : Map[String, String],
+) -> Double? {
+  let mut current = id
+  let visited : Map[String, Bool] = {}
+  while !visited.contains(current) {
+    visited[current] = true
+    match patch.nodes.get(current) {
+      Some(box) => return Some(box.x + box.width / 2.0)
+      None =>
+        match parent_id_by_child_id.get(current) {
+          Some(parent_id) => current = parent_id
+          None => return None
+        }
+    }
+  }
+  None
+}
+
+///|
+fn sequence_top_participant_id(
+  id : String,
+  participant_exists : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+) -> String {
+  if participant_exists.contains(id) {
+    return id
+  }
+  let mut current = id
+  let visited : Map[String, Bool] = {}
+  while !visited.contains(current) {
+    visited[current] = true
+    match parent_id_by_child_id.get(current) {
+      Some(parent_id) => {
+        if participant_exists.contains(parent_id) {
+          return parent_id
+        }
+        current = parent_id
+      }
+      None => return id
+    }
+  }
+  id
+}
+
+///|
+fn sequence_edge_text_size(edge : @graph.EdgeInput) -> (Double, Double) {
+  let (label_width, label_height) = sequence_edge_label_size(edge)
+  if label_width <= 0.0 || label_height <= 0.0 {
+    return (0.0, 0.0)
+  }
+  let width = if label_width > 4.0 { label_width - 4.0 } else { label_width }
+  let height = if label_height > 1.0 {
+    label_height - 1.0
+  } else {
+    label_height
+  }
+  (width, height)
+}
+
+///|
+fn sequence_object_width(
+  id : String,
+  patch : @graph.LayoutPatch,
+  object_by_id : Map[String, @graph.ObjectInput],
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  match patch.nodes.get(id) {
+    Some(box) => box.width
+    None =>
+      match object_by_id.get(id) {
+        Some(obj) => {
+          let (width, _) = object_size(obj, config, object_by_id)
+          width
+        }
+        None => config.default_width
+      }
+  }
 }
 
 ///|
@@ -575,20 +980,6 @@ fn fallback_sequence_edge_label_size(
   let min_height = font_size.to_double() + 5.0
   let height = if text_height < min_height { min_height } else { text_height }
   (width, height)
-}
-
-///|
-fn array_max(values : Array[Double], fallback : Double) -> Double {
-  if values.is_empty() {
-    return fallback
-  }
-  let mut out = values[0]
-  for v in values {
-    if v > out {
-      out = v
-    }
-  }
-  out
 }
 
 ///|
@@ -1150,27 +1541,275 @@ fn in_container(
 }
 
 ///|
+fn apply_constant_near_positions(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  let near_key_by_id : Map[String, String] = {}
+  for obj in graph.objects {
+    if obj.id.contains(".") {
+      continue
+    }
+    match obj.near {
+      Some(raw) => {
+        let key = raw.to_lower()
+        if is_constant_near_key(key) {
+          near_key_by_id[obj.id] = key
+        }
+      }
+      None => ()
+    }
+  }
+  if near_key_by_id.is_empty() {
+    return
+  }
+
+  let placed_near : Map[String, Bool] = {}
+  for key_set in [0, 1, 2] {
+    let current_set_ids : Array[String] = []
+    for obj in graph.objects {
+      let near_key = match near_key_by_id.get(obj.id) {
+        Some(v) => v
+        None => continue
+      }
+      if !near_key_matches_set(near_key, key_set) {
+        continue
+      }
+      let box = match patch.nodes.get(obj.id) {
+        Some(v) => v
+        None => continue
+      }
+      let bounds = near_bounding_box(patch, graph, near_key_by_id, placed_near)
+      let min_x = bounds.0
+      let min_y = bounds.1
+      let max_x = bounds.2
+      let max_y = bounds.3
+      let width = max_x - min_x
+      let height = max_y - min_y
+      let (x, y) = place_constant_near_box(
+        near_key,
+        min_x,
+        min_y,
+        width,
+        height,
+        box.width,
+        box.height,
+      )
+      patch.nodes[obj.id] = @graph.Box::new(x, y, box.width, box.height)
+      current_set_ids.push(obj.id)
+    }
+    for id in current_set_ids {
+      placed_near[id] = true
+    }
+  }
+}
+
+///|
+fn is_constant_near_key(key : String) -> Bool {
+  match key {
+    "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right" => true
+    _ => false
+  }
+}
+
+///|
+fn near_key_matches_set(key : String, key_set : Int) -> Bool {
+  match key_set {
+    0 => key == "top-center" || key == "bottom-center"
+    1 => key == "center-left" || key == "center-right"
+    _ =>
+      key == "top-left" ||
+      key == "top-right" ||
+      key == "bottom-left" ||
+      key == "bottom-right"
+  }
+}
+
+///|
+fn near_bounding_box(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  near_key_by_id : Map[String, String],
+  placed_near : Map[String, Bool],
+) -> (Double, Double, Double, Double) {
+  let mut min_x = 1000000000000.0
+  let mut min_y = 1000000000000.0
+  let mut max_x = -1000000000000.0
+  let mut max_y = -1000000000000.0
+  let mut has_bounds = false
+
+  for obj in graph.objects {
+    let box = match patch.nodes.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    match near_key_by_id.get(obj.id) {
+      Some(near_key) => {
+        if !placed_near.contains(obj.id) {
+          continue
+        }
+        // Top/bottom-center objects expand only X bounds; left/right-center only Y.
+        match near_key {
+          "top-center" | "bottom-center" => {
+            min_x = if box.x < min_x { box.x } else { min_x }
+            max_x = if box.x + box.width > max_x {
+              box.x + box.width
+            } else {
+              max_x
+            }
+            has_bounds = true
+          }
+          "center-left" | "center-right" => {
+            min_y = if box.y < min_y { box.y } else { min_y }
+            max_y = if box.y + box.height > max_y {
+              box.y + box.height
+            } else {
+              max_y
+            }
+            has_bounds = true
+          }
+          _ => ()
+        }
+      }
+      None => {
+        if has_outer_near_container(obj.id, near_key_by_id) {
+          continue
+        }
+        min_x = if box.x < min_x { box.x } else { min_x }
+        min_y = if box.y < min_y { box.y } else { min_y }
+        max_x = if box.x + box.width > max_x {
+          box.x + box.width
+        } else {
+          max_x
+        }
+        max_y = if box.y + box.height > max_y {
+          box.y + box.height
+        } else {
+          max_y
+        }
+        has_bounds = true
+      }
+    }
+  }
+
+  for edge in graph.edges {
+    if has_outer_near_container(edge.src_id, near_key_by_id) ||
+      has_outer_near_container(edge.dst_id, near_key_by_id) {
+      continue
+    }
+    let route = match patch.edges.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    for point in route {
+      min_x = if point.x < min_x { point.x } else { min_x }
+      min_y = if point.y < min_y { point.y } else { min_y }
+      max_x = if point.x > max_x { point.x } else { max_x }
+      max_y = if point.y > max_y { point.y } else { max_y }
+      has_bounds = true
+    }
+  }
+
+  if !has_bounds {
+    return (0.0, 0.0, 0.0, 0.0)
+  }
+
+  if min_x > max_x {
+    min_x = 0.0
+    max_x = 0.0
+  }
+  if min_y > max_y {
+    min_y = 0.0
+    max_y = 0.0
+  }
+  (min_x, min_y, max_x, max_y)
+}
+
+///|
+fn has_outer_near_container(
+  obj_id : String,
+  near_key_by_id : Map[String, String],
+) -> Bool {
+  for near_id, _ in near_key_by_id {
+    if obj_id == near_id || obj_id.has_prefix(near_id + ".") {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn place_constant_near_box(
+  near_key : String,
+  min_x : Double,
+  min_y : Double,
+  width : Double,
+  height : Double,
+  box_width : Double,
+  box_height : Double,
+) -> (Double, Double) {
+  match near_key {
+    "top-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y - box_height - D2_NEAR_PAD)
+    "top-center" =>
+      (min_x + width / 2.0 - box_width / 2.0, min_y - box_height - D2_NEAR_PAD)
+    "top-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y - box_height - D2_NEAR_PAD)
+    "center-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y + height / 2.0 - box_height / 2.0)
+    "center-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y + height / 2.0 - box_height / 2.0)
+    "bottom-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y + height + D2_NEAR_PAD)
+    "bottom-center" =>
+      (min_x + width / 2.0 - box_width / 2.0, min_y + height + D2_NEAR_PAD)
+    "bottom-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y + height + D2_NEAR_PAD)
+    _ => (min_x, min_y)
+  }
+}
+
+///|
 fn object_size(
   obj : @graph.ObjectInput,
   config : @engine_api.LayoutConfig,
   object_by_id : Map[String, @graph.ObjectInput],
 ) -> (Double, Double) {
-  match obj.box {
-    Some(box) =>
+  let estimate_auto_size = () => {
+    if obj.shape_type == @graph.SqlTable {
+      let (width, height) = estimate_sql_table_size(obj, object_by_id)
       (
-        clamp_positive(box.width, config.default_width),
-        clamp_positive(box.height, config.default_height),
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
       )
-    None =>
-      if obj.shape_type == @graph.SqlTable {
-        let (width, height) = estimate_sql_table_size(obj, object_by_id)
-        (
-          clamp_positive(width, config.default_width),
-          clamp_positive(height, config.default_height),
-        )
-      } else {
-        estimate_object_size(obj, config, object_by_id)
-      }
+    } else if obj.shape_type == @graph.Class {
+      let (width, height) = estimate_class_size(obj, object_by_id)
+      (
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
+      )
+    } else {
+      estimate_object_size(obj, config, object_by_id)
+    }
+  }
+  match obj.box {
+    Some(box) => {
+      let (auto_width, auto_height) = estimate_auto_size()
+      let width = if box.width > 0.0 { box.width } else { auto_width }
+      let height = if box.height > 0.0 { box.height } else { auto_height }
+      (
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
+      )
+    }
+    None => estimate_auto_size()
   }
 }
 
@@ -1275,6 +1914,146 @@ fn estimate_object_size(
     clamp_positive(width, config.default_width),
     clamp_positive(height, config.default_height),
   )
+}
+
+///|
+priv struct ClassMemberInfo {
+  name : String
+  type_name : String
+}
+
+///|
+fn trim_double_quotes_for_class_member(s : String) -> String {
+  if s.length() >= 2 && s[0] == '"' && s[s.length() - 1] == '"' {
+    let out = StringBuilder::new()
+    for i = 1; i < s.length() - 1; i = i + 1 {
+      match s[i].to_char() {
+        Some(ch) => out.write_char(ch)
+        None => ()
+      }
+    }
+    out.to_string()
+  } else {
+    s
+  }
+}
+
+///|
+fn class_member_info_from_object(child : @graph.ObjectInput) -> ClassMemberInfo {
+  let raw_name = trim_double_quotes_for_class_member(
+    short_name_from_id(child.id),
+  )
+  let mut name = raw_name
+  if raw_name.length() > 0 {
+    let first = raw_name[0]
+    if first == '+' || first == '-' || first == '#' {
+      let name_buf = StringBuilder::new()
+      for i = 1; i < raw_name.length(); i = i + 1 {
+        match raw_name[i].to_char() {
+          Some(ch) => name_buf.write_char(ch)
+          None => ()
+        }
+      }
+      name = name_buf.to_string()
+    }
+  }
+  let is_method = name.contains("(")
+  let raw_type = trim_double_quotes_for_class_member(child.label)
+  let type_name = if raw_type == "" || raw_type == raw_name || raw_type == name {
+    if is_method {
+      "void"
+    } else {
+      ""
+    }
+  } else {
+    raw_type
+  }
+  { name, type_name }
+}
+
+///|
+fn estimate_class_size(
+  obj : @graph.ObjectInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> (Double, Double) {
+  let row_font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(20)
+    None => 20
+  }
+  let header_measured = @text_metrics.measure_text_mono_plain(
+    obj.label,
+    row_font_size + D2_CLASS_HEADER_FONT_ADD,
+  )
+  let header_dims = header_measured.dimensions
+
+  let mut max_width = if header_dims.width > 12.0 {
+    header_dims.width
+  } else {
+    12.0
+  }
+  let mut row_count = 0
+  let mut first_row_text : String? = None
+
+  for child_id in obj.child_ids {
+    let child = match object_by_id.get(child_id) {
+      Some(v) => v
+      None => continue
+    }
+    let info = class_member_info_from_object(child)
+    let row_text = info.name + info.type_name
+    if first_row_text is None {
+      first_row_text = Some(row_text)
+    }
+    let row_measured = @text_metrics.measure_text_mono_plain(
+      row_text, row_font_size,
+    )
+    let row_width = row_measured.dimensions.width
+    if row_width > max_width {
+      max_width = row_width
+    }
+    row_count = row_count + 1
+  }
+
+  let mut width = D2_CLASS_PREFIX_PADDING +
+    D2_CLASS_PREFIX_WIDTH +
+    max_width +
+    D2_CLASS_CENTER_PADDING +
+    D2_CLASS_TYPE_PADDING
+  let mut height = 0.0
+
+  match first_row_text {
+    Some(any_row_text) => {
+      let row_dims = @text_metrics.measure_text_mono_plain(
+          any_row_text, row_font_size,
+        ).dimensions
+      let row_height = row_dims.height + D2_CLASS_VERTICAL_PADDING
+      let header_height_min = if 2.0 * row_height >
+        header_dims.height + D2_LABEL_PADDING * 2.0 {
+        2.0 * row_height
+      } else if obj.shape_type == @graph.Class {
+        header_dims.height + D2_LABEL_PADDING * 2.0
+      } else {
+        D2_LABEL_PADDING * 2.0
+      }
+      height = row_height * row_count.to_double() + header_height_min
+    }
+    None => {
+      let header_floor = if header_dims.height > 12.0 {
+        header_dims.height
+      } else {
+        12.0
+      }
+      height = 2.0 * header_floor + D2_CLASS_VERTICAL_PADDING
+    }
+  }
+
+  if width < 12.0 {
+    width = 12.0
+  }
+  if height < 12.0 {
+    height = 12.0
+  }
+  (width.ceil(), height.ceil())
 }
 
 ///|

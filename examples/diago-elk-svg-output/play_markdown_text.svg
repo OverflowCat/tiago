@@ -28,11 +28,5 @@
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
 <rect x="12" y="12" width="266" height="146" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<text x="145" y="40" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700"># I can do headers
-
-- lists
-- lists
-
-And other normal markdown stuff</text>
 </g>
 </svg>

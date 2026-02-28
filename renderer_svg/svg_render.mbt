@@ -510,6 +510,12 @@ fn ceil_double(x : Double) -> Double {
 const LABEL_PADDING : Double = 5.0
 
 ///|
+const ARROWHEAD_PADDING : Double = 2.0
+
+///|
+const MIN_ARROWHEAD_STROKE_WIDTH : Double = 2.0
+
+///|
 const DIAGO_VERSION : String = "0.1.0"
 
 ///|
@@ -1157,9 +1163,10 @@ fn sort_objects_by_depth(objects : Array[Shape]) -> Array[Shape] {
 }
 
 ///|
-/// Check if an object is a child of an sql_table (should not be rendered separately)
-fn is_sql_table_child(obj : Shape, all_objects : Array[Shape]) -> Bool {
-  // Check if object has a parent that is an sql_table
+/// Check if an object is a child of an inline-rendered container
+/// (sql_table/class members should not be rendered as standalone shapes).
+fn is_inline_container_child(obj : Shape, all_objects : Array[Shape]) -> Bool {
+  // Check if object has a parent that is an sql_table or class
   // Parent ID is everything before the last dot
   let id = obj.id
   let mut last_dot = -1
@@ -1180,9 +1187,20 @@ fn is_sql_table_child(obj : Shape, all_objects : Array[Shape]) -> Bool {
     }
   }
   let parent_id = parent_id_buf.to_string()
-  // Find parent object and check if it's an sql_table
+  // Find parent object and check if it's inline-rendered
   for parent in all_objects {
-    if parent.id == parent_id && parent.shape_type == SqlTable {
+    if parent.id == parent_id &&
+      (parent.shape_type == SqlTable || parent.shape_type == Class) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn has_class(obj : Shape, class_name : String) -> Bool {
+  for c in obj.classes {
+    if c == class_name {
       return true
     }
   }
@@ -1200,8 +1218,8 @@ fn render_svg_object(
   pass? : RenderPass = Foreground,
 ) -> Unit {
   guard obj.box is Some(box) else { return }
-  // Skip children of sql_table - they are rendered inline within the table
-  if is_sql_table_child(obj, all_objects) {
+  // Skip inline-rendered children of sql_table/class.
+  if is_inline_container_child(obj, all_objects) {
     return
   }
   // For background pass, only open groups in foreground pass
@@ -1292,10 +1310,14 @@ fn render_svg_object(
         svg,
         box,
         obj.label,
+        object_children(obj, all_objects),
+        obj.style,
         fill,
         stroke,
         stroke_width,
         config,
+        theme,
+        use_css_theme_vars,
         pass~,
       )
       if is_foreground {
@@ -1565,7 +1587,9 @@ fn render_svg_object(
       )
     }
     // Render label
-    if obj.label != "" {
+    if obj.label != "" &&
+      !has_class(obj, "lang:latex") &&
+      !has_class(obj, "lang:markdown") {
       // Use custom font-family if specified in style, otherwise use config
       let font_family = style_string(obj.style.font_family, config.font_family)
       let text_color = style_color(
@@ -1889,24 +1913,133 @@ fn get_short_name(id : String) -> String {
 }
 
 ///|
+const CLASS_PREFIX_PADDING : Double = 10.0
+
+///|
+const CLASS_PREFIX_WIDTH : Double = 20.0
+
+///|
+const CLASS_TYPE_PADDING : Double = 20.0
+
+///|
+const CLASS_HEADER_FONT_ADD : Int = 4
+
+///|
+priv struct ClassMember {
+  visibility : String
+  name : String
+  type_name : String
+  is_method : Bool
+  underline : Bool
+}
+
+///|
+fn trim_double_quotes(s : String) -> String {
+  if s.length() >= 2 && s[0] == '"' && s[s.length() - 1] == '"' {
+    let out = StringBuilder::new()
+    for i = 1; i < s.length() - 1; i = i + 1 {
+      match s[i].to_char() {
+        Some(ch) => out.write_char(ch)
+        None => ()
+      }
+    }
+    out.to_string()
+  } else {
+    s
+  }
+}
+
+///|
+fn class_member_from_shape(child : Shape) -> ClassMember {
+  let raw_name = trim_double_quotes(get_short_name(child.id))
+  let mut visibility = "+"
+  let mut name = raw_name
+  if raw_name.length() > 0 {
+    let first = raw_name[0]
+    if first == '+' || first == '-' || first == '#' {
+      let vis_buf = StringBuilder::new()
+      match raw_name[0].to_char() {
+        Some(ch) => vis_buf.write_char(ch)
+        None => ()
+      }
+      visibility = vis_buf.to_string()
+      let name_buf = StringBuilder::new()
+      for i = 1; i < raw_name.length(); i = i + 1 {
+        match raw_name[i].to_char() {
+          Some(ch) => name_buf.write_char(ch)
+          None => ()
+        }
+      }
+      name = name_buf.to_string()
+    }
+  }
+  let is_method = name.contains("(")
+  let raw_type = trim_double_quotes(child.label)
+  let type_name = if raw_type == "" || raw_type == raw_name || raw_type == name {
+    if is_method {
+      "void"
+    } else {
+      ""
+    }
+  } else {
+    raw_type
+  }
+  let underline = style_bool(child.style.underline, false)
+  { visibility, name, type_name, is_method, underline }
+}
+
+///|
 fn render_svg_class(
   svg : @svg.Svg,
   box : Box,
   label : String,
+  children : Array[Shape],
+  style : @graph.StyleInput,
   fill : String,
   stroke : String,
   stroke_width : Double,
   config : SvgConfig,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
   pass? : RenderPass = Foreground,
 ) -> Unit {
-  let line_height = config.font_size.to_double() + 4.0
-  let padding = 8.0
-  // Parse label into sections: name, fields, methods
-  let lines = split_lines(label)
-  let class_name = if lines.length() > 0 { lines[0] } else { "" }
+  let members : Array[ClassMember] = []
+  for child in children {
+    members.push(class_member_from_shape(child))
+  }
+  let fields : Array[ClassMember] = []
+  let methods : Array[ClassMember] = []
+  for m in members {
+    if m.is_method {
+      methods.push(m)
+    } else {
+      fields.push(m)
+    }
+  }
+  let row_height = box.height /
+    (2 + fields.length() + methods.length()).to_double()
+  let base_font_size = match style.font_size {
+    Some(v) => v.as_int().unwrap_or(config.font_size)
+    None => config.font_size
+  }
+  let header_font_size = base_font_size + CLASS_HEADER_FONT_ADD
+  let label_dims = @text_metrics.measure_text_mono_plain(
+      label, header_font_size,
+    ).dimensions
+  let header_height = if 2.0 * row_height >
+    label_dims.height + LABEL_PADDING * 2.0 {
+    2.0 * row_height
+  } else {
+    label_dims.height + LABEL_PADDING * 2.0
+  }
+  let visibility_color = style_color(None, "B2", theme, use_css_theme_vars)
+  let name_color = style_color(None, "N1", theme, use_css_theme_vars)
+  let type_color = style_color(None, "AA2", theme, use_css_theme_vars)
+  let visibility_x = box.x + CLASS_PREFIX_PADDING
+  let name_x = visibility_x + CLASS_PREFIX_WIDTH
+  let type_x = box.x + box.width - CLASS_TYPE_PADDING
   match pass {
-    Background =>
-      // Draw main rectangle
+    Background => {
       svg.add(
         @svg.rect(
           box.x,
@@ -1918,95 +2051,143 @@ fn render_svg_class(
           stroke_width~,
         ),
       )
+      svg.add(
+        @svg.rect(
+          box.x,
+          box.y,
+          box.width,
+          header_height,
+          fill=stroke,
+          stroke="none",
+          stroke_width=0.0,
+        ),
+      )
+    }
     Foreground => {
-      // Draw class name (bold, centered)
-      let name_y = box.y + padding + line_height * 0.5
+      let header_text_top = box.y + (header_height - label_dims.height) / 2.0
+      let name_y = header_text_top + base_font_size.to_double()
       svg.add(
         @xml_emit.Element::new("text")
         .attr_num("x", box.x + box.width / 2.0)
         .attr_num("y", name_y)
         .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
-        .attr("font-family", config.font_family)
-        .attr_int("font-size", config.font_size)
-        .attr("font-weight", "bold")
-        .text(class_name)
+        .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+        .attr_int("font-size", header_font_size)
+        .attr("fill", style_color(None, "N7", theme, use_css_theme_vars))
+        .text(label)
         .build(),
       )
-      // Draw separator line after class name
-      let sep1_y = box.y + padding + line_height
+      let mut row_top = box.y + header_height
+      for m in fields {
+        let text_y = row_top +
+          row_height / 2.0 +
+          base_font_size.to_double() / 4.0
+        svg.add(
+          @xml_emit.Element::new("text")
+          .attr_num("x", visibility_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+          .attr_int("font-size", base_font_size)
+          .attr("fill", visibility_color)
+          .text(m.visibility)
+          .build(),
+        )
+        svg.add(
+          @xml_emit.Element::new("text")
+          .attr_num("x", name_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+          .attr_int("font-size", base_font_size)
+          .attr("fill", name_color)
+          .attr(
+            "text-decoration",
+            if m.underline {
+              "underline"
+            } else {
+              "none"
+            },
+          )
+          .text(m.name)
+          .build(),
+        )
+        if m.type_name != "" {
+          svg.add(
+            @xml_emit.Element::new("text")
+            .attr_num("x", type_x)
+            .attr_num("y", text_y)
+            .attr("text-anchor", "end")
+            .attr(
+              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
+            )
+            .attr_int("font-size", base_font_size)
+            .attr("fill", type_color)
+            .text(m.type_name)
+            .build(),
+          )
+        }
+        row_top = row_top + row_height
+      }
+      let border_radius = style_double(style.border_radius, 0.0)
+      let (sep_x1, sep_x2) = if border_radius > 0.0 && methods.is_empty() {
+        (box.x + border_radius, box.x + box.width - border_radius)
+      } else {
+        (box.x, box.x + box.width)
+      }
       svg.add(
-        @svg.line(
-          box.x,
-          sep1_y,
-          box.x + box.width,
-          sep1_y,
-          stroke~,
-          stroke_width~,
-        ),
+        @svg.line(sep_x1, row_top, sep_x2, row_top, stroke~, stroke_width=1.0),
       )
-      // Collect fields (start with +, -, #) and methods (contain parentheses)
-      let fields : Array[String] = []
-      let methods : Array[String] = []
-      for i = 1; i < lines.length(); i = i + 1 {
-        let line = lines[i]
-        if line.contains("(") {
-          methods.push(line)
-        } else if line.length() > 0 {
-          fields.push(line)
-        }
-      }
-      // Draw fields
-      let mut current_y = sep1_y + line_height * 0.7
-      for field in fields {
-        if current_y < box.y + box.height - padding {
-          svg.add(
-            @xml_emit.Element::new("text")
-            .attr_num("x", box.x + padding)
-            .attr_num("y", current_y)
-            .attr("text-anchor", "start")
-            .attr("dominant-baseline", "middle")
-            .attr("font-family", config.font_family)
-            .attr_int("font-size", config.font_size - 1)
-            .text(field)
-            .build(),
-          )
-          current_y = current_y + line_height
-        }
-      }
-      // Draw separator before methods if there are both fields and methods
-      if fields.length() > 0 && methods.length() > 0 {
-        let sep2_y = sep1_y + (fields.length().to_double() + 0.5) * line_height
-        if sep2_y < box.y + box.height - padding {
-          svg.add(
-            @svg.line(
-              box.x,
-              sep2_y,
-              box.x + box.width,
-              sep2_y,
-              stroke~,
-              stroke_width~,
-            ),
-          )
-          current_y = sep2_y + line_height * 0.7
-        }
-      }
-      // Draw methods
       for m in methods {
-        if current_y < box.y + box.height - padding {
+        let text_y = row_top +
+          row_height / 2.0 +
+          base_font_size.to_double() / 4.0
+        svg.add(
+          @xml_emit.Element::new("text")
+          .attr_num("x", visibility_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+          .attr_int("font-size", base_font_size)
+          .attr("fill", visibility_color)
+          .text(m.visibility)
+          .build(),
+        )
+        svg.add(
+          @xml_emit.Element::new("text")
+          .attr_num("x", name_x)
+          .attr_num("y", text_y)
+          .attr("text-anchor", "start")
+          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+          .attr_int("font-size", base_font_size)
+          .attr("fill", name_color)
+          .attr(
+            "text-decoration",
+            if m.underline {
+              "underline"
+            } else {
+              "none"
+            },
+          )
+          .text(m.name)
+          .build(),
+        )
+        if m.type_name != "" {
           svg.add(
             @xml_emit.Element::new("text")
-            .attr_num("x", box.x + padding)
-            .attr_num("y", current_y)
-            .attr("text-anchor", "start")
-            .attr("dominant-baseline", "middle")
-            .attr("font-family", config.font_family)
-            .attr_int("font-size", config.font_size - 1)
-            .text(m)
+            .attr_num("x", type_x)
+            .attr_num("y", text_y)
+            .attr("text-anchor", "end")
+            .attr(
+              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
+            )
+            .attr_int("font-size", base_font_size)
+            .attr("fill", type_color)
+            .text(m.type_name)
             .build(),
           )
-          current_y = current_y + line_height
         }
+        row_top = row_top + row_height
       }
     }
   }
@@ -2027,7 +2208,6 @@ fn render_svg_code(
   let code_bg = "#1e1e1e"
   let code_fg = "#d4d4d4"
   let padding = 8.0
-  let line_height = 16.0
   match pass {
     Background =>
       // Draw background rectangle with rounded corners
@@ -2045,30 +2225,93 @@ fn render_svg_code(
         ),
       )
     Foreground => {
-      // Split label into lines and render each
+      // Split label into lines and render each.
       let lines = split_lines(label)
-      let start_y = box.y + padding + line_height * 0.8
+      svg.open_group("translate(\{box.x + padding},\{box.y + padding})")
       for i, line in lines {
-        let y = start_y + i.to_double() * line_height
-        if y < box.y + box.height - padding {
-          svg.add(
-            @xml_emit.Element::new("text")
-            .attr_num("x", box.x + padding)
-            .attr_num("y", y)
-            .attr("fill", code_fg)
-            .attr(
-              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
-            )
-            .attr_int("font-size", config.font_size - 2)
-            .attr("text-anchor", "start")
-            .attr("dominant-baseline", "middle")
-            .text(line)
-            .build(),
-          )
-        }
+        let y_em = "\{1.0 + i.to_double() * 1.3}em"
+        let text = @xml_emit.Element::new("text")
+          .attr("x", "0")
+          .attr("y", y_em)
+          .attr("fill", code_fg)
+          .attr("class", "text-mono")
+          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
+          .attr_int("font-size", config.font_size - 2)
+          .attr("text-anchor", "start")
+          .raw(code_line_svg_raw(line))
+          .build()
+        svg.add(text)
       }
+      svg.close_group()
     }
   }
+}
+
+///|
+fn code_line_svg_raw(line : String) -> String {
+  match code_find_substring(line, ":=") {
+    Some(idx) => {
+      let prefix = code_slice(line, 0, idx)
+      let suffix = code_slice(line, idx + 2, line.length())
+      code_svg_escape(prefix) +
+      "<tspan fill=\"#000000\" class=\"text-mono-bold\">:=</tspan>" +
+      code_svg_escape(suffix)
+    }
+    None =>
+      if line.has_prefix("defer ") {
+        let suffix = code_slice(line, 5, line.length())
+        "<tspan fill=\"#000000\" class=\"text-mono-bold\">defer</tspan>" +
+        code_svg_escape(suffix)
+      } else {
+        code_svg_escape(line)
+      }
+  }
+}
+
+///|
+fn code_svg_escape(s : String) -> String {
+  let sb = StringBuilder::new()
+  for c in s {
+    match c {
+      '&' => sb.write_string("&amp;")
+      '<' => sb.write_string("&lt;")
+      '>' => sb.write_string("&gt;")
+      '"' => sb.write_string("&quot;")
+      ' ' => sb.write_string("&#160;")
+      '\t' => sb.write_string("&#160;&#160;&#160;&#160;")
+      _ => sb.write_char(c)
+    }
+  }
+  sb.to_string()
+}
+
+///|
+fn code_find_substring(s : String, pattern : String) -> Int? {
+  if pattern.length() == 0 {
+    return Some(0)
+  }
+  if pattern.length() > s.length() {
+    return None
+  }
+  let limit = s.length() - pattern.length()
+  for i = 0; i <= limit; i = i + 1 {
+    if code_slice(s, i, i + pattern.length()) == pattern {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+fn code_slice(s : String, start : Int, end_exclusive : Int) -> String {
+  let sb = StringBuilder::new()
+  for i in start..<end_exclusive {
+    match s[i].to_char() {
+      Some(c) => sb.write_char(c)
+      None => ()
+    }
+  }
+  sb.to_string()
 }
 
 ///|
@@ -2878,6 +3121,248 @@ fn arrowhead_requires_extra_gap(
 }
 
 ///|
+fn route_length(points : Array[Point]) -> Double {
+  let mut total = 0.0
+  if points.length() < 2 {
+    return total
+  }
+  for i = 0; i < points.length() - 1; i = i + 1 {
+    let p0 = points[i]
+    let p1 = points[i + 1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    total = total + (dx * dx + dy * dy).sqrt()
+  }
+  total
+}
+
+///|
+fn point_at_distance_on_route(
+  points : Array[Point],
+  distance : Double,
+) -> (Point, Int) {
+  if points.length() < 2 {
+    return (Point::new(0.0, 0.0), 0)
+  }
+  if distance <= 0.0 {
+    return (points[0], 0)
+  }
+  let total = route_length(points)
+  if distance >= total {
+    return (points[points.length() - 1], points.length() - 2)
+  }
+  let mut walked = 0.0
+  for i = 0; i < points.length() - 1; i = i + 1 {
+    let p0 = points[i]
+    let p1 = points[i + 1]
+    let dx = p1.x - p0.x
+    let dy = p1.y - p0.y
+    let seg = (dx * dx + dy * dy).sqrt()
+    if seg <= 0.000001 {
+      continue
+    }
+    if walked + seg >= distance {
+      let t = (distance - walked) / seg
+      return (Point::new(p0.x + dx * t, p0.y + dy * t), i)
+    }
+    walked = walked + seg
+  }
+  (points[points.length() - 1], points.length() - 2)
+}
+
+///|
+fn unit_normal_vector(
+  x1 : Double,
+  y1 : Double,
+  x2 : Double,
+  y2 : Double,
+) -> (Double, Double) {
+  let normal_x = y1 - y2
+  let normal_y = x2 - x1
+  let dx = x2 - x1
+  let dy = y2 - y1
+  let len = (dx * dx + dy * dy).sqrt()
+  if len <= 0.000001 {
+    (0.0, 0.0)
+  } else {
+    (normal_x / len, normal_y / len)
+  }
+}
+
+///|
+fn unlocked_top_label_top_left(
+  route : Array[Point],
+  stroke_width : Double,
+  label_percentage : Double,
+  width : Double,
+  height : Double,
+) -> (Point, Int) {
+  let total = route_length(route)
+  let target_distance = label_percentage * total
+  let (base_point, segment_index) = point_at_distance_on_route(
+    route, target_distance,
+  )
+  let seg_start = route[segment_index]
+  let seg_end = route[segment_index + 1]
+  let (normal_x_raw, normal_y_raw) = unit_normal_vector(
+    seg_start.x,
+    seg_start.y,
+    seg_end.x,
+    seg_end.y,
+  )
+  // UnlockedTop uses the opposite side of the segment normal.
+  let normal_x = -normal_x_raw
+  let normal_y = -normal_y_raw
+  let offset_x = stroke_width / 2.0 + LABEL_PADDING + width / 2.0
+  let offset_y = stroke_width / 2.0 + LABEL_PADDING + height / 2.0
+  let center_x = base_point.x + normal_x * offset_x
+  let center_y = base_point.y + normal_y * offset_y
+  (Point::new(center_x - width / 2.0, center_y - height / 2.0), segment_index)
+}
+
+///|
+fn arrowhead_dimensions(
+  arrowhead : @graph.ArrowheadType,
+  stroke_width : Double,
+) -> (Double, Double) {
+  let clipped_stroke = if stroke_width < MIN_ARROWHEAD_STROKE_WIDTH {
+    MIN_ARROWHEAD_STROKE_WIDTH
+  } else {
+    stroke_width
+  }
+  let (base_width, base_height, width_mul, height_mul) = match arrowhead {
+    @graph.Triangle => (4.0, 4.0, 3.0, 4.0)
+    @graph.Open => (7.0, 7.0, 3.0, 4.0)
+    @graph.Line => (0.0, 0.0, 5.0, 8.0)
+    @graph.Diamond => (11.0, 9.0, 5.5, 4.5)
+    @graph.Circle => (8.0, 8.0, 5.0, 5.0)
+    @graph.CfOne
+    | @graph.CfMany
+    | @graph.CfOneRequired
+    | @graph.CfManyRequired
+    | @graph.CfOneOptional
+    | @graph.CfManyOptional => (9.0, 9.0, 4.5, 4.5)
+    @graph.None => (0.0, 0.0, 0.0, 0.0)
+  }
+  (
+    base_width + clipped_stroke * width_mul,
+    base_height + clipped_stroke * height_mul,
+  )
+}
+
+///|
+fn arrowhead_label_top_left(
+  edge : Connection,
+  is_dst : Bool,
+  width : Double,
+  height : Double,
+  stroke_width : Double,
+) -> Point? {
+  if edge.route.length() < 2 {
+    return None
+  }
+
+  let segment_index = if is_dst { edge.route.length() - 2 } else { 0 }
+  let start = edge.route[segment_index]
+  let end = edge.route[segment_index + 1]
+  // Use the normal toward unlocked-top position near the end/start segment.
+  let (normal_x, normal_y) = unit_normal_vector(end.x, end.y, start.x, start.y)
+  let shift = normal_x.abs() * (height / 2.0 + LABEL_PADDING) +
+    normal_y.abs() * (width / 2.0 + LABEL_PADDING)
+  let length = route_length(edge.route)
+  let mut position = if is_dst { 1.0 } else { 0.0 }
+  if length > 0.0 {
+    if is_dst {
+      position = position - shift / length
+    } else {
+      position = position + shift / length
+    }
+  }
+
+  let (label_tl0, _) = unlocked_top_label_top_left(
+    edge.route,
+    stroke_width,
+    position,
+    width,
+    height,
+  )
+  let mut label_tl = label_tl0
+
+  let (_, arrow_size) = if is_dst {
+    arrowhead_dimensions(edge.dst_arrowhead, stroke_width)
+  } else {
+    arrowhead_dimensions(edge.src_arrowhead, stroke_width)
+  }
+  if arrow_size > 0.0 {
+    let offset = arrow_size / 2.0 +
+      ARROWHEAD_PADDING -
+      stroke_width / 2.0 -
+      LABEL_PADDING
+    if offset > 0.0 {
+      label_tl = Point::new(
+        label_tl.x + normal_x * offset,
+        label_tl.y + normal_y * offset,
+      )
+    }
+  }
+
+  Some(label_tl)
+}
+
+///|
+fn render_edge_arrowhead_label(
+  svg : @svg.Svg,
+  edge : Connection,
+  text : String,
+  is_dst : Bool,
+  label_color : String?,
+  config : SvgConfig,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  stroke_width : Double,
+) -> Unit {
+  if text == "" {
+    return
+  }
+  let font_size = style_int(edge.style.font_size, config.font_size)
+  let is_mono = style_is_mono(edge.style.font_family)
+  let is_bold = style_bool(edge.style.bold, false)
+  let dims = @text_metrics.measure_label(
+    text, font_size, is_mono, is_bold, true,
+  )
+  match
+    arrowhead_label_top_left(
+      edge,
+      is_dst,
+      dims.width,
+      dims.height,
+      stroke_width,
+    ) {
+    Some(label_tl) => {
+      let x = label_tl.x + dims.width / 2.0
+      let y = label_tl.y + font_size.to_double()
+      let fill = match label_color {
+        Some(color_raw) =>
+          resolve_theme_color(color_raw, theme, use_css_theme_vars)
+        None => resolve_theme_color("N1", theme, use_css_theme_vars)
+      }
+      svg.add(
+        @svg.styled_text(
+          x,
+          y,
+          text,
+          font_family=config.font_family,
+          font_size~,
+          dominant_baseline="alphabetic",
+          extra_style="fill: \{fill}; font-style: italic",
+        ),
+      )
+    }
+    None => ()
+  }
+}
+
+///|
 fn render_svg_edge(
   svg : @svg.Svg,
   edge : Connection,
@@ -2886,6 +3371,9 @@ fn render_svg_edge(
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
 ) -> Unit raise @render_api.RenderError {
+  if is_synthetic_sequence_lifeline(edge) {
+    return
+  }
   if edge.route.length() < 2 {
     return
   }
@@ -2996,6 +3484,36 @@ fn render_svg_edge(
         )
     }
   }
+  match edge.src_arrowhead_label {
+    Some(text) =>
+      render_edge_arrowhead_label(
+        svg,
+        edge,
+        text,
+        false,
+        edge.src_arrowhead_label_color,
+        config,
+        theme,
+        use_css_theme_vars,
+        stroke_width,
+      )
+    None => ()
+  }
+  match edge.dst_arrowhead_label {
+    Some(text) =>
+      render_edge_arrowhead_label(
+        svg,
+        edge,
+        text,
+        true,
+        edge.dst_arrowhead_label_color,
+        config,
+        theme,
+        use_css_theme_vars,
+        stroke_width,
+      )
+    None => ()
+  }
   // Close sketch filter group if opened
   if use_sketch {
     svg.close_group()
@@ -3035,6 +3553,14 @@ fn sequence_participant_ids_for_render(graph : Diagram) -> Array[String] {
 }
 
 ///|
+fn is_synthetic_sequence_lifeline(conn : Connection) -> Bool {
+  !conn.src_arrow &&
+  !conn.dst_arrow &&
+  conn.label == "" &&
+  conn.dst_id.contains("-lifeline-end-")
+}
+
+///|
 fn render_sequence_lifelines(
   svg : @svg.Svg,
   graph : Diagram,
@@ -3051,6 +3577,9 @@ fn render_sequence_lifelines(
   }
   let mut max_message_y = -1.0
   for edge in graph.connections {
+    if is_synthetic_sequence_lifeline(edge) {
+      continue
+    }
     for p in edge.route {
       if p.y > max_message_y {
         max_message_y = p.y

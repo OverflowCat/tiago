@@ -35,6 +35,5 @@
 <text x="219.5" y="158" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">will steal</text>
 <text x="219.5" y="47.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">plankton</text>
 <text x="219.5" y="220" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">formula</text>
-<text x="219.5" y="318.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">lim_{h \rightarrow 0 } \frac{f(x+h)-f(x)}{h}</text>
 </g>
 </svg>
