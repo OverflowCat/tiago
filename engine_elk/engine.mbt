@@ -31,6 +31,16 @@ pub fn ElkEngine::new() -> ElkEngine {
 }
 
 ///|
+pub fn debug_build_elk_input_json(
+  graph : @graph.GraphInput,
+  config : @engine_api.LayoutConfig,
+  direction : @engine_api.Direction,
+) -> Json {
+  let (elk_graph, _, _, _) = build_elk_graph(graph, config, direction)
+  elk_graph
+}
+
+///|
 const D2_INNER_LABEL_PADDING : Double = 5.0
 
 ///|

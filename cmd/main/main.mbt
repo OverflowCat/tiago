@@ -185,6 +185,10 @@ fn main {
     run_watch(args)
     return
   }
+  if first_arg == "dump-elk-input" {
+    run_dump_elk_input(args)
+    return
+  }
   // Parse arguments for compile
   let mut output_mode = OutputMode::Svg
   let mut output_mode_explicit = false
@@ -837,6 +841,9 @@ fn print_usage() -> Unit {
   println("  validate          Check diago source for errors")
   println("  fmt               Format diago source file")
   println("  watch             Auto-rebuild on file changes")
+  println(
+    "  dump-elk-input    Dump ELK layout input JSON (for moon_elk/elkjs debugging)",
+  )
   println("")
   println("Compile Options:")
   println("  --ascii, -a       Output ASCII art (.txt) instead of SVG")
@@ -887,6 +894,12 @@ fn print_usage() -> Unit {
   println("  -w, --write       Write formatted output to file in-place")
   println("  --check           Exit non-zero if file is not formatted (for CI)")
   println("  --diff            Show diff between original and formatted")
+  println("")
+  println("Dump ELK Input Options (dump-elk-input command):")
+  println("  --out-dir DIR     Output directory (default: /tmp/diag-elk-input)")
+  println(
+    "  input.d2 ...      Optional input files (default: all examples/*.d2)",
+  )
   println("")
   println("Arguments:")
   println("  input.d2          diago diagram source file (use - for stdin)")
@@ -1077,6 +1090,173 @@ fn run_validate(args : Array[String]) -> Unit {
     }
   }
   println("\{input_path}: OK")
+}
+
+///|
+fn print_dump_elk_input_usage() -> Unit {
+  println("Usage: diago dump-elk-input [--out-dir DIR] [input.d2 ...]")
+  println("  Without input files, dumps ELK JSON for all examples/*.d2.")
+}
+
+///|
+fn run_dump_elk_input(args : Array[String]) -> Unit {
+  let mut out_dir = "/tmp/diag-elk-input"
+  let input_paths : Array[String] = []
+  let mut i = 2
+  while i < args.length() {
+    let arg = args[i]
+    if arg == "--help" || arg == "-h" {
+      print_dump_elk_input_usage()
+      return
+    } else if arg == "--out-dir" {
+      i = i + 1
+      if i >= args.length() {
+        println("Error: missing value for --out-dir")
+        print_dump_elk_input_usage()
+        @sys.exit(1)
+        return
+      }
+      out_dir = args[i]
+    } else if arg.has_prefix("--out-dir=") {
+      out_dir = extract_value_after_eq(arg)
+    } else if arg.has_suffix(".d2") {
+      input_paths.push(arg)
+    } else {
+      println("Error: unsupported dump-elk-input argument '\{arg}'")
+      print_dump_elk_input_usage()
+      @sys.exit(1)
+      return
+    }
+    i = i + 1
+  }
+
+  let sources_result = if input_paths.is_empty() {
+    collect_default_dump_elk_sources()
+  } else {
+    Ok(input_paths)
+  }
+  let input_sources = match sources_result {
+    Ok(paths) => paths
+    Err(e) => {
+      println("Error: \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+  if input_sources.is_empty() {
+    println("Error: no .d2 files found to dump")
+    @sys.exit(1)
+    return
+  }
+
+  match ensure_dir_recursive(out_dir) {
+    Ok(_) => ()
+    Err(e) => {
+      println("Error: \{e}")
+      @sys.exit(1)
+      return
+    }
+  }
+
+  let mut has_error = false
+  for input_path in input_sources {
+    match dump_elk_input_for_file(input_path, out_dir) {
+      Ok(out_path) => println("Wrote \{out_path}")
+      Err(e) => {
+        println("Error: \{e}")
+        has_error = true
+      }
+    }
+  }
+  if has_error {
+    @sys.exit(1)
+  }
+}
+
+///|
+fn collect_default_dump_elk_sources() -> Result[Array[String], String] {
+  let entries = @fs.read_dir("examples") catch {
+    e => return Err("Error reading directory 'examples': \{e}")
+  }
+  let paths : Array[String] = []
+  for entry in entries {
+    if entry.has_suffix(".d2") {
+      paths.push(@path.Path("examples").join(@path.Path(entry)).to_string())
+    }
+  }
+  paths.sort_by(fn(a, b) { a.compare(b) })
+  Ok(paths)
+}
+
+///|
+fn ensure_dir_recursive(path : String) -> Result[Unit, String] {
+  if path.length() == 0 || path == "." {
+    return Ok(())
+  }
+  if @fs.path_exists(path) {
+    let exists_as_dir = @fs.is_dir(path) catch { _ => false }
+    if exists_as_dir {
+      return Ok(())
+    }
+    return Err("Path '\{path}' exists and is not a directory")
+  }
+  let parent = @path.Path(path).dirname().to_string()
+  if parent.length() > 0 && parent != path {
+    match ensure_dir_recursive(parent) {
+      Ok(_) => ()
+      Err(e) => return Err(e)
+    }
+  }
+  @fs.create_dir(path) catch {
+    e => {
+      let exists_as_dir = if @fs.path_exists(path) {
+        @fs.is_dir(path) catch {
+          _ => false
+        }
+      } else {
+        false
+      }
+      if exists_as_dir {
+        return Ok(())
+      }
+      return Err("Error creating directory '\{path}': \{e}")
+    }
+  }
+  Ok(())
+}
+
+///|
+fn dump_elk_input_for_file(
+  input_path : String,
+  out_dir : String,
+) -> Result[String, String] {
+  let source = @fs.read_file_to_string(input_path) catch {
+    e => return Err("Error reading file '\{input_path}': \{e}")
+  }
+  let (ast, parse_errors) = @compiler.parse(source)
+  if !parse_errors.is_empty() {
+    return Err("Parse errors in '\{input_path}': \{parse_errors}")
+  }
+
+  let resolver = create_import_resolver(get_dir_path(input_path))
+  let ir = @ir.compile_with_imports(ast, resolver) catch {
+    e => return Err("IR error in '\{input_path}': \{e}")
+  }
+  let graph_input = @exporter.to_graph("diagram", ir) catch {
+    e => return Err("Graph error in '\{input_path}': \{e}")
+  }
+
+  let elk_json = @engine_elk.debug_build_elk_input_json(
+    graph_input,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Down,
+  )
+  let output_name = replace_extension(basename_string(input_path), ".json")
+  let out_path = @path.Path(out_dir).join(@path.Path(output_name)).to_string()
+  @fs.write_string_to_file(out_path, elk_json.stringify(escape_slash=false)) catch {
+    e => return Err("Error writing file '\{out_path}': \{e}")
+  }
+  Ok(out_path)
 }
 
 ///|
