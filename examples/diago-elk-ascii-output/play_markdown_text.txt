@@ -4,5 +4,5 @@
 |                                                                     |
 |                  - lists                                            |
 |                  - lists                                            |
-+---------------------------------------------------------------------+
-                   And other normal markdown stuff                     
+|                                                                     |
++------------------And other normal markdown stuff--------------------+

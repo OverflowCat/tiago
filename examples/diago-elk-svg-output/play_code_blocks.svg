@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="753" height="325" viewBox="-88 -88 753 325" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="928" height="388" viewBox="-88 -88 928 388" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,7 +27,7 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="12" y="12" width="553" height="125" fill="#1e1e1e" stroke="#0A0F25" stroke-width="2" rx="4" ry="4"/>
+<rect x="12" y="12" width="728" height="188" fill="#1e1e1e" stroke="#0A0F25" stroke-width="2" rx="4" ry="4"/>
 <g transform="translate(20,20)">
 <text x="0" y="1em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start">awsSession&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;From(c.Request.Context())</text>
 <text x="0" y="2.3em" fill="#d4d4d4" class="text-mono" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="14" text-anchor="start">client&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;s3.New(awsSession)</text>

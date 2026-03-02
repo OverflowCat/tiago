@@ -2,10 +2,10 @@
  │I'm a Mac │  
  │          │  
  └──────────┘  
-      │        
- gazoontite    
-      │        
-      ▼        
+       │       
+  gazoontite   
+       │       
+       ▼       
 ┌─────────────┐
 │And I'm a PC │
 │             │

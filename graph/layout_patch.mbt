@@ -57,6 +57,7 @@ pub fn SequenceFragmentLayout::new(
 ///|
 pub struct LayoutPatch {
   nodes : Map[String, Box]
+  node_labels : Map[String, Box]
   edges : Map[Int, Array[Point]]
   edge_bend_points : Map[Int, Array[Point]]
   edge_curves : Map[Int, Bool]
@@ -70,6 +71,7 @@ pub struct LayoutPatch {
 pub fn LayoutPatch::new() -> LayoutPatch {
   {
     nodes: {},
+    node_labels: {},
     edges: {},
     edge_bend_points: {},
     edge_curves: {},

@@ -19,12 +19,21 @@
 fn apply_box_to_object(
   obj : ObjectInput,
   nodes : Map[String, Box],
+  node_labels : Map[String, Box],
 ) -> ObjectInput {
   let layout_box = match nodes.get(obj.id) {
     Some(b) => Some(b)
     None => obj.box
   }
-  { ..obj, box: apply_locked_position(obj, layout_box) }
+  let layout_label_box = match node_labels.get(obj.id) {
+    Some(b) => Some(b)
+    None => obj.label_box
+  }
+  {
+    ..obj,
+    box: apply_locked_position(obj, layout_box),
+    label_box: layout_label_box,
+  }
 }
 
 ///|
@@ -71,10 +80,10 @@ fn apply_route_to_edge(
 
 ///|
 pub fn apply_layout(graph : GraphInput, patch : LayoutPatch) -> GraphInput {
-  let root = apply_box_to_object(graph.root, patch.nodes)
+  let root = apply_box_to_object(graph.root, patch.nodes, patch.node_labels)
   let objects : Array[ObjectInput] = []
   for obj in graph.objects {
-    objects.push(apply_box_to_object(obj, patch.nodes))
+    objects.push(apply_box_to_object(obj, patch.nodes, patch.node_labels))
   }
   let edges : Array[EdgeInput] = []
   for e in graph.edges {

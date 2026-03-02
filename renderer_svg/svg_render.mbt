@@ -1622,33 +1622,51 @@ fn render_svg_object(
       let inner_box = shape_inner_box_for_label(obj, box, label_dims)
       let is_grid_container = is_container(obj) &&
         (obj.grid_rows is Some(_) || obj.grid_columns is Some(_))
-      let (label_tl_x, label_tl_y) = if is_container(obj) && !is_grid_container {
-        (
-          box.x + (box.width - label_dims.width) / 2.0,
-          box.y - LABEL_PADDING - label_dims.height,
-        )
-      } else if is_grid_container {
-        (
-          inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-          inner_box.y + LABEL_PADDING,
-        )
-      } else if has_outside_bottom_label(obj) || label_overflows {
-        (
-          box.x + (box.width - label_dims.width) / 2.0,
-          box.y + box.height + LABEL_PADDING,
-        )
-      } else if has_icon {
-        (
-          inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-          inner_box.y + LABEL_PADDING,
-        )
-      } else {
-        (
-          inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-          inner_box.y + (inner_box.height - label_dims.height) / 2.0,
-        )
+      let (label_tl_x, label_tl_y, label_box_width) = match obj.label_box {
+        Some(label_box) =>
+          (
+            label_box.x,
+            label_box.y,
+            if label_box.width > 0.0 {
+              label_box.width
+            } else {
+              label_dims.width
+            },
+          )
+        None =>
+          if is_container(obj) && !is_grid_container {
+            (
+              box.x + (box.width - label_dims.width) / 2.0,
+              box.y - LABEL_PADDING - label_dims.height,
+              label_dims.width,
+            )
+          } else if is_grid_container {
+            (
+              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
+              inner_box.y + LABEL_PADDING,
+              label_dims.width,
+            )
+          } else if has_outside_bottom_label(obj) || label_overflows {
+            (
+              box.x + (box.width - label_dims.width) / 2.0,
+              box.y + box.height + LABEL_PADDING,
+              label_dims.width,
+            )
+          } else if has_icon {
+            (
+              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
+              inner_box.y + LABEL_PADDING,
+              label_dims.width,
+            )
+          } else {
+            (
+              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
+              inner_box.y + (inner_box.height - label_dims.height) / 2.0,
+              label_dims.width,
+            )
+          }
       }
-      let label_x = label_tl_x + label_dims.width / 2.0
+      let label_x = label_tl_x + label_box_width / 2.0
       let label_baseline_y = label_tl_y + font_size.to_double()
       let text_styles : Array[String] = ["fill: \{text_color}"]
       if is_italic {
@@ -2889,21 +2907,6 @@ fn compress_collinear_points(points : Array[Point]) -> Array[Point] {
 }
 
 ///|
-fn cubic_line_to(
-  pb : @svg.PathBuilder,
-  sx : Double,
-  sy : Double,
-  ex : Double,
-  ey : Double,
-) -> Unit {
-  let c1x = sx + (ex - sx) * 0.4
-  let c1y = sy + (ey - sy) * 0.4
-  let c2x = sx + (ex - sx) * 0.6
-  let c2y = sy + (ey - sy) * 0.6
-  let _ = pb.cubic_to(c1x, c1y, c2x, c2y, ex, ey)
-}
-
-///|
 /// Build a polyline path with rounded corners.
 fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit {
   let points = compress_collinear_points(raw_points)
@@ -2916,19 +2919,15 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
   // Move to first point
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
-    cubic_line_to(pb, points[0].x, points[0].y, points[1].x, points[1].y)
+    let _ = pb.line_to(points[1].x, points[1].y)
     return
   }
-  let mut pen_x = points[0].x
-  let mut pen_y = points[0].y
   // For each intermediate point, draw line segments with rounded corners
   for i = 0; i < points.length() - 1; i = i + 1 {
     let curr = points[i]
     let next = points[i + 1]
     if i == points.length() - 2 {
-      cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
-      pen_x = next.x
-      pen_y = next.y
+      let _ = pb.line_to(next.x, next.y)
     } else {
       // There's a corner at 'next', so we need to draw a rounded corner
       let after = points[i + 2]
@@ -2941,9 +2940,7 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
       // redundant collinear waypoints; rounding those creates unwanted arcs.
       let cross = dx1 * dy2 - dy1 * dx2
       if cross.abs() < 0.001 {
-        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
-        pen_x = next.x
-        pen_y = next.y
+        let _ = pb.line_to(next.x, next.y)
         continue
       }
       // Normalize directions
@@ -2951,9 +2948,7 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
       let len2 = (dx2 * dx2 + dy2 * dy2).sqrt()
       if len1 < 0.001 || len2 < 0.001 {
         // Degenerate case - just line to next
-        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
-        pen_x = next.x
-        pen_y = next.y
+        let _ = pb.line_to(next.x, next.y)
         continue
       }
       // Limit radius to half the shorter segment length
@@ -2961,9 +2956,7 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
       let r = @cmp.minimum(radius, max_radius)
       if r < 1.0 {
         // Radius too small - fall back to a straight cubic segment.
-        cubic_line_to(pb, pen_x, pen_y, next.x, next.y)
-        pen_x = next.x
-        pen_y = next.y
+        let _ = pb.line_to(next.x, next.y)
         continue
       }
       // Calculate the point where we stop before the corner
@@ -2973,16 +2966,12 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
       let resume_x = next.x + dx2 / len2 * r
       let resume_y = next.y + dy2 / len2 * r
       // Draw line to the stop point
-      cubic_line_to(pb, pen_x, pen_y, stop_x, stop_y)
-      pen_x = stop_x
-      pen_y = stop_y
+      let _ = pb.line_to(stop_x, stop_y)
       // D2 reference SVG uses `S` (smooth cubic) for rounded corners.
       // When a smooth cubic follows a line segment, its first control point
       // equals the current point. This expands to an equivalent `C`:
       //   C stop_x stop_y corner_x corner_y resume_x resume_y
       let _ = pb.cubic_to(stop_x, stop_y, next.x, next.y, resume_x, resume_y)
-      pen_x = resume_x
-      pen_y = resume_y
     }
   }
 }

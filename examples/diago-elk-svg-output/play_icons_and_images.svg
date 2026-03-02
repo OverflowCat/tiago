@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="429" height="260" viewBox="-88 -88 429 260" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="504" height="328" viewBox="-88 -88 504 328" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -27,10 +27,10 @@
 </defs>
 <rect width="100%" height="100%" fill="#FFFFFF"/>
 <g id="base-layer">
-<rect x="12" y="12" width="109" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<image href="https://icons.terrastruct.com/infra/019-network.svg" x="54.5" y="10" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>
-<text x="66.5" y="33" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">my network</text>
-<image href="https://icons.terrastruct.com/dev/github.svg" x="141" y="12" width="100" height="60" preserveAspectRatio="xMidYMid meet"/>
-<text x="191" y="93" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">github</text>
+<rect x="12" y="45.5" width="156" height="92" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<image href="https://icons.terrastruct.com/infra/019-network.svg" x="78" y="59.5" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>
+<text x="90" y="66.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">my network</text>
+<image href="https://icons.terrastruct.com/dev/github.svg" x="188" y="12" width="128" height="128" preserveAspectRatio="xMidYMid meet"/>
+<text x="252" y="161" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">github</text>
 </g>
 </svg>

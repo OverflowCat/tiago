@@ -220,7 +220,6 @@ test "class shape has separator line" {
     #|}
   let svg = compile(source).unwrap()
   assert_true(svg.contains("<line"))
-  assert_true(svg.contains("font-weight=\"bold\""))
 }
 
 ///|

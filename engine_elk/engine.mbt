@@ -36,12 +36,30 @@ pub fn debug_build_elk_input_json(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> Json {
-  let (elk_graph, _, _, _) = build_elk_graph(graph, config, direction)
+  let (elk_graph, _, _, _, _) = build_elk_graph(graph, config, direction)
   elk_graph
 }
 
 ///|
 const D2_INNER_LABEL_PADDING : Double = 5.0
+
+///|
+const D2_LABEL_PADDING : Double = 5.0
+
+///|
+const D2_MAX_ICON_SIZE : Double = 64.0
+
+///|
+const D2_THREE_DEE_OFFSET : Double = 15.0
+
+///|
+const D2_MULTIPLE_OFFSET : Double = 10.0
+
+///|
+const D2_MIN_SHAPE_SIZE : Double = 5.0
+
+///|
+const D2_DEFAULT_PADDING : Double = 40.0
 
 ///|
 const D2_SQL_TABLE_NAME_PADDING : Double = 10.0
@@ -59,6 +77,118 @@ const D2_SQL_TABLE_HEADER_PADDING : Double = 10.0
 const D2_SQL_TABLE_HEADER_FONT_ADD : Int = 4
 
 ///|
+const D2_CLASS_PREFIX_PADDING : Double = 10.0
+
+///|
+const D2_CLASS_PREFIX_WIDTH : Double = 20.0
+
+///|
+const D2_CLASS_CENTER_PADDING : Double = 50.0
+
+///|
+const D2_CLASS_HEADER_FONT_ADD : Int = 4
+
+///|
+const D2_CLASS_TYPE_PADDING : Double = 20.0
+
+///|
+const D2_CLASS_VERTICAL_PADDING : Double = 20.0
+
+///|
+const D2_DEFAULT_ARC_DEPTH : Double = 24.0
+
+///|
+const D2_PARALLELOGRAM_WEDGE_WIDTH : Double = 26.0
+
+///|
+const D2_STORED_DATA_WEDGE_WIDTH : Double = 15.0
+
+///|
+const D2_STEP_WEDGE_WIDTH : Double = 35.0
+
+///|
+const D2_PACKAGE_TOP_MAX_HEIGHT : Double = 55.0
+
+///|
+const D2_PACKAGE_VERTICAL_SCALAR : Double = 0.2
+
+///|
+const D2_CALLOUT_DEFAULT_TIP_HEIGHT : Double = 45.0
+
+///|
+const D2_PAGE_CORNER_WIDTH : Double = 20.8164
+
+///|
+const D2_PAGE_CORNER_HEIGHT : Double = 20.348
+
+///|
+const D2_DOC_PATH_HEIGHT : Double = 18.925
+
+///|
+const D2_DOC_PATH_INNER_BOTTOM : Double = 14.0
+
+///|
+const D2_PERSON_AR_LIMIT : Double = 1.5
+
+///|
+const D2_OVAL_AR_LIMIT : Double = 3.0
+
+///|
+const D2_C4_PERSON_AR_LIMIT : Double = 1.5
+
+///|
+const D2_C4_HEAD_RADIUS_FACTOR : Double = 0.22
+
+///|
+const D2_C4_BODY_TOP_FACTOR : Double = 0.8
+
+///|
+const CLOUD_WIDE_INNER_WIDTH : Double = 0.819
+
+///|
+const CLOUD_WIDE_INNER_HEIGHT : Double = 0.548
+
+///|
+const CLOUD_WIDE_ASPECT_BOUNDARY : Double = (
+    1.0 + CLOUD_WIDE_INNER_WIDTH / CLOUD_WIDE_INNER_HEIGHT
+  ) /
+  2.0
+
+///|
+const CLOUD_TALL_INNER_WIDTH : Double = 0.549
+
+///|
+const CLOUD_TALL_INNER_HEIGHT : Double = 0.820
+
+///|
+const CLOUD_TALL_ASPECT_BOUNDARY : Double = (
+    1.0 + CLOUD_TALL_INNER_WIDTH / CLOUD_TALL_INNER_HEIGHT
+  ) /
+  2.0
+
+///|
+const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
+
+///|
+const CLOUD_SQUARE_INNER_HEIGHT : Double = 0.663
+
+///|
+priv struct LayoutSpacing {
+  top : Double
+  left : Double
+  bottom : Double
+  right : Double
+}
+
+///|
+priv enum DefaultLabelPosition {
+  OutsideTop
+  OutsideBottom
+  InsideTop
+  InsideMiddle
+}
+
+///|
 pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   _self,
   graph,
@@ -73,9 +203,13 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
 
-  let (elk_graph, edge_id_by_index, edge_endpoints_by_index, node_size_by_id) = build_elk_graph(
-    graph, config, direction,
-  )
+  let (
+    elk_graph,
+    edge_id_by_index,
+    edge_endpoints_by_index,
+    node_size_by_id,
+    node_margin_by_id,
+  ) = build_elk_graph(graph, config, direction)
 
   let laid_out_json = @moon_elk_core.new_elk_engine().layout(graph=elk_graph) catch {
     e => raise @engine_api.unsupported("elk layout failed: \{e}")
@@ -83,12 +217,14 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
 
   let node_box_by_id : Map[String, @graph.Box] = {}
   collect_node_boxes(laid_out_json, 0.0, 0.0, node_box_by_id)
-  fill_patch_nodes(patch, graph, node_box_by_id, node_size_by_id, config)
-
   let routes_by_edge_id : Map[String, Array[@graph.Point]] = {}
   collect_edge_routes(
     laid_out_json, 0.0, 0.0, node_box_by_id, routes_by_edge_id,
   )
+  apply_margin_adjustments_like_d2(
+    graph, edge_id_by_index, routes_by_edge_id, node_box_by_id, node_margin_by_id,
+  )
+  fill_patch_nodes(patch, graph, node_box_by_id, node_size_by_id, config)
   fill_patch_edges(
     patch, graph, edge_id_by_index, edge_endpoints_by_index, node_box_by_id, routes_by_edge_id,
     direction,
@@ -334,6 +470,7 @@ fn build_elk_graph(
   Map[Int, String],
   Map[Int, (String, String)],
   Map[String, (Double, Double)],
+  Map[String, LayoutSpacing],
 ) {
   let (object_by_id, parent_id_by_child_id) = build_object_maps(graph)
   let excluded_node_ids = build_excluded_layout_node_ids(
@@ -343,13 +480,19 @@ fn build_elk_graph(
   let node_json_by_id : Map[String, Map[String, Json]] = {}
   let node_ids : Map[String, Bool] = {}
   let node_size_by_id : Map[String, (Double, Double)] = {}
+  let node_margin_by_id : Map[String, LayoutSpacing] = {}
 
   for obj in graph.objects {
     if excluded_node_ids.contains(obj.id) {
       continue
     }
-    let (width, height) = object_size(obj, config, object_by_id)
-    node_size_by_id[obj.id] = (width, height)
+    let (base_width, base_height) = object_size(obj, config, object_by_id)
+    let box = @graph.Box::new(0.0, 0.0, base_width, base_height)
+    let (margin, _) = object_layout_spacing(obj, box)
+    let width = base_width + margin.left + margin.right
+    let height = base_height + margin.top + margin.bottom
+    node_size_by_id[obj.id] = (base_width, base_height)
+    node_margin_by_id[obj.id] = margin
 
     let node_json : Map[String, Json] = {
       "id": Json::string(obj.id),
@@ -536,7 +679,228 @@ fn build_elk_graph(
     edge_id_by_index,
     edge_endpoints_by_index,
     node_size_by_id,
+    node_margin_by_id,
   )
+}
+
+///|
+fn apply_margin_adjustments_like_d2(
+  graph : @graph.GraphInput,
+  edge_id_by_index : Map[Int, String],
+  routes_by_edge_id : Map[String, Array[@graph.Point]],
+  node_box_by_id : Map[String, @graph.Box],
+  node_margin_by_id : Map[String, LayoutSpacing],
+) -> Unit {
+  let child_ids_by_id : Map[String, Array[String]] = {}
+  for obj in graph.objects {
+    child_ids_by_id[obj.id] = obj.child_ids
+  }
+
+  for obj in graph.objects {
+    let margin = match node_margin_by_id.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    if approx_zero(margin.left) &&
+      approx_zero(margin.right) &&
+      approx_zero(margin.top) &&
+      approx_zero(margin.bottom) {
+      continue
+    }
+    let mut box = match node_box_by_id.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+
+    if margin.left > 0.0 {
+      for edge in graph.edges {
+        let edge_id = match edge_id_by_index.get(edge.index) {
+          Some(v) => v
+          None => continue
+        }
+        let route = match routes_by_edge_id.get(edge_id) {
+          Some(v) => v
+          None => continue
+        }
+        if route.is_empty() {
+          continue
+        }
+        let last = route.length() - 1
+        if edge.src_id == obj.id && approx_eq(route[0].x, box.x) {
+          route[0] = @graph.Point::new(route[0].x + margin.left, route[0].y)
+        }
+        if edge.dst_id == obj.id && approx_eq(route[last].x, box.x) {
+          route[last] = @graph.Point::new(
+            route[last].x + margin.left,
+            route[last].y,
+          )
+        }
+      }
+      box = @graph.Box::new(box.x + margin.left, box.y, box.width, box.height)
+      shift_descendant_boxes(
+        node_box_by_id,
+        child_ids_by_id,
+        obj.id,
+        margin.left / 2.0,
+        0.0,
+      )
+      box = @graph.Box::new(
+        box.x,
+        box.y,
+        max_double(1.0, box.width - margin.left),
+        box.height,
+      )
+    }
+
+    if margin.right > 0.0 {
+      for edge in graph.edges {
+        let edge_id = match edge_id_by_index.get(edge.index) {
+          Some(v) => v
+          None => continue
+        }
+        let route = match routes_by_edge_id.get(edge_id) {
+          Some(v) => v
+          None => continue
+        }
+        if route.is_empty() {
+          continue
+        }
+        let last = route.length() - 1
+        let right_x = box.x + box.width
+        if edge.src_id == obj.id && approx_eq(route[0].x, right_x) {
+          route[0] = @graph.Point::new(route[0].x - margin.right, route[0].y)
+        }
+        if edge.dst_id == obj.id && approx_eq(route[last].x, right_x) {
+          route[last] = @graph.Point::new(
+            route[last].x - margin.right,
+            route[last].y,
+          )
+        }
+      }
+      shift_descendant_boxes(
+        node_box_by_id,
+        child_ids_by_id,
+        obj.id,
+        -margin.right / 2.0,
+        0.0,
+      )
+      box = @graph.Box::new(
+        box.x,
+        box.y,
+        max_double(1.0, box.width - margin.right),
+        box.height,
+      )
+    }
+
+    if margin.top > 0.0 {
+      for edge in graph.edges {
+        let edge_id = match edge_id_by_index.get(edge.index) {
+          Some(v) => v
+          None => continue
+        }
+        let route = match routes_by_edge_id.get(edge_id) {
+          Some(v) => v
+          None => continue
+        }
+        if route.is_empty() {
+          continue
+        }
+        let last = route.length() - 1
+        if edge.src_id == obj.id && approx_eq(route[0].y, box.y) {
+          route[0] = @graph.Point::new(route[0].x, route[0].y + margin.top)
+        }
+        if edge.dst_id == obj.id && approx_eq(route[last].y, box.y) {
+          route[last] = @graph.Point::new(
+            route[last].x,
+            route[last].y + margin.top,
+          )
+        }
+      }
+      box = @graph.Box::new(box.x, box.y + margin.top, box.width, box.height)
+      shift_descendant_boxes(
+        node_box_by_id,
+        child_ids_by_id,
+        obj.id,
+        0.0,
+        margin.top / 2.0,
+      )
+      box = @graph.Box::new(
+        box.x,
+        box.y,
+        box.width,
+        max_double(1.0, box.height - margin.top),
+      )
+    }
+
+    if margin.bottom > 0.0 {
+      for edge in graph.edges {
+        let edge_id = match edge_id_by_index.get(edge.index) {
+          Some(v) => v
+          None => continue
+        }
+        let route = match routes_by_edge_id.get(edge_id) {
+          Some(v) => v
+          None => continue
+        }
+        if route.is_empty() {
+          continue
+        }
+        let last = route.length() - 1
+        let bottom_y = box.y + box.height
+        if edge.src_id == obj.id && approx_eq(route[0].y, bottom_y) {
+          route[0] = @graph.Point::new(route[0].x, route[0].y - margin.bottom)
+        }
+        if edge.dst_id == obj.id && approx_eq(route[last].y, bottom_y) {
+          route[last] = @graph.Point::new(
+            route[last].x,
+            route[last].y - margin.bottom,
+          )
+        }
+      }
+      shift_descendant_boxes(
+        node_box_by_id,
+        child_ids_by_id,
+        obj.id,
+        0.0,
+        -margin.bottom / 2.0,
+      )
+      box = @graph.Box::new(
+        box.x,
+        box.y,
+        box.width,
+        max_double(1.0, box.height - margin.bottom),
+      )
+    }
+
+    node_box_by_id[obj.id] = box
+  }
+}
+
+///|
+fn shift_descendant_boxes(
+  node_box_by_id : Map[String, @graph.Box],
+  child_ids_by_id : Map[String, Array[String]],
+  parent_id : String,
+  dx : Double,
+  dy : Double,
+) -> Unit {
+  let child_ids = match child_ids_by_id.get(parent_id) {
+    Some(v) => v
+    None => return
+  }
+  for child_id in child_ids {
+    match node_box_by_id.get(child_id) {
+      Some(child_box) =>
+        node_box_by_id[child_id] = @graph.Box::new(
+          child_box.x + dx,
+          child_box.y + dy,
+          child_box.width,
+          child_box.height,
+        )
+      None => ()
+    }
+    shift_descendant_boxes(node_box_by_id, child_ids_by_id, child_id, dx, dy)
+  }
 }
 
 ///|
@@ -720,15 +1084,20 @@ fn fill_patch_nodes(
     object_by_id[obj.id] = obj
   }
   for obj in graph.objects {
-    match node_box_by_id.get(obj.id) {
-      Some(box) => patch.nodes[obj.id] = box
+    let node_box = match node_box_by_id.get(obj.id) {
+      Some(box) => box
       None => {
         let (width, height) = match node_size_by_id.get(obj.id) {
           Some(v) => v
           None => object_size(obj, config, object_by_id)
         }
-        patch.nodes[obj.id] = object_fallback_box(obj, width, height)
+        object_fallback_box(obj, width, height)
       }
+    }
+    patch.nodes[obj.id] = node_box
+    match object_default_label_box(obj, node_box) {
+      Some(label_box) => patch.node_labels[obj.id] = label_box
+      None => ()
     }
   }
 }
@@ -790,6 +1159,9 @@ fn fill_patch_edges(
     routes_by_index[edge.index] = route
   }
 
+  adjust_route_endpoints_for_outside_labels(
+    routes_by_index, graph, node_box_by_id,
+  )
   delete_bends_like_d2(routes_by_index, graph, node_box_by_id)
 
   for edge in graph.edges {
@@ -813,6 +1185,259 @@ fn fill_patch_edges(
       }
       None => ()
     }
+  }
+}
+
+///|
+fn adjust_route_endpoints_for_outside_labels(
+  routes_by_index : Map[Int, Array[@graph.Point]],
+  graph : @graph.GraphInput,
+  node_box_by_id : Map[String, @graph.Box],
+) -> Unit {
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+  let parent_id_by_child_id : Map[String, String] = {}
+  for parent in graph.objects {
+    for child_id in parent.child_ids {
+      parent_id_by_child_id[child_id] = parent.id
+    }
+  }
+
+  for edge in graph.edges {
+    let route = match routes_by_index.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    if route.length() < 2 {
+      continue
+    }
+
+    let src_id = collapse_sql_or_class_endpoint_id(
+      edge.src_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+    let dst_id = collapse_sql_or_class_endpoint_id(
+      edge.dst_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+
+    let src_obj = match object_by_id.get(src_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_obj = match object_by_id.get(dst_id) {
+      Some(v) => v
+      None => continue
+    }
+    let src_box = match node_box_by_id.get(src_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_box = match node_box_by_id.get(dst_id) {
+      Some(v) => v
+      None => continue
+    }
+
+    if route.length() >= 2 {
+      match outside_label_box(src_obj, src_box) {
+        Some((label_box, pos)) => {
+          let intersections = box_intersections(label_box, route[1], route[0])
+          if !intersections.is_empty() {
+            route[0] = pick_outside_intersection(pos, intersections)
+          }
+        }
+        None => ()
+      }
+    }
+
+    if route.length() >= 2 {
+      let last = route.length() - 1
+      match outside_label_box(dst_obj, dst_box) {
+        Some((label_box, pos)) => {
+          let intersections = box_intersections(
+            label_box,
+            route[last - 1],
+            route[last],
+          )
+          if !intersections.is_empty() {
+            route[last] = pick_outside_intersection(pos, intersections)
+          }
+        }
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+fn outside_label_box(
+  obj : @graph.ObjectInput,
+  box : @graph.Box,
+) -> (@graph.Box, DefaultLabelPosition)? {
+  if obj.shape_type == @graph.SqlTable || obj.shape_type == @graph.Class {
+    return None
+  }
+  if obj.label == "" {
+    return None
+  }
+  let (label_width, label_height) = match object_label_dimensions(obj) {
+    Some(v) => v
+    None => return None
+  }
+  let pos = default_label_position(
+    obj,
+    box,
+    label_width + D2_LABEL_PADDING * 2.0,
+    label_height + D2_LABEL_PADDING * 2.0,
+  )
+  let (x, y) = match pos {
+    OutsideTop =>
+      (
+        box.x + (box.width - label_width) / 2.0,
+        box.y - D2_LABEL_PADDING - label_height,
+      )
+    OutsideBottom =>
+      (
+        box.x + (box.width - label_width) / 2.0,
+        box.y + box.height + D2_LABEL_PADDING,
+      )
+    _ => return None
+  }
+  Some(
+    (
+      @graph.Box::new(
+        x - D2_LABEL_PADDING,
+        y,
+        label_width + D2_LABEL_PADDING * 2.0,
+        label_height,
+      ),
+      pos,
+    ),
+  )
+}
+
+///|
+fn box_intersections(
+  box : @graph.Box,
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+) -> Array[@graph.Point] {
+  let hits : Array[@graph.Point] = []
+
+  let add_hit = fn(hit : @graph.Point) {
+    for existing in hits {
+      if abs_double(existing.x - hit.x) < 0.000001 &&
+        abs_double(existing.y - hit.y) < 0.000001 {
+        return
+      }
+    }
+    hits.push(hit)
+  }
+
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let y0 = box.y
+  let y1 = box.y + box.height
+
+  match segment_intersection_at_y_for_box(p0, p1, y0, x0, x1) {
+    Some(hit) => add_hit(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_x_for_box(p0, p1, x1, y0, y1) {
+    Some(hit) => add_hit(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_y_for_box(p0, p1, y1, x0, x1) {
+    Some(hit) => add_hit(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_x_for_box(p0, p1, x0, y0, y1) {
+    Some(hit) => add_hit(hit.1)
+    None => ()
+  }
+  hits
+}
+
+///|
+fn pick_outside_intersection(
+  pos : DefaultLabelPosition,
+  intersections : Array[@graph.Point],
+) -> @graph.Point {
+  if intersections.length() <= 1 {
+    return intersections[0]
+  }
+  let mut best = intersections[0]
+  for i in 1..<intersections.length() {
+    let p = intersections[i]
+    match pos {
+      OutsideTop => if p.y < best.y { best = p }
+      OutsideBottom => if p.y > best.y { best = p }
+      _ => ()
+    }
+  }
+  best
+}
+
+///|
+fn segment_intersection_at_x_for_box(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  x : Double,
+  min_y : Double,
+  max_y : Double,
+) -> (Double, @graph.Point)? {
+  let dx = p1.x - p0.x
+  if abs_double(dx) < 0.000001 {
+    return None
+  }
+  let t = (x - p0.x) / dx
+  if t < 0.0 || t > 1.0 {
+    return None
+  }
+  let y = p0.y + (p1.y - p0.y) * t
+  if y < min_y - 0.000001 || y > max_y + 0.000001 {
+    return None
+  }
+  let rx = p0.x + round_nearest_int_double_for_box(t * (p1.x - p0.x))
+  let ry = p0.y + round_nearest_int_double_for_box(t * (p1.y - p0.y))
+  Some((t, @graph.Point::new(rx, ry)))
+}
+
+///|
+fn segment_intersection_at_y_for_box(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  y : Double,
+  min_x : Double,
+  max_x : Double,
+) -> (Double, @graph.Point)? {
+  let dy = p1.y - p0.y
+  if abs_double(dy) < 0.000001 {
+    return None
+  }
+  let t = (y - p0.y) / dy
+  if t < 0.0 || t > 1.0 {
+    return None
+  }
+  let x = p0.x + (p1.x - p0.x) * t
+  if x < min_x - 0.000001 || x > max_x + 0.000001 {
+    return None
+  }
+  let rx = p0.x + round_nearest_int_double_for_box(t * (p1.x - p0.x))
+  let ry = p0.y + round_nearest_int_double_for_box(t * (p1.y - p0.y))
+  Some((t, @graph.Point::new(rx, ry)))
+}
+
+///|
+fn round_nearest_int_double_for_box(v : Double) -> Double {
+  if v >= 0.0 {
+    (v + 0.5).to_int().to_double()
+  } else {
+    (v - 0.5).to_int().to_double()
   }
 }
 
@@ -913,7 +1538,12 @@ fn layout_node_spacing(
 
 ///|
 fn layout_padding_value(config : @engine_api.LayoutConfig) -> Int {
-  positive_int(config.container_padding, 40)
+  let raw = if approx_eq(config.container_padding, 40.0) {
+    50.0
+  } else {
+    config.container_padding
+  }
+  positive_int(raw, 50)
 }
 
 ///|
@@ -2006,22 +2636,44 @@ fn object_size(
   config : @engine_api.LayoutConfig,
   object_by_id : Map[String, @graph.ObjectInput],
 ) -> (Double, Double) {
-  match obj.box {
-    Some(box) =>
+  let estimate_auto_size = () => {
+    if obj.shape_type == @graph.SqlTable {
+      let (width, height) = estimate_sql_table_size(obj, object_by_id)
       (
-        positive_or(box.width, config.default_width),
-        positive_or(box.height, config.default_height),
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
       )
-    None =>
-      if obj.shape_type == @graph.SqlTable {
-        let (width, height) = estimate_sql_table_size(obj, object_by_id)
-        (
-          positive_or(width, config.default_width),
-          positive_or(height, config.default_height),
-        )
-      } else {
-        estimate_object_size(obj, config)
-      }
+    } else if obj.shape_type == @graph.Class {
+      let (width, height) = estimate_class_size(obj, object_by_id)
+      (
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
+      )
+    } else {
+      estimate_object_size(obj, config, object_by_id)
+    }
+  }
+  match obj.box {
+    Some(box) => {
+      let (auto_width, auto_height) = estimate_auto_size()
+      let width = if box.width > 0.0 { box.width } else { auto_width }
+      let height = if box.height > 0.0 { box.height } else { auto_height }
+      (
+        clamp_positive(width, config.default_width),
+        clamp_positive(height, config.default_height),
+      )
+    }
+    None => estimate_auto_size()
+  }
+}
+
+///|
+fn clamp_positive(value : Double, fallback : Double) -> Double {
+  let base = if value > 0.0 { value } else { fallback }
+  if base > 0.0 {
+    base
+  } else {
+    1.0
   }
 }
 
@@ -2029,14 +2681,16 @@ fn object_size(
 fn estimate_object_size(
   obj : @graph.ObjectInput,
   config : @engine_api.LayoutConfig,
+  _object_by_id : Map[String, @graph.ObjectInput],
 ) -> (Double, Double) {
   let font_size = match obj.style.font_size {
     Some(value) => value.as_int().unwrap_or(16)
     None => 16
   }
   let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, true)
-  let is_mono = style_is_mono(obj.style.font_family)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
   let label_dims = @text_metrics.measure_label(
     obj.label,
     font_size,
@@ -2044,21 +2698,635 @@ fn estimate_object_size(
     is_bold,
     is_italic,
   )
+  let mut content_width = label_dims.width
+  let mut content_height = label_dims.height
 
-  let mut width = config.default_width
-  let mut height = config.default_height
-
-  if !obj.label.is_empty() {
-    width = max_double(width, label_dims.width + 24.0)
-    height = max_double(height, label_dims.height + 24.0)
+  if obj.shape_type == @graph.Code {
+    content_width = content_width + font_size.to_double()
+    content_height = content_height + font_size.to_double()
+  } else if obj.label != "" && obj.shape_type != @graph.Text {
+    content_width = content_width + D2_INNER_LABEL_PADDING
+    content_height = content_height + D2_INNER_LABEL_PADDING
   }
 
   if obj.shape_type == @graph.Text {
-    width = max_double(label_dims.width, 1.0)
-    height = max_double(label_dims.height, 1.0)
+    if content_width < D2_MIN_SHAPE_SIZE {
+      content_width = D2_MIN_SHAPE_SIZE
+    }
+    if content_height < D2_MIN_SHAPE_SIZE {
+      content_height = D2_MIN_SHAPE_SIZE
+    }
+    return (content_width, content_height)
   }
 
-  (positive_or(width, 1.0), positive_or(height, 1.0))
+  if obj.shape_type == @graph.Image {
+    return (128.0, 128.0)
+  }
+
+  let base_padding = shape_default_padding(obj.shape_type)
+  let mut padding_x = base_padding.0
+  let mut padding_y = base_padding.1
+  if obj.icon is Some(_) &&
+    obj.shape_type != @graph.SqlTable &&
+    obj.shape_type != @graph.Class &&
+    obj.shape_type != @graph.Code &&
+    obj.shape_type != @graph.Text {
+    let label_height = label_dims.height + D2_INNER_LABEL_PADDING
+    padding_x = padding_x + label_height
+    padding_y = padding_y + label_height
+  }
+
+  let fitted = shape_dimensions_to_fit(
+    obj.shape_type,
+    content_width,
+    content_height,
+    padding_x,
+    padding_y,
+  )
+  let mut width = fitted.0
+  let mut height = fitted.1
+
+  if obj.shape_type == @graph.Circle || obj.shape_type == @graph.Square {
+    let side = if width > height { width } else { height }
+    width = side
+    height = side
+  } else if obj.shape_type == @graph.Person {
+    let fit = limit_aspect_ratio(width, height, D2_PERSON_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  } else if obj.shape_type == @graph.Oval {
+    let fit = limit_aspect_ratio(width, height, D2_OVAL_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  } else if obj.shape_type == @graph.C4Person {
+    let fit = limit_aspect_ratio(width, height, D2_C4_PERSON_AR_LIMIT)
+    width = fit.0
+    height = fit.1
+  }
+
+  (
+    clamp_positive(width, config.default_width),
+    clamp_positive(height, config.default_height),
+  )
+}
+
+///|
+priv struct ClassMemberInfo {
+  name : String
+  type_name : String
+}
+
+///|
+fn trim_double_quotes_for_class_member(s : String) -> String {
+  if s.length() >= 2 && s[0] == '"' && s[s.length() - 1] == '"' {
+    let out = StringBuilder::new()
+    for i = 1; i < s.length() - 1; i = i + 1 {
+      match s[i].to_char() {
+        Some(ch) => out.write_char(ch)
+        None => ()
+      }
+    }
+    out.to_string()
+  } else {
+    s
+  }
+}
+
+///|
+fn class_member_info_from_object(child : @graph.ObjectInput) -> ClassMemberInfo {
+  let raw_name = trim_double_quotes_for_class_member(
+    short_name_from_id(child.id),
+  )
+  let mut name = raw_name
+  if raw_name.length() > 0 {
+    let first = raw_name[0]
+    if first == '+' || first == '-' || first == '#' {
+      let name_buf = StringBuilder::new()
+      for i = 1; i < raw_name.length(); i = i + 1 {
+        match raw_name[i].to_char() {
+          Some(ch) => name_buf.write_char(ch)
+          None => ()
+        }
+      }
+      name = name_buf.to_string()
+    }
+  }
+  let is_method = name.contains("(")
+  let raw_type = trim_double_quotes_for_class_member(child.label)
+  let type_name = if raw_type == "" || raw_type == raw_name || raw_type == name {
+    if is_method {
+      "void"
+    } else {
+      ""
+    }
+  } else {
+    raw_type
+  }
+  { name, type_name }
+}
+
+///|
+fn estimate_class_size(
+  obj : @graph.ObjectInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> (Double, Double) {
+  let row_font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(20)
+    None => 20
+  }
+  let header_measured = @text_metrics.measure_text_mono_plain(
+    obj.label,
+    row_font_size + D2_CLASS_HEADER_FONT_ADD,
+  )
+  let header_dims = header_measured.dimensions
+
+  let mut max_width = if header_dims.width > 12.0 {
+    header_dims.width
+  } else {
+    12.0
+  }
+  let mut row_count = 0
+  let mut first_row_text : String? = None
+
+  for child_id in obj.child_ids {
+    let child = match object_by_id.get(child_id) {
+      Some(v) => v
+      None => continue
+    }
+    let info = class_member_info_from_object(child)
+    let row_text = info.name + info.type_name
+    if first_row_text is None {
+      first_row_text = Some(row_text)
+    }
+    let row_measured = @text_metrics.measure_text_mono_plain(
+      row_text, row_font_size,
+    )
+    let row_width = row_measured.dimensions.width
+    if row_width > max_width {
+      max_width = row_width
+    }
+    row_count = row_count + 1
+  }
+
+  let mut width = D2_CLASS_PREFIX_PADDING +
+    D2_CLASS_PREFIX_WIDTH +
+    max_width +
+    D2_CLASS_CENTER_PADDING +
+    D2_CLASS_TYPE_PADDING
+  let mut height = 0.0
+
+  match first_row_text {
+    Some(any_row_text) => {
+      let row_dims = @text_metrics.measure_text_mono_plain(
+          any_row_text, row_font_size,
+        ).dimensions
+      let row_height = row_dims.height + D2_CLASS_VERTICAL_PADDING
+      let header_height_min = if 2.0 * row_height >
+        header_dims.height + D2_LABEL_PADDING * 2.0 {
+        2.0 * row_height
+      } else if obj.shape_type == @graph.Class {
+        header_dims.height + D2_LABEL_PADDING * 2.0
+      } else {
+        D2_LABEL_PADDING * 2.0
+      }
+      height = row_height * row_count.to_double() + header_height_min
+    }
+    None => {
+      let header_floor = if header_dims.height > 12.0 {
+        header_dims.height
+      } else {
+        12.0
+      }
+      height = 2.0 * header_floor + D2_CLASS_VERTICAL_PADDING
+    }
+  }
+
+  if width < 12.0 {
+    width = 12.0
+  }
+  if height < 12.0 {
+    height = 12.0
+  }
+  (width.ceil(), height.ceil())
+}
+
+///|
+fn shape_default_padding(shape_type : @graph.ShapeType) -> (Double, Double) {
+  match shape_type {
+    @graph.Circle => {
+      let p = D2_DEFAULT_PADDING / 2.0.sqrt()
+      (p, p)
+    }
+    @graph.Diamond => (D2_DEFAULT_PADDING / 4.0, D2_DEFAULT_PADDING / 2.0)
+    @graph.Hexagon => (D2_DEFAULT_PADDING / 2.0, D2_DEFAULT_PADDING / 2.0)
+    @graph.Cylinder => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    @graph.Queue => (D2_DEFAULT_PADDING / 2.0, D2_DEFAULT_PADDING)
+    @graph.StoredData => (D2_DEFAULT_PADDING - 10.0, D2_DEFAULT_PADDING)
+    @graph.Person => (10.0, D2_DEFAULT_PADDING)
+    @graph.C4Person => (10.0, D2_DEFAULT_PADDING)
+    @graph.Page =>
+      (D2_DEFAULT_PADDING, D2_PAGE_CORNER_HEIGHT + D2_DEFAULT_PADDING)
+    @graph.Document =>
+      (
+        D2_DEFAULT_PADDING,
+        D2_DEFAULT_PADDING * D2_DOC_PATH_INNER_BOTTOM / D2_DOC_PATH_HEIGHT,
+      )
+    @graph.Package => (D2_DEFAULT_PADDING, 0.8 * D2_DEFAULT_PADDING)
+    @graph.Step =>
+      (D2_DEFAULT_PADDING / 4.0, D2_DEFAULT_PADDING + D2_STEP_WEDGE_WIDTH)
+    @graph.Callout => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    @graph.Cloud => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING / 2.0)
+    _ => (D2_DEFAULT_PADDING, D2_DEFAULT_PADDING)
+  }
+}
+
+///|
+fn shape_dimensions_to_fit(
+  shape_type : @graph.ShapeType,
+  width : Double,
+  height : Double,
+  padding_x : Double,
+  padding_y : Double,
+) -> (Double, Double) {
+  match shape_type {
+    @graph.Circle => {
+      let length = if width + padding_x > height + padding_y {
+        width + padding_x
+      } else {
+        height + padding_y
+      }
+      let diameter = (2.0.sqrt() * length).ceil()
+      (diameter, diameter)
+    }
+    @graph.Oval => {
+      let theta = @math.atan2(height, width)
+      let padded_width = width + padding_x * @math.cos(theta)
+      let padded_height = height + padding_y * @math.sin(theta)
+      let mut total_width = (2.0.sqrt() * padded_width).ceil()
+      let mut total_height = (2.0.sqrt() * padded_height).ceil()
+      let fit = limit_aspect_ratio(total_width, total_height, D2_OVAL_AR_LIMIT)
+      total_width = fit.0
+      total_height = fit.1
+      (total_width, total_height)
+    }
+    @graph.Diamond =>
+      ((2.0 * (width + padding_x)).ceil(), (2.0 * (height + padding_y)).ceil())
+    @graph.Hexagon =>
+      ((1.5 * (width + padding_x)).ceil(), (1.5 * (height + padding_y)).ceil())
+    @graph.Parallelogram =>
+      (
+        (width + padding_x + D2_PARALLELOGRAM_WEDGE_WIDTH * 2.0).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Cylinder =>
+      (
+        (width + padding_x).ceil(),
+        (height + padding_y + 3.0 * D2_DEFAULT_ARC_DEPTH).ceil(),
+      )
+    @graph.Queue =>
+      (
+        (width + padding_x + 3.0 * D2_DEFAULT_ARC_DEPTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.StoredData =>
+      (
+        (width + padding_x + 2.0 * D2_STORED_DATA_WEDGE_WIDTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Person => {
+      let mut total_width = width + padding_x
+      let mut total_height = height + padding_y
+      let fit = limit_aspect_ratio(
+        total_width,
+        total_height,
+        D2_PERSON_AR_LIMIT,
+      )
+      total_width = fit.0
+      total_height = fit.1
+      (total_width.ceil(), total_height.ceil())
+    }
+    @graph.C4Person => {
+      let content_width = width + padding_x
+      let content_height = height + padding_y
+      let mut total_width = content_width / 0.9
+      let head_radius = total_width * D2_C4_HEAD_RADIUS_FACTOR
+      let body_top = head_radius + head_radius * D2_C4_BODY_TOP_FACTOR
+      let vertical_padding = total_width * 0.06
+      let mut total_height = content_height + body_top + vertical_padding
+      let min_height = total_width * 0.95
+      if total_height < min_height {
+        total_height = min_height
+      }
+      let fit = limit_aspect_ratio(
+        total_width,
+        total_height,
+        D2_C4_PERSON_AR_LIMIT,
+      )
+      total_width = fit.0
+      total_height = fit.1
+      (total_width.ceil(), total_height.ceil())
+    }
+    @graph.Cloud => {
+      let total_width = width + padding_x
+      let total_height = height + padding_y
+      let aspect_ratio = total_width / total_height
+      if aspect_ratio > CLOUD_WIDE_ASPECT_BOUNDARY {
+        (
+          (total_width / CLOUD_WIDE_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_WIDE_INNER_HEIGHT).ceil(),
+        )
+      } else if aspect_ratio < CLOUD_TALL_ASPECT_BOUNDARY {
+        (
+          (total_width / CLOUD_TALL_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_TALL_INNER_HEIGHT).ceil(),
+        )
+      } else {
+        (
+          (total_width / CLOUD_SQUARE_INNER_WIDTH).ceil(),
+          (total_height / CLOUD_SQUARE_INNER_HEIGHT).ceil(),
+        )
+      }
+    }
+    @graph.Page => {
+      let mut total_width = width + padding_x
+      let mut total_height = height + padding_y
+      if total_height < 3.0 * D2_PAGE_CORNER_HEIGHT {
+        total_width = total_width + D2_PAGE_CORNER_WIDTH
+      }
+      if total_width < 2.0 * D2_PAGE_CORNER_WIDTH {
+        total_width = 2.0 * D2_PAGE_CORNER_WIDTH
+      }
+      if total_height < D2_PAGE_CORNER_HEIGHT {
+        total_height = D2_PAGE_CORNER_HEIGHT
+      }
+      (total_width.ceil(), total_height.ceil())
+    }
+    @graph.Document =>
+      (
+        (width + padding_x).ceil(),
+        ((height + padding_y) * D2_DOC_PATH_HEIGHT / D2_DOC_PATH_INNER_BOTTOM).ceil(),
+      )
+    @graph.Package => {
+      let inner_height = height + padding_y
+      let top_height = inner_height *
+        D2_PACKAGE_VERTICAL_SCALAR /
+        (1.0 - D2_PACKAGE_VERTICAL_SCALAR)
+      let total_height = inner_height +
+        (if top_height < D2_PACKAGE_TOP_MAX_HEIGHT {
+          top_height
+        } else {
+          D2_PACKAGE_TOP_MAX_HEIGHT
+        })
+      ((width + padding_x).ceil(), total_height.ceil())
+    }
+    @graph.Step =>
+      (
+        (width + padding_x + 2.0 * D2_STEP_WEDGE_WIDTH).ceil(),
+        (height + padding_y).ceil(),
+      )
+    @graph.Callout => {
+      let mut total_height = height + padding_y
+      if total_height < D2_CALLOUT_DEFAULT_TIP_HEIGHT {
+        total_height = total_height * 2.0
+      } else {
+        total_height = total_height + D2_CALLOUT_DEFAULT_TIP_HEIGHT
+      }
+      ((width + padding_x).ceil(), total_height.ceil())
+    }
+    _ => ((width + padding_x).ceil(), (height + padding_y).ceil())
+  }
+}
+
+///|
+fn limit_aspect_ratio(
+  width : Double,
+  height : Double,
+  aspect_ratio : Double,
+) -> (Double, Double) {
+  let mut w = width
+  let mut h = height
+  if w > aspect_ratio * h {
+    h = round_double(w / aspect_ratio)
+  } else if h > aspect_ratio * w {
+    w = round_double(h / aspect_ratio)
+  }
+  (w, h)
+}
+
+///|
+fn round_double(v : Double) -> Double {
+  if v >= 0.0 {
+    (v + 0.5).to_int().to_double()
+  } else {
+    (v - 0.5).to_int().to_double()
+  }
+}
+
+///|
+fn has_outside_bottom_label(shape_type : @graph.ShapeType) -> Bool {
+  shape_type == @graph.Person || shape_type == @graph.Image
+}
+
+///|
+fn default_label_position(
+  obj : @graph.ObjectInput,
+  box : @graph.Box,
+  label_width : Double,
+  label_height : Double,
+) -> DefaultLabelPosition {
+  let is_container = !obj.child_ids.is_empty()
+  let mut pos = if is_container {
+    InsideTop
+  } else if has_outside_bottom_label(obj.shape_type) {
+    OutsideBottom
+  } else if obj.icon is Some(_) {
+    InsideTop
+  } else {
+    InsideMiddle
+  }
+  if label_width > box.width || label_height > box.height {
+    pos = if is_container { OutsideTop } else { OutsideBottom }
+  }
+  pos
+}
+
+///|
+fn object_layout_spacing(
+  obj : @graph.ObjectInput,
+  box : @graph.Box,
+) -> (LayoutSpacing, LayoutSpacing) {
+  let mut margin_top = 0.0
+  let margin_left = 0.0
+  let mut margin_bottom = 0.0
+  let mut margin_right = 0.0
+  let mut padding_top = 0.0
+  let padding_left = 0.0
+  let padding_bottom = 0.0
+  let padding_right = 0.0
+
+  if obj.label != "" {
+    let font_size = match obj.style.font_size {
+      Some(v) => v.as_int().unwrap_or(16)
+      None => 16
+    }
+    let is_bold = style_bool(obj.style.bold, false)
+    let is_italic = style_bool(obj.style.italic, false)
+    let is_mono = obj.shape_type == @graph.Code ||
+      style_is_mono(obj.style.font_family)
+    let dims = @text_metrics.measure_label(
+      obj.label,
+      font_size,
+      is_mono,
+      is_bold,
+      is_italic,
+    )
+    let label_width = if dims.width > 0.0 {
+      dims.width + D2_LABEL_PADDING * 2.0
+    } else {
+      obj.label.length().to_double() * 7.0 + D2_LABEL_PADDING * 2.0
+    }
+    let label_height = if dims.height > 0.0 {
+      dims.height + D2_LABEL_PADDING * 2.0
+    } else {
+      font_size.to_double() + D2_LABEL_PADDING * 2.0
+    }
+
+    match default_label_position(obj, box, label_width, label_height) {
+      OutsideTop => margin_top = label_height
+      OutsideBottom => margin_bottom = label_height
+      InsideTop => padding_top = label_height
+      InsideMiddle => ()
+    }
+  }
+
+  if obj.icon is Some(_) {
+    let icon_size = D2_MAX_ICON_SIZE + D2_LABEL_PADDING * 2.0
+    let icon_pos = if !obj.child_ids.is_empty() ||
+      obj.shape_type == @graph.Class ||
+      obj.shape_type == @graph.SqlTable ||
+      obj.shape_type == @graph.Code {
+      if !obj.child_ids.is_empty() {
+        InsideTop
+      } else {
+        OutsideTop
+      }
+    } else {
+      InsideMiddle
+    }
+    match icon_pos {
+      OutsideTop => if icon_size > margin_top { margin_top = icon_size }
+      OutsideBottom =>
+        if icon_size > margin_bottom {
+          margin_bottom = icon_size
+        }
+      InsideTop => if icon_size > padding_top { padding_top = icon_size }
+      InsideMiddle => ()
+    }
+  }
+
+  if style_bool(obj.style.three_d, false) {
+    margin_right = margin_right + D2_THREE_DEE_OFFSET
+    margin_top = margin_top +
+      (if obj.shape_type == @graph.Hexagon {
+        D2_THREE_DEE_OFFSET / 2.0
+      } else {
+        D2_THREE_DEE_OFFSET
+      })
+  } else if style_bool(obj.style.multiple, false) {
+    margin_right = margin_right + D2_MULTIPLE_OFFSET
+    margin_top = margin_top + D2_MULTIPLE_OFFSET
+  }
+
+  (
+    {
+      top: margin_top,
+      left: margin_left,
+      bottom: margin_bottom,
+      right: margin_right,
+    },
+    {
+      top: padding_top,
+      left: padding_left,
+      bottom: padding_bottom,
+      right: padding_right,
+    },
+  )
+}
+
+///|
+fn object_default_label_box(
+  obj : @graph.ObjectInput,
+  box : @graph.Box,
+) -> @graph.Box? {
+  if obj.label == "" {
+    return None
+  }
+  if obj.shape_type == @graph.SqlTable || obj.shape_type == @graph.Class {
+    return None
+  }
+  let (label_width, label_height) = match object_label_dimensions(obj) {
+    Some(v) => v
+    None => return None
+  }
+  let pos = default_label_position(
+    obj,
+    box,
+    label_width + D2_LABEL_PADDING * 2.0,
+    label_height + D2_LABEL_PADDING * 2.0,
+  )
+  let (x, y) = match pos {
+    OutsideTop =>
+      (
+        box.x + (box.width - label_width) / 2.0,
+        box.y - D2_LABEL_PADDING - label_height,
+      )
+    OutsideBottom =>
+      (
+        box.x + (box.width - label_width) / 2.0,
+        box.y + box.height + D2_LABEL_PADDING,
+      )
+    InsideTop =>
+      (box.x + (box.width - label_width) / 2.0, box.y + D2_LABEL_PADDING)
+    InsideMiddle =>
+      (
+        box.x + (box.width - label_width) / 2.0,
+        box.y + (box.height - label_height) / 2.0,
+      )
+  }
+  Some(@graph.Box::new(x, y, label_width, label_height))
+}
+
+///|
+fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
+  if obj.label == "" {
+    return None
+  }
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(obj.style.bold, false)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
+  let dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let width = if dims.width > 0.0 {
+    dims.width
+  } else {
+    obj.label.length().to_double() * 7.0
+  }
+  let height = if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double() + 5.0
+  }
+  Some((width, height))
 }
 
 ///|
@@ -2220,8 +3488,9 @@ fn label_width(
     None => 16
   }
   let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, true)
-  let is_mono = style_is_mono(obj.style.font_family)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
   let dims = @text_metrics.measure_label(
     obj.label,
     font_size,
@@ -2242,8 +3511,9 @@ fn label_height(
     None => 16
   }
   let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, true)
-  let is_mono = style_is_mono(obj.style.font_family)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
   let dims = @text_metrics.measure_label(
     obj.label,
     font_size,

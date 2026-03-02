@@ -39,7 +39,7 @@
 <line x1="386" y1="334" x2="680" y2="334" stroke="#0A0F25" stroke-width="2"/>
 <line x1="386" y1="370" x2="680" y2="370" stroke="#0A0F25" stroke-width="2"/>
 <line x1="386" y1="406" x2="680" y2="406" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 308 138 C 319.2 138 324.8 138 336 138 C 336 138 346 138 346 148 C 346 211.2 346 242.8 346 306 C 346 306 346 316 356 316 C 366.4 316 371.6 316 382 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 308 138 L 336 138 C 336 138 346 138 346 148 L 346 306 C 346 306 346 316 356 316 L 382 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="24" y="37.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">costumes</text>
 <text x="24" y="71" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
 <text x="153" y="71" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
