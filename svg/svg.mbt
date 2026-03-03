@@ -1107,6 +1107,19 @@ pub fn PathBuilder::cubic_to(
 }
 
 ///|
+/// Smooth cubic bezier curve (absolute)
+pub fn PathBuilder::smooth_cubic_to(
+  self : PathBuilder,
+  cx2 : Double,
+  cy2 : Double,
+  x : Double,
+  y : Double,
+) -> PathBuilder {
+  self.commands.push("S \{cx2} \{cy2} \{x} \{y}")
+  self
+}
+
+///|
 /// Cubic bezier curve (relative)
 pub fn PathBuilder::cubic_rel(
   self : PathBuilder,

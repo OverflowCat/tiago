@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-90" y="-90" width="830" height="491" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="10" y="10" width="480" height="120" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="540" y="40" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
@@ -35,7 +35,7 @@
 <rect x="360" y="40" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="40" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="200" y="40" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 590 102 C 590 156 590 183 590 237" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 590 102 L 590 237" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="571" y="160" width="38" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="590" y="176" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads</text>
 <text x="250" y="-3" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">legend</text>

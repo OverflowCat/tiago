@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-88" y="-88" width="928" height="388" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="12" y="12" width="728" height="188" fill="#1e1e1e" stroke="#0A0F25" stroke-width="2" rx="4" ry="4"/>
 <g transform="translate(20,20)">

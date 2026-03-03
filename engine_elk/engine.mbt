@@ -62,6 +62,12 @@ const D2_MIN_SHAPE_SIZE : Double = 5.0
 const D2_DEFAULT_PADDING : Double = 40.0
 
 ///|
+const D2_PORT_SPACING : Double = 40.0
+
+///|
+const D2_NEAR_PAD : Double = 20.0
+
+///|
 const D2_SQL_TABLE_NAME_PADDING : Double = 10.0
 
 ///|
@@ -229,6 +235,7 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
     patch, graph, edge_id_by_index, edge_endpoints_by_index, node_box_by_id, routes_by_edge_id,
     direction,
   )
+  apply_constant_near_positions(patch, graph)
 
   patch
 }
@@ -269,12 +276,11 @@ fn layout_sequence_diagram(
     }
   }
 
-  let centers : Array[Double] = []
-  if !widths.is_empty() {
-    centers.push(12.0 + widths[0] / 2.0)
-    for i = 1; i < widths.length(); i = i + 1 {
-      let base_gap = widths[i - 1] / 2.0 + widths[i] / 2.0 + 50.0
-      centers.push(centers[i - 1] + base_gap)
+  let actor_steps : Array[Double] = []
+  if widths.length() > 1 {
+    for i = 0; i < widths.length() - 1; i = i + 1 {
+      let base_gap = widths[i] / 2.0 + widths[i + 1] / 2.0 + 40.0
+      actor_steps.push(if base_gap < 150.0 { 150.0 } else { base_gap })
     }
   }
 
@@ -295,16 +301,40 @@ fn layout_sequence_diagram(
     if src_index == dst_index {
       continue
     }
+    let label_width = sequence_edge_width_for_spacing(edge)
+    if src_index == dst_index {
+      if src_index < actor_steps.length() {
+        let self_required = if label_width > 0.0 {
+          label_width + 20.0
+        } else {
+          0.0
+        }
+        if self_required > actor_steps[src_index] {
+          actor_steps[src_index] = self_required
+        }
+      }
+      continue
+    }
     let left = if src_index < dst_index { src_index } else { dst_index }
     let right = if src_index < dst_index { dst_index } else { src_index }
-    let (label_width, _) = sequence_edge_label_size(edge)
-    let required_span = if label_width > 0.0 { label_width + 56.0 } else { 0.0 }
-    let current_span = centers[right] - centers[left]
-    if required_span > current_span {
-      let delta = required_span - current_span
-      for i = right; i < centers.length(); i = i + 1 {
-        centers[i] = centers[i] + delta
+    let rank_diff = (right - left).to_double()
+    if rank_diff <= 0.0 {
+      continue
+    }
+    let distributed = label_width / rank_diff
+    let required_step = distributed + 60.0
+    for rank = left; rank < right; rank = rank + 1 {
+      if rank < actor_steps.length() && required_step > actor_steps[rank] {
+        actor_steps[rank] = required_step
       }
+    }
+  }
+
+  let centers : Array[Double] = []
+  if !widths.is_empty() {
+    centers.push(12.0 + widths[0] / 2.0)
+    for i = 1; i < widths.length(); i = i + 1 {
+      centers.push(centers[i - 1] + actor_steps[i - 1])
     }
   }
 
@@ -356,6 +386,21 @@ fn layout_sequence_diagram(
   }
 
   patch
+}
+
+///|
+fn sequence_edge_width_for_spacing(edge : @graph.EdgeInput) -> Double {
+  let width_with_padding = match edge.label_box {
+    Some(box) if box.width > 0.0 => box.width
+    _ => fallback_sequence_edge_label_size(edge).0
+  }
+  // D2 sequence spacing uses LabelDimensions.Width, while label boxes carry
+  // an extra ~2px side padding on each side.
+  if width_with_padding > 4.0 {
+    width_with_padding - 4.0
+  } else {
+    width_with_padding
+  }
 }
 
 ///|
@@ -481,12 +526,25 @@ fn build_elk_graph(
   let node_ids : Map[String, Bool] = {}
   let node_size_by_id : Map[String, (Double, Double)] = {}
   let node_margin_by_id : Map[String, LayoutSpacing] = {}
+  let endpoint_degree_counts = build_endpoint_degree_counts(
+    graph, excluded_node_ids,
+  )
 
   for obj in graph.objects {
     if excluded_node_ids.contains(obj.id) {
       continue
     }
-    let (base_width, base_height) = object_size(obj, config, object_by_id)
+    let (auto_width, auto_height) = object_size(obj, config, object_by_id)
+    let (incoming, outgoing) = match endpoint_degree_counts.get(obj.id) {
+      Some(v) => v
+      None => (0, 0)
+    }
+    let (base_width0, base_height0) = apply_multi_edge_min_size_like_d2(
+      obj, direction, auto_width, auto_height, incoming, outgoing,
+    )
+    let (base_width, base_height) = apply_label_icon_height_boost_like_d2(
+      obj, config, base_width0, base_height0,
+    )
     let box = @graph.Box::new(0.0, 0.0, base_width, base_height)
     let (margin, _) = object_layout_spacing(obj, box)
     let width = base_width + margin.left + margin.right
@@ -933,12 +991,356 @@ fn build_excluded_layout_node_ids(
   object_by_id : Map[String, @graph.ObjectInput],
 ) -> Map[String, Bool] {
   let excluded : Map[String, Bool] = {}
+  let constant_near_root_ids : Array[String] = []
+  for obj in graph.objects {
+    if obj.id.contains(".") {
+      continue
+    }
+    match obj.near {
+      Some(raw) => {
+        let key = raw.to_lower()
+        if is_constant_near_key(key) {
+          constant_near_root_ids.push(obj.id)
+        }
+      }
+      None => ()
+    }
+  }
   for obj in graph.objects {
     if is_sql_or_class_member_node(obj.id, parent_id_by_child_id, object_by_id) {
       excluded[obj.id] = true
+      continue
+    }
+    for near_root_id in constant_near_root_ids {
+      if obj.id == near_root_id || obj.id.has_prefix(near_root_id + ".") {
+        excluded[obj.id] = true
+        break
+      }
     }
   }
   excluded
+}
+
+///|
+fn apply_constant_near_positions(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  let near_key_by_id : Map[String, String] = {}
+  for obj in graph.objects {
+    if obj.id.contains(".") {
+      continue
+    }
+    match obj.near {
+      Some(raw) => {
+        let key = raw.to_lower()
+        if is_constant_near_key(key) {
+          near_key_by_id[obj.id] = key
+        }
+      }
+      None => ()
+    }
+  }
+  if near_key_by_id.is_empty() {
+    return
+  }
+
+  let placed_near : Map[String, Bool] = {}
+  for key_set in [0, 1, 2] {
+    let current_set_ids : Array[String] = []
+    for obj in graph.objects {
+      let near_key = match near_key_by_id.get(obj.id) {
+        Some(v) => v
+        None => continue
+      }
+      if !near_key_matches_set(near_key, key_set) {
+        continue
+      }
+      let box = match patch.nodes.get(obj.id) {
+        Some(v) => v
+        None => continue
+      }
+      let bounds = near_bounding_box(patch, graph, near_key_by_id, placed_near)
+      let min_x = bounds.0
+      let min_y = bounds.1
+      let max_x = bounds.2
+      let max_y = bounds.3
+      let width = max_x - min_x
+      let height = max_y - min_y
+      let (x, y) = place_constant_near_box(
+        near_key,
+        min_x,
+        min_y,
+        width,
+        height,
+        box.width,
+        box.height,
+      )
+      patch.nodes[obj.id] = @graph.Box::new(x, y, box.width, box.height)
+      current_set_ids.push(obj.id)
+    }
+    for id in current_set_ids {
+      placed_near[id] = true
+    }
+  }
+}
+
+///|
+fn is_constant_near_key(key : String) -> Bool {
+  match key {
+    "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right" => true
+    _ => false
+  }
+}
+
+///|
+fn near_key_matches_set(key : String, key_set : Int) -> Bool {
+  match key_set {
+    0 => key == "top-center" || key == "bottom-center"
+    1 => key == "center-left" || key == "center-right"
+    _ =>
+      key == "top-left" ||
+      key == "top-right" ||
+      key == "bottom-left" ||
+      key == "bottom-right"
+  }
+}
+
+///|
+fn near_bounding_box(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  near_key_by_id : Map[String, String],
+  placed_near : Map[String, Bool],
+) -> (Double, Double, Double, Double) {
+  let mut min_x = 1000000000000.0
+  let mut min_y = 1000000000000.0
+  let mut max_x = -1000000000000.0
+  let mut max_y = -1000000000000.0
+  let mut has_bounds = false
+
+  for obj in graph.objects {
+    let box = match patch.nodes.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    match near_key_by_id.get(obj.id) {
+      Some(near_key) => {
+        if !placed_near.contains(obj.id) {
+          continue
+        }
+        // Top/bottom-center objects expand only X bounds; left/right-center only Y.
+        match near_key {
+          "top-center" | "bottom-center" => {
+            min_x = if box.x < min_x { box.x } else { min_x }
+            max_x = if box.x + box.width > max_x {
+              box.x + box.width
+            } else {
+              max_x
+            }
+            has_bounds = true
+          }
+          "center-left" | "center-right" => {
+            min_y = if box.y < min_y { box.y } else { min_y }
+            max_y = if box.y + box.height > max_y {
+              box.y + box.height
+            } else {
+              max_y
+            }
+            has_bounds = true
+          }
+          _ => ()
+        }
+      }
+      None => {
+        if has_outer_near_container(obj.id, near_key_by_id) {
+          continue
+        }
+        min_x = if box.x < min_x { box.x } else { min_x }
+        min_y = if box.y < min_y { box.y } else { min_y }
+        max_x = if box.x + box.width > max_x {
+          box.x + box.width
+        } else {
+          max_x
+        }
+        max_y = if box.y + box.height > max_y {
+          box.y + box.height
+        } else {
+          max_y
+        }
+        has_bounds = true
+      }
+    }
+  }
+
+  for edge in graph.edges {
+    if has_outer_near_container(edge.src_id, near_key_by_id) ||
+      has_outer_near_container(edge.dst_id, near_key_by_id) {
+      continue
+    }
+    let route = match patch.edges.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    for point in route {
+      min_x = if point.x < min_x { point.x } else { min_x }
+      min_y = if point.y < min_y { point.y } else { min_y }
+      max_x = if point.x > max_x { point.x } else { max_x }
+      max_y = if point.y > max_y { point.y } else { max_y }
+      has_bounds = true
+    }
+  }
+
+  if !has_bounds {
+    return (0.0, 0.0, 0.0, 0.0)
+  }
+
+  if min_x > max_x {
+    min_x = 0.0
+    max_x = 0.0
+  }
+  if min_y > max_y {
+    min_y = 0.0
+    max_y = 0.0
+  }
+  (min_x, min_y, max_x, max_y)
+}
+
+///|
+fn has_outer_near_container(
+  obj_id : String,
+  near_key_by_id : Map[String, String],
+) -> Bool {
+  for near_id, _ in near_key_by_id {
+    if obj_id == near_id || obj_id.has_prefix(near_id + ".") {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn place_constant_near_box(
+  near_key : String,
+  min_x : Double,
+  min_y : Double,
+  width : Double,
+  height : Double,
+  box_width : Double,
+  box_height : Double,
+) -> (Double, Double) {
+  match near_key {
+    "top-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y - box_height - D2_NEAR_PAD)
+    "top-center" =>
+      (min_x + width / 2.0 - box_width / 2.0, min_y - box_height - D2_NEAR_PAD)
+    "top-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y - box_height - D2_NEAR_PAD)
+    "center-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y + height / 2.0 - box_height / 2.0)
+    "center-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y + height / 2.0 - box_height / 2.0)
+    "bottom-left" =>
+      (min_x - box_width - D2_NEAR_PAD, min_y + height + D2_NEAR_PAD)
+    "bottom-center" =>
+      (min_x + width / 2.0 - box_width / 2.0, min_y + height + D2_NEAR_PAD)
+    "bottom-right" =>
+      (min_x + width + D2_NEAR_PAD, min_y + height + D2_NEAR_PAD)
+    _ => (min_x, min_y)
+  }
+}
+
+///|
+fn build_endpoint_degree_counts(
+  graph : @graph.GraphInput,
+  excluded_node_ids : Map[String, Bool],
+) -> Map[String, (Int, Int)] {
+  let counts : Map[String, (Int, Int)] = {}
+  for edge in graph.edges {
+    let src_id = edge.src_id
+    let dst_id = edge.dst_id
+
+    if !excluded_node_ids.contains(src_id) {
+      let (incoming, outgoing) = match counts.get(src_id) {
+        Some(v) => v
+        None => (0, 0)
+      }
+      counts[src_id] = (incoming, outgoing + 1)
+    }
+    if !excluded_node_ids.contains(dst_id) {
+      let (incoming, outgoing) = match counts.get(dst_id) {
+        Some(v) => v
+        None => (0, 0)
+      }
+      counts[dst_id] = (incoming + 1, outgoing)
+    }
+  }
+  counts
+}
+
+///|
+fn apply_multi_edge_min_size_like_d2(
+  obj : @graph.ObjectInput,
+  direction : @engine_api.Direction,
+  width : Double,
+  height : Double,
+  incoming : Int,
+  outgoing : Int,
+) -> (Double, Double) {
+  let mut adjusted_width = width
+  let mut adjusted_height = height
+  if incoming >= 2 || outgoing >= 2 {
+    let max_degree = if incoming > outgoing { incoming } else { outgoing }
+    let required_size = max_degree.to_double() * D2_PORT_SPACING
+    match direction {
+      @engine_api.Right | @engine_api.Left =>
+        if !has_explicit_object_height(obj) && adjusted_height < required_size {
+          adjusted_height = required_size
+        }
+      _ =>
+        if !has_explicit_object_width(obj) && adjusted_width < required_size {
+          adjusted_width = required_size
+        }
+    }
+  }
+  (adjusted_width, adjusted_height)
+}
+
+///|
+fn apply_label_icon_height_boost_like_d2(
+  obj : @graph.ObjectInput,
+  config : @engine_api.LayoutConfig,
+  width : Double,
+  height : Double,
+) -> (Double, Double) {
+  if obj.label != "" && obj.icon is Some(_) && obj.shape_type != @graph.Image {
+    (width, height + label_height(obj, config) + D2_LABEL_PADDING)
+  } else {
+    (width, height)
+  }
+}
+
+///|
+fn has_explicit_object_width(obj : @graph.ObjectInput) -> Bool {
+  match obj.box {
+    Some(box) => box.width > 0.0
+    None => false
+  }
+}
+
+///|
+fn has_explicit_object_height(obj : @graph.ObjectInput) -> Bool {
+  match obj.box {
+    Some(box) => box.height > 0.0
+    None => false
+  }
 }
 
 ///|
@@ -1112,19 +1514,22 @@ fn fill_patch_edges(
   routes_by_edge_id : Map[String, Array[@graph.Point]],
   direction : @engine_api.Direction,
 ) -> Unit {
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.id] = graph.root
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+
   let routes_by_index : Map[Int, Array[@graph.Point]] = {}
 
   for edge in graph.edges {
     let mut route : Array[@graph.Point] = []
-    let mut from_elk = false
+    let mut from_fallback = false
 
     match edge_id_by_index.get(edge.index) {
       Some(edge_id) =>
         match routes_by_edge_id.get(edge_id) {
-          Some(points) => {
-            route = points
-            from_elk = true
-          }
+          Some(points) => route = points
           None => ()
         }
       None => ()
@@ -1134,10 +1539,11 @@ fn fill_patch_edges(
       match edge_endpoints_by_index.get(edge.index) {
         Some((src_id, dst_id)) =>
           route = fallback_route_from_boxes(
-            node_box_by_id, src_id, dst_id, direction,
+            node_box_by_id, object_by_id, src_id, dst_id, direction,
           )
         None => ()
       }
+      from_fallback = true
     }
 
     if route.length() < 2 {
@@ -1148,10 +1554,12 @@ fn fill_patch_edges(
       continue
     }
 
-    if !from_elk {
+    if from_fallback {
       match edge_endpoints_by_index.get(edge.index) {
         Some((src_id, dst_id)) =>
-          route = clip_route_endpoints(route, node_box_by_id, src_id, dst_id)
+          route = clip_route_endpoints(
+            route, node_box_by_id, object_by_id, src_id, dst_id,
+          )
         None => ()
       }
     }
@@ -1161,6 +1569,9 @@ fn fill_patch_edges(
 
   adjust_route_endpoints_for_outside_labels(
     routes_by_index, graph, node_box_by_id,
+  )
+  trace_route_endpoints_like_d2(
+    routes_by_index, graph, edge_endpoints_by_index, node_box_by_id,
   )
   delete_bends_like_d2(routes_by_index, graph, node_box_by_id)
 
@@ -1274,6 +1685,187 @@ fn adjust_route_endpoints_for_outside_labels(
 }
 
 ///|
+fn trace_route_endpoints_like_d2(
+  routes_by_index : Map[Int, Array[@graph.Point]],
+  graph : @graph.GraphInput,
+  edge_endpoints_by_index : Map[Int, (String, String)],
+  node_box_by_id : Map[String, @graph.Box],
+) -> Unit {
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.id] = graph.root
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+
+  for edge in graph.edges {
+    let route = match routes_by_index.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    if route.length() < 2 {
+      continue
+    }
+    let (src_id, dst_id) = match edge_endpoints_by_index.get(edge.index) {
+      Some(v) => v
+      None => continue
+    }
+    let src_box = match node_box_by_id.get(src_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dst_box = match node_box_by_id.get(dst_id) {
+      Some(v) => v
+      None => continue
+    }
+
+    let src_obj = object_by_id.get(src_id)
+    let src_shape_type = match src_obj {
+      Some(obj) => obj.shape_type
+      None => @graph.Rectangle
+    }
+    let dst_obj = object_by_id.get(dst_id)
+    let dst_shape_type = match dst_obj {
+      Some(obj) => obj.shape_type
+      None => @graph.Rectangle
+    }
+    let mut src_on_box = false
+    let src_trace_box = shape_trace_intersection_box(
+      src_obj, src_shape_type, src_box,
+    )
+    match first_box_intersection_like_d2(src_trace_box, route[0], route[1]) {
+      Some(hit) => {
+        route[0] = hit
+        src_on_box = true
+      }
+      None => ()
+    }
+    if src_on_box {
+      route[0] = trace_shape_border_like_d2(
+        src_shape_type,
+        src_box,
+        route[0],
+        route[1],
+      )
+    } else if src_shape_type == @graph.Callout {
+      let tip_h = if src_box.height < 90.0 {
+        src_box.height / 2.0
+      } else {
+        45.0
+      }
+      route[0] = @graph.Point::new(
+        route[0].x,
+        src_box.y + src_box.height - tip_h,
+      )
+    }
+
+    let last = route.length() - 1
+    let mut dst_on_box = false
+    match
+      first_box_intersection_like_d2(
+        shape_trace_intersection_box(dst_obj, dst_shape_type, dst_box),
+        route[last - 1],
+        route[last],
+      ) {
+      Some(hit) => {
+        route[last] = hit
+        dst_on_box = true
+      }
+      None => ()
+    }
+    if dst_on_box {
+      route[last] = trace_shape_border_like_d2(
+        dst_shape_type,
+        dst_box,
+        route[last],
+        route[last - 1],
+      )
+    } else if dst_shape_type == @graph.Callout {
+      let tip_h = if dst_box.height < 90.0 {
+        dst_box.height / 2.0
+      } else {
+        45.0
+      }
+      route[last] = @graph.Point::new(
+        route[last].x,
+        dst_box.y + dst_box.height - tip_h,
+      )
+    }
+  }
+}
+
+///|
+fn shape_trace_intersection_box(
+  obj : @graph.ObjectInput?,
+  shape_type : @graph.ShapeType,
+  box : @graph.Box,
+) -> @graph.Box {
+  let mut adjusted = box
+  match obj {
+    Some(v) =>
+      if style_bool(v.style.three_d, false) {
+        let offset_y = if shape_type == @graph.Hexagon {
+          D2_THREE_DEE_OFFSET / 2.0
+        } else {
+          D2_THREE_DEE_OFFSET
+        }
+        adjusted = @graph.Box::new(
+          adjusted.x,
+          adjusted.y - offset_y,
+          adjusted.width + D2_THREE_DEE_OFFSET,
+          adjusted.height + offset_y,
+        )
+      }
+    None => ()
+  }
+  match shape_type {
+    @graph.Callout => {
+      let tip_h = if adjusted.height < 90.0 {
+        adjusted.height / 2.0
+      } else {
+        45.0
+      }
+      @graph.Box::new(
+        adjusted.x,
+        adjusted.y,
+        adjusted.width,
+        adjusted.height - tip_h,
+      )
+    }
+    _ => adjusted
+  }
+}
+
+///|
+fn first_box_intersection_like_d2(
+  box : @graph.Box,
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+) -> @graph.Point? {
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let y0 = box.y
+  let y1 = box.y + box.height
+
+  match segment_intersection_at_y_for_box(p0, p1, y0, x0, x1) {
+    Some(hit) => return Some(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_x_for_box(p0, p1, x1, y0, y1) {
+    Some(hit) => return Some(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_y_for_box(p0, p1, y1, x0, x1) {
+    Some(hit) => return Some(hit.1)
+    None => ()
+  }
+  match segment_intersection_at_x_for_box(p0, p1, x0, y0, y1) {
+    Some(hit) => return Some(hit.1)
+    None => ()
+  }
+  None
+}
+
+///|
 fn outside_label_box(
   obj : @graph.ObjectInput,
   box : @graph.Box,
@@ -1288,12 +1880,7 @@ fn outside_label_box(
     Some(v) => v
     None => return None
   }
-  let pos = default_label_position(
-    obj,
-    box,
-    label_width + D2_LABEL_PADDING * 2.0,
-    label_height + D2_LABEL_PADDING * 2.0,
-  )
+  let pos = default_label_position(obj, box, label_width, label_height)
   let (x, y) = match pos {
     OutsideTop =>
       (
@@ -1467,7 +2054,11 @@ fn make_root_layout_options(
   {
     "elk.algorithm": Json::string("layered"),
     "elk.direction": Json::string(elk_direction(direction)),
+    "elk.edgeRouting": Json::string("ORTHOGONAL"),
+    "org.eclipse.elk.edgeRouting": Json::string("ORTHOGONAL"),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
+    "elk.layered.mergeEdges": Json::boolean(false),
+    "org.eclipse.elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
@@ -1494,7 +2085,11 @@ fn make_container_layout_options(
   let padding = layout_padding_value(config)
   {
     "elk.layered.crossingMinimization.forceNodeModelOrder": Json::boolean(true),
+    "elk.edgeRouting": Json::string("ORTHOGONAL"),
+    "org.eclipse.elk.edgeRouting": Json::string("ORTHOGONAL"),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
+    "elk.layered.mergeEdges": Json::boolean(false),
+    "org.eclipse.elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
@@ -1933,6 +2528,7 @@ fn object_fallback_box(
 ///|
 fn fallback_route_from_boxes(
   node_box_by_id : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
   src_id : String,
   dst_id : String,
   direction : @engine_api.Direction,
@@ -1974,13 +2570,14 @@ fn fallback_route_from_boxes(
       }
   }
 
-  clip_route_endpoints(route, node_box_by_id, src_id, dst_id)
+  clip_route_endpoints(route, node_box_by_id, object_by_id, src_id, dst_id)
 }
 
 ///|
 fn clip_route_endpoints(
   route : Array[@graph.Point],
   node_box_by_id : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
   src_id : String,
   dst_id : String,
 ) -> Array[@graph.Point] {
@@ -2002,14 +2599,32 @@ fn clip_route_endpoints(
     clipped.push(p)
   }
 
-  clipped[0] = box_border_point_towards(src_box, clipped[1])
+  let src_shape_type = match object_by_id.get(src_id) {
+    Some(obj) => obj.shape_type
+    None => @graph.Rectangle
+  }
+  clipped[0] = shape_border_point_towards(src_shape_type, src_box, clipped[1])
   let last_index = clipped.length() - 1
-  clipped[last_index] = box_border_point_towards(
+  let dst_shape_type = match object_by_id.get(dst_id) {
+    Some(obj) => obj.shape_type
+    None => @graph.Rectangle
+  }
+  clipped[last_index] = shape_border_point_towards(
+    dst_shape_type,
     dst_box,
     clipped[last_index - 1],
   )
 
   clipped
+}
+
+///|
+fn shape_border_point_towards(
+  _shape_type : @graph.ShapeType,
+  box : @graph.Box,
+  target : @graph.Point,
+) -> @graph.Point {
+  box_border_point_towards(box, target)
 }
 
 ///|
@@ -2264,7 +2879,13 @@ fn delete_endpoint_s_shape_like_d2(
     @graph.Point::new(end.x, start.y)
   }
 
-  let replacement = trace_box_border_like_d2(endpoint_box, probe, end)
+  let endpoint_shape_type = match endpoint_obj {
+    Some(obj) => obj.shape_type
+    None => @graph.Rectangle
+  }
+  let replacement = trace_shape_border_like_d2(
+    endpoint_shape_type, endpoint_box, probe, end,
+  )
   let candidate = if is_source {
     let updated : Array[@graph.Point] = [replacement]
     let mut i = 3
@@ -2385,7 +3006,7 @@ fn count_edge_intersects(
               overlaps = overlaps + 1
               if delta < 10.0 {
                 close_overlaps = close_overlaps + 1
-                if delta < 1.0 {
+                if abs_double(a.y - c.y) < 1.0 {
                   touching = touching + 1
                 }
               }
@@ -2449,7 +3070,9 @@ fn range_overlap(a1 : Double, a2 : Double, b1 : Double, b2 : Double) -> Bool {
   let max_a = if a1 > a2 { a1 } else { a2 }
   let min_b = if b1 < b2 { b1 } else { b2 }
   let max_b = if b1 > b2 { b1 } else { b2 }
-  max_a >= min_b && max_b >= min_a
+  // Align d2 geo.Segment.Overlaps(..., buffer=0):
+  // endpoint touching is NOT considered overlap.
+  !(min_a - max_b >= 0.0 || min_b - max_a >= 0.0)
 }
 
 ///|
@@ -2521,43 +3144,246 @@ fn ceil_eq(a : Double, b : Double) -> Bool {
 }
 
 ///|
-fn trace_box_border_like_d2(
+fn trace_shape_border_like_d2(
+  shape_type : @graph.ShapeType,
   box : @graph.Box,
-  from : @graph.Point,
-  to : @graph.Point,
+  rect_border_point : @graph.Point,
+  prev_point : @graph.Point,
 ) -> @graph.Point {
-  let hit = first_box_intersection_from_point(box, from, to)
-  match hit {
-    Some(p) => p
-    None => box_border_point_towards(box, to)
+  let perimeter_segments = shape_perimeter_segments_like_d2(shape_type, box)
+  if perimeter_segments.is_empty() {
+    return rect_border_point
+  }
+
+  let vx = rect_border_point.x - prev_point.x
+  let vy = rect_border_point.y - prev_point.y
+  if approx_zero(vx) && approx_zero(vy) {
+    return rect_border_point
+  }
+  let length = (vx * vx + vy * vy).sqrt()
+  if approx_zero(length) {
+    return rect_border_point
+  }
+  let scale_size = if approx_zero(rect_border_point.x - prev_point.x) {
+    box.height
+  } else {
+    box.width
+  }
+  let scale = (length + scale_size) / length
+  let extended_end = @graph.Point::new(
+    prev_point.x + vx * scale,
+    prev_point.y + vy * scale,
+  )
+
+  let mut closest : @graph.Point? = None
+  let mut closest_dist = 1000000000000000000.0
+  for segment in perimeter_segments {
+    match
+      segment_intersection_point(prev_point, extended_end, segment.0, segment.1) {
+      Some((hit, _)) => {
+        let dx = rect_border_point.x - hit.x
+        let dy = rect_border_point.y - hit.y
+        let d = dx * dx + dy * dy
+        if d < closest_dist {
+          closest_dist = d
+          closest = Some(hit)
+        }
+      }
+      None => ()
+    }
+  }
+
+  match closest {
+    Some(hit) => @graph.Point::new(round_double(hit.x), round_double(hit.y))
+    None => rect_border_point
   }
 }
 
 ///|
-fn first_box_intersection_from_point(
+fn shape_perimeter_segments_like_d2(
+  shape_type : @graph.ShapeType,
   box : @graph.Box,
-  from : @graph.Point,
-  to : @graph.Point,
-) -> @graph.Point? {
-  let sides : Array[(@graph.Point, @graph.Point)] = [
-    (box.top_left(), box.top_right()),
-    (box.top_right(), box.bottom_right()),
-    (box.bottom_right(), box.bottom_left()),
-    (box.bottom_left(), box.top_left()),
-  ]
-  let mut best_t = 1000000000000000000.0
-  let mut best : @graph.Point? = None
-  for side in sides {
-    match segment_intersection_point(from, to, side.0, side.1) {
-      Some((p, t)) =>
-        if t >= 0.0 && t <= 1.0 && t < best_t {
-          best_t = t
-          best = Some(p)
-        }
-      None => ()
-    }
+) -> Array[(@graph.Point, @graph.Point)] {
+  match shape_type {
+    @graph.Cylinder => cylinder_perimeter_segments_like_d2(box)
+    @graph.Callout => callout_perimeter_segments_like_d2(box)
+    @graph.Document => document_perimeter_segments_like_d2(box)
+    _ => []
   }
-  best
+}
+
+///|
+fn cylinder_perimeter_segments_like_d2(
+  box : @graph.Box,
+) -> Array[(@graph.Point, @graph.Point)] {
+  let arc_h = if box.height < D2_DEFAULT_ARC_DEPTH * 2.0 {
+    box.height / 2.0
+  } else {
+    D2_DEFAULT_ARC_DEPTH
+  }
+  let m = 0.45
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let y0 = box.y
+  let y1 = box.y + box.height
+  let top_left = @graph.Point::new(x0, y0 + arc_h)
+  let top_mid = @graph.Point::new(x0 + box.width / 2.0, y0)
+  let top_right = @graph.Point::new(x1, y0 + arc_h)
+  let bottom_right = @graph.Point::new(x1, y1 - arc_h)
+  let bottom_mid = @graph.Point::new(x0 + box.width / 2.0, y1)
+  let bottom_left = @graph.Point::new(x0, y1 - arc_h)
+  let segments : Array[(@graph.Point, @graph.Point)] = []
+
+  let top_curve_left = sample_cubic_curve_segments(
+    top_left,
+    @graph.Point::new(x0, y0),
+    @graph.Point::new(x0 + box.width * m, y0),
+    top_mid,
+    24,
+  )
+  for s in top_curve_left {
+    segments.push(s)
+  }
+  let top_curve_right = sample_cubic_curve_segments(
+    top_mid,
+    @graph.Point::new(x1 - box.width * m, y0),
+    @graph.Point::new(x1, y0),
+    top_right,
+    24,
+  )
+  for s in top_curve_right {
+    segments.push(s)
+  }
+
+  segments.push((top_right, bottom_right))
+
+  let bottom_curve_right = sample_cubic_curve_segments(
+    bottom_right,
+    @graph.Point::new(x1, y1),
+    @graph.Point::new(x1 - box.width * m, y1),
+    bottom_mid,
+    24,
+  )
+  for s in bottom_curve_right {
+    segments.push(s)
+  }
+  let bottom_curve_left = sample_cubic_curve_segments(
+    bottom_mid,
+    @graph.Point::new(x0 + box.width * m, y1),
+    @graph.Point::new(x0, y1),
+    bottom_left,
+    24,
+  )
+  for s in bottom_curve_left {
+    segments.push(s)
+  }
+
+  segments.push((bottom_left, top_left))
+  segments
+}
+
+///|
+fn callout_perimeter_segments_like_d2(
+  box : @graph.Box,
+) -> Array[(@graph.Point, @graph.Point)] {
+  let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
+  let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
+  let main_h = box.height - tip_h
+  let mid_x = box.x + box.width / 2.0
+  let points : Array[@graph.Point] = [
+    @graph.Point::new(box.x, box.y),
+    @graph.Point::new(box.x, box.y + main_h),
+    @graph.Point::new(mid_x, box.y + main_h),
+    @graph.Point::new(mid_x, box.y + box.height),
+    @graph.Point::new(mid_x + tip_w, box.y + main_h),
+    @graph.Point::new(box.x + box.width, box.y + main_h),
+    @graph.Point::new(box.x + box.width, box.y),
+    @graph.Point::new(box.x, box.y),
+  ]
+  let segments : Array[(@graph.Point, @graph.Point)] = []
+  for i in 0..<(points.length() - 1) {
+    segments.push((points[i], points[i + 1]))
+  }
+  segments
+}
+
+///|
+fn document_perimeter_segments_like_d2(
+  box : @graph.Box,
+) -> Array[(@graph.Point, @graph.Point)] {
+  let base_y = box.y + box.height * (16.3 / 18.925)
+  let cp1_y = box.y + box.height * (12.8 / 18.925)
+  let cp2_y = box.y + box.height * (19.8 / 18.925)
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let p0 = @graph.Point::new(x1, base_y)
+  let p1 = @graph.Point::new(box.x + box.width * (5.0 / 6.0), cp1_y)
+  let p2 = @graph.Point::new(box.x + box.width * (2.0 / 3.0), cp1_y)
+  let p3 = @graph.Point::new(box.x + box.width * 0.5, base_y)
+  let p4 = @graph.Point::new(box.x + box.width * (1.0 / 3.0), cp2_y)
+  let p5 = @graph.Point::new(box.x + box.width * (1.0 / 6.0), cp2_y)
+  let p6 = @graph.Point::new(x0, base_y)
+
+  let segments : Array[(@graph.Point, @graph.Point)] = [
+    (@graph.Point::new(x0, box.y), @graph.Point::new(x1, box.y)),
+    (@graph.Point::new(x1, box.y), @graph.Point::new(x1, base_y)),
+    (@graph.Point::new(x0, box.y), @graph.Point::new(x0, base_y)),
+  ]
+
+  let wave1 = sample_cubic_curve_segments(p0, p1, p2, p3, 24)
+  for s in wave1 {
+    segments.push(s)
+  }
+  let wave2 = sample_cubic_curve_segments(p3, p4, p5, p6, 24)
+  for s in wave2 {
+    segments.push(s)
+  }
+  segments
+}
+
+///|
+fn sample_cubic_curve_segments(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  p3 : @graph.Point,
+  n : Int,
+) -> Array[(@graph.Point, @graph.Point)] {
+  let segments : Array[(@graph.Point, @graph.Point)] = []
+  if n <= 1 {
+    segments.push((p0, p3))
+    return segments
+  }
+  let mut prev = p0
+  for i in 1..<=n {
+    let t = i.to_double() / n.to_double()
+    let point = cubic_point(p0, p1, p2, p3, t)
+    segments.push((prev, point))
+    prev = point
+  }
+  segments
+}
+
+///|
+fn cubic_point(
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  p3 : @graph.Point,
+  t : Double,
+) -> @graph.Point {
+  let omt = 1.0 - t
+  let omt2 = omt * omt
+  let t2 = t * t
+  let x = omt2 * omt * p0.x +
+    3.0 * omt2 * t * p1.x +
+    3.0 * omt * t2 * p2.x +
+    t2 * t * p3.x
+  let y = omt2 * omt * p0.y +
+    3.0 * omt2 * t * p1.y +
+    3.0 * omt * t2 * p2.y +
+    t2 * t * p3.y
+  @graph.Point::new(x, y)
 }
 
 ///|
@@ -2579,10 +3405,12 @@ fn segment_intersection_point(
   let cay = c.y - a.y
   let t = (cax * s_y - cay * s_x) / denom
   let u = (cax * r_y - cay * r_x) / denom
-  if t < -0.000001 || t > 1.000001 || u < -0.000001 || u > 1.000001 {
+  if t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0 {
     return None
   }
-  Some((@graph.Point::new(a.x + t * r_x, a.y + t * r_y), t))
+  let ix = a.x + round_double(t * r_x)
+  let iy = a.y + round_double(t * r_y)
+  Some((@graph.Point::new(ix, iy), t))
 }
 
 ///|
@@ -3181,14 +4009,14 @@ fn object_layout_spacing(
       is_italic,
     )
     let label_width = if dims.width > 0.0 {
-      dims.width + D2_LABEL_PADDING * 2.0
+      dims.width + D2_LABEL_PADDING
     } else {
-      obj.label.length().to_double() * 7.0 + D2_LABEL_PADDING * 2.0
+      obj.label.length().to_double() * 7.0 + D2_LABEL_PADDING
     }
     let label_height = if dims.height > 0.0 {
-      dims.height + D2_LABEL_PADDING * 2.0
+      dims.height + D2_LABEL_PADDING
     } else {
-      font_size.to_double() + D2_LABEL_PADDING * 2.0
+      font_size.to_double() + D2_LABEL_PADDING
     }
 
     match default_label_position(obj, box, label_width, label_height) {
@@ -3200,7 +4028,7 @@ fn object_layout_spacing(
   }
 
   if obj.icon is Some(_) {
-    let icon_size = D2_MAX_ICON_SIZE + D2_LABEL_PADDING * 2.0
+    let icon_size = D2_MAX_ICON_SIZE + D2_LABEL_PADDING
     let icon_pos = if !obj.child_ids.is_empty() ||
       obj.shape_type == @graph.Class ||
       obj.shape_type == @graph.SqlTable ||
@@ -3268,12 +4096,8 @@ fn object_default_label_box(
     Some(v) => v
     None => return None
   }
-  let pos = default_label_position(
-    obj,
-    box,
-    label_width + D2_LABEL_PADDING * 2.0,
-    label_height + D2_LABEL_PADDING * 2.0,
-  )
+  let pos = default_label_position(obj, box, label_width, label_height)
+  let inner_box = shape_inner_box_for_label(obj, box, label_width, label_height)
   let (x, y) = match pos {
     OutsideTop =>
       (
@@ -3286,14 +4110,118 @@ fn object_default_label_box(
         box.y + box.height + D2_LABEL_PADDING,
       )
     InsideTop =>
-      (box.x + (box.width - label_width) / 2.0, box.y + D2_LABEL_PADDING)
+      (
+        inner_box.x + (inner_box.width - label_width) / 2.0,
+        inner_box.y + D2_LABEL_PADDING,
+      )
     InsideMiddle =>
       (
-        box.x + (box.width - label_width) / 2.0,
-        box.y + (box.height - label_height) / 2.0,
+        inner_box.x + (inner_box.width - label_width) / 2.0,
+        inner_box.y + (inner_box.height - label_height) / 2.0,
       )
   }
   Some(@graph.Box::new(x, y, label_width, label_height))
+}
+
+///|
+fn shape_inner_box_for_label(
+  obj : @graph.ObjectInput,
+  box : @graph.Box,
+  label_width : Double,
+  label_height : Double,
+) -> @graph.Box {
+  let mut x = box.x
+  let mut y = box.y
+  let mut width = box.width
+  let mut height = box.height
+  match obj.shape_type {
+    @graph.Hexagon => {
+      x = x + width / 6.0
+      y = y + height / 6.0
+      width = width / 1.5
+      height = height / 1.5
+    }
+    @graph.Cloud => {
+      let aspect = if label_height > 0.0 {
+        label_width / label_height
+      } else {
+        1.0
+      }
+      if aspect > CLOUD_WIDE_ASPECT_BOUNDARY {
+        x = x + (width * 0.085).ceil()
+        y = y + (height * 0.409).ceil()
+        width = width * CLOUD_WIDE_INNER_WIDTH
+        height = height * CLOUD_WIDE_INNER_HEIGHT
+      } else if aspect < CLOUD_TALL_ASPECT_BOUNDARY {
+        x = x + (width * 0.228).ceil()
+        y = y + (height * 0.179).ceil()
+        width = width * CLOUD_TALL_INNER_WIDTH
+        height = height * CLOUD_TALL_INNER_HEIGHT
+      } else {
+        x = x + (width * 0.167).ceil()
+        y = y + (height * 0.335).ceil()
+        width = width * CLOUD_SQUARE_INNER_WIDTH
+        height = height * CLOUD_SQUARE_INNER_HEIGHT
+      }
+    }
+    @graph.Cylinder => {
+      let mut arc = D2_DEFAULT_ARC_DEPTH
+      if height < arc * 2.0 {
+        arc = height / 2.0
+      }
+      y = y + 2.0 * arc
+      height = height - 3.0 * arc
+    }
+    @graph.Queue => {
+      let mut arc = D2_DEFAULT_ARC_DEPTH
+      if width < arc * 2.0 {
+        arc = width / 2.0
+      }
+      x = x + arc
+      width = width - 3.0 * arc
+    }
+    @graph.StoredData => {
+      x = x + D2_STORED_DATA_WEDGE_WIDTH
+      width = width - 2.0 * D2_STORED_DATA_WEDGE_WIDTH
+    }
+    @graph.Document =>
+      height = height * D2_DOC_PATH_INNER_BOTTOM / D2_DOC_PATH_HEIGHT
+    @graph.Package => {
+      let top_h = if D2_PACKAGE_TOP_MAX_HEIGHT <
+        height * D2_PACKAGE_VERTICAL_SCALAR {
+        D2_PACKAGE_TOP_MAX_HEIGHT
+      } else {
+        height * D2_PACKAGE_VERTICAL_SCALAR
+      }
+      y = y + top_h
+      height = height - top_h
+    }
+    @graph.Callout => {
+      let tip_h = if height < 90.0 { height / 2.0 } else { 45.0 }
+      height = height - tip_h
+    }
+    @graph.Person => {
+      let shoulder = 20.2 / 68.3 * width
+      x = x + shoulder
+      width = width - shoulder * 2.0
+    }
+    @graph.C4Person => {
+      let head_radius = width * D2_C4_HEAD_RADIUS_FACTOR
+      let body_top = head_radius + head_radius * D2_C4_BODY_TOP_FACTOR
+      let h_padding = width * 0.05
+      let v_padding = height * 0.03
+      x = x + h_padding
+      y = y + body_top + v_padding
+      width = width - h_padding * 2.0
+      height = height - body_top - v_padding * 2.0
+    }
+    _ => ()
+  }
+  if width <= 0.0 || height <= 0.0 {
+    box
+  } else {
+    @graph.Box::new(x, y, width, height)
+  }
 }
 
 ///|
@@ -3317,14 +4245,14 @@ fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
     is_italic,
   )
   let width = if dims.width > 0.0 {
-    dims.width
+    round_double(dims.width)
   } else {
-    obj.label.length().to_double() * 7.0
+    round_double(obj.label.length().to_double() * 7.0)
   }
   let height = if dims.height > 0.0 {
-    dims.height
+    round_double(dims.height)
   } else {
-    font_size.to_double() + 5.0
+    round_double(font_size.to_double() + 5.0)
   }
   Some((width, height))
 }

@@ -26,8 +26,8 @@
               |       | |reads/writes        |
               |       | |      |             |
               |       | |      v             |
-             processes payments------.       |
-              |       | |    |\-____-/|      |
+              |       | |     .------.       |
+             processes payments-____-/|      |
               |       | |    |        |      |
               |       | |    |Database|      |
               |       | |    |        |      |
@@ -39,6 +39,7 @@
                 |             |               
 +---------------|-------------|-------------+ 
 |               | external    |             | 
+|               |             |             | 
 |               v             v             | 
 |    +-----------------+ +--------------+   | 
 |    |Payment Provider | |Email Service |   | 

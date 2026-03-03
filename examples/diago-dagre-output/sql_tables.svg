@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="582" height="976" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="78" y="0" width="304" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <rect x="78" y="0" width="304" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
@@ -49,41 +49,41 @@
 <path d="M 169.84378521430654 183.36908560264604 C 146.4 220 140 240 140 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
 <path d="M 140 500 C 140 536 146.4 556 169.84378521430654 592.630914397354" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
 <path d="M 290.15621478569346 183.36908560264604 C 313.6 220 320 261.6 320 309 C 320 356.4 313.6 556 290.15621478569346 592.630914397354" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
-<text x="90" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">users</text>
-<text x="90" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
-<text x="200" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="88" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">users</text>
+<text x="88" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="199" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
 <text x="372" y="59" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
-<text x="90" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">name</text>
-<text x="200" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
-<text x="90" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">email</text>
-<text x="200" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="88" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">name</text>
+<text x="199" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="88" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">email</text>
+<text x="199" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
 <text x="372" y="131" text-anchor="end" font-family="Arial, sans-serif" font-size="20">UNQ</text>
-<text x="90" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">created_at</text>
-<text x="200" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+<text x="88" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">created_at</text>
+<text x="199" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
 <text x="10" y="305.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">posts</text>
 <text x="10" y="339" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
-<text x="113" y="339" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="271" y="339" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="112" y="339" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="270" y="339" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
 <text x="10" y="375" text-anchor="start" font-family="Arial, sans-serif" font-size="20">user_id</text>
-<text x="113" y="375" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="271" y="375" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="112" y="375" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="270" y="375" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
 <text x="10" y="411" text-anchor="start" font-family="Arial, sans-serif" font-size="20">title</text>
-<text x="113" y="411" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
+<text x="112" y="411" text-anchor="start" font-family="Arial, sans-serif" font-size="20">varchar(255)</text>
 <text x="10" y="447" text-anchor="start" font-family="Arial, sans-serif" font-size="20">content</text>
-<text x="113" y="447" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
+<text x="112" y="447" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
 <text x="10" y="483" text-anchor="start" font-family="Arial, sans-serif" font-size="20">published</text>
-<text x="113" y="483" text-anchor="start" font-family="Arial, sans-serif" font-size="20">boolean</text>
-<text x="148" y="621.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">comments</text>
-<text x="148" y="655" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
-<text x="229" y="655" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="314" y="655" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
-<text x="148" y="691" text-anchor="start" font-family="Arial, sans-serif" font-size="20">post_id</text>
-<text x="229" y="691" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="314" y="691" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
-<text x="148" y="727" text-anchor="start" font-family="Arial, sans-serif" font-size="20">user_id</text>
-<text x="229" y="727" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="314" y="727" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
-<text x="148" y="763" text-anchor="start" font-family="Arial, sans-serif" font-size="20">body</text>
-<text x="229" y="763" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
+<text x="112" y="483" text-anchor="start" font-family="Arial, sans-serif" font-size="20">boolean</text>
+<text x="146" y="621.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">comments</text>
+<text x="146" y="655" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
+<text x="227" y="655" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="313" y="655" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="146" y="691" text-anchor="start" font-family="Arial, sans-serif" font-size="20">post_id</text>
+<text x="227" y="691" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="313" y="691" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="146" y="727" text-anchor="start" font-family="Arial, sans-serif" font-size="20">user_id</text>
+<text x="227" y="727" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="313" y="727" text-anchor="end" font-family="Arial, sans-serif" font-size="20">FK</text>
+<text x="146" y="763" text-anchor="start" font-family="Arial, sans-serif" font-size="20">body</text>
+<text x="227" y="763" text-anchor="start" font-family="Arial, sans-serif" font-size="20">text</text>
 </g>
 </svg>

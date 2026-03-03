@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="492" viewBox="-100 -100 1100 492" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="1060" height="492" viewBox="-88 -88 1060 492" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -25,47 +25,47 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-88" y="-88" width="1060" height="492" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
-<rect x="0" y="0" width="534" height="292" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="594" y="9" width="306" height="274" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="201" y="60" width="139" height="66" fill="#fff3e0" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="380" y="60" width="94" height="66" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="60" y="166" width="101" height="66" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="201" y="166" width="139" height="66" fill="#fafafa" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="380" y="166" width="94" height="66" fill="#eceff1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="60" y="60" width="101" height="66" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="604" y="55" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="672" y="55" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="748" y="55" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="824" y="55" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="604" y="131" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="672" y="131" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="748" y="131" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="824" y="131" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="604" y="207" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="672" y="207" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="748" y="207" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<rect x="824" y="207" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<text x="97.5" y="62.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Dashboard</text>
-<text x="277" y="62.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Icon Grid</text>
-<text x="270.5" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Navigation</text>
-<text x="427" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Search</text>
-<text x="110.5" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Sidebar</text>
-<text x="270.5" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Main Content</text>
-<text x="427" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Footer</text>
-<text x="110.5" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
-<text x="633" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i1</text>
-<text x="705" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i2</text>
-<text x="781" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i3</text>
-<text x="857" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i4</text>
-<text x="633" y="169.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i5</text>
-<text x="705" y="169.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i6</text>
-<text x="781" y="169.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i7</text>
-<text x="857" y="169.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i8</text>
-<text x="633" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i9</text>
-<text x="705" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i10</text>
-<text x="781" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i11</text>
-<text x="857" y="245.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i12</text>
+<rect x="12" y="12" width="534" height="292" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="566" y="21" width="306" height="274" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="213" y="72" width="139" height="66" fill="#fff3e0" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="392" y="72" width="94" height="66" fill="#f3e5f5" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="72" y="178" width="101" height="66" fill="#e8f5e9" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="213" y="178" width="139" height="66" fill="#fafafa" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="392" y="178" width="94" height="66" fill="#eceff1" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="72" y="72" width="101" height="66" fill="#e3f2fd" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="576" y="67" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="644" y="67" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="720" y="67" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="796" y="67" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="576" y="143" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="644" y="143" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="720" y="143" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="796" y="143" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="576" y="219" width="58" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="644" y="219" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="720" y="219" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<rect x="796" y="219" width="66" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<text x="279" y="45" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Dashboard</text>
+<text x="719" y="54" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Icon Grid</text>
+<text x="282.5" y="110.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Navigation</text>
+<text x="439" y="110.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Search</text>
+<text x="122.5" y="216.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Sidebar</text>
+<text x="282.5" y="216.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Main Content</text>
+<text x="439" y="216.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Footer</text>
+<text x="122.5" y="110.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
+<text x="605" y="105.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i1</text>
+<text x="677" y="105.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i2</text>
+<text x="753" y="105.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i3</text>
+<text x="829" y="105.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i4</text>
+<text x="605" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i5</text>
+<text x="677" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i6</text>
+<text x="753" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i7</text>
+<text x="829" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i8</text>
+<text x="605" y="257.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i9</text>
+<text x="677" y="257.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i10</text>
+<text x="753" y="257.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i11</text>
+<text x="829" y="257.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i12</text>
 </g>
 </svg>

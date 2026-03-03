@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="1007" height="1711" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="333" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <path d="M 493 60 H 393 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 411.74084919472915 31.705426356589143 406.0307467057101 25.89147286821705 406.0307467057101 19.53488372093023 C 406.0307467057101 8.75968992248062 422.57540263543194 0 442.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
@@ -56,32 +56,32 @@
 <rect x="517" y="1040" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="677" y="1040" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="494" y="680" width="114" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 362 1322 C 362 1337.4 362 1345.1 362 1360.5 C 362 1360.5 362 1370.5 352 1370.5 C 320 1370.5 304 1370.5 272 1370.5 C 272 1370.5 262 1370.5 262 1380.5 C 262 1395.1 262 1402.4 262 1417" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="296.5" y="1360" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="312" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
-<path d="M 446 1322 C 446 1337.4 446 1345.1 446 1360.5 C 446 1360.5 446 1370.5 456 1370.5 C 460 1370.5 462 1370.5 466 1370.5 C 466 1370.5 476 1370.5 476 1380.5 C 476 1395.1 476 1402.4 476 1417" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="445.5" y="1360" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="461" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
-<path d="M 443 62 C 443 91.6 443 106.4 443 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 443 202 C 443 217.2 443 224.8 443 240 C 443.2 240 443.3 240 443.5 240 C 443.5 254.4 443.5 261.6 443.5 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 391 342 C 391 361.2 391 370.8 391 390 C 391 390 391 400 381 400 C 353.4 400 339.6 400 312 400 C 312 400 302 400 302 410 C 302 428.4 302 437.6 302 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 469.75 342 C 469.75 363.55 469.75 374.325 469.75 395.875 C 469.75 395.875 469.75 400 473.875 400 C 473.875 400 473.875 400 473.875 400 C 473.875 400 478 400 478 404.125 C 478 424.875 478 435.25 478 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 496 342 C 496 361.2 496 370.8 496 390 C 496 390 496 400 506 400 C 561.2 400 588.8 400 644 400 C 644 400 654 400 654 410 C 654 428.4 654 437.6 654 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 302 522 C 302 552.6 302 567.9 302 598.5 C 302 598.5 302 600 303.5 600 C 303.5 600 303.5 600 303.5 600 C 303.5 600 305 600 305 601.5 C 305 631.3 305 646.2 305 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 430 522 C 430 549.2 430 562.8 430 590 C 430 590 430 600 420 600 C 415.6 600 413.4 600 409 600 C 409 600 399 600 399 610 C 399 636.4 399 649.6 399 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 526 522 C 526 549.2 526 562.8 526 590 C 526 590 526 600 516 600 C 515.2 600 514.8 600 514 600 C 514 600 504 600 504 610 C 504 636.4 504 649.6 504 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 654 522 C 654 549.2 654 562.8 654 590 C 654 590 654 600 644 600 C 629.6 600 622.4 600 608 600 C 608 600 598 600 598 610 C 598 636.4 598 649.6 598 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 305 742 C 305 759.2 305 767.8 305 785 C 305 785 305 795 295 795 C 282.06666666666666 795 275.59999999999997 795 262.66666666666663 795 C 262.66666666666663 795 252.66666666666666 795 252.66666666666666 805 C 252.66666666666666 825.4 252.66666666666666 835.6 252.66666666666666 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 504 742 C 504 763.2 504 773.8 504 795 C 504 795 504 805 494 805 C 413.2 805 372.8 805 292 805 C 292 805 282 805 282 815 C 282 831.4 282 839.6 282 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 375.5 742 C 375.5 761.2 375.5 770.8 375.5 790 C 375.5 790 375.5 800 365.5 800 C 353.7 800 347.8 800 336 800 C 336 800 326 800 326 810 C 326 954 326 1026 326 1170 C 326 1170 326 1180 336 1180 C 342.4 1180 345.6 1180 352 1180 C 352 1180 362 1180 362 1190 C 362 1216.4 362 1229.6 362 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 527.5 742 C 527.5 761.2 527.5 770.8 527.5 790 C 527.5 790 527.5 800 517.5 800 C 466.1 800 440.4 800 389 800 C 389 800 379 800 379 810 C 379 954 379 1026 379 1170 C 379 1170 379 1180 389 1180 C 399.4 1180 404.6 1180 415 1180 C 415 1180 425 1180 425 1190 C 425 1216.4 425 1229.6 425 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 399 742 C 399 759.2 399 767.8 399 785 C 399 785 399 795 409 795 C 478.2 795 512.8 795 582 795 C 582 795 592 795 592 805 C 592 825.4 592 835.6 592 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 598 742 C 598 759.2 598 767.8 598 785 C 598 785 598 795 608 795 C 620 795 626 795 638 795 C 638 795 648 795 648 805 C 648 825.4 648 835.6 648 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 592 922 C 592 941.2 592 950.8 592 970 C 592 970 592 980 582 980 C 580 980 579 980 577 980 C 577 980 567 980 567 990 C 567 1008.4 567 1017.6 567 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 727 922 C 727 967.6 727 990.4 727 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 607 1102 C 607 1129.2 607 1142.8 607 1170 C 607 1170 607 1180 617 1180 C 631 1180 638 1180 652 1180 C 652 1180 662 1180 662 1190 C 662 1216.4 662 1229.6 662 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 727 1102 C 727 1163.6 727 1194.4 727 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 527 1102 C 527 1129.2 527 1142.8 527 1170 C 527 1170 527 1180 517 1180 C 492.6 1180 480.4 1180 456 1180 C 456 1180 446 1180 446 1190 C 446 1216.4 446 1229.6 446 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 362 1322 L 362 1360.5 S 362 1370.5 352 1370.5 L 272 1370.5 S 262 1370.5 262 1380.5 L 262 1417" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="297" y="1360" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="312.5" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<path d="M 446 1322 L 446 1360.5 S 446 1370.5 456 1370.5 L 466 1370.5 S 476 1370.5 476 1380.5 L 476 1417" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="446" y="1360" width="31" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="461.5" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<path d="M 443 62 L 443 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 443 202 L 443 239.75 C 443 240.25 443.5 239.75 443.5 240.25 L 443.5 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 391 342 L 391 390 S 391 400 381 400 L 312 400 S 302 400 302 410 L 302 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 469.75 342 L 469.75 395.875 C 469.75 404.125 478 395.875 478 404.125 L 478 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 496 342 L 496 390 S 496 400 506 400 L 644 400 S 654 400 654 410 L 654 456" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 302 522 L 302 598.5 C 302 601.5 305 598.5 305 601.5 L 305 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 430 522 L 430 590 S 430 600 420 600 L 409 600 S 399 600 399 610 L 399 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 526 522 L 526 590 S 526 600 516 600 L 514 600 S 504 600 504 610 L 504 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 654 522 L 654 590 S 654 600 644 600 L 608 600 S 598 600 598 610 L 598 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 305 742 L 305 785 S 305 795 295 795 L 262.66666666666663 795 S 252.66666666666666 795 252.66666666666666 805 L 252.66666666666666 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 504 742 L 504 795 S 504 805 494 805 L 292 805 S 282 805 282 815 L 282 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 375.5 742 L 375.5 790 S 375.5 800 365.5 800 L 336 800 S 326 800 326 810 L 326 1170 S 326 1180 336 1180 L 352 1180 S 362 1180 362 1190 L 362 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 527.5 742 L 527.5 790 S 527.5 800 517.5 800 L 389 800 S 379 800 379 810 L 379 1170 S 379 1180 389 1180 L 415 1180 S 425 1180 425 1190 L 425 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 399 742 L 399 785 S 399 795 409 795 L 582 795 S 592 795 592 805 L 592 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 598 742 L 598 785 S 598 795 608 795 L 638 795 S 648 795 648 805 L 648 856" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 592 922 L 592 970 S 592 980 582 980 L 577 980 S 567 980 567 990 L 567 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 727 922 L 727 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 607 1102 L 607 1170 S 607 1180 617 1180 L 652 1180 S 662 1180 662 1190 L 662 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 727 1102 L 727 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 527 1102 L 527 1170 S 527 1180 517 1180 L 456 1180 S 446 1180 446 1190 L 446 1256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="166.5" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
 <text x="443" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
 <text x="442.95" y="186.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CDN</text>

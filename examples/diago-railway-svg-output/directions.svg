@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-90" y="-90" width="360" height="2100" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="10" y="10" width="160" height="400" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="10" y="510" width="160" height="400" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
@@ -43,17 +43,17 @@
 <rect x="40" y="1540" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1680" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1820" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 90 102 C 90 131.6 90 146.4 90 176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 242 C 90 271.6 90 286.4 90 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 602 C 90 631.6 90 646.4 90 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 742 C 90 771.6 90 786.4 90 816" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 1102 C 90 1131.6 90 1146.4 90 1176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 1242 C 90 1271.6 90 1286.4 90 1316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 1602 C 90 1631.6 90 1646.4 90 1676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 1742 C 90 1771.6 90 1786.4 90 1816" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 382 C 90 443.6 90 474.4 90 536" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 882 C 90 943.6 90 974.4 90 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 90 1382 C 90 1443.6 90 1474.4 90 1536" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 102 L 90 176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 242 L 90 316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 602 L 90 676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 742 L 90 816" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 1102 L 90 1176" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 1242 L 90 1316" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 1602 L 90 1676" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 1742 L 90 1816" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 382 L 90 536" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 882 L 90 1036" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 90 1382 L 90 1536" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="90" y="-3" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Down (default)</text>
 <text x="90" y="497" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Right</text>
 <text x="90" y="997" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Left</text>

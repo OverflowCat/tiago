@@ -9,4 +9,5 @@ import {
   "Milky2018/diago/render_api",
   "moonbitlang/core/cmp",
   "moonbitlang/core/hashset",
+  "moonbit-community/cmark/cmark_html",
 }

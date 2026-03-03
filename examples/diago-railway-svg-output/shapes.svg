@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="1152" height="540" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="140" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
@@ -47,17 +47,17 @@
 <ellipse cx="742" cy="310" rx="50" ry="30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <polygon points="877,0 927,0 952,30 927,60 877,60 852,30" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <path d="M 868.5267386091127 160.9751051625239 C 868.5267386091127 161.61250478011473 867.8605515587531 162.2497896749522 867.19448441247 162.2497896749522 C 858.7013189448442 163.0464244741874 852.039928057554 171.17269598470364 852.039928057554 181.05158699808797 C 852.039928057554 191.5678776290631 859.533932853717 200.01273422562144 869.0263788968825 200.01273422562144 H 933.4748201438849 C 943.6334532374101 200.01273422562144 951.9600719424461 190.9304780114723 951.9600719424461 179.9362523900574 C 951.9600719424461 169.41996175908227 944.2994004796163 160.65640535372853 934.6406474820145 160.01912045889105 C 933.9744604316548 160.01912045889105 933.3083932853718 159.54107074569794 933.1418465227819 158.74443594646274 C 930.9768585131895 148.06891013384325 920.9847721822542 140.1019885277247 909.32757793765 140.1019885277247 C 901.6670263788969 140.1019885277247 894.8390887290169 143.44810707456983 890.5093525179857 148.70619502868072 C 890.0097122302159 149.34359464627155 889.177098321343 149.50294455066924 888.6774580335732 149.34359464627155 C 887.0121103117507 148.70619502868072 885.180335731415 148.38760994263868 883.1818944844125 148.38760994263868 C 875.5212230215827 148.22814531548758 869.1929256594724 153.80493307839387 868.5267386091127 160.9751051625239 Z" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 50 62 C 50 91.6 50 106.4 50 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 50 202 C 50 231.6 50 246.4 50 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 221.5 62 C 221.5 77.2 221.5 84.8 221.5 100 C 221.7 100 221.8 100 222 100 C 222 114.4 222 121.6 222 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 222 202 C 222 231.6 222 246.4 222 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 405 62 C 405 91.6 405 106.4 405 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 405 202 C 405 231.6 405 246.4 405 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 577 62 C 577 91.6 577 106.4 577 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 577 202 C 577 231.6 577 246.4 577 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 742 62 C 742 91.6 742 106.4 742 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 742 202 C 742 231.6 742 246.4 742 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 902 62 C 902 91.6 902 106.4 902 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 50 62 L 50 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 50 202 L 50 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 221.5 62 L 221.5 99.75 C 221.5 100.25 222 99.75 222 100.25 L 222 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 222 202 L 222 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 405 62 L 405 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 405 202 L 405 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 577 62 L 577 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 577 202 L 577 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 742 62 L 742 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 742 202 L 742 276" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 902 62 L 902 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">rectangle</text>
 <text x="50" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">square</text>
 <text x="50" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">page</text>

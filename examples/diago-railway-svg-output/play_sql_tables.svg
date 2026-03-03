@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="494" height="640" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="294" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <rect x="0" y="0" width="294" height="36" fill="#0A0F25" stroke="none" stroke-width="0"/>
@@ -39,26 +39,26 @@
 <line x1="0" y1="332" x2="294" y2="332" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="368" x2="294" y2="368" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="404" x2="294" y2="404" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 147 182 C 147 211.6 147 226.4 147 256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 147 182 L 147 256" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="10" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">costumes</text>
 <text x="10" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
-<text x="141" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="285" y="59" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="140" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="284" y="59" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
 <text x="10" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">silliness</text>
-<text x="141" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="140" y="95" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
 <text x="10" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">monster</text>
-<text x="141" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="140" y="131" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
 <text x="10" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">last_updated</text>
-<text x="141" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+<text x="140" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
 <text x="10" y="285.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24">monsters</text>
 <text x="10" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20">id</text>
-<text x="141" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
-<text x="285" y="319" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
+<text x="140" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="284" y="319" text-anchor="end" font-family="Arial, sans-serif" font-size="20">PK</text>
 <text x="10" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20">movie</text>
-<text x="141" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20">string</text>
+<text x="140" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20">string</text>
 <text x="10" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20">weight</text>
-<text x="141" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
+<text x="140" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20">int</text>
 <text x="10" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20">last_updated</text>
-<text x="141" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
+<text x="140" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20">timestamp</text>
 </g>
 </svg>

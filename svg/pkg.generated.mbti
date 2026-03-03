@@ -74,6 +74,7 @@ pub fn PathBuilder::line_to(Self, Double, Double) -> Self
 pub fn PathBuilder::move_to(Self, Double, Double) -> Self
 pub fn PathBuilder::new() -> Self
 pub fn PathBuilder::quad_to(Self, Double, Double, Double, Double) -> Self
+pub fn PathBuilder::smooth_cubic_to(Self, Double, Double, Double, Double) -> Self
 pub fn PathBuilder::v_rel(Self, Double) -> Self
 pub fn PathBuilder::v_to(Self, Double) -> Self
 

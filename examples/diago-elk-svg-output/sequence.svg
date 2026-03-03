@@ -25,7 +25,7 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-88" y="-48" width="625" height="866" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="12" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="162" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
@@ -37,11 +37,11 @@
 <rect x="118" y="188" width="38" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="137" y="204" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Hello</text>
 <path d="M 210 288 L 66 288" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="106.5" y="278" width="61" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="137" y="294" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Hi there!</text>
+<rect x="107" y="278" width="61" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="137.5" y="294" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Hi there!</text>
 <path d="M 64 378 L 383 378" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="178.5" y="368" width="92" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="224.5" y="384" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Request data</text>
+<rect x="179" y="368" width="92" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="225" y="384" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Request data</text>
 <path d="M 385 468 L 66 468" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="191" y="458" width="67" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="224.5" y="474" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">Response</text>

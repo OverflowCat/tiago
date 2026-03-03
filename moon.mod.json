@@ -5,7 +5,8 @@
     "moonbitlang/x": "0.4.38",
     "Milky2018/xml": "0.2.0",
     "Milky2018/moon_dagre": "0.1.0",
-    "Milky2018/moon_elk": "0.1.8"
+    "Milky2018/moon_elk": "0.1.8",
+    "moonbit-community/cmark": "0.4.3"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/diago",

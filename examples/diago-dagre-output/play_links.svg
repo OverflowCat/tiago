@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="334" height="453" viewBox="-100 -100 334 453" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="334" height="453" viewBox="-100 -100 334 453" data-d2-version="0.1.0" xmlns:xlink="http://www.w3.org/1999/xlink">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -25,10 +25,14 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="334" height="453" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
+<a href="https://apple.com" xlink:href="https://apple.com">
 <rect x="12" y="0" width="111" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+</a>
+<a href="https://microsoft.com" xlink:href="https://microsoft.com">
 <rect x="0" y="187" width="134" height="66" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+</a>
 <path d="M 67 67.5 C 67 114.30000000000001 67 138.7 67 183.5" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <rect x="32" y="116" width="71" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
 <text x="67.5" y="132" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">gazoontite</text>

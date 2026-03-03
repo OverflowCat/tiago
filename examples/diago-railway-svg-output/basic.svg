@@ -25,21 +25,21 @@
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-100" y="-100" width="306" height="722" rx="0" fill="#FFFFFF" stroke="none" stroke-width="0"/>
 <g id="base-layer">
 <rect x="1" y="301" width="105" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="462" width="106" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="3" y="140" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
 <rect x="3" y="0" width="100" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
-<path d="M 38.83333333333334 363 C 38.83333333333334 382.4 38.83333333333334 392.1 38.83333333333334 411.5 C 38.96666666666667 411.5 39.03333333333333 411.5 39.16666666666666 411.5 C 39.16666666666666 430.1 39.16666666666666 439.4 39.16666666666666 458" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<rect x="14.5" y="401" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="39" y="417" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 40.16666666666666 204 C 40.16666666666666 222.6 40.16666666666666 231.9 40.16666666666666 250.5 C 39.63333333333333 250.5 39.36666666666667 250.5 38.83333333333334 250.5 C 38.83333333333334 269.1 38.83333333333334 278.4 38.83333333333334 297" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
-<rect x="21.5" y="240" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
-<text x="39.5" y="256" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
-<path d="M 53 62 C 53 91.6 53 106.4 53 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 66.83333333333333 202 C 66.83333333333333 221.4 66.83333333333333 231.1 66.83333333333333 250.5 C 66.96666666666667 250.5 67.03333333333333 250.5 67.16666666666667 250.5 C 67.16666666666667 269.1 67.16666666666667 278.4 67.16666666666667 297" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
-<path d="M 67.16666666666667 363 C 67.16666666666667 382.4 67.16666666666667 392.1 67.16666666666667 411.5 C 67.43333333333334 411.5 67.56666666666666 411.5 67.83333333333333 411.5 C 67.83333333333333 430.1 67.83333333333333 439.4 67.83333333333333 458" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 38.83333333333334 363 L 38.83333333333334 411.33333333333337 C 38.83333333333334 411.66666666666663 39.16666666666666 411.33333333333337 39.16666666666666 411.66666666666663 L 39.16666666666666 458" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<rect x="15" y="401" width="49" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="39.5" y="417" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 40.16666666666666 204 L 40.16666666666666 249.83333333333334 C 40.16666666666666 251.16666666666666 38.83333333333334 249.83333333333334 38.83333333333334 251.16666666666666 L 38.83333333333334 297" fill="none" stroke="#0A0F25" stroke-width="2" marker-start="url(#arrow-triangle-reverse)" marker-end="url(#arrow-triangle)"/>
+<rect x="22" y="240" width="36" height="21" fill="#FFFFFF" stroke="none" stroke-width="1" rx="3" ry="3"/>
+<text x="40" y="256" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
+<path d="M 53 62 L 53 136" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 66.83333333333333 202 L 66.83333333333333 250.33333333333331 C 66.83333333333333 250.66666666666669 67.16666666666667 250.33333333333331 67.16666666666667 250.66666666666669 L 67.16666666666667 297" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
+<path d="M 67.16666666666667 363 L 67.16666666666667 411.1666666666667 C 67.16666666666667 411.8333333333333 67.83333333333333 411.1666666666667 67.83333333333333 411.8333333333333 L 67.83333333333333 458" fill="none" stroke="#0A0F25" stroke-width="2" marker-end="url(#arrow-triangle)"/>
 <text x="53.5" y="336.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
 <text x="53" y="497.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">PostgreSQL</text>
 <text x="53" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">client</text>

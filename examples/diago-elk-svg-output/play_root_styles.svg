@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="398" height="326" viewBox="-88 -88 398 326" data-d2-version="0.1.0">
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="368" viewBox="-109 -109 440 368" data-d2-version="0.1.0">
 <defs><marker id="arrow-triangle" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-triangle-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-diamond" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,5 L5,0 L10,5 L5,10 Z" fill="#0A0F25"/></marker>
@@ -24,9 +24,17 @@
 <marker id="arrow-open-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10" stroke="#0A0F25" stroke-width="2" fill="none"/></marker>
 <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,5 L0,10 Z" fill="#0A0F25"/></marker>
 <marker id="arrow-reverse" markerWidth="10" markerHeight="10" refX="0" refY="5" orient="auto" markerUnits="strokeWidth"><path d="M10,0 L0,5 L10,10 Z" fill="#0A0F25"/></marker>
+<pattern id="pattern-lines" patternUnits="userSpaceOnUse" width="8" height="8"><rect width="8" height="8" fill="#FFFFFF"/><line x1="0" y1="4" x2="8" y2="4" stroke="#0A0F25" stroke-width="1"/></pattern>
 </defs>
-<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="-105" y="-105" width="432" height="360" rx="0" fill="url(#pattern-lines)" stroke="DarkBlue" stroke-width="8"/>
+<rect x="-92" y="-92" width="406" height="334" rx="0" fill="transparent" stroke="DarkBlue" stroke-width="8"/>
 <g id="base-layer">
 <rect x="12" y="12" width="198" height="126" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2" rx="0" ry="0"/>
+<g><foreignObject requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility" x="12" y="12" width="198" height="126"><div xmlns="http://www.w3.org/1999/xhtml" class="md"><h1>Report card</h1>
+<ul>
+<li>Computer science: B</li>
+<li>Diagram making: A+</li>
+</ul>
+</div></foreignObject></g>
 </g>
 </svg>

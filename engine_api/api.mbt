@@ -662,8 +662,14 @@ fn grid_semantic_paddings(
 
 ///|
 fn root_grid_gaps(parent : @graph.ObjectInput) -> (Double, Double) {
-  let mut vertical_gap = 40.0
-  let mut horizontal_gap = 40.0
+  let default_gap = if parent.grid_rows is Some(_) ||
+    parent.grid_columns is Some(_) {
+    40.0
+  } else {
+    20.0
+  }
+  let mut vertical_gap = default_gap
+  let mut horizontal_gap = default_gap
   match parent.grid_gap {
     Some(v) => {
       vertical_gap = v
@@ -1399,33 +1405,49 @@ fn restore_grid_semantics(
       y = y + plan.row_heights[row] + plan.vgap
     }
   }
-  pack_top_level_grid_groups(override_boxes, context, original_graph)
+  pack_top_level_grid_groups(override_boxes, context, original_graph, config)
   normalize_override_boxes_origin(override_boxes)
 
   let objects : Array[@graph.ObjectInput] = []
   for obj in original_graph.objects {
     if context.child_ids.contains(obj.id) {
-      let box = match override_boxes.get(obj.id) {
+      let override_box = override_boxes.get(obj.id)
+      let box = match override_box {
         Some(v) => Some(v)
         None => obj.box
       }
-      objects.push(clone_object_with_parts(obj, box, obj.child_ids))
+      let label_box = obj.label_box
+      objects.push(
+        clone_object_with_parts_and_label(obj, box, label_box, obj.child_ids),
+      )
       continue
     }
     let laid_out_obj = match laid_out_by_id.get(obj.id) {
       Some(v) => v
       None => obj
     }
-    let box = match override_boxes.get(obj.id) {
+    let override_box = override_boxes.get(obj.id)
+    let box = match override_box {
       Some(v) => Some(v)
       None => laid_out_obj.box
+    }
+    let label_box = match override_box {
+      Some(_) =>
+        if context.groups.contains(obj.id) {
+          None
+        } else {
+          laid_out_obj.label_box
+        }
+      None => laid_out_obj.label_box
     }
     let child_ids = if context.groups.contains(obj.id) {
       obj.child_ids
     } else {
       laid_out_obj.child_ids
     }
-    objects.push(clone_object_with_parts(laid_out_obj, box, child_ids))
+    objects.push(
+      clone_object_with_parts_and_label(laid_out_obj, box, label_box, child_ids),
+    )
   }
 
   let root_child_ids = if context.groups.contains(original_graph.root.id) {
@@ -1460,18 +1482,35 @@ fn pack_top_level_grid_groups(
   override_boxes : Map[String, @graph.Box],
   context : GridSemanticContext,
   original_graph : @graph.GraphInput,
+  _config : LayoutConfig,
 ) -> Unit {
   let top_parents : Array[String] = []
-  for obj in original_graph.objects {
-    if context.groups.contains(obj.id) && !obj.id.contains(".") {
-      top_parents.push(obj.id)
+  for child_id in original_graph.root.child_ids {
+    if context.groups.contains(child_id) {
+      top_parents.push(child_id)
     }
   }
   if top_parents.is_empty() {
     return
   }
-  let gap = 60.0
-  let mut cursor_x = 0.0
+
+  let (horizontal_gap, _) = root_grid_gaps(original_graph.root)
+  let top_anchor_y = 12.0
+  let mut first_parent_y : Double? = None
+  for parent_id in top_parents {
+    match override_boxes.get(parent_id) {
+      Some(parent_box) => {
+        first_parent_y = Some(parent_box.y)
+        break
+      }
+      None => ()
+    }
+  }
+  let global_dy = match first_parent_y {
+    Some(y) => top_anchor_y - y
+    None => return
+  }
+  let mut cursor_x = 12.0
   for parent_id in top_parents {
     let parent_box = match override_boxes.get(parent_id) {
       Some(v) => v
@@ -1480,7 +1519,7 @@ fn pack_top_level_grid_groups(
     let dx = cursor_x - parent_box.x
     let shifted_parent = @graph.Box::new(
       parent_box.x + dx,
-      parent_box.y,
+      parent_box.y + global_dy,
       parent_box.width,
       parent_box.height,
     )
@@ -1492,7 +1531,7 @@ fn pack_top_level_grid_groups(
             Some(child_box) =>
               override_boxes[child_id] = @graph.Box::new(
                 child_box.x + dx,
-                child_box.y,
+                child_box.y + global_dy,
                 child_box.width,
                 child_box.height,
               )
@@ -1501,7 +1540,7 @@ fn pack_top_level_grid_groups(
         }
       None => ()
     }
-    cursor_x = cursor_x + shifted_parent.width + gap
+    cursor_x = cursor_x + shifted_parent.width + horizontal_gap
   }
 }
 
@@ -1549,13 +1588,23 @@ fn clone_object_with_parts(
   box : @graph.Box?,
   child_ids : Array[String],
 ) -> @graph.ObjectInput {
+  clone_object_with_parts_and_label(obj, box, obj.label_box, child_ids)
+}
+
+///|
+fn clone_object_with_parts_and_label(
+  obj : @graph.ObjectInput,
+  box : @graph.Box?,
+  label_box : @graph.Box?,
+  child_ids : Array[String],
+) -> @graph.ObjectInput {
   @graph.ObjectInput::from_parts(
     obj.id,
     obj.label,
     obj.shape_type,
     obj.style,
     box,
-    obj.label_box,
+    label_box,
     child_ids,
     obj.z_index,
     obj.icon,
@@ -1599,6 +1648,15 @@ fn estimate_semantic_object_size(
   obj : @graph.ObjectInput,
   config : LayoutConfig,
 ) -> (Double, Double) {
+  let has_explicit_width = match obj.box {
+    Some(box) => box.width > 0.0
+    None => false
+  }
+  let has_explicit_height = match obj.box {
+    Some(box) => box.height > 0.0
+    None => false
+  }
+  let with_inner_label_padding = !(has_explicit_width || has_explicit_height)
   let font_size = match obj.style.font_size {
     Some(v) => v.as_int().unwrap_or(16)
     None => 16
@@ -1620,7 +1678,9 @@ fn estimate_semantic_object_size(
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
     content_height = content_height + font_size.to_double()
-  } else if obj.label != "" && obj.shape_type != @graph.Text {
+  } else if with_inner_label_padding &&
+    obj.label != "" &&
+    obj.shape_type != @graph.Text {
     content_width = content_width + D2_INNER_LABEL_PADDING
     content_height = content_height + D2_INNER_LABEL_PADDING
   }
@@ -1642,14 +1702,24 @@ fn estimate_semantic_object_size(
   let base_padding = semantic_shape_default_padding(obj.shape_type)
   let mut padding_x = base_padding.0
   let mut padding_y = base_padding.1
+  if has_explicit_width {
+    padding_x = 0.0
+  }
+  if has_explicit_height {
+    padding_y = 0.0
+  }
   if obj.icon is Some(_) &&
     obj.shape_type != @graph.SqlTable &&
     obj.shape_type != @graph.Class &&
     obj.shape_type != @graph.Code &&
     obj.shape_type != @graph.Text {
     let label_height = label_dims.height + D2_INNER_LABEL_PADDING
-    padding_x = padding_x + label_height
-    padding_y = padding_y + label_height
+    if !has_explicit_width {
+      padding_x = padding_x + label_height
+    }
+    if !has_explicit_height {
+      padding_y = padding_y + label_height
+    }
   }
 
   let fitted = semantic_shape_dimensions_to_fit(

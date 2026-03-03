@@ -507,6 +507,15 @@ fn ceil_double(x : Double) -> Double {
 }
 
 ///|
+fn round_double(x : Double) -> Double {
+  if x >= 0.0 {
+    (x + 0.5).to_int().to_double()
+  } else {
+    (x - 0.5).to_int().to_double()
+  }
+}
+
+///|
 const LABEL_PADDING : Double = 5.0
 
 ///|
@@ -527,6 +536,259 @@ fn transform_label_text(text : String, text_transform : String) -> String {
     "uppercase" => text.to_upper()
     "lowercase" => text.to_lower()
     _ => text
+  }
+}
+
+///|
+const ROOT_INNER_BORDER_OFFSET : Double = 5.0
+
+///|
+priv struct RootCanvasMetrics {
+  viewbox_x : Double
+  viewbox_y : Double
+  viewbox_width : Double
+  viewbox_height : Double
+  inner_x : Double
+  inner_y : Double
+  inner_width : Double
+  inner_height : Double
+  outer_x : Double?
+  outer_y : Double?
+  outer_width : Double?
+  outer_height : Double?
+  fill : String
+  stroke : String
+  stroke_width : Double
+  border_radius : Double
+  stroke_dash : Double
+}
+
+///|
+fn resolve_fill_with_pattern(
+  base_fill : String,
+  fill_pattern : @graph.StyleValue?,
+  config : SvgConfig,
+) -> String {
+  match style_string_opt(fill_pattern) {
+    Some(p) =>
+      match p.to_lower() {
+        "dots" => defs_url(config, "pattern-dots")
+        "lines" => defs_url(config, "pattern-lines")
+        "cross-hatch" | "crosshatch" => defs_url(config, "pattern-crosshatch")
+        "grain" => defs_url(config, "pattern-grain")
+        _ => base_fill
+      }
+    None => base_fill
+  }
+}
+
+///|
+fn has_non_empty_link(link : String?) -> Bool {
+  match link {
+    Some(v) => v.trim() != ""
+    None => false
+  }
+}
+
+///|
+fn graph_has_links(graph : Diagram) -> Bool {
+  if has_non_empty_link(graph.root.link) {
+    return true
+  }
+  for obj in graph.shapes {
+    if has_non_empty_link(obj.link) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn root_has_stroke(style : @graph.StyleInput) -> Bool {
+  match style_string_opt(style.stroke) {
+    Some(value) => {
+      let normalized = value.trim().to_lower()
+      normalized != "" && normalized != "none"
+    }
+    None => false
+  }
+}
+
+///|
+fn root_stroke_width(style : @graph.StyleInput, config : SvgConfig) -> Double {
+  match style.stroke_width {
+    Some(v) => v.as_double().unwrap_or(0.0)
+    None =>
+      if root_has_stroke(style) {
+        config.default_stroke_width
+      } else {
+        0.0
+      }
+  }
+}
+
+///|
+fn compute_root_canvas_metrics(
+  graph : Diagram,
+  config : SvgConfig,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  base_viewbox_x : Double,
+  base_viewbox_y : Double,
+  base_viewbox_width : Double,
+  base_viewbox_height : Double,
+) -> RootCanvasMetrics {
+  let fill_color = style_color(
+    graph.root.style.fill,
+    "N7",
+    theme,
+    use_css_theme_vars,
+  )
+  let fill = resolve_fill_with_pattern(
+    fill_color,
+    graph.root.style.fill_pattern,
+    config,
+  )
+  let stroke = if root_has_stroke(graph.root.style) {
+    style_color(graph.root.style.stroke, "N1", theme, use_css_theme_vars)
+  } else {
+    "none"
+  }
+  let stroke_width = root_stroke_width(graph.root.style, config)
+  let border_radius = if theme.rules.no_corner_radius {
+    0.0
+  } else {
+    style_double(graph.root.style.border_radius, 0.0)
+  }
+  let stroke_dash = style_double(graph.root.style.stroke_dash, 0.0)
+  let half_stroke = ceil_double(stroke_width / 2.0)
+  let inner_x = base_viewbox_x - half_stroke
+  let inner_y = base_viewbox_y - half_stroke
+  let inner_width = base_viewbox_width + half_stroke * 2.0
+  let inner_height = base_viewbox_height + half_stroke * 2.0
+  let mut viewbox_x = inner_x - half_stroke
+  let mut viewbox_y = inner_y - half_stroke
+  let mut viewbox_width = inner_width + half_stroke * 2.0
+  let mut viewbox_height = inner_height + half_stroke * 2.0
+  let mut outer_x : Double? = None
+  let mut outer_y : Double? = None
+  let mut outer_width : Double? = None
+  let mut outer_height : Double? = None
+  if style_bool(graph.root.style.double_border, false) {
+    let outer_left = viewbox_x - half_stroke - ROOT_INNER_BORDER_OFFSET
+    let outer_top = viewbox_y - half_stroke - ROOT_INNER_BORDER_OFFSET
+    let outer_w = viewbox_width +
+      half_stroke * 2.0 +
+      ROOT_INNER_BORDER_OFFSET * 2.0
+    let outer_h = viewbox_height +
+      half_stroke * 2.0 +
+      ROOT_INNER_BORDER_OFFSET * 2.0
+    outer_x = Some(outer_left)
+    outer_y = Some(outer_top)
+    outer_width = Some(outer_w)
+    outer_height = Some(outer_h)
+    viewbox_x = outer_left - half_stroke
+    viewbox_y = outer_top - half_stroke
+    viewbox_width = outer_w + half_stroke * 2.0
+    viewbox_height = outer_h + half_stroke * 2.0
+  }
+  {
+    viewbox_x,
+    viewbox_y,
+    viewbox_width,
+    viewbox_height,
+    inner_x,
+    inner_y,
+    inner_width,
+    inner_height,
+    outer_x,
+    outer_y,
+    outer_width,
+    outer_height,
+    fill,
+    stroke,
+    stroke_width,
+    border_radius,
+    stroke_dash,
+  }
+}
+
+///|
+fn add_root_background_rect(
+  svg : @svg.Svg,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  border_radius : Double,
+  stroke_dash : Double,
+) -> Unit {
+  let mut rect = @xml_emit.Element::new("rect")
+    .attr_num("x", x)
+    .attr_num("y", y)
+    .attr_num("width", width)
+    .attr_num("height", height)
+    .attr_num("rx", border_radius)
+    .attr("fill", fill)
+    .attr("stroke", stroke)
+    .attr_num("stroke-width", stroke_width)
+  if stroke_dash > 0.0 {
+    rect = rect.attr("stroke-dasharray", stroke_dash.to_string())
+  }
+  svg.add(rect.self_close().build())
+}
+
+///|
+fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
+  match
+    (
+      metrics.outer_x,
+      metrics.outer_y,
+      metrics.outer_width,
+      metrics.outer_height,
+    ) {
+    (Some(x), Some(y), Some(width), Some(height)) => {
+      add_root_background_rect(
+        svg,
+        x,
+        y,
+        width,
+        height,
+        metrics.fill,
+        metrics.stroke,
+        metrics.stroke_width,
+        metrics.border_radius,
+        metrics.stroke_dash,
+      )
+      add_root_background_rect(
+        svg,
+        metrics.inner_x,
+        metrics.inner_y,
+        metrics.inner_width,
+        metrics.inner_height,
+        "transparent",
+        metrics.stroke,
+        metrics.stroke_width,
+        metrics.border_radius,
+        metrics.stroke_dash,
+      )
+    }
+    _ =>
+      add_root_background_rect(
+        svg,
+        metrics.inner_x,
+        metrics.inner_y,
+        metrics.inner_width,
+        metrics.inner_height,
+        metrics.fill,
+        metrics.stroke,
+        metrics.stroke_width,
+        metrics.border_radius,
+        metrics.stroke_dash,
+      )
   }
 }
 
@@ -595,10 +857,33 @@ pub fn render_svg(
   // Calculate dimensions accounting for negative coordinates
   let content_width = max_x - min_x
   let content_height = max_y - min_y
-  let viewbox_width = content_width + config.padding * 2.0
-  let viewbox_height = content_height + config.padding * 2.0 + control_height
-  let viewbox_x = min_x - config.padding
-  let viewbox_y = min_y - config.padding - control_height
+  let base_viewbox_width = content_width + config.padding * 2.0
+  let base_viewbox_height = content_height +
+    config.padding * 2.0 +
+    control_height
+  let base_viewbox_x = min_x - config.padding
+  let base_viewbox_y = min_y - config.padding - control_height
+  // The base render always uses the light theme. Dark theme is applied through
+  // CSS media rules when configured.
+  let light_theme = @themes.get_theme(config.theme_id).with_overrides(
+    config.theme_overrides,
+  )
+  let dark_theme = match config.dark_theme_id {
+    Some(theme_id) =>
+      Some(
+        @themes.get_theme(theme_id).with_overrides(config.dark_theme_overrides),
+      )
+    None => None
+  }
+  let use_css_theme_vars = dark_theme is Some(_)
+  let root_canvas = compute_root_canvas_metrics(
+    graph, config, light_theme, use_css_theme_vars, base_viewbox_x, base_viewbox_y,
+    base_viewbox_width, base_viewbox_height,
+  )
+  let viewbox_x = root_canvas.viewbox_x
+  let viewbox_y = root_canvas.viewbox_y
+  let viewbox_width = root_canvas.viewbox_width
+  let viewbox_height = root_canvas.viewbox_height
   let (width, height) = match config.scale {
     Some(scale) =>
       (ceil_double(viewbox_width * scale), ceil_double(viewbox_height * scale))
@@ -613,19 +898,9 @@ pub fn render_svg(
   if not(config.omit_version) {
     svg.add_root_attr("data-d2-version", DIAGO_VERSION)
   }
-  // The base render always uses the light theme. Dark theme is applied through
-  // CSS media rules when configured.
-  let light_theme = @themes.get_theme(config.theme_id).with_overrides(
-    config.theme_overrides,
-  )
-  let dark_theme = match config.dark_theme_id {
-    Some(theme_id) =>
-      Some(
-        @themes.get_theme(theme_id).with_overrides(config.dark_theme_overrides),
-      )
-    None => None
+  if graph_has_links(graph) {
+    svg.add_root_attr("xmlns:xlink", "http://www.w3.org/1999/xlink")
   }
-  let use_css_theme_vars = dark_theme is Some(_)
   if use_css_theme_vars {
     add_theme_styles(svg, light_theme, dark_theme)
   }
@@ -636,9 +911,7 @@ pub fn render_svg(
   // Add sketch filter if needed
   add_sketch_filter(svg, graph, config)
   // Background
-  svg.add(
-    @svg.background(resolve_theme_color("N7", light_theme, use_css_theme_vars)),
-  )
+  render_root_background(svg, root_canvas)
   // D2 parity: skip custom control bar rendering.
   // Main content group with offset to shift content into positive coordinate space
   svg.open_group_with_id("base-layer", "")
@@ -893,6 +1166,9 @@ fn add_fill_patterns(
 ) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
+  if graph.root.style.fill_pattern is Some(p) {
+    patterns_used.add(p.get_value())
+  }
   for obj in graph.shapes {
     if obj.style.fill_pattern is Some(p) {
       patterns_used.add(p.get_value())
@@ -1208,6 +1484,53 @@ fn has_class(obj : Shape, class_name : String) -> Bool {
 }
 
 ///|
+fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
+  if obj.label == "" {
+    return
+  }
+  let (x, y, width, height) = match obj.label_box {
+    Some(label_box) =>
+      (
+        label_box.x,
+        label_box.y,
+        if label_box.width > 0.0 {
+          label_box.width
+        } else {
+          box.width
+        },
+        if label_box.height > 0.0 {
+          label_box.height
+        } else {
+          box.height
+        },
+      )
+    None => (box.x, box.y, box.width, box.height)
+  }
+  if width <= 0.0 || height <= 0.0 {
+    return
+  }
+  let md_html = @cmark_html.render(safe=false, strict=false, obj.label) catch {
+    _ => obj.label
+  }
+  let div = @xml_emit.Element::new("div")
+    .attr("xmlns", "http://www.w3.org/1999/xhtml")
+    .attr("class", "md")
+    .raw(md_html)
+    .build()
+  let foreign = @xml_emit.Element::new("foreignObject")
+    .attr(
+      "requiredFeatures", "http://www.w3.org/TR/SVG11/feature#Extensibility",
+    )
+    .attr_num("x", x)
+    .attr_num("y", y)
+    .attr_num("width", width)
+    .attr_num("height", height)
+    .raw(div)
+    .build()
+  svg.add(@xml_emit.Element::new("g").raw(foreign).build())
+}
+
+///|
 fn render_svg_object(
   svg : @svg.Svg,
   obj : Shape,
@@ -1227,6 +1550,26 @@ fn render_svg_object(
     Foreground => true
     Background => false
   }
+  let link_href = match obj.link {
+    Some(v) => if v.trim() == "" { None } else { Some(v) }
+    None => None
+  }
+  let has_link = link_href is Some(_)
+  let should_wrap_link = has_link &&
+    (if is_foreground {
+      obj.shape_type == Text || obj.shape_type == Image
+    } else {
+      obj.shape_type != Text && obj.shape_type != Image
+    })
+  if should_wrap_link {
+    let href = link_href.unwrap()
+    svg.add(
+      @xml_emit.Element::new("a")
+      .attr("href", href)
+      .attr("xlink:href", href)
+      .open_tag(),
+    )
+  }
   // Apply tooltip if present (only in foreground pass to avoid double-wrapping)
   let has_tooltip = obj.tooltip is Some(_) && is_foreground
   if has_tooltip {
@@ -1240,17 +1583,11 @@ fn render_svg_object(
   // Get style values
   let base_fill = style_color(obj.style.fill, "N7", theme, use_css_theme_vars)
   // Apply fill pattern if specified
-  let fill = match style_string_opt(obj.style.fill_pattern) {
-    Some(p) =>
-      match p.to_lower() {
-        "dots" => defs_url(config, "pattern-dots")
-        "lines" => defs_url(config, "pattern-lines")
-        "cross-hatch" | "crosshatch" => defs_url(config, "pattern-crosshatch")
-        "grain" => defs_url(config, "pattern-grain")
-        _ => base_fill
-      }
-    None => base_fill
-  }
+  let fill = resolve_fill_with_pattern(
+    base_fill,
+    obj.style.fill_pattern,
+    config,
+  )
   let stroke = style_color(obj.style.stroke, "N1", theme, use_css_theme_vars)
   let stroke_width = style_double(
     obj.style.stroke_width,
@@ -1302,6 +1639,9 @@ fn render_svg_object(
           svg.close_group()
         }
       }
+      if should_wrap_link {
+        svg.add(@xml_emit.Element::new("a").close_tag())
+      }
       return // Don't render the default label
     }
     "class" => {
@@ -1328,6 +1668,9 @@ fn render_svg_object(
           svg.close_group()
         }
       }
+      if should_wrap_link {
+        svg.add(@xml_emit.Element::new("a").close_tag())
+      }
       return // Don't render the default label
     }
     "sql_table" => {
@@ -1351,6 +1694,9 @@ fn render_svg_object(
         if has_tooltip {
           svg.close_group()
         }
+      }
+      if should_wrap_link {
+        svg.add(@xml_emit.Element::new("a").close_tag())
       }
       return // Don't render the default label
     }
@@ -1587,7 +1933,9 @@ fn render_svg_object(
       )
     }
     // Render label
-    if obj.label != "" &&
+    if obj.label != "" && has_class(obj, "lang:markdown") {
+      render_svg_markdown_label(svg, obj, box)
+    } else if obj.label != "" &&
       !has_class(obj, "lang:latex") &&
       !has_class(obj, "lang:markdown") {
       // Use custom font-family if specified in style, otherwise use config
@@ -1697,6 +2045,9 @@ fn render_svg_object(
       svg.close_group()
     }
   }
+  if should_wrap_link {
+    svg.add(@xml_emit.Element::new("a").close_tag())
+  }
 }
 
 ///|
@@ -1792,18 +2143,6 @@ fn render_svg_sql_table(
       longest_name_width = dims.width
     }
   }
-  // D2's ruler-backed SQL table text metrics differ slightly from our
-  // fixed-metrics implementation. Apply a tiny x-axis compensation so column
-  // label anchors match D2 snapshots (1-2px drift otherwise).
-  let left_label_nudge = if box.x > 0.0 { 2.0 } else { 0.0 }
-  let type_nudge = if box.x <= 0.0 {
-    1.0
-  } else if longest_name_width >= 90.0 {
-    -1.0
-  } else {
-    0.0
-  }
-  let constraint_nudge = if box.width < 300.0 { 1.0 } else { 0.0 }
   match pass {
     Background => {
       // Background pass: render shapes (rectangles, lines)
@@ -1846,7 +2185,7 @@ fn render_svg_sql_table(
       let header_text_y = header_center_y + header_dims.height / 4.0
       svg.add(
         @xml_emit.Element::new("text")
-        .attr_num("x", box.x + SQL_TABLE_HEADER_PADDING + left_label_nudge)
+        .attr_num("x", box.x + SQL_TABLE_HEADER_PADDING)
         .attr_num("y", header_text_y)
         .attr("text-anchor", "start")
         .attr("font-family", config.font_family)
@@ -1854,15 +2193,9 @@ fn render_svg_sql_table(
         .text(label)
         .build(),
       )
-      let name_x = box.x + SQL_TABLE_NAME_PADDING + left_label_nudge
-      let type_x = name_x +
-        longest_name_width +
-        SQL_TABLE_TYPE_PADDING +
-        type_nudge
-      let constraint_x = box.x +
-        box.width -
-        SQL_TABLE_NAME_PADDING +
-        constraint_nudge
+      let name_x = box.x + SQL_TABLE_NAME_PADDING
+      let type_x = name_x + longest_name_width + SQL_TABLE_TYPE_PADDING
+      let constraint_x = box.x + box.width - SQL_TABLE_NAME_PADDING
       for i, child in children {
         let row_center_y = box.y +
           row_height * (i.to_double() + 1.0) +
@@ -2913,67 +3246,74 @@ fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit 
   if points.length() < 2 {
     return
   }
-  // Radius for rounded corners
-  // D2's reference SVG uses a 10px corner radius for edge rounding.
-  let radius = 10.0
-  // Move to first point
   let _ = pb.move_to(points[0].x, points[0].y)
   if points.length() == 2 {
     let _ = pb.line_to(points[1].x, points[1].y)
     return
   }
-  // For each intermediate point, draw line segments with rounded corners
-  for i = 0; i < points.length() - 1; i = i + 1 {
-    let curr = points[i]
-    let next = points[i + 1]
-    if i == points.length() - 2 {
-      let _ = pb.line_to(next.x, next.y)
-    } else {
-      // There's a corner at 'next', so we need to draw a rounded corner
-      let after = points[i + 2]
-      // Calculate the direction vectors
-      let dx1 = next.x - curr.x
-      let dy1 = next.y - curr.y
-      let dx2 = after.x - next.x
-      let dy2 = after.y - next.y
-      // Only apply rounding when direction changes. ELK routes can contain
-      // redundant collinear waypoints; rounding those creates unwanted arcs.
-      let cross = dx1 * dy2 - dy1 * dx2
-      if cross.abs() < 0.001 {
-        let _ = pb.line_to(next.x, next.y)
-        continue
-      }
-      // Normalize directions
-      let len1 = (dx1 * dx1 + dy1 * dy1).sqrt()
-      let len2 = (dx2 * dx2 + dy2 * dy2).sqrt()
-      if len1 < 0.001 || len2 < 0.001 {
-        // Degenerate case - just line to next
-        let _ = pb.line_to(next.x, next.y)
-        continue
-      }
-      // Limit radius to half the shorter segment length
-      let max_radius = @cmp.minimum(len1, len2) / 2.0
-      let r = @cmp.minimum(radius, max_radius)
-      if r < 1.0 {
-        // Radius too small - fall back to a straight cubic segment.
-        let _ = pb.line_to(next.x, next.y)
-        continue
-      }
-      // Calculate the point where we stop before the corner
-      let stop_x = next.x - dx1 / len1 * r
-      let stop_y = next.y - dy1 / len1 * r
-      // Calculate the point where we resume after the corner
-      let resume_x = next.x + dx2 / len2 * r
-      let resume_y = next.y + dy2 / len2 * r
-      // Draw line to the stop point
-      let _ = pb.line_to(stop_x, stop_y)
-      // D2 reference SVG uses `S` (smooth cubic) for rounded corners.
-      // When a smooth cubic follows a line segment, its first control point
-      // equals the current point. This expands to an equivalent `C`:
-      //   C stop_x stop_y corner_x corner_y resume_x resume_y
-      let _ = pb.cubic_to(stop_x, stop_y, next.x, next.y, resume_x, resume_y)
+  let radius = 10.0
+  let mut i = 1
+  while i < points.length() - 1 {
+    let prev_source = points[i - 1]
+    let prev_target = points[i]
+    let curr_target = points[i + 1]
+    let prev_dx = prev_target.x - prev_source.x
+    let prev_dy = prev_target.y - prev_source.y
+    let curr_dx = curr_target.x - prev_target.x
+    let curr_dy = curr_target.y - prev_target.y
+    let prev_len = (prev_dx * prev_dx + prev_dy * prev_dy).sqrt()
+    let curr_len = (curr_dx * curr_dx + curr_dy * curr_dy).sqrt()
+    if prev_len < 0.001 || curr_len < 0.001 {
+      let _ = pb.line_to(prev_target.x, prev_target.y)
+      i = i + 1
+      continue
     }
+    let dist = curr_len
+    let units = @cmp.minimum(radius, dist / 2.0)
+    let prev_tx = prev_dx / prev_len * units
+    let prev_ty = prev_dy / prev_len * units
+    let curr_tx = curr_dx / curr_len * units
+    let curr_ty = curr_dy / curr_len * units
+
+    let _ = pb.line_to(prev_target.x - prev_tx, prev_target.y - prev_ty)
+
+    if units < radius && i < points.length() - 2 {
+      let next_target = points[i + 2]
+      let next_dx = next_target.x - curr_target.x
+      let next_dy = next_target.y - curr_target.y
+      let next_len = (next_dx * next_dx + next_dy * next_dy).sqrt()
+      if next_len >= 0.001 {
+        i = i + 1
+        let next_tx = next_dx / next_len * units
+        let next_ty = next_dy / next_len * units
+        let _ = pb.cubic_to(
+          prev_target.x + prev_tx,
+          prev_target.y + prev_ty,
+          curr_target.x - next_tx,
+          curr_target.y - next_ty,
+          curr_target.x + next_tx,
+          curr_target.y + next_ty,
+        )
+      } else {
+        let _ = pb.smooth_cubic_to(
+          prev_target.x,
+          prev_target.y,
+          prev_target.x + curr_tx,
+          prev_target.y + curr_ty,
+        )
+      }
+    } else {
+      let _ = pb.smooth_cubic_to(
+        prev_target.x,
+        prev_target.y,
+        prev_target.x + curr_tx,
+        prev_target.y + curr_ty,
+      )
+    }
+    i = i + 1
   }
+  let last = points[points.length() - 1]
+  let _ = pb.line_to(last.x, last.y)
 }
 
 ///|
@@ -3427,13 +3767,17 @@ fn render_svg_edge(
     // Use precomputed label_box from the layout pipeline.
     match edge.label_box {
       Some(label_box) => {
-        let cx = label_box.x + label_box.width / 2.0
+        // Align with d2 SVG renderer behavior: edge label top-left is rounded
+        // before calculating text baseline/center.
+        let label_x = round_double(label_box.x)
+        let label_y = round_double(label_box.y)
+        let cx = label_x + label_box.width / 2.0
         let label_font_size = style_int(edge.style.font_size, config.font_size)
-        let baseline_y = label_box.y + label_font_size.to_double()
+        let baseline_y = label_y + label_font_size.to_double()
         svg.add(
           @svg.rect(
-            label_box.x,
-            label_box.y,
+            label_x,
+            label_y,
             label_box.width,
             label_box.height,
             fill=resolve_theme_color("N7", theme, use_css_theme_vars),
