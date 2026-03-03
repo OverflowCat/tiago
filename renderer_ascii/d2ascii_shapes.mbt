@@ -19,6 +19,9 @@ const DEFAULT_LABEL_POSITION = "INSIDE_MIDDLE_CENTER"
 const D2_LABEL_PADDING : Double = 5.0
 
 ///|
+const HIDDEN_LABEL_POSITION = "__HIDDEN__"
+
+///|
 fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
   match value {
     Some(v) => v.as_bool().unwrap_or(default)
@@ -42,6 +45,21 @@ fn style_is_mono(value : @graph.StyleValue?) -> Bool {
 fn has_outside_bottom_label(shape_type : @graph.ShapeType) -> Bool {
   shape_type == @graph.ShapeType::Person ||
   shape_type == @graph.ShapeType::Image
+}
+
+///|
+fn has_shape_class(shape : @diagram.Shape, class_name : String) -> Bool {
+  for class in shape.classes {
+    if class == class_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn is_markdown_shape(shape : @diagram.Shape) -> Bool {
+  has_shape_class(shape, "lang:markdown")
 }
 
 ///|
@@ -160,6 +178,12 @@ fn infer_label_position_from_boxes(
 ///|
 fn resolve_shape_label_position(shape : @diagram.Shape) -> String {
   guard shape.label != "" else { return DEFAULT_LABEL_POSITION }
+  if shape.shape_type == @graph.ShapeType::Text || is_markdown_shape(shape) {
+    // Match d2 ASCII behavior: markdown content affects shape sizing but is
+    // not directly drawn as plain text. Text shapes also render without
+    // plaintext labels in d2 ASCII.
+    return HIDDEN_LABEL_POSITION
+  }
   guard shape.box is Some(box) else { return DEFAULT_LABEL_POSITION }
   match shape.label_box {
     Some(label_box) => infer_label_position_from_boxes(box, label_box)
@@ -183,6 +207,7 @@ fn draw_diagram_shape(
       let mut draw_w = box.width
       let mut draw_h = box.height
       let label_position = resolve_shape_label_position(shape)
+      let label_text = shape.label
       if style_is_multiple(shape.style) {
         draw_x -= 10.0
         draw_w += 10.0
@@ -216,130 +241,58 @@ fn draw_diagram_shape(
             draw_y,
             draw_w,
             draw_h,
-            shape.label,
+            label_text,
             label_position,
             "",
             preserve_height~,
           )
         @graph.ShapeType::Page =>
           draw_page(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Hexagon =>
           draw_hex(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Person =>
           draw_person(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::StoredData =>
           draw_stored_data(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Cylinder =>
           draw_cylinder(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Package =>
           draw_package(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Parallelogram =>
           draw_parallelogram(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Queue =>
           draw_queue(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Step =>
           draw_step(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Callout =>
           draw_callout(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Document =>
           draw_document(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Diamond =>
           draw_diamond(
-            ctx,
-            draw_x,
-            draw_y,
-            draw_w,
-            draw_h,
-            shape.label,
-            label_position,
+            ctx, draw_x, draw_y, draw_w, draw_h, label_text, label_position,
           )
         @graph.ShapeType::Class =>
           draw_class_shape(
@@ -349,6 +302,19 @@ fn draw_diagram_shape(
           draw_sql_table_shape(
             ctx, draw_x, draw_y, draw_w, draw_h, shape, all_shapes, label_position,
           )
+        @graph.ShapeType::Code =>
+          draw_rect(
+            ctx,
+            draw_x,
+            draw_y,
+            draw_w,
+            draw_h,
+            label_text,
+            label_position,
+            "",
+            preserve_height~,
+            render_label=false,
+          )
         @graph.ShapeType::Cloud =>
           draw_rect(
             ctx,
@@ -356,7 +322,7 @@ fn draw_diagram_shape(
             draw_y,
             draw_w,
             draw_h,
-            shape.label,
+            label_text,
             label_position,
             ctx.chars.cloud().to_string(),
             preserve_height~,
@@ -368,7 +334,7 @@ fn draw_diagram_shape(
             draw_y,
             draw_w,
             draw_h,
-            shape.label,
+            label_text,
             label_position,
             ctx.chars.oval().to_string(),
             preserve_height~,
@@ -380,7 +346,7 @@ fn draw_diagram_shape(
             draw_y,
             draw_w,
             draw_h,
-            shape.label,
+            label_text,
             label_position,
             ctx.chars.oval().to_string(),
             preserve_height~,
@@ -392,7 +358,7 @@ fn draw_diagram_shape(
             draw_y,
             draw_w,
             draw_h,
-            shape.label,
+            label_text,
             label_position,
             "",
             preserve_height~,
@@ -577,7 +543,7 @@ fn draw_shape_label(
 ) -> Unit {
   let _ = x2
   let _ = y2
-  if label == "" {
+  if label == "" || label_position == HIDDEN_LABEL_POSITION {
     return
   }
   let lines = label.split("\n")
@@ -710,6 +676,7 @@ fn draw_rect(
   label_position : String,
   symbol : String,
   preserve_height? : Bool = false,
+  render_label? : Bool = true,
 ) -> Unit {
   let (x1_0, y1_0, w0, h0) = ctx.calibrate(x, y, w, h)
   let x1 = x1_0
@@ -747,7 +714,9 @@ fn draw_rect(
       }
     }
   }
-  draw_shape_label(ctx, x1, y1, x2, y2, w_c, h_c, label, label_position)
+  if render_label {
+    draw_shape_label(ctx, x1, y1, x2, y2, w_c, h_c, label, label_position)
+  }
 }
 
 ///|
@@ -1360,13 +1329,102 @@ fn draw_class_shape(
   if shape.label != "" {
     current_y = draw_header(ctx, x1, current_y, x2, w_c, shape.label)
   }
+  let fields : Array[ClassMember] = []
+  let methods : Array[ClassMember] = []
   for child in children {
+    let class_entry = classify_class_member(child)
+    if class_entry.is_method {
+      methods.push(class_entry)
+    } else {
+      fields.push(class_entry)
+    }
+  }
+  for field in fields {
     if current_y >= y2 {
       break
     }
-    let field_name = short_id(child.id)
-    draw_field_with_type(ctx, x1, x2, current_y, w_c, field_name, child.label)
+    draw_field_with_type(
+      ctx,
+      x1,
+      x2,
+      current_y,
+      w_c,
+      field.display_name,
+      field.field_type,
+    )
     current_y += 1
+  }
+  if methods.length() > 0 && current_y < y2 {
+    draw_separator_line(ctx, x1, x2, current_y)
+    current_y += 1
+  }
+  for method_entry in methods {
+    if current_y >= y2 {
+      break
+    }
+    draw_field_with_type(
+      ctx,
+      x1,
+      x2,
+      current_y,
+      w_c,
+      method_entry.display_name,
+      method_entry.field_type,
+    )
+    current_y += 1
+  }
+}
+
+///|
+priv struct ClassMember {
+  display_name : String
+  field_type : String
+  is_method : Bool
+}
+
+///|
+fn classify_class_member(child : @diagram.Shape) -> ClassMember {
+  let raw_name = short_id(child.id)
+  let (name_without_visibility, has_explicit_visibility, visibility) = split_class_member_visibility(
+    raw_name,
+  )
+  let is_method = name_without_visibility.contains("(") &&
+    name_without_visibility.contains(")")
+  let effective_visibility = if has_explicit_visibility {
+    visibility
+  } else {
+    "+"
+  }
+  let display_name = effective_visibility + name_without_visibility
+  let mut field_type = child.label
+  if is_method {
+    let trimmed = child.label.trim().to_string()
+    if trimmed == "" ||
+      trimmed == raw_name ||
+      trimmed == name_without_visibility ||
+      trimmed == display_name {
+      field_type = "void"
+    } else {
+      field_type = trimmed
+    }
+  }
+  { display_name, field_type, is_method }
+}
+
+///|
+fn split_class_member_visibility(raw_name : String) -> (String, Bool, String) {
+  if raw_name == "" {
+    return ("", false, "")
+  }
+  let first = raw_name.code_unit_at(0).to_int().unsafe_to_char()
+  if first == '+' || first == '-' || first == '#' || first == '~' {
+    (
+      string_slice(raw_name, 1, raw_name.length()),
+      true,
+      string_slice(raw_name, 0, 1),
+    )
+  } else {
+    (raw_name, false, "")
   }
 }
 

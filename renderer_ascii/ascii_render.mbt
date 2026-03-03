@@ -45,8 +45,15 @@ pub fn AsciiConfig::unicode() -> AsciiConfig {
 
 ///|
 pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String {
+  let inline_child_shape_parent_ids = collect_inline_child_shape_parent_ids(
+    diagram.shapes,
+  )
+  let inline_child_shape_ids = collect_inline_child_shape_ids_from_parent_ids(
+    inline_child_shape_parent_ids,
+  )
   let (min_x0, min_y0, max_x0, max_y0) = calculate_extended_bounds(
     diagram,
+    inline_child_shape_ids,
     config.font_width,
     config.font_height,
   )
@@ -79,6 +86,9 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
 
   let mut max_label_len = 0
   for shape in diagram.shapes {
+    if is_inline_child_shape(shape.id, inline_child_shape_ids) {
+      continue
+    }
     if shape.label.length() > max_label_len {
       max_label_len = shape.label.length()
     }
@@ -98,6 +108,9 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
   }
 
   for shape in diagram.shapes {
+    if is_inline_child_shape(shape.id, inline_child_shape_ids) {
+      continue
+    }
     draw_diagram_shape(
       shape_ctx,
       shape,
@@ -108,7 +121,13 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
     )
   }
 
-  let route_ctx = { canvas, chars: config.charset, diagram, shape_ctx }
+  let route_ctx = {
+    canvas,
+    chars: config.charset,
+    diagram,
+    shape_ctx,
+    inline_child_shape_parent_ids,
+  }
   for conn in diagram.connections {
     if not(connection_has_arrow(conn)) {
       draw_connection_route(route_ctx, conn, x_offset, y_offset)
@@ -126,6 +145,7 @@ pub fn render_ascii(diagram : @diagram.Diagram, config : AsciiConfig) -> String 
 ///|
 fn calculate_extended_bounds(
   diagram : @diagram.Diagram,
+  inline_child_shape_ids : Map[String, Bool],
   fw : Double,
   fh : Double,
 ) -> (Int, Int, Int, Int) {
@@ -135,6 +155,9 @@ fn calculate_extended_bounds(
   let mut max_y = -2147483648
 
   for shape in diagram.shapes {
+    if is_inline_child_shape(shape.id, inline_child_shape_ids) {
+      continue
+    }
     match shape.box {
       Some(box) => {
         let stroke_width = style_stroke_width(shape.style, 2)
@@ -179,6 +202,24 @@ fn calculate_extended_bounds(
           max_x = max_int(
             max_x,
             ceil_int(box.x + box.width) + 10 + stroke_width,
+          )
+        }
+
+        // Keep text output bounds aligned with d2's appendix icon space for
+        // linked/tooltip shapes, which affects y-offset calibration.
+        let has_tooltip = match shape.tooltip {
+          Some(t) => t != ""
+          None => false
+        }
+        let has_link = match shape.link {
+          Some(l) => l != ""
+          None => false
+        }
+        if has_tooltip || has_link {
+          min_y = min_int(min_y, floor_int(box.y) - stroke_width - 16)
+          max_x = max_int(
+            max_x,
+            ceil_int(box.x + box.width) + stroke_width + 16,
           )
         }
 
@@ -270,9 +311,97 @@ fn calculate_extended_bounds(
         max_y = label_y2.to_int()
       }
     }
+
+    if route.length() > 0 {
+      match conn.dst_arrowhead_label {
+        Some(label) =>
+          if label != "" {
+            let last_route = route[route.length() - 1]
+            let label_x = last_route.x - label.length().to_double() * fw
+            let label_x2 = last_route.x + label.length().to_double() * fw
+            let label_y = last_route.y - fh
+            let label_y2 = last_route.y + fh
+            if label_x.to_int() < min_x {
+              min_x = label_x.to_int()
+            }
+            if label_x2.to_int() > max_x {
+              max_x = label_x2.to_int()
+            }
+            if label_y.to_int() < min_y {
+              min_y = label_y.to_int()
+            }
+            if label_y2.to_int() > max_y {
+              max_y = label_y2.to_int()
+            }
+          }
+        None => ()
+      }
+
+      match conn.src_arrowhead_label {
+        Some(label) =>
+          if label != "" {
+            let first_route = route[0]
+            let label_x = first_route.x - label.length().to_double() * fw
+            let label_x2 = first_route.x + label.length().to_double() * fw
+            let label_y = first_route.y - fh
+            let label_y2 = first_route.y + fh
+            if label_x.to_int() < min_x {
+              min_x = label_x.to_int()
+            }
+            if label_x2.to_int() > max_x {
+              max_x = label_x2.to_int()
+            }
+            if label_y.to_int() < min_y {
+              min_y = label_y.to_int()
+            }
+            if label_y2.to_int() > max_y {
+              max_y = label_y2.to_int()
+            }
+          }
+        None => ()
+      }
+    }
   }
 
   (min_x, min_y, max_x, max_y)
+}
+
+///|
+fn collect_inline_child_shape_parent_ids(
+  shapes : Array[@diagram.Shape],
+) -> Map[String, String] {
+  let ids : Map[String, String] = {}
+  for shape in shapes {
+    if shape.shape_type == @graph.ShapeType::SqlTable ||
+      shape.shape_type == @graph.ShapeType::Class {
+      for child_id in shape.child_ids {
+        ids[child_id] = shape.id
+      }
+    }
+  }
+  ids
+}
+
+///|
+fn collect_inline_child_shape_ids_from_parent_ids(
+  inline_child_shape_parent_ids : Map[String, String],
+) -> Map[String, Bool] {
+  let ids : Map[String, Bool] = {}
+  for child_id, _ in inline_child_shape_parent_ids {
+    ids[child_id] = true
+  }
+  ids
+}
+
+///|
+fn is_inline_child_shape(
+  id : String,
+  inline_child_shape_ids : Map[String, Bool],
+) -> Bool {
+  match inline_child_shape_ids.get(id) {
+    Some(_) => true
+    None => false
+  }
 }
 
 ///|

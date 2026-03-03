@@ -99,13 +99,14 @@ test "ascii multiple edges from same source" {
 }
 
 ///|
-test "ascii text shape shows only label" {
+test "ascii text shape hides label like d2" {
   let source =
     #|note: Hello World {
     #|  shape: text
     #|}
   let ascii = compile_ascii(source).unwrap()
-  assert_true(ascii.contains("Hello World"))
+  assert_true(!ascii.contains("Hello World"))
+  assert_true(ascii.contains("+") || ascii.contains("-"))
 }
 
 ///|

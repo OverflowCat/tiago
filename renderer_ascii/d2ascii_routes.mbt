@@ -18,6 +18,7 @@ priv struct RouteDrawContext {
   chars : @ascii.CharSet
   diagram : @diagram.Diagram
   shape_ctx : ShapeDrawContext
+  inline_child_shape_parent_ids : Map[String, String]
 }
 
 ///|
@@ -78,6 +79,8 @@ fn draw_connection_route(
       label_pos,
     )
   }
+
+  draw_arrowhead_labels(ctx, conn, routes)
 }
 
 ///|
@@ -185,15 +188,23 @@ fn get_connection_boundaries(
   src_id : String,
   dst_id : String,
 ) -> (Boundary, Boundary) {
+  let boundary_src_id = resolve_boundary_shape_id(
+    src_id,
+    ctx.inline_child_shape_parent_ids,
+  )
+  let boundary_dst_id = resolve_boundary_shape_id(
+    dst_id,
+    ctx.inline_child_shape_parent_ids,
+  )
   let mut from_boundary = { tl_x: 0, tl_y: 0, br_x: 0, br_y: 0 }
   let mut to_boundary = { tl_x: 0, tl_y: 0, br_x: 0, br_y: 0 }
   for shape in ctx.diagram.shapes {
-    if shape.id == src_id {
+    if shape.id == boundary_src_id {
       match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => from_boundary = b
         None => ()
       }
-    } else if shape.id == dst_id {
+    } else if shape.id == boundary_dst_id {
       match get_shape_boundary(ctx.shape_ctx, shape, ctx.diagram.connections) {
         Some(b) => to_boundary = b
         None => ()
@@ -201,6 +212,17 @@ fn get_connection_boundaries(
     }
   }
   (from_boundary, to_boundary)
+}
+
+///|
+fn resolve_boundary_shape_id(
+  shape_id : String,
+  inline_child_shape_parent_ids : Map[String, String],
+) -> String {
+  match inline_child_shape_parent_ids.get(shape_id) {
+    Some(parent_id) => parent_id
+    None => shape_id
+  }
 }
 
 ///|
@@ -745,12 +767,11 @@ fn draw_connection_label(
   segment_index : Int,
 ) -> Unit {
   let _ = segment_index
-  let lines = label.split("\n")
   if sy != 0.0 {
     if ctx.canvas.is_in_bounds(x, y) {
       ctx.canvas.set(x, y, ' ')
     }
-    for line_idx, line in lines {
+    for line_idx, line in label.split("\n") {
       for j, ch in line {
         if ctx.canvas.is_in_bounds(pos.x + j, y + line_idx) {
           ctx.canvas.set(pos.x + j, y + line_idx, ch)
@@ -773,7 +794,7 @@ fn draw_connection_label(
       }
     } else if label_position.contains("RIGHT") {
       let mut max_line_len = 0
-      for line in lines {
+      for line in label.split("\n") {
         if line.length() > max_line_len {
           max_line_len = line.length()
         }
@@ -783,12 +804,143 @@ fn draw_connection_label(
         x_pos = routes[idx].x.to_int() - max_line_len / 2
       }
     }
-    for line_idx, line in lines {
+    for line_idx, line in label.split("\n") {
       for j, ch in line {
         if ctx.canvas.is_in_bounds(x_pos + j, y + y_factor + line_idx) {
           ctx.canvas.set(x_pos + j, y + y_factor + line_idx, ch)
         }
       }
     }
+  }
+}
+
+///|
+fn draw_destination_label(
+  ctx : RouteDrawContext,
+  label : String,
+  cx : Double,
+  cy : Double,
+  sx : Double,
+  sy : Double,
+) -> Unit {
+  let mut max_line_len = 0
+  for line in label.split("\n") {
+    if line.length() > max_line_len {
+      max_line_len = line.length()
+    }
+  }
+
+  let mut ly = 0
+  let mut lx = 0
+  if sx.abs() > 0.0 {
+    ly = round_int(cy - 1.0)
+    if sx > 0.0 {
+      lx = round_int(cx) - 1 - max_line_len
+    } else {
+      lx = round_int(cx)
+    }
+  } else if sy.abs() > 0.0 {
+    ly = round_int(cy - 1.0)
+    lx = round_int(cx + 1.0)
+  }
+
+  for line_idx, line in label.split("\n") {
+    for j, ch in line {
+      ctx.canvas.set(lx + j + 2, ly + line_idx, ch)
+    }
+  }
+}
+
+///|
+fn draw_source_label(
+  ctx : RouteDrawContext,
+  label : String,
+  ax : Double,
+  cy : Double,
+  cx : Double,
+  sx : Double,
+  sy : Double,
+) -> Unit {
+  let mut max_line_len = 0
+  for line in label.split("\n") {
+    if line.length() > max_line_len {
+      max_line_len = line.length()
+    }
+  }
+
+  let mut ly = 0
+  let mut lx = 0
+  if sx.abs() > 0.0 {
+    ly = round_int(cy - 1.0)
+    if sx > 0.0 {
+      lx = round_int(ax)
+    } else {
+      lx = round_int(ax) - 1 - max_line_len
+    }
+  } else if sy.abs() > 0.0 {
+    ly = round_int(cy - 1.0)
+    lx = round_int(cx + 1.0)
+  }
+
+  for line_idx, line in label.split("\n") {
+    for j, ch in line {
+      ctx.canvas.set(lx + j, ly + line_idx, ch)
+    }
+  }
+}
+
+///|
+fn draw_arrowhead_labels(
+  ctx : RouteDrawContext,
+  conn : @diagram.Connection,
+  routes : Array[RoutePoint],
+) -> Unit {
+  if routes.length() < 2 {
+    return
+  }
+
+  match conn.dst_arrowhead_label {
+    Some(label) =>
+      if label != "" && conn.dst_arrow {
+        let second_last = routes[routes.length() - 2]
+        let last = routes[routes.length() - 1]
+        let dx = last.x - second_last.x
+        let dy = last.y - second_last.y
+        let step = max_double(dx.abs(), dy.abs())
+        if step > 0.0 {
+          draw_destination_label(
+            ctx,
+            label,
+            last.x,
+            last.y,
+            dx / step,
+            dy / step,
+          )
+        }
+      }
+    None => ()
+  }
+
+  match conn.src_arrowhead_label {
+    Some(label) =>
+      if label != "" && conn.src_arrow {
+        let first = routes[0]
+        let second = routes[1]
+        let dx = second.x - first.x
+        let dy = second.y - first.y
+        let step = max_double(dx.abs(), dy.abs())
+        if step > 0.0 {
+          draw_source_label(
+            ctx,
+            label,
+            first.x,
+            second.y,
+            second.x,
+            dx / step,
+            dy / step,
+          )
+        }
+      }
+    None => ()
   }
 }

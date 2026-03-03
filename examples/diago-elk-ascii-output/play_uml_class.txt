@@ -1,13 +1,14 @@
-+---------+---------+-+---------------------------+
-|commit() |of bool)l|D| Parser                    |
-||      | |    ||   | |                           |
-+---------+---------+-+---------------------------+
- |+reader                           io.RuneReader |
- |readerPos                        d2ast.Position |
- |-lookahead                               []rune |
- |#peekn(n int)              (s string, eof bool) |
- |+peek()                      (r rune, eof bool) |
- |rewind()                               rewind() |
- |commit()                               commit() |
- |                                                |
- +------------------------------------------------+
++------------------------------------------------+
+|                   D2 Parser                    |
+|                                                |
++------------------------------------------------+
+|+reader                           io.RuneReader |
+|+readerPos                       d2ast.Position |
+|-lookahead                               []rune |
++------------------------------------------------+
+|#peekn(n int)              (s string, eof bool) |
+|+peek()                      (r rune, eof bool) |
+|+rewind()                                  void |
+|+commit()                                  void |
+|                                                |
++------------------------------------------------+

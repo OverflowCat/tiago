@@ -10,6 +10,7 @@
   chase   │       To err is human, to moo bovine
     │     └──────────┘           │              
     │                            │              
+    │                            │  *           
     ▼                            ▼              
 ┌───────┐                      ┌────┐           
 │ cats  │                      │ b  │           
