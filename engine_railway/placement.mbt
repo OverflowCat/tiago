@@ -116,7 +116,9 @@ fn place_nodes_dagre(
   let levels = levels_from_rank_and_order(
     graph, rank_by_id, dagre_node_id_by_object_id, laid_out,
   )
-  align_levels_to_left_anchor(boxes, levels, object_by_id, direction)
+  repack_levels_left_to_right(
+    graph, boxes, levels, object_by_id, direction, config,
+  )
   let (level_main_mins, level_main_maxs, level_cross_mins, level_cross_maxs) = level_bounds_from_boxes(
     graph, boxes, levels, direction, config,
   )
@@ -131,48 +133,61 @@ fn place_nodes_dagre(
 }
 
 ///|
-fn align_levels_to_left_anchor(
+fn repack_levels_left_to_right(
+  graph : @graph.GraphInput,
   boxes : Map[String, @graph.Box],
   levels : Array[Level],
   object_by_id : Map[String, @graph.ObjectInput],
   direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
 ) -> Unit {
   if direction != @engine_api.Down {
     return
   }
-  let first_crosses : Array[Double] = []
+  let anchor_candidates : Array[Double] = []
   for level in levels {
     match min_physical_cross_in_level(level, boxes, object_by_id, direction) {
-      Some(cross) => first_crosses.push(cross)
+      Some(cross) => anchor_candidates.push(cross)
       None => ()
     }
   }
-  if first_crosses.is_empty() {
+  if anchor_candidates.is_empty() {
     return
   }
-  let mut anchor = first_crosses[0]
-  for cross in first_crosses {
+  let mut anchor = anchor_candidates[0]
+  for cross in anchor_candidates {
     anchor = @cmp.minimum(anchor, cross)
   }
+
+  let degree_by_id : Map[String, Int] = {}
+  for edge in graph.edges {
+    degree_by_id[edge.src_id] = degree_by_id.get_or_default(edge.src_id, 0) + 1
+    degree_by_id[edge.dst_id] = degree_by_id.get_or_default(edge.dst_id, 0) + 1
+  }
+
   for level in levels {
-    let first_cross = match
-      min_physical_cross_in_level(level, boxes, object_by_id, direction) {
-      Some(cross) => cross
-      None => continue
+    let physical_ids : Array[String] = []
+    for id in level {
+      match object_by_id.get(id) {
+        Some(obj) =>
+          if !is_layout_container_candidate(obj) {
+            physical_ids.push(id)
+          }
+        None => if boxes.contains(id) { physical_ids.push(id) }
+      }
     }
-    let delta = anchor - first_cross
-    if delta.abs() <= 0.000001 {
+    if physical_ids.is_empty() {
       continue
     }
-    for id in level {
+    let mut cursor = anchor
+    for id in physical_ids {
       match boxes.get(id) {
-        Some(box) =>
-          boxes[id] = match direction {
-            Down | Up =>
-              @graph.Box::new(box.x + delta, box.y, box.width, box.height)
-            Right | Left =>
-              @graph.Box::new(box.x, box.y + delta, box.width, box.height)
-          }
+        Some(box) => {
+          boxes[id] = @graph.Box::new(cursor, box.y, box.width, box.height)
+          let degree = degree_by_id.get_or_default(id, 0)
+          let congestion_bonus = @cmp.minimum(48.0, degree.to_double() * 6.0)
+          cursor += box.width + config.horizontal_spacing + congestion_bonus
+        }
         None => ()
       }
     }

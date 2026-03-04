@@ -282,6 +282,8 @@ fn recompute_edge_label_boxes(
     )
   }
   resolve_edge_label_collisions(label_boxes, direction, config, lane_by_edge)
+  resolve_edge_label_obstacles(label_boxes, patch, graph, config)
+  resolve_edge_label_collisions(label_boxes, direction, config, lane_by_edge)
   for entry in label_boxes {
     patch.edge_labels[entry.0] = entry.1
   }
@@ -397,6 +399,179 @@ fn resolve_edge_label_collisions(
         None => ()
       }
     }
+  }
+}
+
+///|
+fn resolve_edge_label_obstacles(
+  label_boxes : Map[Int, @graph.Box],
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  config : @engine_api.LayoutConfig,
+) -> Unit {
+  if label_boxes.is_empty() {
+    return
+  }
+  let edge_by_index : Map[Int, @graph.EdgeInput] = {}
+  for edge in graph.edges {
+    edge_by_index[edge.index] = edge
+  }
+  let order : Array[Int] = []
+  for entry in label_boxes {
+    order.push(entry.0)
+  }
+  order.sort()
+  let step = @cmp.maximum(10.0, config.edge_padding * 0.7)
+  for edge_index in order {
+    let base = match label_boxes.get(edge_index) {
+      Some(box) => box
+      None => continue
+    }
+    let edge = match edge_by_index.get(edge_index) {
+      Some(v) => v
+      None => continue
+    }
+    let mut best = base
+    let mut best_score = label_obstacle_score(
+      edge_index, base, base, edge, label_boxes, patch,
+    )
+    for ring in 1..<=5 {
+      let d = ring.to_double() * step
+      let candidates : Array[(Double, Double)] = [
+        (d, 0.0),
+        (-d, 0.0),
+        (0.0, d),
+        (0.0, -d),
+        (d, d),
+        (d, -d),
+        (-d, d),
+        (-d, -d),
+      ]
+      for candidate in candidates {
+        let trial = @graph.Box::new(
+          base.x + candidate.0,
+          base.y + candidate.1,
+          base.width,
+          base.height,
+        )
+        let score = label_obstacle_score(
+          edge_index, trial, base, edge, label_boxes, patch,
+        )
+        if score < best_score {
+          best = trial
+          best_score = score
+        }
+      }
+    }
+    label_boxes[edge_index] = best
+  }
+}
+
+///|
+fn label_obstacle_score(
+  edge_index : Int,
+  box : @graph.Box,
+  base : @graph.Box,
+  edge : @graph.EdgeInput,
+  label_boxes : Map[Int, @graph.Box],
+  patch : @graph.LayoutPatch,
+) -> Double {
+  let mut score = 0.0
+  // Keep labels near original midpoint unless a collision forces movement.
+  score += ((box.x - base.x).abs() + (box.y - base.y).abs()) * 0.2
+
+  for entry in label_boxes {
+    let other_edge = entry.0
+    if other_edge == edge_index {
+      continue
+    }
+    let other = entry.1
+    let area = overlap_area(box, other)
+    if area > 0.0 {
+      score += 1200.0 + area * 8.0
+    }
+  }
+
+  for entry in patch.nodes {
+    let node_id = entry.0
+    if node_id == edge.src_id || node_id == edge.dst_id {
+      continue
+    }
+    let node_box = entry.1
+    let area = overlap_area(box, node_box)
+    if area > 0.0 {
+      score += 1600.0 + area * 10.0
+    }
+  }
+
+  for entry in patch.edges {
+    let other_edge = entry.0
+    let route = entry.1
+    if route.length() < 2 {
+      continue
+    }
+    for i in 0..<(route.length() - 1) {
+      let a = route[i]
+      let b = route[i + 1]
+      if segment_intersects_box(a, b, box) {
+        if other_edge == edge_index {
+          score += 4.0
+        } else {
+          score += 280.0
+        }
+      }
+    }
+  }
+  score
+}
+
+///|
+fn overlap_area(a : @graph.Box, b : @graph.Box) -> Double {
+  let left = @cmp.maximum(a.x, b.x)
+  let right = @cmp.minimum(a.x + a.width, b.x + b.width)
+  let top = @cmp.maximum(a.y, b.y)
+  let bottom = @cmp.minimum(a.y + a.height, b.y + b.height)
+  if right <= left || bottom <= top {
+    0.0
+  } else {
+    (right - left) * (bottom - top)
+  }
+}
+
+///|
+fn ranges_overlap(a0 : Double, a1 : Double, b0 : Double, b1 : Double) -> Bool {
+  let lo_a = @cmp.minimum(a0, a1)
+  let hi_a = @cmp.maximum(a0, a1)
+  let lo_b = @cmp.minimum(b0, b1)
+  let hi_b = @cmp.maximum(b0, b1)
+  !(hi_a < lo_b || hi_b < lo_a)
+}
+
+///|
+fn segment_intersects_box(
+  a : @graph.Point,
+  b : @graph.Point,
+  box : @graph.Box,
+) -> Bool {
+  let left = box.x
+  let right = box.x + box.width
+  let top = box.y
+  let bottom = box.y + box.height
+  let tol = 1.0e-6
+  if (a.x - b.x).abs() <= tol {
+    // Vertical segment.
+    a.x >= left - tol &&
+    a.x <= right + tol &&
+    ranges_overlap(a.y, b.y, top, bottom)
+  } else if (a.y - b.y).abs() <= tol {
+    // Horizontal segment.
+    a.y >= top - tol &&
+    a.y <= bottom + tol &&
+    ranges_overlap(a.x, b.x, left, right)
+  } else {
+    // Defensive fallback for non-orthogonal segments.
+    ranges_overlap(a.x, b.x, left, right) &&
+    ranges_overlap(a.y, b.y, top, bottom)
   }
 }
 

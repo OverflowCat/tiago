@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="494" height="703" viewBox="-101 -101 494 703" data-d2-version="0.2.0" class="d2-911176571 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="494" height="703"><rect x="-101" y="-101" width="494" height="703" fill="white"></rect><rect x="14" y="380" width="75" height="21" fill="black"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="506" height="703" viewBox="-101 -101 506 703" data-d2-version="0.2.0" class="d2-911176571 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="506" height="703"><rect x="-101" y="-101" width="506" height="703" fill="white"></rect><rect x="14" y="394" width="75" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-101" y="-101" width="494" height="703" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="506" height="703" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="176" y="140" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
+<rect x="188" y="140" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="140" width="116" height="60" fill="#e3f2fd" stroke="#1976D2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 0 304 C 0 280 46.800000000000004 280 52 280 C 57.199999999999996 280 104 280 104 304 L 104 316 C 104 340 57.199999999999996 340 52 340 C 46.800000000000004 340 0 340 0 316 L 0 304 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
 <path d="M 0 304 C 0 328 46.800000000000004 328 52 328 C 57.199999999999996 328 104 328 104 304" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
 <path d="M 0 465 C 0 441 45 441 50 441 C 55 441 100 441 100 465 L 100 477 C 100 501 55 501 50 501 C 45 501 0 501 0 477 L 0 465 Z" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
 <path d="M 0 465 C 0 489 45 489 50 489 C 55 489 100 489 100 465" fill="#fff8e1" stroke="#FFA000" stroke-width="2"/>
-<path d="M 276 60 H 176 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 194.74084919472915 31.705426356589143 189.0307467057101 25.89147286821705 189.0307467057101 19.53488372093023 C 189.0307467057101 8.75968992248062 205.5754026354319 0 225.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 266 60 H 166 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 184.74084919472915 31.705426356589143 179.0307467057101 25.89147286821705 179.0307467057101 19.53488372093023 C 179.0307467057101 8.75968992248062 195.5754026354319 0 215.9267935578331 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 100 60 H 0 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 18.740849194729137 31.705426356589143 13.030746705710103 25.89147286821705 13.030746705710103 19.53488372093023 C 13.030746705710103 8.75968992248062 29.575402635431917 0 49.92679355783309 0 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 226 62 L 226 96 C 226 104 234 96 234 104 L 234 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 216 62 L 216 90 S 216 100 226 100 L 236 100 S 246 100 246 110 L 246 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 50 62 L 50 96 C 50 104 58 96 58 104 L 58 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 234 202 L 234 230 S 234 240 224 240 L 104 240 S 94 240 94 250 L 94 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 246 202 L 246 230 S 246 240 236 240 L 104 240 S 94 240 94 250 L 94 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 58 202 L 58 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 52 342 L 52 389.5 C 52 391.5 50 389.5 50 391.5 L 50 437" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="51.5" y="396" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">replication</text>
-<text x="234" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
+<text x="51.5" y="410" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">replication</text>
+<text x="246" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
 <text x="58" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
 <text x="52" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
 <text x="50" y="476.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica DB</text>
-<text x="226" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Alice</text>
+<text x="216" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Alice</text>
 <text x="50" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Bob</text>
 </g>
 </svg>
