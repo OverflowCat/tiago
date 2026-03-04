@@ -880,6 +880,70 @@ fn add_theme_styles(
 }
 
 ///|
+fn add_base_styles(
+  svg : @svg.Svg,
+  light_theme : @themes.Theme,
+  has_dark_theme : Bool,
+  has_code_shape : Bool,
+) -> Unit {
+  if !has_code_shape {
+    return
+  }
+  let lines : Array[String] = []
+  lines.push("@font-face {")
+  lines.push("  font-family: \"diago-font-mono\";")
+  lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
+  lines.push("}")
+  lines.push("@font-face {")
+  lines.push("  font-family: \"diago-font-mono-bold\";")
+  lines.push("  src: url(\"\{source_code_pro_bold_data}\");")
+  lines.push("}")
+  lines.push("@font-face {")
+  lines.push("  font-family: \"diago-font-mono-italic\";")
+  lines.push("  src: url(\"\{source_code_pro_italic_data}\");")
+  lines.push("}")
+  lines.push(".text-mono {")
+  lines.push("  font-family: \"diago-font-mono\";")
+  lines.push("}")
+  lines.push(".text-mono-bold {")
+  lines.push("  font-family: \"diago-font-mono-bold\";")
+  lines.push("}")
+  lines.push(".text-mono-italic {")
+  lines.push("  font-family: \"diago-font-mono-italic\";")
+  lines.push("}")
+  if light_theme.is_dark {
+    lines.push(".light-code{display: none}")
+    lines.push(".dark-code{display: block}")
+  } else {
+    lines.push(".light-code{display: block}")
+    lines.push(".dark-code{display: none}")
+  }
+  if has_dark_theme {
+    lines.push("@media screen and (prefers-color-scheme: dark) {")
+    lines.push("  .light-code{display: none}")
+    lines.push("  .dark-code{display: block}")
+    lines.push("}")
+  }
+  let css = lines.join("\n")
+  svg.add(
+    @xml_emit.Element::new("style")
+    .attr("type", "text/css")
+    .cdata(css + "\n")
+    .build(),
+  )
+}
+
+///|
+fn graph_has_code_shape(graph : Diagram) -> Bool {
+  for shape in graph.shapes {
+    if shape.shape_type == Code {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn hash_u32(s : String) -> Int {
   let mut h : Int = 216613626
   for i in 0..<s.length() {
@@ -1600,6 +1664,12 @@ pub fn render_svg(
   if graph_has_links(graph) {
     svg.add_root_attr("xmlns:xlink", "http://www.w3.org/1999/xlink")
   }
+  add_base_styles(
+    svg,
+    light_theme,
+    dark_theme is Some(_),
+    graph_has_code_shape(graph),
+  )
   if use_css_theme_vars {
     add_theme_styles(svg, light_theme, dark_theme)
   }
