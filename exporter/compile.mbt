@@ -516,6 +516,16 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
 
 ///|
 fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
+  let effective_src_arrowhead = if edge.src_arrow {
+    edge.src_arrowhead
+  } else {
+    None
+  }
+  let effective_dst_arrowhead = if edge.dst_arrow {
+    edge.dst_arrowhead
+  } else {
+    None
+  }
   let bend_points = match edge.bend_points {
     Some(ps) => {
       let copied : Array[Point] = []
@@ -532,8 +542,8 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
     edge.dst_id,
     edge.src_arrow,
     edge.dst_arrow,
-    edge.src_arrowhead,
-    edge.dst_arrowhead,
+    effective_src_arrowhead,
+    effective_dst_arrowhead,
     edge.src_arrowhead_label,
     edge.dst_arrowhead_label,
     edge.src_arrowhead_label_color,
@@ -673,6 +683,7 @@ pub fn compile(
   handle_root_shape(graph, ir)
   apply_d2_text_defaults(graph)
   apply_sequence_defaults(graph)
+  apply_d2_color_defaults(graph)
   // Compile D2 legend (vars.d2-legend)
   compile_legend(graph, ir, classes)
   // Semantic validation pass aligned with D2 compiler behavior.
@@ -815,7 +826,10 @@ fn set_object_label_from_scalar(obj : Object, scalar : @ir.Scalar) -> Unit {
       let tag = normalize_block_string_language(tag_raw)
       if tag.length() > 0 {
         obj.classes.push("lang:" + tag)
-        if tag != "latex" && tag != "markdown" {
+        if tag == "latex" || tag == "markdown" {
+          // D2 parity: markdown/latex default to text shape unless explicitly overridden.
+          obj.shape_type = ShapeType::Text
+        } else {
           obj.shape_type = ShapeType::Code
         }
       }
@@ -1965,13 +1979,14 @@ fn compile_legend(
       legend.add_entry(LegendEntry::separator())
       added_sep = true
     }
+    let (src_arrowhead, dst_arrowhead) = effective_edge_arrowheads(edge)
     have_edges = true
     legend.add_entry(
       LegendEntry::connection(
-        edge.src_arrowhead,
-        edge.dst_arrowhead,
+        src_arrowhead,
+        dst_arrowhead,
         if edge.label.length() == 0 {
-          connection_label(edge.src_arrowhead, edge.dst_arrowhead)
+          connection_label(src_arrowhead, dst_arrowhead)
         } else {
           edge.label
         },
@@ -2247,6 +2262,13 @@ fn connection_label(src : ArrowheadType, dst : ArrowheadType) -> String {
 }
 
 ///|
+fn effective_edge_arrowheads(edge : Edge) -> (ArrowheadType, ArrowheadType) {
+  let src = if edge.src_arrow { edge.src_arrowhead } else { None }
+  let dst = if edge.dst_arrow { edge.dst_arrowhead } else { None }
+  (src, dst)
+}
+
+///|
 fn collect_legend_entries_into(
   g : Graph,
   shapes : Map[String, Bool],
@@ -2256,8 +2278,9 @@ fn collect_legend_entries_into(
     shapes[obj.shape_type.to_shape_string()] = true
   }
   for e in g.edges {
-    let key = "\{e.src_arrowhead.to_arrowhead_string()}|\{e.dst_arrowhead.to_arrowhead_string()}"
-    conns[key] = (e.src_arrowhead, e.dst_arrowhead)
+    let (src, dst) = effective_edge_arrowheads(e)
+    let key = "\{src.to_arrowhead_string()}|\{dst.to_arrowhead_string()}"
+    conns[key] = (src, dst)
   }
 }
 
@@ -2541,8 +2564,9 @@ fn apply_sequence_defaults(graph : Graph) -> Unit {
     if child_ids.contains(obj.id) {
       continue
     }
+    let has_messages = object_has_incident_edge(graph, obj.id)
     if obj.style.fill is None {
-      obj.style.fill = Some("B5")
+      obj.style.fill = Some(if has_messages { "B5" } else { "N7" })
     }
     if obj.style.stroke is None {
       obj.style.stroke = Some("B1")
@@ -2562,6 +2586,123 @@ fn apply_sequence_defaults(graph : Graph) -> Unit {
       edge.style.curved = Some(false)
     }
   }
+}
+
+///|
+fn object_has_incident_edge(graph : Graph, object_id : String) -> Bool {
+  for edge in graph.edges {
+    if edge.src_id == object_id || edge.dst_id == object_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn apply_d2_color_defaults(graph : Graph) -> Unit {
+  for obj in graph.objects {
+    if obj.style.fill is None {
+      obj.style.fill = Some(d2_default_object_fill(obj))
+    }
+    if obj.style.stroke is None {
+      obj.style.stroke = Some(d2_default_object_stroke(obj))
+    }
+  }
+  for edge in graph.edges {
+    if edge.style.stroke is None {
+      edge.style.stroke = Some(d2_default_edge_stroke(edge))
+    }
+  }
+}
+
+///|
+fn d2_default_object_fill(obj : Object) -> String {
+  let level = object_depth_from_id(obj.id)
+  let shape = obj.shape_type
+  if shape == ShapeType::SqlTable || shape == ShapeType::Class {
+    return "N7"
+  }
+  if shape == ShapeType::Rectangle ||
+    shape == ShapeType::Square ||
+    shape == ShapeType::Circle ||
+    shape == ShapeType::Oval ||
+    shape == ShapeType::C4Container {
+    if level == 1 {
+      if obj.children.is_empty() {
+        return "B6"
+      }
+      return "B4"
+    }
+    if level == 2 {
+      return "B5"
+    }
+    if level == 3 {
+      return "B6"
+    }
+    return "N7"
+  }
+  if shape == ShapeType::Cylinder ||
+    shape == ShapeType::StoredData ||
+    shape == ShapeType::Package {
+    if level == 1 {
+      return "AA4"
+    }
+    return "AA5"
+  }
+  if shape == ShapeType::Step ||
+    shape == ShapeType::Page ||
+    shape == ShapeType::Document {
+    if level == 1 {
+      return "AB4"
+    }
+    return "AB5"
+  }
+  if shape == ShapeType::Person || shape == ShapeType::C4Person {
+    return "B3"
+  }
+  if shape == ShapeType::Diamond {
+    return "N4"
+  }
+  if shape == ShapeType::Cloud || shape == ShapeType::Callout {
+    return "N7"
+  }
+  if shape == ShapeType::Queue ||
+    shape == ShapeType::Parallelogram ||
+    shape == ShapeType::Hexagon {
+    return "N5"
+  }
+  "N7"
+}
+
+///|
+fn d2_default_object_stroke(obj : Object) -> String {
+  let shape = obj.shape_type
+  if shape == ShapeType::Code || shape == ShapeType::Text {
+    return "N1"
+  }
+  if shape == ShapeType::Class || shape == ShapeType::SqlTable {
+    return "N1"
+  }
+  let dash = match obj.style.stroke_dash {
+    Some(v) => v
+    None => 0.0
+  }
+  if dash != 0.0 {
+    return "B2"
+  }
+  "B1"
+}
+
+///|
+fn d2_default_edge_stroke(edge : Edge) -> String {
+  let dash = match edge.style.stroke_dash {
+    Some(v) => v
+    None => 0.0
+  }
+  if dash != 0.0 {
+    return "B2"
+  }
+  "B1"
 }
 
 ///|

@@ -409,6 +409,421 @@ fn style_color(
 }
 
 ///|
+fn hex_digit_value(c : Char) -> Int? {
+  let code = c.to_int()
+  if code >= '0'.to_int() && code <= '9'.to_int() {
+    Some(code - '0'.to_int())
+  } else if code >= 'a'.to_int() && code <= 'f'.to_int() {
+    Some(10 + code - 'a'.to_int())
+  } else if code >= 'A'.to_int() && code <= 'F'.to_int() {
+    Some(10 + code - 'A'.to_int())
+  } else {
+    None
+  }
+}
+
+///|
+fn parse_hex_byte(high : Char, low : Char) -> Int? {
+  match hex_digit_value(high) {
+    Some(hi) =>
+      match hex_digit_value(low) {
+        Some(lo) => Some(hi * 16 + lo)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn char_at(s : String, index : Int) -> Char? {
+  if index < 0 || index >= s.length() {
+    return None
+  }
+  s[index].to_char()
+}
+
+///|
+fn starts_with_hash(s : String) -> Bool {
+  match char_at(s, 0) {
+    Some('#') => true
+    _ => false
+  }
+}
+
+///|
+fn parse_hex_pair_at(s : String, index : Int) -> Int? {
+  match char_at(s, index) {
+    Some(high) =>
+      match char_at(s, index + 1) {
+        Some(low) => parse_hex_byte(high, low)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn parse_hex_nibble_at(s : String, index : Int) -> Int? {
+  match char_at(s, index) {
+    Some(c) => hex_digit_value(c)
+    None => None
+  }
+}
+
+///|
+fn parse_hex_color(color : String) -> (Int, Int, Int)? {
+  if color.length() == 7 && starts_with_hash(color) {
+    match parse_hex_pair_at(color, 1) {
+      Some(r) =>
+        match parse_hex_pair_at(color, 3) {
+          Some(g) =>
+            match parse_hex_pair_at(color, 5) {
+              Some(b) => Some((r, g, b))
+              None => None
+            }
+          None => None
+        }
+      None => None
+    }
+  } else if color.length() == 4 && starts_with_hash(color) {
+    match parse_hex_nibble_at(color, 1) {
+      Some(r0) =>
+        match parse_hex_nibble_at(color, 2) {
+          Some(g0) =>
+            match parse_hex_nibble_at(color, 3) {
+              Some(b0) => Some((r0 * 17, g0 * 17, b0 * 17))
+              None => None
+            }
+          None => None
+        }
+      None => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn hex_digit_char(v : Int) -> Char {
+  match v {
+    0 => '0'
+    1 => '1'
+    2 => '2'
+    3 => '3'
+    4 => '4'
+    5 => '5'
+    6 => '6'
+    7 => '7'
+    8 => '8'
+    9 => '9'
+    10 => 'a'
+    11 => 'b'
+    12 => 'c'
+    13 => 'd'
+    14 => 'e'
+    15 => 'f'
+    _ => '0'
+  }
+}
+
+///|
+fn hex_byte_string(v : Int) -> String {
+  let clamped = if v < 0 { 0 } else if v > 255 { 255 } else { v }
+  let hi = clamped / 16
+  let lo = clamped % 16
+  let sb = StringBuilder::new()
+  sb.write_char(hex_digit_char(hi))
+  sb.write_char(hex_digit_char(lo))
+  sb.to_string()
+}
+
+///|
+fn hue_to_rgb(p : Double, q : Double, t0 : Double) -> Double {
+  let mut t = t0
+  if t < 0.0 {
+    t = t + 1.0
+  }
+  if t > 1.0 {
+    t = t - 1.0
+  }
+  if t < 1.0 / 6.0 {
+    p + (q - p) * 6.0 * t
+  } else if t < 1.0 / 2.0 {
+    q
+  } else if t < 2.0 / 3.0 {
+    p + (q - p) * (2.0 / 3.0 - t) * 6.0
+  } else {
+    p
+  }
+}
+
+///|
+fn darken_theme_color_token(token : String) -> String? {
+  match token {
+    "B1" | "B2" => Some("B1")
+    "B3" => Some("B2")
+    "B4" => Some("B3")
+    "B5" => Some("B4")
+    "B6" => Some("B5")
+    "AA2" | "AA4" => Some("AA2")
+    "AA5" => Some("AA4")
+    "AB4" => Some("AB4")
+    "AB5" => Some("AB5")
+    "N1" | "N2" => Some("N1")
+    "N3" => Some("N2")
+    "N4" => Some("N3")
+    "N5" => Some("N4")
+    "N6" => Some("N5")
+    "N7" => Some("N6")
+    _ => None
+  }
+}
+
+///|
+fn css_named_color_rgb(color : String) -> (Int, Int, Int)? {
+  match color {
+    "aliceblue" => Some((240, 248, 255))
+    "antiquewhite" => Some((250, 235, 215))
+    "aqua" => Some((0, 255, 255))
+    "aquamarine" => Some((127, 255, 212))
+    "azure" => Some((240, 255, 255))
+    "beige" => Some((245, 245, 220))
+    "bisque" => Some((255, 228, 196))
+    "black" => Some((0, 0, 0))
+    "blanchedalmond" => Some((255, 235, 205))
+    "blue" => Some((0, 0, 255))
+    "blueviolet" => Some((138, 43, 226))
+    "brown" => Some((165, 42, 42))
+    "burlywood" => Some((222, 184, 135))
+    "cadetblue" => Some((95, 158, 160))
+    "chartreuse" => Some((127, 255, 0))
+    "chocolate" => Some((210, 105, 30))
+    "coral" => Some((255, 127, 80))
+    "cornflowerblue" => Some((100, 149, 237))
+    "cornsilk" => Some((255, 248, 220))
+    "crimson" => Some((220, 20, 60))
+    "cyan" => Some((0, 255, 255))
+    "darkblue" => Some((0, 0, 139))
+    "darkcyan" => Some((0, 139, 139))
+    "darkgoldenrod" => Some((184, 134, 11))
+    "darkgray" => Some((169, 169, 169))
+    "darkgreen" => Some((0, 100, 0))
+    "darkgrey" => Some((169, 169, 169))
+    "darkkhaki" => Some((189, 183, 107))
+    "darkmagenta" => Some((139, 0, 139))
+    "darkolivegreen" => Some((85, 107, 47))
+    "darkorange" => Some((255, 140, 0))
+    "darkorchid" => Some((153, 50, 204))
+    "darkred" => Some((139, 0, 0))
+    "darksalmon" => Some((233, 150, 122))
+    "darkseagreen" => Some((143, 188, 143))
+    "darkslateblue" => Some((72, 61, 139))
+    "darkslategray" => Some((47, 79, 79))
+    "darkslategrey" => Some((47, 79, 79))
+    "darkturquoise" => Some((0, 206, 209))
+    "darkviolet" => Some((148, 0, 211))
+    "deeppink" => Some((255, 20, 147))
+    "deepskyblue" => Some((0, 191, 255))
+    "dimgray" => Some((105, 105, 105))
+    "dimgrey" => Some((105, 105, 105))
+    "dodgerblue" => Some((30, 144, 255))
+    "firebrick" => Some((178, 34, 34))
+    "floralwhite" => Some((255, 250, 240))
+    "forestgreen" => Some((34, 139, 34))
+    "fuchsia" => Some((255, 0, 255))
+    "gainsboro" => Some((220, 220, 220))
+    "ghostwhite" => Some((248, 248, 255))
+    "gold" => Some((255, 215, 0))
+    "goldenrod" => Some((218, 165, 32))
+    "gray" => Some((128, 128, 128))
+    "green" => Some((0, 128, 0))
+    "greenyellow" => Some((173, 255, 47))
+    "grey" => Some((128, 128, 128))
+    "honeydew" => Some((240, 255, 240))
+    "hotpink" => Some((255, 105, 180))
+    "indianred" => Some((205, 92, 92))
+    "indigo" => Some((75, 0, 130))
+    "ivory" => Some((255, 255, 240))
+    "khaki" => Some((240, 230, 140))
+    "lavender" => Some((230, 230, 250))
+    "lavenderblush" => Some((255, 240, 245))
+    "lawngreen" => Some((124, 252, 0))
+    "lemonchiffon" => Some((255, 250, 205))
+    "lightblue" => Some((173, 216, 230))
+    "lightcoral" => Some((240, 128, 128))
+    "lightcyan" => Some((224, 255, 255))
+    "lightgoldenrodyellow" => Some((250, 250, 210))
+    "lightgray" => Some((211, 211, 211))
+    "lightgreen" => Some((144, 238, 144))
+    "lightgrey" => Some((211, 211, 211))
+    "lightpink" => Some((255, 182, 193))
+    "lightsalmon" => Some((255, 160, 122))
+    "lightseagreen" => Some((32, 178, 170))
+    "lightskyblue" => Some((135, 206, 250))
+    "lightslategray" => Some((119, 136, 153))
+    "lightslategrey" => Some((119, 136, 153))
+    "lightsteelblue" => Some((176, 196, 222))
+    "lightyellow" => Some((255, 255, 224))
+    "lime" => Some((0, 255, 0))
+    "limegreen" => Some((50, 205, 50))
+    "linen" => Some((250, 240, 230))
+    "magenta" => Some((255, 0, 255))
+    "maroon" => Some((128, 0, 0))
+    "mediumaquamarine" => Some((102, 205, 170))
+    "mediumblue" => Some((0, 0, 205))
+    "mediumorchid" => Some((186, 85, 211))
+    "mediumpurple" => Some((147, 112, 219))
+    "mediumseagreen" => Some((60, 179, 113))
+    "mediumslateblue" => Some((123, 104, 238))
+    "mediumspringgreen" => Some((0, 250, 154))
+    "mediumturquoise" => Some((72, 209, 204))
+    "mediumvioletred" => Some((199, 21, 133))
+    "midnightblue" => Some((25, 25, 112))
+    "mintcream" => Some((245, 255, 250))
+    "mistyrose" => Some((255, 228, 225))
+    "moccasin" => Some((255, 228, 181))
+    "navajowhite" => Some((255, 222, 173))
+    "navy" => Some((0, 0, 128))
+    "oldlace" => Some((253, 245, 230))
+    "olive" => Some((128, 128, 0))
+    "olivedrab" => Some((107, 142, 35))
+    "orange" => Some((255, 165, 0))
+    "orangered" => Some((255, 69, 0))
+    "orchid" => Some((218, 112, 214))
+    "palegoldenrod" => Some((238, 232, 170))
+    "palegreen" => Some((152, 251, 152))
+    "paleturquoise" => Some((175, 238, 238))
+    "palevioletred" => Some((219, 112, 147))
+    "papayawhip" => Some((255, 239, 213))
+    "peachpuff" => Some((255, 218, 185))
+    "peru" => Some((205, 133, 63))
+    "pink" => Some((255, 192, 203))
+    "plum" => Some((221, 160, 221))
+    "powderblue" => Some((176, 224, 230))
+    "purple" => Some((128, 0, 128))
+    "rebeccapurple" => Some((102, 51, 153))
+    "red" => Some((255, 0, 0))
+    "rosybrown" => Some((188, 143, 143))
+    "royalblue" => Some((65, 105, 225))
+    "saddlebrown" => Some((139, 69, 19))
+    "salmon" => Some((250, 128, 114))
+    "sandybrown" => Some((244, 164, 96))
+    "seagreen" => Some((46, 139, 87))
+    "seashell" => Some((255, 245, 238))
+    "sienna" => Some((160, 82, 45))
+    "silver" => Some((192, 192, 192))
+    "skyblue" => Some((135, 206, 235))
+    "slateblue" => Some((106, 90, 205))
+    "slategray" => Some((112, 128, 144))
+    "slategrey" => Some((112, 128, 144))
+    "snow" => Some((255, 250, 250))
+    "springgreen" => Some((0, 255, 127))
+    "steelblue" => Some((70, 130, 180))
+    "tan" => Some((210, 180, 140))
+    "teal" => Some((0, 128, 128))
+    "thistle" => Some((216, 191, 216))
+    "tomato" => Some((255, 99, 71))
+    "turquoise" => Some((64, 224, 208))
+    "violet" => Some((238, 130, 238))
+    "wheat" => Some((245, 222, 179))
+    "white" => Some((255, 255, 255))
+    "whitesmoke" => Some((245, 245, 245))
+    "yellow" => Some((255, 255, 0))
+    "yellowgreen" => Some((154, 205, 50))
+    _ => None
+  }
+}
+
+///|
+fn parse_css_rgb(color : String) -> (Int, Int, Int)? {
+  let normalized = color.trim().to_lower().to_string()
+  if normalized == "transparent" {
+    return Some((0, 0, 0))
+  }
+  match parse_hex_color(normalized) {
+    Some(rgb) => Some(rgb)
+    None => css_named_color_rgb(normalized)
+  }
+}
+
+///|
+fn darken_color_like_d2(color : String) -> String {
+  match theme_token(color) {
+    Some(token) =>
+      match darken_theme_color_token(token) {
+        Some(darker) => return darker
+        None => return color
+      }
+    None => ()
+  }
+  let (r_i, g_i, b_i) = match parse_css_rgb(color) {
+    Some(rgb) => rgb
+    None => return color
+  }
+  let r = r_i.to_double() / 255.0
+  let g = g_i.to_double() / 255.0
+  let b = b_i.to_double() / 255.0
+  let mut max_v = r
+  if g > max_v {
+    max_v = g
+  }
+  if b > max_v {
+    max_v = b
+  }
+  let mut min_v = r
+  if g < min_v {
+    min_v = g
+  }
+  if b < min_v {
+    min_v = b
+  }
+  let mut h = 0.0
+  let mut s = 0.0
+  let mut l = (max_v + min_v) / 2.0
+  if max_v != min_v {
+    let d = max_v - min_v
+    if l > 0.5 {
+      s = d / (2.0 - max_v - min_v)
+    } else {
+      s = d / (max_v + min_v)
+    }
+    if max_v == r {
+      h = (g - b) / d
+      if g < b {
+        h = h + 6.0
+      }
+    } else if max_v == g {
+      h = (b - r) / d + 2.0
+    } else {
+      h = (r - g) / d + 4.0
+    }
+    h = h / 6.0
+  }
+  l = l - 0.1
+  if l < 0.0 {
+    l = 0.0
+  }
+  if l > 1.0 {
+    l = 1.0
+  }
+  let (r2, g2, b2) = if s == 0.0 {
+    (l, l, l)
+  } else {
+    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s }
+    let p = 2.0 * l - q
+    (
+      hue_to_rgb(p, q, h + 1.0 / 3.0),
+      hue_to_rgb(p, q, h),
+      hue_to_rgb(p, q, h - 1.0 / 3.0),
+    )
+  }
+  let r_out = (r2 * 255.0 + 0.5).to_int()
+  let g_out = (g2 * 255.0 + 0.5).to_int()
+  let b_out = (b2 * 255.0 + 0.5).to_int()
+  "#\{hex_byte_string(r_out)}\{hex_byte_string(g_out)}\{hex_byte_string(b_out)}"
+}
+
+///|
 fn theme_css_lines(theme : @themes.Theme, indent : String) -> Array[String] {
   [
     "\{indent}svg {",
@@ -528,6 +943,12 @@ const MIN_ARROWHEAD_STROKE_WIDTH : Double = 2.0
 const DIAGO_VERSION : String = "0.2.0"
 
 ///|
+const MULTIPLE_OFFSET : Double = 10.0
+
+///|
+const THREE_DEE_OFFSET : Double = 15.0
+
+///|
 fn transform_label_text(text : String, text_transform : String) -> String {
   if text_transform == "" {
     return text
@@ -557,10 +978,37 @@ priv struct RootCanvasMetrics {
   outer_width : Double?
   outer_height : Double?
   fill : String
+  fill_pattern_class : String?
   stroke : String
   stroke_width : Double
   border_radius : Double
   stroke_dash : Double
+}
+
+///|
+fn style_fill_pattern_key(fill_pattern : @graph.StyleValue?) -> String? {
+  match style_string_opt(fill_pattern) {
+    Some(pattern_raw) =>
+      match pattern_raw.trim().to_lower() {
+        "dots" => Some("dots")
+        "lines" => Some("lines")
+        "cross-hatch" | "crosshatch" => Some("crosshatch")
+        "grain" => Some("grain")
+        "none" | "" => None
+        _ => None
+      }
+    None => None
+  }
+}
+
+///|
+fn pattern_def_key(pattern : String) -> String {
+  "pattern-\{pattern}"
+}
+
+///|
+fn pattern_overlay_class(pattern : String) -> String {
+  "\{pattern}-overlay"
 }
 
 ///|
@@ -569,15 +1017,8 @@ fn resolve_fill_with_pattern(
   fill_pattern : @graph.StyleValue?,
   config : SvgConfig,
 ) -> String {
-  match style_string_opt(fill_pattern) {
-    Some(p) =>
-      match p.to_lower() {
-        "dots" => defs_url(config, "pattern-dots")
-        "lines" => defs_url(config, "pattern-lines")
-        "cross-hatch" | "crosshatch" => defs_url(config, "pattern-crosshatch")
-        "grain" => defs_url(config, "pattern-grain")
-        _ => base_fill
-      }
+  match style_fill_pattern_key(fill_pattern) {
+    Some(pattern) => defs_url(config, pattern_def_key(pattern))
     None => base_fill
   }
 }
@@ -601,6 +1042,201 @@ fn graph_has_links(graph : Diagram) -> Bool {
     }
   }
   false
+}
+
+///|
+const APPENDIX_ICON_RADIUS : Int = 16
+
+///|
+const APPENDIX_ICON_DIAMETER : Int = 32
+
+///|
+fn non_empty_string(value : String?) -> String? {
+  match value {
+    Some(v) => if v.trim() == "" { None } else { Some(v) }
+    None => None
+  }
+}
+
+///|
+fn tooltip_icon_svg(clip_id : String) -> String {
+  let outline = @xml_emit.Element::new("path")
+    .attr(
+      "d", "M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z",
+    )
+    .attr("fill", "white")
+    .attr("stroke", "#DEE1EB")
+    .self_close()
+    .build()
+  let circle = @xml_emit.Element::new("path")
+    .attr(
+      "d", "M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z",
+    )
+    .attr("stroke", "#2E3346")
+    .attr_num("stroke-width", 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
+    .self_close()
+    .build()
+  let stem = @xml_emit.Element::new("path")
+    .attr("d", "M16 19.998V15.998")
+    .attr("stroke", "#2E3346")
+    .attr_num("stroke-width", 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
+    .self_close()
+    .build()
+  let dot = @xml_emit.Element::new("path")
+    .attr("d", "M16 12H16.0098")
+    .attr("stroke", "#2E3346")
+    .attr_num("stroke-width", 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
+    .self_close()
+    .build()
+  let g = @xml_emit.Element::new("g")
+    .attr("clip-path", "url(#\{clip_id})")
+    .child(outline)
+    .child(circle)
+    .child(stem)
+    .child(dot)
+    .build()
+  let clip_rect = @xml_emit.Element::new("rect")
+    .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
+    .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
+    .attr("fill", "white")
+    .self_close()
+    .build()
+  let clip_path = @xml_emit.Element::new("clipPath")
+    .attr("id", clip_id)
+    .child(clip_rect)
+    .build()
+  let defs = @xml_emit.Element::new("defs").child(clip_path).build()
+  @xml_emit.Element::new("svg")
+  .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
+  .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
+  .attr("viewBox", "0 0 32 32")
+  .attr("fill", "none")
+  .attr("xmlns", "http://www.w3.org/2000/svg")
+  .child(g)
+  .child(defs)
+  .build()
+}
+
+///|
+fn link_icon_svg(clip_id : String) -> String {
+  let outline = @xml_emit.Element::new("path")
+    .attr(
+      "d", "M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z",
+    )
+    .attr("fill", "white")
+    .attr("stroke", "#DEE1EB")
+    .self_close()
+    .build()
+  let chain_a = @xml_emit.Element::new("path")
+    .attr(
+      "d", "M14.3909 16.7965C14.7364 17.2584 15.1772 17.6406 15.6834 17.9171C16.1896 18.1938 16.7494 18.3582 17.3248 18.3993C17.9001 18.4405 18.4777 18.3575 19.0181 18.1559C19.5586 17.9543 20.0492 17.6389 20.4571 17.2309L22.8708 14.8173C23.6036 14.0586 24.0089 13.0425 23.9998 11.9877C23.9906 10.933 23.5676 9.92404 22.8217 9.17821C22.0759 8.43237 21.067 8.00931 20.0123 8.00015C18.9575 7.99098 17.9413 8.39644 17.1827 9.1292L15.7988 10.505",
+    )
+    .attr("stroke", "#2E3346")
+    .attr_num("stroke-width", 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
+    .self_close()
+    .build()
+  let chain_b = @xml_emit.Element::new("path")
+    .attr(
+      "d", "M17.609 15.1874C17.2635 14.7255 16.8227 14.3433 16.3165 14.0667C15.8103 13.7902 15.2505 13.6257 14.6752 13.5845C14.0998 13.5433 13.5223 13.6263 12.9819 13.8279C12.4414 14.0295 11.9506 14.345 11.5428 14.753L9.1292 17.1666C8.39644 17.9252 7.99098 18.9414 8.00015 19.9962C8.00931 21.0509 8.43237 22.0598 9.17821 22.8056C9.92405 23.5515 10.933 23.9745 11.9877 23.9837C13.0425 23.9928 14.0586 23.5875 14.8173 22.8547L16.193 21.4788",
+    )
+    .attr("stroke", "#2E3346")
+    .attr_num("stroke-width", 2)
+    .attr("stroke-linecap", "round")
+    .attr("stroke-linejoin", "round")
+    .self_close()
+    .build()
+  let g = @xml_emit.Element::new("g")
+    .attr("clip-path", "url(#\{clip_id})")
+    .child(outline)
+    .child(chain_a)
+    .child(chain_b)
+    .build()
+  let clip_rect = @xml_emit.Element::new("rect")
+    .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
+    .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
+    .attr("fill", "white")
+    .self_close()
+    .build()
+  let clip_path = @xml_emit.Element::new("clipPath")
+    .attr("id", clip_id)
+    .child(clip_rect)
+    .build()
+  let defs = @xml_emit.Element::new("defs").child(clip_path).build()
+  @xml_emit.Element::new("svg")
+  .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
+  .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
+  .attr("viewBox", "0 0 32 32")
+  .attr("fill", "none")
+  .attr("xmlns", "http://www.w3.org/2000/svg")
+  .child(g)
+  .child(defs)
+  .build()
+}
+
+///|
+fn render_object_appendix_icons(
+  svg : @svg.Svg,
+  obj : Shape,
+  box : @graph.Box,
+) -> Unit {
+  let tooltip_text = non_empty_string(obj.tooltip)
+  let link_href = non_empty_string(obj.link)
+  if tooltip_text is None && link_href is None {
+    return
+  }
+  let anchor_x = (box.x + box.width).ceil().to_int()
+  let anchor_y = box.y.ceil().to_int()
+  let tooltip_slot_offset = 0
+  let link_slot_offset = if tooltip_text is Some(_) {
+    APPENDIX_ICON_DIAMETER
+  } else {
+    0
+  }
+
+  match tooltip_text {
+    Some(text) => {
+      let x = anchor_x - APPENDIX_ICON_RADIUS - tooltip_slot_offset
+      let y = anchor_y - APPENDIX_ICON_RADIUS
+      let tooltip_clip_seed = "tt|\{obj.id}"
+      let clip_id = "clip0_3427_35082111-\{hash_u32(tooltip_clip_seed)}-\{hash_u32(obj.id)}"
+      let icon_svg = tooltip_icon_svg(clip_id)
+      svg.add(
+        @xml_emit.Element::new("g")
+        .attr("transform", "translate(\{x} \{y})")
+        .attr("class", "appendix-icon")
+        .child(@xml_emit.Element::new("title").text(text).build())
+        .raw(icon_svg)
+        .build(),
+      )
+    }
+    None => ()
+  }
+
+  match link_href {
+    Some(_) => {
+      let x = anchor_x - APPENDIX_ICON_RADIUS - link_slot_offset
+      let y = anchor_y - APPENDIX_ICON_RADIUS
+      let link_clip_seed = "ln|\{obj.id}"
+      let clip_id = "clip0_3440_35088111-\{hash_u32(link_clip_seed)}-\{hash_u32(obj.id)}"
+      let icon_svg = link_icon_svg(clip_id)
+      svg.add(
+        @xml_emit.Element::new("g")
+        .attr("transform", "translate(\{x} \{y})")
+        .attr("class", "appendix-icon")
+        .raw(icon_svg)
+        .build(),
+      )
+    }
+    None => ()
+  }
 }
 
 ///|
@@ -638,17 +1274,12 @@ fn compute_root_canvas_metrics(
   base_viewbox_width : Double,
   base_viewbox_height : Double,
 ) -> RootCanvasMetrics {
-  let fill_color = style_color(
-    graph.root.style.fill,
-    "N7",
-    theme,
-    use_css_theme_vars,
-  )
-  let fill = resolve_fill_with_pattern(
-    fill_color,
-    graph.root.style.fill_pattern,
-    config,
-  )
+  let fill = style_color(graph.root.style.fill, "N7", theme, use_css_theme_vars)
+  let fill_pattern_class = match
+    style_fill_pattern_key(graph.root.style.fill_pattern) {
+    Some(pattern) => Some(pattern_overlay_class(pattern))
+    None => None
+  }
   let stroke = if root_has_stroke(graph.root.style) {
     style_color(graph.root.style.stroke, "N1", theme, use_css_theme_vars)
   } else {
@@ -706,6 +1337,7 @@ fn compute_root_canvas_metrics(
     outer_width,
     outer_height,
     fill,
+    fill_pattern_class,
     stroke,
     stroke_width,
     border_radius,
@@ -725,6 +1357,7 @@ fn add_root_background_rect(
   stroke_width : Double,
   border_radius : Double,
   stroke_dash : Double,
+  class_name? : String? = None,
 ) -> Unit {
   let mut rect = @xml_emit.Element::new("rect")
     .attr_num("x", x)
@@ -733,12 +1366,47 @@ fn add_root_background_rect(
     .attr_num("height", height)
     .attr_num("rx", border_radius)
     .attr("fill", fill)
-    .attr("stroke", stroke)
     .attr_num("stroke-width", stroke_width)
+  match class_name {
+    Some(class_name) => rect = rect.attr("class", class_name)
+    None => ()
+  }
+  if stroke != "" && stroke != "none" {
+    rect = rect.attr("stroke", stroke)
+  }
   if stroke_dash > 0.0 {
     rect = rect.attr("stroke-dasharray", stroke_dash.to_string())
   }
   svg.add(rect.self_close().build())
+}
+
+///|
+fn add_root_overlay_rect(
+  svg : @svg.Svg,
+  x : Double,
+  y : Double,
+  width : Double,
+  height : Double,
+  border_radius : Double,
+  stroke_width : Double,
+  class_name : String?,
+) -> Unit {
+  match class_name {
+    Some(class_name) =>
+      svg.add(
+        @xml_emit.Element::new("rect")
+        .attr_num("x", x)
+        .attr_num("y", y)
+        .attr_num("width", width)
+        .attr_num("height", height)
+        .attr_num("rx", border_radius)
+        .attr_num("stroke-width", stroke_width)
+        .attr("class", class_name)
+        .self_close()
+        .build(),
+      )
+    None => ()
+  }
 }
 
 ///|
@@ -763,6 +1431,16 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.border_radius,
         metrics.stroke_dash,
       )
+      add_root_overlay_rect(
+        svg,
+        x,
+        y,
+        width,
+        height,
+        metrics.border_radius,
+        metrics.stroke_width,
+        metrics.fill_pattern_class,
+      )
       add_root_background_rect(
         svg,
         metrics.inner_x,
@@ -775,8 +1453,18 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.border_radius,
         metrics.stroke_dash,
       )
+      add_root_overlay_rect(
+        svg,
+        metrics.inner_x,
+        metrics.inner_y,
+        metrics.inner_width,
+        metrics.inner_height,
+        metrics.border_radius,
+        metrics.stroke_width,
+        metrics.fill_pattern_class,
+      )
     }
-    _ =>
+    _ => {
       add_root_background_rect(
         svg,
         metrics.inner_x,
@@ -789,6 +1477,17 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.border_radius,
         metrics.stroke_dash,
       )
+      add_root_overlay_rect(
+        svg,
+        metrics.inner_x,
+        metrics.inner_y,
+        metrics.inner_width,
+        metrics.inner_height,
+        metrics.border_radius,
+        metrics.stroke_width,
+        metrics.fill_pattern_class,
+      )
+    }
   }
 }
 
@@ -904,12 +1603,18 @@ pub fn render_svg(
   if use_css_theme_vars {
     add_theme_styles(svg, light_theme, dark_theme)
   }
-  // Add arrow markers for all arrowhead types
-  add_arrowhead_markers(svg, config, light_theme, use_css_theme_vars)
   // Add fill patterns
   add_fill_patterns(svg, graph, config, light_theme, use_css_theme_vars)
   // Add sketch filter if needed
   add_sketch_filter(svg, graph, config)
+  // D2 parity: all connection labels are cut out via a shared mask.
+  let edge_label_mask_url = defs_url(config, "edge-label-mask")
+  svg.add_def(
+    edge_label_mask_def(
+      graph, config, viewbox_x, viewbox_y, viewbox_width, viewbox_height,
+    ),
+  )
+  let edge_marker_ids : Map[String, String] = {}
   // Background
   render_root_background(svg, root_canvas)
   // D2 parity: skip custom control bar rendering.
@@ -939,6 +1644,8 @@ pub fn render_svg(
       svg,
       edge,
       graph.shapes,
+      edge_label_mask_url,
+      edge_marker_ids,
       config,
       light_theme,
       use_css_theme_vars,
@@ -994,165 +1701,301 @@ fn estimate_text_width(text : String, font_size : Int) -> Double {
 }
 
 ///|
-/// Add all arrowhead marker definitions to the SVG
-fn add_arrowhead_markers(
+/// Build the shared connection label mask definition.
+fn edge_label_mask_def(
+  graph : Diagram,
+  config : SvgConfig,
+  mask_x : Double,
+  mask_y : Double,
+  mask_width : Double,
+  mask_height : Double,
+) -> String {
+  let sb = StringBuilder::new()
+  let mask_id = defs_id(config, "edge-label-mask")
+  sb.write_string(
+    "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_width}\" height=\"\{mask_height}\">",
+  )
+  sb.write_string(
+    "<rect x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_width}\" height=\"\{mask_height}\" fill=\"white\"></rect>",
+  )
+  for edge in graph.connections {
+    if edge.label == "" {
+      continue
+    }
+    match edge.label_box {
+      Some(label_box) => {
+        let label_x = round_double(label_box.x) - 2.0
+        let label_y = round_double(label_box.y)
+        let label_width = label_box.width + 4.0
+        sb.write_string(
+          "<rect x=\"\{label_x}\" y=\"\{label_y}\" width=\"\{label_width}\" height=\"\{label_box.height}\" fill=\"black\"></rect>",
+        )
+      }
+      None => ()
+    }
+  }
+  sb.write_string("</mask>")
+  sb.to_string()
+}
+
+///|
+fn marker_key(
+  arrowhead : ArrowheadType,
+  is_target : Bool,
+  stroke : String,
+  stroke_width : Double,
+) -> String {
+  "\{arrowhead.to_arrowhead_string()}|\{is_target}|\{stroke}|\{stroke_width}"
+}
+
+///|
+fn marker_dimensions(
+  arrowhead : ArrowheadType,
+  stroke_width : Double,
+) -> (Double, Double) {
+  let clipped_stroke_width = if stroke_width < MIN_ARROWHEAD_STROKE_WIDTH {
+    MIN_ARROWHEAD_STROKE_WIDTH
+  } else {
+    stroke_width
+  }
+  let (base_width, base_height, width_multiplier, height_multiplier) = match
+    arrowhead {
+    @graph.Triangle => (4.0, 4.0, 3.0, 4.0)
+    @graph.Open => (7.0, 7.0, 3.0, 4.0)
+    @graph.Line => (0.0, 0.0, 5.0, 8.0)
+    @graph.Diamond => (11.0, 9.0, 5.5, 4.5)
+    @graph.Circle => (8.0, 8.0, 5.0, 5.0)
+    @graph.CfOne
+    | @graph.CfMany
+    | @graph.CfOneRequired
+    | @graph.CfManyRequired
+    | @graph.CfOneOptional
+    | @graph.CfManyOptional => (9.0, 9.0, 4.5, 4.5)
+    @graph.None => (0.0, 0.0, 0.0, 0.0)
+  }
+  (
+    base_width + clipped_stroke_width * width_multiplier,
+    base_height + clipped_stroke_width * height_multiplier,
+  )
+}
+
+///|
+fn marker_body(
+  arrowhead : ArrowheadType,
+  is_target : Bool,
+  stroke : String,
+  stroke_width : Double,
+  width : Double,
+  height : Double,
+) -> String {
+  match arrowhead {
+    @graph.None => ""
+    @graph.Triangle => {
+      let points = if is_target {
+        "0,0 \{width},\{height / 2.0} 0,\{height}"
+      } else {
+        "\{width},0 0,\{height / 2.0} \{width},\{height}"
+      }
+      @xml_emit.Element::new("polygon")
+      .attr("points", points)
+      .attr("fill", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .self_close()
+      .build()
+    }
+    @graph.Open => {
+      let inset = stroke_width / 2.0
+      let points = if is_target {
+        "\{inset},\{inset} \{width - inset},\{height / 2.0} \{inset},\{height - inset}"
+      } else {
+        "\{width - inset},\{inset} \{inset},\{height / 2.0} \{width - inset},\{height - inset}"
+      }
+      @xml_emit.Element::new("polygon")
+      .attr("points", points)
+      .attr("fill", "#FFFFFF")
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .self_close()
+      .build()
+    }
+    @graph.Line => {
+      let points = if is_target {
+        "\{stroke_width / 2.0},\{stroke_width / 2.0} \{width - stroke_width / 2.0},\{height / 2.0} \{stroke_width / 2.0},\{height - stroke_width / 2.0}"
+      } else {
+        "\{width - stroke_width / 2.0},\{stroke_width / 2.0} \{stroke_width / 2.0},\{height / 2.0} \{width - stroke_width / 2.0},\{height - stroke_width / 2.0}"
+      }
+      @xml_emit.Element::new("polyline")
+      .attr("points", points)
+      .attr("fill", "none")
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .self_close()
+      .build()
+    }
+    @graph.Diamond => {
+      let points = if is_target {
+        "0,\{height / 2.0} \{width / 2.0},\{height / 8.0} \{width},\{height / 2.0} \{width / 2.0},\{height * 0.9}"
+      } else {
+        "\{width / 8.0},\{height / 2.0} \{width * 0.6},\{height / 8.0} \{width * 1.1},\{height / 2.0} \{width * 0.6},\{height * 7.0 / 8.0}"
+      }
+      @xml_emit.Element::new("polygon")
+      .attr("points", points)
+      .attr("fill", "#FFFFFF")
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .self_close()
+      .build()
+    }
+    @graph.Circle => {
+      let radius = width / 2.0
+      let cx = if is_target {
+        radius + stroke_width / 2.0
+      } else {
+        radius - stroke_width / 2.0
+      }
+      let inner_radius = radius - stroke_width
+      @xml_emit.Element::new("circle")
+      .attr_num("cx", cx)
+      .attr_num("cy", radius)
+      .attr_num("r", inner_radius)
+      .attr("fill", "#FFFFFF")
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .self_close()
+      .build()
+    }
+    @graph.CfOne
+    | @graph.CfMany
+    | @graph.CfOneRequired
+    | @graph.CfManyRequired
+    | @graph.CfOneOptional
+    | @graph.CfManyOptional => {
+      let offset = 3.0 + stroke_width * 1.8
+      let is_required = arrowhead == @graph.CfOneRequired ||
+        arrowhead == @graph.CfManyRequired
+      let is_many = arrowhead == @graph.CfMany ||
+        arrowhead == @graph.CfManyRequired ||
+        arrowhead == @graph.CfManyOptional
+
+      let modifier = if is_required {
+        @xml_emit.Element::new("path")
+        .attr("d", "M\{offset},0 \{offset},\{height}")
+        .attr("fill", "#FFFFFF")
+        .attr("stroke", stroke)
+        .attr_num("stroke-width", stroke_width)
+        .self_close()
+        .build()
+      } else {
+        @xml_emit.Element::new("circle")
+        .attr_num("cx", offset / 2.0 + 2.0)
+        .attr_num("cy", height / 2.0)
+        .attr_num("r", offset / 2.0)
+        .attr("fill", "#FFFFFF")
+        .attr("stroke", stroke)
+        .attr_num("stroke-width", stroke_width)
+        .self_close()
+        .build()
+      }
+
+      let crow_path = if is_many {
+        "M\{width - 3.0},\{height / 2.0} \{width + offset},\{height / 2.0} M\{offset + 3.0},\{height / 2.0} \{width + offset},0 M\{offset + 3.0},\{height / 2.0} \{width + offset},\{height}"
+      } else {
+        "M\{width - 3.0},\{height / 2.0} \{width + offset},\{height / 2.0} M\{offset * 2.0},0 \{offset * 2.0},\{height}"
+      }
+      let crow = @xml_emit.Element::new("path")
+        .attr("d", crow_path)
+        .self_close()
+        .build()
+      let transform = if is_target {
+        ""
+      } else {
+        "scale(-1) translate(-\{width}, -\{height})"
+      }
+      @xml_emit.Element::new("g")
+      .attr_if("transform", transform)
+      .attr("fill", "#FFFFFF")
+      .attr("stroke", stroke)
+      .attr_num("stroke-width", stroke_width)
+      .child(modifier)
+      .child(crow)
+      .build()
+    }
+  }
+}
+
+///|
+fn marker_def(
+  id : String,
+  arrowhead : ArrowheadType,
+  is_target : Bool,
+  stroke : String,
+  stroke_width : Double,
+) -> String {
+  let (width_raw, height_raw) = marker_dimensions(arrowhead, stroke_width)
+  if width_raw <= 0.0 || height_raw <= 0.0 {
+    return ""
+  }
+  let mut marker_width = width_raw
+  let marker_height = height_raw
+  let ref_x = if arrowhead == @graph.Diamond {
+    if is_target {
+      width_raw - 0.6 * stroke_width
+    } else {
+      width_raw / 8.0 + 0.6 * stroke_width
+    }
+  } else if is_target {
+    width_raw - 1.5 * stroke_width
+  } else {
+    1.5 * stroke_width
+  }
+  if arrowhead == @graph.Diamond {
+    marker_width = width_raw * 1.1
+  }
+  @xml_emit.Element::new("marker")
+  .attr("id", id)
+  .attr_num("markerWidth", marker_width)
+  .attr_num("markerHeight", marker_height)
+  .attr_num("refX", ref_x)
+  .attr_num("refY", marker_height / 2.0)
+  .attr("viewBox", "0 0 \{marker_width} \{marker_height}")
+  .attr("orient", "auto")
+  .attr("markerUnits", "userSpaceOnUse")
+  .child(
+    marker_body(
+      arrowhead, is_target, stroke, stroke_width, width_raw, marker_height,
+    ),
+  )
+  .build()
+}
+
+///|
+fn marker_url_for_edge(
   svg : @svg.Svg,
   config : SvgConfig,
-  theme : @themes.Theme,
-  use_css_theme_vars : Bool,
-) -> Unit {
-  let size = config.arrow_size
-  let stroke = resolve_theme_color("N1", theme, use_css_theme_vars)
-  // Triangle (default arrow)
-  svg.add_def(
-    @svg.arrow_marker(defs_id(config, "arrow-triangle"), size, stroke),
-  )
-  svg.add_def(
-    @svg.arrow_marker(
-      defs_id(config, "arrow-triangle-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Diamond
-  svg.add_def(
-    @svg.diamond_marker(defs_id(config, "arrow-diamond"), size, stroke),
-  )
-  svg.add_def(
-    @svg.diamond_marker(
-      defs_id(config, "arrow-diamond-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Circle
-  svg.add_def(@svg.circle_marker(defs_id(config, "arrow-circle"), size, stroke))
-  svg.add_def(
-    @svg.circle_marker(
-      defs_id(config, "arrow-circle-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: one
-  svg.add_def(@svg.cf_one_marker(defs_id(config, "arrow-cf-one"), size, stroke))
-  svg.add_def(
-    @svg.cf_one_marker(
-      defs_id(config, "arrow-cf-one-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: many
-  svg.add_def(
-    @svg.cf_many_marker(defs_id(config, "arrow-cf-many"), size, stroke),
-  )
-  svg.add_def(
-    @svg.cf_many_marker(
-      defs_id(config, "arrow-cf-many-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: one-required
-  svg.add_def(
-    @svg.cf_one_required_marker(
-      defs_id(config, "arrow-cf-one-required"),
-      size,
-      stroke,
-    ),
-  )
-  svg.add_def(
-    @svg.cf_one_required_marker(
-      defs_id(config, "arrow-cf-one-required-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: many-required
-  svg.add_def(
-    @svg.cf_many_required_marker(
-      defs_id(config, "arrow-cf-many-required"),
-      size,
-      stroke,
-    ),
-  )
-  svg.add_def(
-    @svg.cf_many_required_marker(
-      defs_id(config, "arrow-cf-many-required-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: one-optional
-  svg.add_def(
-    @svg.cf_one_optional_marker(
-      defs_id(config, "arrow-cf-one-optional"),
-      size,
-      stroke,
-    ),
-  )
-  svg.add_def(
-    @svg.cf_one_optional_marker(
-      defs_id(config, "arrow-cf-one-optional-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Crow's foot: many-optional
-  svg.add_def(
-    @svg.cf_many_optional_marker(
-      defs_id(config, "arrow-cf-many-optional"),
-      size,
-      stroke,
-    ),
-  )
-  svg.add_def(
-    @svg.cf_many_optional_marker(
-      defs_id(config, "arrow-cf-many-optional-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Line terminator
-  svg.add_def(@svg.line_marker(defs_id(config, "arrow-line"), size, stroke))
-  svg.add_def(
-    @svg.line_marker(
-      defs_id(config, "arrow-line-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Open triangle
-  svg.add_def(@svg.open_marker(defs_id(config, "arrow-open"), size, stroke))
-  svg.add_def(
-    @svg.open_marker(
-      defs_id(config, "arrow-open-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
-  // Aliases for backward compatibility
-  svg.add_def(@svg.arrow_marker(defs_id(config, "arrow"), size, stroke))
-  svg.add_def(
-    @svg.arrow_marker(
-      defs_id(config, "arrow-reverse"),
-      size,
-      stroke,
-      reverse=true,
-    ),
-  )
+  marker_ids : Map[String, String],
+  arrowhead : ArrowheadType,
+  is_target : Bool,
+  stroke : String,
+  stroke_width : Double,
+) -> String {
+  if arrowhead == @graph.None {
+    return ""
+  }
+  let key = marker_key(arrowhead, is_target, stroke, stroke_width)
+  match marker_ids.get(key) {
+    Some(id) => "url(#\{id})"
+    None => {
+      let id = defs_id(config, "mk-\{hash_u32(key)}")
+      let def = marker_def(id, arrowhead, is_target, stroke, stroke_width)
+      if def != "" {
+        svg.add_def(def)
+        marker_ids[key] = id
+        "url(#\{id})"
+      } else {
+        ""
+      }
+    }
+  }
 }
 
 ///|
@@ -1166,23 +2009,31 @@ fn add_fill_patterns(
 ) -> Unit {
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
-  if graph.root.style.fill_pattern is Some(p) {
-    patterns_used.add(p.get_value())
+  match style_fill_pattern_key(graph.root.style.fill_pattern) {
+    Some(pattern) => patterns_used.add(pattern)
+    None => ()
   }
   for obj in graph.shapes {
-    if obj.style.fill_pattern is Some(p) {
-      patterns_used.add(p.get_value())
+    match style_fill_pattern_key(obj.style.fill_pattern) {
+      Some(pattern) => patterns_used.add(pattern)
+      None => ()
     }
   }
   // Add pattern definitions for each used pattern
   let stroke_color = resolve_theme_color("N1", theme, use_css_theme_vars)
   let bg_color = resolve_theme_color("N7", theme, use_css_theme_vars)
+  let pattern_list : Array[String] = []
   for pattern in patterns_used {
-    match pattern.to_lower() {
+    pattern_list.push(pattern)
+  }
+  let overlay_rules : Array[String] = []
+  pattern_list.sort()
+  for pattern in pattern_list {
+    match pattern {
       "dots" =>
         svg.add_def(
           @svg.dots_pattern(
-            defs_id(config, "pattern-dots"),
+            defs_id(config, pattern_def_key(pattern)),
             stroke_color,
             bg_color,
           ),
@@ -1190,15 +2041,15 @@ fn add_fill_patterns(
       "lines" =>
         svg.add_def(
           @svg.lines_pattern(
-            defs_id(config, "pattern-lines"),
+            defs_id(config, pattern_def_key(pattern)),
             stroke_color,
             bg_color,
           ),
         )
-      "cross-hatch" | "crosshatch" =>
+      "crosshatch" =>
         svg.add_def(
           @svg.crosshatch_pattern(
-            defs_id(config, "pattern-crosshatch"),
+            defs_id(config, pattern_def_key(pattern)),
             stroke_color,
             bg_color,
           ),
@@ -1206,13 +2057,25 @@ fn add_fill_patterns(
       "grain" =>
         svg.add_def(
           @svg.grain_pattern(
-            defs_id(config, "pattern-grain"),
+            defs_id(config, pattern_def_key(pattern)),
             stroke_color,
             bg_color,
           ),
         )
       _ => ()
     }
+    overlay_rules.push(
+      ".\{pattern_overlay_class(pattern)} {\n  fill: \{defs_url(config, pattern_def_key(pattern))};\n  mix-blend-mode: multiply;\n}",
+    )
+  }
+  if !overlay_rules.is_empty() {
+    let css = overlay_rules.join("\n")
+    svg.add(
+      @xml_emit.Element::new("style")
+      .attr("type", "text/css")
+      .cdata(css)
+      .build(),
+    )
   }
 }
 
@@ -1242,21 +2105,6 @@ fn add_sketch_filter(
   }
   if needs_sketch {
     svg.add_def(@svg.sketch_filter(defs_id(config, "sketch-filter")))
-  }
-}
-
-///|
-/// Get the marker URL for an arrowhead type
-fn get_marker_url(
-  arrowhead : ArrowheadType,
-  reverse : Bool,
-  config : SvgConfig,
-) -> String {
-  let marker_id = arrowhead.marker_id(reverse)
-  if marker_id == "" {
-    ""
-  } else {
-    defs_url(config, marker_id)
   }
 }
 
@@ -1581,18 +2429,27 @@ fn render_svg_object(
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let base_fill = style_color(obj.style.fill, "N7", theme, use_css_theme_vars)
+  let raw_fill = style_string(obj.style.fill, "N7")
+  let base_fill = resolve_theme_color(raw_fill, theme, use_css_theme_vars)
   // Apply fill pattern if specified
   let fill = resolve_fill_with_pattern(
     base_fill,
     obj.style.fill_pattern,
     config,
   )
-  let stroke = style_color(obj.style.stroke, "N1", theme, use_css_theme_vars)
+  let raw_stroke = style_string(obj.style.stroke, "N1")
+  let stroke = resolve_theme_color(raw_stroke, theme, use_css_theme_vars)
   let stroke_width = style_double(
     obj.style.stroke_width,
     config.default_stroke_width,
   )
+  let side_fill = resolve_theme_color(
+    darken_color_like_d2(raw_fill),
+    theme,
+    use_css_theme_vars,
+  )
+  let is_multiple = style_bool(obj.style.multiple, false)
+  let is_three_d = style_bool(obj.style.three_d, false)
   // Apply no_corner_radius special rule
   let border_radius = if theme.rules.no_corner_radius {
     0.0
@@ -1686,6 +2543,8 @@ fn render_svg_object(
         stroke_width,
         pass~,
         config,
+        theme,
+        use_css_theme_vars,
       )
       if is_foreground {
         if use_sketch {
@@ -1702,6 +2561,22 @@ fn render_svg_object(
     }
     "circle" | "oval" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          let mcx = mbox.x + mbox.width / 2.0
+          let mcy = mbox.y + mbox.height / 2.0
+          svg.add(
+            @svg.ellipse(
+              mcx,
+              mcy,
+              mbox.width / 2.0,
+              mbox.height / 2.0,
+              fill~,
+              stroke~,
+              stroke_width~,
+            ),
+          )
+        }
         let cx = box.x + box.width / 2.0
         let cy = box.y + box.height / 2.0
         svg.add(
@@ -1718,59 +2593,66 @@ fn render_svg_object(
       }
     "cylinder" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_cylinder(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_cylinder(svg, box, fill, stroke, stroke_width)
       }
     "diamond" =>
       if not(is_foreground) {
-        let cx = box.x + box.width / 2.0
-        let cy = box.y + box.height / 2.0
-        svg.add(
-          @svg.polygon(
-            [
-              (cx, box.y),
-              (box.x + box.width, cy),
-              (cx, box.y + box.height),
-              (box.x, cy),
-            ],
-            fill~,
-            stroke~,
-            stroke_width~,
-          ),
-        )
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_diamond(svg, mbox, fill, stroke, stroke_width)
+        }
+        render_svg_diamond(svg, box, fill, stroke, stroke_width)
       }
     "hexagon" =>
       if not(is_foreground) {
-        let inset = box.width * 0.25
-        svg.add(
-          @svg.polygon(
-            [
-              (box.x + inset, box.y),
-              (box.x + box.width - inset, box.y),
-              (box.x + box.width, box.y + box.height / 2.0),
-              (box.x + box.width - inset, box.y + box.height),
-              (box.x + inset, box.y + box.height),
-              (box.x, box.y + box.height / 2.0),
-            ],
-            fill~,
-            stroke~,
-            stroke_width~,
-          ),
-        )
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_hexagon(svg, mbox, fill, stroke, stroke_width)
+        }
+        render_svg_hexagon(svg, box, fill, stroke, stroke_width)
       }
     "octagon" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_octagon(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_octagon(svg, box, fill, stroke, stroke_width)
       }
     "parallelogram" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_parallelogram(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_parallelogram(svg, box, fill, stroke, stroke_width)
       }
     "person" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_person(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_person(svg, box, fill, stroke, stroke_width)
       }
     "c4_person" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_c4_person(
+            svg,
+            mbox,
+            obj.label,
+            fill,
+            stroke,
+            stroke_width,
+            config,
+          )
+        }
         render_svg_c4_person(
           svg,
           box,
@@ -1783,6 +2665,18 @@ fn render_svg_object(
       }
     "c4_container" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_c4_container(
+            svg,
+            mbox,
+            obj.label,
+            fill,
+            stroke,
+            stroke_width,
+            config,
+          )
+        }
         render_svg_c4_container(
           svg,
           box,
@@ -1795,51 +2689,112 @@ fn render_svg_object(
       }
     "cloud" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_cloud(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_cloud(svg, box, fill, stroke, stroke_width)
       }
     "document" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_document(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_document(svg, box, fill, stroke, stroke_width)
       }
     "queue" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_queue(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_queue(svg, box, fill, stroke, stroke_width)
       }
     "stored_data" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_stored_data(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_stored_data(svg, box, fill, stroke, stroke_width)
       }
     "page" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_page(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_page(svg, box, fill, stroke, stroke_width)
       }
     "package" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_package(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_package(svg, box, fill, stroke, stroke_width)
       }
     "step" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_step(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_step(svg, box, fill, stroke, stroke_width)
       }
     "callout" =>
       if not(is_foreground) {
+        if is_multiple {
+          let mbox = shifted_multiple_box(box)
+          render_svg_callout(svg, mbox, fill, stroke, stroke_width)
+        }
         render_svg_callout(svg, box, fill, stroke, stroke_width)
       }
     _ =>
       if not(is_foreground) {
-        svg.add(
-          @svg.rect(
-            box.x,
-            box.y,
-            box.width,
-            box.height,
-            fill~,
-            stroke~,
-            stroke_width~,
-            rx=Some(border_radius),
-            ry=Some(border_radius),
-          ),
-        )
+        if is_three_d {
+          render_svg_3d_rect(
+            svg,
+            obj.id,
+            box,
+            fill,
+            side_fill,
+            stroke,
+            stroke_width,
+            config,
+          )
+        } else {
+          if is_multiple {
+            let mbox = shifted_multiple_box(box)
+            svg.add(
+              @svg.rect(
+                mbox.x,
+                mbox.y,
+                mbox.width,
+                mbox.height,
+                fill~,
+                stroke~,
+                stroke_width~,
+                rx=Some(border_radius),
+                ry=Some(border_radius),
+              ),
+            )
+          }
+          svg.add(
+            @svg.rect(
+              box.x,
+              box.y,
+              box.width,
+              box.height,
+              fill~,
+              stroke~,
+              stroke_width~,
+              rx=Some(border_radius),
+              ry=Some(border_radius),
+            ),
+          )
+        }
       }
   }
   // Background pass: render decorations (double border, dots)
@@ -2045,6 +3000,9 @@ fn render_svg_object(
       svg.close_group()
     }
   }
+  if is_foreground {
+    render_object_appendix_icons(svg, obj, box)
+  }
   if should_wrap_link {
     svg.add(@xml_emit.Element::new("a").close_tag())
   }
@@ -2118,6 +3076,8 @@ fn render_svg_sql_table(
   stroke_width : Double,
   pass? : RenderPass = Foreground,
   config : SvgConfig,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
 ) -> Unit {
   let row_count = children.length() + 1
   let row_height = if row_count > 0 {
@@ -2130,6 +3090,15 @@ fn render_svg_sql_table(
     None => SQL_TABLE_FONT_SIZE_L
   }
   let header_font_size = base_font_size + SQL_TABLE_HEADER_FONT_ADD
+  let header_text_color = style_color(None, "N7", theme, use_css_theme_vars)
+  let name_text_color = style_color(None, "B2", theme, use_css_theme_vars)
+  let type_text_color = style_color(None, "N2", theme, use_css_theme_vars)
+  let constraint_text_color = style_color(
+    None,
+    "AA2",
+    theme,
+    use_css_theme_vars,
+  )
   let header_dims = @text_metrics.measure_label(
     label, header_font_size, false, true, false,
   )
@@ -2160,15 +3129,14 @@ fn render_svg_sql_table(
       )
       // Draw header background using the border color, matching D2 SQL table style.
       svg.add(
-        @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          row_height,
-          fill=stroke,
-          stroke="none",
-          stroke_width=0.0,
-        ),
+        @xml_emit.Element::new("rect")
+        .attr_num("x", box.x)
+        .attr_num("y", box.y)
+        .attr_num("width", box.width)
+        .attr_num("height", row_height)
+        .attr("fill", stroke)
+        .self_close()
+        .build(),
       )
       // Draw row separators
       let mut y = box.y + row_height
@@ -2190,6 +3158,7 @@ fn render_svg_sql_table(
         .attr("text-anchor", "start")
         .attr("font-family", config.font_family)
         .attr_int("font-size", header_font_size)
+        .attr("fill", header_text_color)
         .text(label)
         .build(),
       )
@@ -2209,6 +3178,7 @@ fn render_svg_sql_table(
           .attr("text-anchor", "start")
           .attr("font-family", config.font_family)
           .attr_int("font-size", base_font_size)
+          .attr("fill", name_text_color)
           .text(col_name)
           .build(),
         )
@@ -2219,6 +3189,7 @@ fn render_svg_sql_table(
           .attr("text-anchor", "start")
           .attr("font-family", config.font_family)
           .attr_int("font-size", base_font_size)
+          .attr("fill", type_text_color)
           .text(child.label)
           .build(),
         )
@@ -2231,6 +3202,7 @@ fn render_svg_sql_table(
             .attr("text-anchor", "end")
             .attr("font-family", config.font_family)
             .attr_int("font-size", base_font_size)
+            .attr("fill", constraint_text_color)
             .text(constraint)
             .build(),
           )
@@ -2403,15 +3375,14 @@ fn render_svg_class(
         ),
       )
       svg.add(
-        @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          header_height,
-          fill=stroke,
-          stroke="none",
-          stroke_width=0.0,
-        ),
+        @xml_emit.Element::new("rect")
+        .attr_num("x", box.x)
+        .attr_num("y", box.y)
+        .attr_num("width", box.width)
+        .attr_num("height", header_height)
+        .attr("fill", stroke)
+        .self_close()
+        .build(),
       )
     }
     Foreground => {
@@ -2552,48 +3523,52 @@ fn render_svg_code(
   _fill : String,
   stroke : String,
   stroke_width : Double,
-  config : SvgConfig,
+  _config : SvgConfig,
   pass? : RenderPass = Foreground,
 ) -> Unit {
-  // Dark background for code block
-  let code_bg = "#1e1e1e"
-  let code_fg = "#d4d4d4"
+  // D2 parity: render both light and dark code groups and switch visibility via CSS.
+  let code_bgs = [("light-code", "#ffffff"), ("dark-code", "#1e1e2e")]
   let padding = 8.0
   match pass {
-    Background =>
-      // Draw background rectangle with rounded corners
-      svg.add(
-        @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          box.height,
-          fill=code_bg,
-          stroke~,
-          stroke_width~,
-          rx=Some(4.0),
-          ry=Some(4.0),
-        ),
-      )
+    Background => ()
     Foreground => {
-      // Split label into lines and render each.
       let lines = split_lines(label)
-      svg.open_group("translate(\{box.x + padding},\{box.y + padding})")
-      for i, line in lines {
-        let y_em = "\{1.0 + i.to_double() * 1.3}em"
-        let text = @xml_emit.Element::new("text")
-          .attr("x", "0")
-          .attr("y", y_em)
-          .attr("fill", code_fg)
-          .attr("class", "text-mono")
-          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-          .attr_int("font-size", config.font_size - 2)
-          .attr("text-anchor", "start")
-          .raw(code_line_svg_raw(line))
-          .build()
-        svg.add(text)
+      for code_bg in code_bgs {
+        svg.add(
+          @xml_emit.Element::new("g")
+          .attr("transform", "translate(\{box.x},\{box.y})")
+          .attr("class", code_bg.0)
+          .open_tag(),
+        )
+        svg.add(
+          @xml_emit.Element::new("rect")
+          .attr_num("width", box.width)
+          .attr_num("height", box.height)
+          .attr("stroke", stroke)
+          .attr("class", "shape")
+          .attr("style", "fill:\{code_bg.1};stroke-width:\{stroke_width};")
+          .self_close()
+          .build(),
+        )
+        svg.open_group("translate(\{padding},\{padding})")
+        for i, line in lines {
+          let y_em = "\{1.0 + i.to_double() * 1.3}em"
+          let raw = if code_bg.0 == "dark-code" {
+            code_line_svg_raw_dark(line)
+          } else {
+            code_line_svg_raw(line)
+          }
+          let text = @xml_emit.Element::new("text")
+            .attr("class", "text-mono")
+            .attr("x", "0")
+            .attr("y", y_em)
+            .raw(raw)
+            .build()
+          svg.add(text)
+        }
+        svg.close_group()
+        svg.add(@xml_emit.Element::new("g").close_tag())
       }
-      svg.close_group()
     }
   }
 }
@@ -2617,6 +3592,14 @@ fn code_line_svg_raw(line : String) -> String {
         code_svg_escape(line)
       }
   }
+}
+
+///|
+fn code_line_svg_raw_dark(line : String) -> String {
+  if line == "" {
+    return ""
+  }
+  "<tspan fill=\"#cdd6f4\">\{code_svg_escape(line)}</tspan>"
 }
 
 ///|
@@ -2723,20 +3706,6 @@ fn render_svg_cylinder(
     .close()
     .build()
   svg.add(@svg.path(outer, fill~, stroke~, stroke_width~))
-
-  // Keep an explicit `<ellipse>` element for compatibility with tests and
-  // downstream SVG tooling that expects cylinder tops to be ellipses.
-  svg.add(
-    @svg.ellipse(
-      x0 + w / 2.0,
-      y0 + arc_height,
-      w / 2.0,
-      arc_height,
-      fill="none",
-      stroke="none",
-      stroke_width=0.0,
-    ),
-  )
   let inner = @svg.PathBuilder::new()
     .move_to(x0, top_y)
     .cubic_to(
@@ -2756,7 +3725,7 @@ fn render_svg_cylinder(
       top_y,
     )
     .build()
-  svg.add(@svg.path(inner, fill="none", stroke~, stroke_width~))
+  svg.add(@svg.path(inner, fill~, stroke~, stroke_width~))
 }
 
 ///|
@@ -2789,6 +3758,54 @@ fn render_svg_octagon(
 }
 
 ///|
+fn render_svg_diamond(
+  svg : @svg.Svg,
+  box : Box,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+) -> Unit {
+  // Ported from ../d2/lib/shape/shape_diamond.go (diamondPath).
+  let sx = box.width / 77.0
+  let sy = box.height / 76.9
+  let px = fn(v : Double) { box.x + v * sx }
+  let py = fn(v : Double) { box.y + v * sy }
+  let pb = @svg.PathBuilder::new()
+    .move_to(px(38.5), py(76.9))
+    .cubic_to(px(38.2), py(76.9), px(38.0), py(76.8), px(37.8), py(76.6))
+    .line_to(px(0.3), py(39.2))
+    .cubic_to(px(-0.1), py(38.8), px(-0.1), py(38.2), px(0.3), py(37.8))
+    .line_to(px(37.8), py(0.3))
+    .cubic_to(px(38.2), py(-0.1), px(38.8), py(-0.1), px(39.2), py(0.3))
+    .line_to(px(76.7), py(37.8))
+    .cubic_to(px(77.1), py(38.2), px(77.1), py(38.8), px(76.7), py(39.2))
+    .line_to(px(39.2), py(76.6))
+    .cubic_to(px(39.0), py(76.8), px(38.8), py(76.9), px(38.5), py(76.9))
+    .close()
+  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+}
+
+///|
+fn render_svg_hexagon(
+  svg : @svg.Svg,
+  box : Box,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+) -> Unit {
+  let inset = box.width * 0.25
+  let pb = @svg.PathBuilder::new()
+    .move_to(box.x + inset, box.y)
+    .line_to(box.x + box.width - inset, box.y)
+    .line_to(box.x + box.width, box.y + box.height / 2.0)
+    .line_to(box.x + box.width - inset, box.y + box.height)
+    .line_to(box.x + inset, box.y + box.height)
+    .line_to(box.x, box.y + box.height / 2.0)
+    .close()
+  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+}
+
+///|
 fn render_svg_parallelogram(
   svg : @svg.Svg,
   box : Box,
@@ -2797,19 +3814,13 @@ fn render_svg_parallelogram(
   stroke_width : Double,
 ) -> Unit {
   let wedge = if box.width < 52.0 { box.width / 2.0 } else { 26.0 }
-  svg.add(
-    @svg.polygon(
-      [
-        (box.x + wedge, box.y),
-        (box.x + box.width, box.y),
-        (box.x + box.width - wedge, box.y + box.height),
-        (box.x, box.y + box.height),
-      ],
-      fill~,
-      stroke~,
-      stroke_width~,
-    ),
-  )
+  let pb = @svg.PathBuilder::new()
+    .move_to(box.x + wedge, box.y)
+    .line_to(box.x + box.width, box.y)
+    .line_to(box.x + box.width - wedge, box.y + box.height)
+    .line_to(box.x, box.y + box.height)
+    .close()
+  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
 }
 
 ///|
@@ -3014,24 +4025,24 @@ fn render_svg_queue(
   stroke : String,
   stroke_width : Double,
 ) -> Unit {
-  // Queue/3D box shape
-  let arc_w = if box.width < 30.0 { box.width / 2.0 } else { 15.0 }
-  let m = 0.45 // bezier multiplier
-  let pb = @svg.PathBuilder::new()
+  // Ported from ../d2/lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
+  let arc_w = if box.width < 48.0 { box.width / 2.0 } else { 24.0 }
+  let m = 0.45
+  let outer = @svg.PathBuilder::new()
     .move_to(box.x + arc_w, box.y)
     .line_to(box.x + box.width - arc_w, box.y)
     .cubic_to(
-      box.x + box.width - arc_w * m,
+      box.x + box.width,
       box.y,
       box.x + box.width,
-      box.y + box.height * 0.25,
+      box.y + box.height * m,
       box.x + box.width,
       box.y + box.height * 0.5,
     )
     .cubic_to(
       box.x + box.width,
-      box.y + box.height * 0.75,
-      box.x + box.width - arc_w * m,
+      box.y + box.height - box.height * m,
+      box.x + box.width,
       box.y + box.height,
       box.x + box.width - arc_w,
       box.y + box.height,
@@ -3041,20 +4052,39 @@ fn render_svg_queue(
       box.x + arc_w * m,
       box.y + box.height,
       box.x,
-      box.y + box.height * 0.75,
+      box.y + box.height - box.height * m,
       box.x,
       box.y + box.height * 0.5,
     )
     .cubic_to(
       box.x,
-      box.y + box.height * 0.25,
+      box.y + box.height * m,
       box.x + arc_w * m,
       box.y,
       box.x + arc_w,
       box.y,
     )
     .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  svg.add(@svg.path(outer.build(), fill~, stroke~, stroke_width~))
+  let inner = @svg.PathBuilder::new()
+    .move_to(box.x + box.width - arc_w, box.y)
+    .cubic_to(
+      box.x + box.width - 2.0 * arc_w,
+      box.y,
+      box.x + box.width - 2.0 * arc_w,
+      box.y + box.height * m,
+      box.x + box.width - 2.0 * arc_w,
+      box.y + box.height * 0.5,
+    )
+    .cubic_to(
+      box.x + box.width - 2.0 * arc_w,
+      box.y + box.height - box.height * m,
+      box.x + box.width - 2.0 * arc_w,
+      box.y + box.height,
+      box.x + box.width - arc_w,
+      box.y + box.height,
+    )
+  svg.add(@svg.path(inner.build(), fill~, stroke~, stroke_width~))
 }
 
 ///|
@@ -3128,10 +4158,15 @@ fn render_svg_page(
   svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
   // Fold line
   let fold_pb = @svg.PathBuilder::new()
-    .move_to(box.x + box.width - fold, box.y)
+    .move_to(box.x + box.width, box.y + box.height)
+    .line_to(box.x, box.y + box.height)
+    .line_to(box.x, box.y)
+    .line_to(box.x + box.width - fold, box.y)
     .line_to(box.x + box.width - fold, box.y + fold)
     .line_to(box.x + box.width, box.y + fold)
-  svg.add(@svg.path(fold_pb.build(), fill="none", stroke~, stroke_width~))
+    .line_to(box.x + box.width, box.y + box.height)
+    .close()
+  svg.add(@svg.path(fold_pb.build(), fill~, stroke~, stroke_width~))
 }
 
 ///|
@@ -3174,21 +4209,15 @@ fn render_svg_step(
 ) -> Unit {
   // Chevron/arrow pointing right
   let wedge = if box.width < 70.0 { box.width / 2.0 } else { 35.0 }
-  svg.add(
-    @svg.polygon(
-      [
-        (box.x, box.y),
-        (box.x + box.width - wedge, box.y),
-        (box.x + box.width, box.y + box.height / 2.0),
-        (box.x + box.width - wedge, box.y + box.height),
-        (box.x, box.y + box.height),
-        (box.x + wedge, box.y + box.height / 2.0),
-      ],
-      fill~,
-      stroke~,
-      stroke_width~,
-    ),
-  )
+  let pb = @svg.PathBuilder::new()
+    .move_to(box.x, box.y)
+    .line_to(box.x + box.width - wedge, box.y)
+    .line_to(box.x + box.width, box.y + box.height / 2.0)
+    .line_to(box.x + box.width - wedge, box.y + box.height)
+    .line_to(box.x, box.y + box.height)
+    .line_to(box.x + wedge, box.y + box.height / 2.0)
+    .close()
+  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
 }
 
 ///|
@@ -3214,6 +4243,80 @@ fn render_svg_callout(
     .line_to(box.x, box.y)
     .close()
   svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+}
+
+///|
+fn shifted_multiple_box(box : Box) -> Box {
+  Box::new(
+    box.x + MULTIPLE_OFFSET,
+    box.y - MULTIPLE_OFFSET,
+    box.width,
+    box.height,
+  )
+}
+
+///|
+fn render_svg_3d_rect(
+  svg : @svg.Svg,
+  obj_id : String,
+  box : Box,
+  fill : String,
+  side_fill : String,
+  stroke : String,
+  stroke_width : Double,
+  config : SvgConfig,
+) -> Unit {
+  // Ported from ../d2/d2renderers/d2svg/d2svg.go (render3DRect).
+  let x = box.x
+  let y = box.y
+  let w = box.width
+  let h = box.height
+  let border = @svg.PathBuilder::new()
+    .move_to(x, y)
+    .line_to(x + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
+    .line_to(x + w + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
+    .line_to(x + w + THREE_DEE_OFFSET, y + h - THREE_DEE_OFFSET)
+    .line_to(x + w, y + h)
+    .line_to(x, y + h)
+    .line_to(x, y)
+    .line_to(x + w, y)
+    .line_to(x + w, y + h)
+    .move_to(x + w, y)
+    .line_to(x + w + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
+    .build()
+  let mask_id = defs_id(config, "border-mask-\{hash_u32(obj_id).to_string()}")
+  let mask_x = x
+  let mask_y = y - THREE_DEE_OFFSET
+  let mask_w = w + THREE_DEE_OFFSET
+  let mask_h = h + THREE_DEE_OFFSET
+  let mask_style = "stroke-width:\{stroke_width};stroke:#000;fill:none;opacity:1;"
+  let mask_def = "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\"><rect x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\" fill=\"white\"></rect><path d=\"\{border}\" style=\"\{mask_style}\"/></mask>"
+  svg.add_def(mask_def)
+  svg.add(
+    @xml_emit.Element::new("rect")
+    .attr_num("x", x)
+    .attr_num("y", y)
+    .attr_num("width", w)
+    .attr_num("height", h)
+    .attr("mask", "url(#\{mask_id})")
+    .attr("stroke", "none")
+    .attr("fill", fill)
+    .attr_num("stroke-width", stroke_width)
+    .self_close()
+    .build(),
+  )
+  let side_points = "\{x},\{y} \{x + THREE_DEE_OFFSET},\{y - THREE_DEE_OFFSET} \{x + w + THREE_DEE_OFFSET},\{y - THREE_DEE_OFFSET} \{x + w + THREE_DEE_OFFSET},\{y + h - THREE_DEE_OFFSET} \{x + w},\{y + h} \{x + w},\{y}"
+  svg.add(
+    @xml_emit.Element::new("polygon")
+    .attr("mask", "url(#\{mask_id})")
+    .attr("points", side_points)
+    .attr("fill", side_fill)
+    .attr("stroke", "none")
+    .attr_num("stroke-width", stroke_width)
+    .self_close()
+    .build(),
+  )
+  svg.add(@svg.path(border, fill="none", stroke~, stroke_width~))
 }
 
 ///|
@@ -3373,7 +4476,6 @@ fn adjusted_route_for_arrowheads(
     out[1],
     out[0],
     edge.src_arrowhead,
-    true,
     edge_stroke_width,
     src_shape_stroke,
   )
@@ -3382,7 +4484,6 @@ fn adjusted_route_for_arrowheads(
     out[last - 1],
     out[last],
     edge.dst_arrowhead,
-    false,
     edge_stroke_width,
     dst_shape_stroke,
   )
@@ -3413,12 +4514,11 @@ fn arrowhead_adjustment(
   start : Point,
   end : Point,
   arrowhead : @graph.ArrowheadType,
-  is_source : Bool,
   edge_stroke_width : Double,
   shape_stroke_width : Double,
 ) -> (Double, Double) {
   let mut distance = (edge_stroke_width + shape_stroke_width) / 2.0
-  if arrowhead_requires_extra_gap(arrowhead, is_source) {
+  if arrowhead_requires_extra_gap(arrowhead) {
     distance = distance + edge_stroke_width
   }
   let vx = end.x - start.x
@@ -3433,20 +4533,8 @@ fn arrowhead_adjustment(
 }
 
 ///|
-fn arrowhead_requires_extra_gap(
-  arrowhead : @graph.ArrowheadType,
-  is_source : Bool,
-) -> Bool {
-  match arrowhead {
-    @graph.None => false
-    @graph.CfOne
-    | @graph.CfMany
-    | @graph.CfOneRequired
-    | @graph.CfManyRequired
-    | @graph.CfOneOptional
-    | @graph.CfManyOptional => !is_source
-    _ => true
-  }
+fn arrowhead_requires_extra_gap(arrowhead : @graph.ArrowheadType) -> Bool {
+  arrowhead != @graph.None
 }
 
 ///|
@@ -3696,6 +4784,8 @@ fn render_svg_edge(
   svg : @svg.Svg,
   edge : Connection,
   shapes : Array[Shape],
+  edge_label_mask_url : String,
+  edge_marker_ids : Map[String, String],
   config : SvgConfig,
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
@@ -3712,7 +4802,7 @@ fn render_svg_edge(
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let stroke = style_color(edge.style.stroke, "N1", theme, use_css_theme_vars)
+  let stroke = style_color(edge.style.stroke, "B1", theme, use_css_theme_vars)
   let stroke_width = style_double(
     edge.style.stroke_width,
     config.default_stroke_width,
@@ -3735,10 +4825,24 @@ fn render_svg_edge(
     build_polyline_path(pb, adjusted_route)
   }
   // Determine markers based on arrowhead types
-  // For marker-start: reverse direction (arrow points toward destination/into line)
-  // For marker-end: normal direction (arrow points toward destination/away from line)
-  let marker_start = get_marker_url(edge.src_arrowhead, true, config)
-  let marker_end = get_marker_url(edge.dst_arrowhead, false, config)
+  let marker_start = marker_url_for_edge(
+    svg,
+    config,
+    edge_marker_ids,
+    edge.src_arrowhead,
+    false,
+    stroke,
+    stroke_width,
+  )
+  let marker_end = marker_url_for_edge(
+    svg,
+    config,
+    edge_marker_ids,
+    edge.dst_arrowhead,
+    true,
+    stroke,
+    stroke_width,
+  )
   // Use animated path if animated style is enabled
   if style_bool(edge.style.animated, false) {
     svg.add(
@@ -3748,6 +4852,7 @@ fn render_svg_edge(
         stroke_width~,
         marker_start~,
         marker_end~,
+        mask=edge_label_mask_url,
       ),
     )
   } else {
@@ -3759,6 +4864,7 @@ fn render_svg_edge(
         stroke_dash~,
         marker_start~,
         marker_end~,
+        mask=edge_label_mask_url,
       ),
     )
   }
@@ -3774,18 +4880,6 @@ fn render_svg_edge(
         let cx = label_x + label_box.width / 2.0
         let label_font_size = style_int(edge.style.font_size, config.font_size)
         let baseline_y = label_y + label_font_size.to_double()
-        svg.add(
-          @svg.rect(
-            label_x,
-            label_y,
-            label_box.width,
-            label_box.height,
-            fill=resolve_theme_color("N7", theme, use_css_theme_vars),
-            stroke="none",
-            rx=Some(3.0),
-            ry=Some(3.0),
-          ),
-        )
         let text_color = style_color(
           edge.style.font_color,
           "N2",
@@ -3942,7 +5036,7 @@ fn render_sequence_lifelines(
               .attr("stroke", stroke)
               .attr("fill", "none")
               .attr_num("stroke-width", 2.0)
-              .attr("stroke-dasharray", "12,11.838767")
+              .attr("stroke-dasharray", "12.000000,11.838767")
               .self_close()
               .build(),
             )

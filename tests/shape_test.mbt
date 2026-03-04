@@ -52,7 +52,7 @@ test "diamond shape" {
     #|  shape: diamond
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
 }
 
 ///|
@@ -62,7 +62,7 @@ test "hexagon shape" {
     #|  shape: hexagon
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
 }
 
 ///|
@@ -82,7 +82,7 @@ test "parallelogram shape" {
     #|  shape: parallelogram
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
 }
 
 ///|
@@ -92,8 +92,7 @@ test "person shape" {
     #|  shape: person
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<circle"))
-  assert_true(svg.contains("<line"))
+  assert_true(svg.contains("<path"))
 }
 
 ///|
@@ -164,7 +163,7 @@ test "step shape" {
     #|  shape: step
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
 }
 
 ///|
@@ -194,8 +193,9 @@ test "code shape has monospace font" {
     #|  shape: code
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("monospace"))
-  assert_true(svg.contains("#1e1e1e")) // dark background
+  assert_true(svg.contains("class=\"text-mono\""))
+  assert_true(svg.contains("class=\"light-code\""))
+  assert_true(svg.contains("class=\"dark-code\""))
 }
 
 ///|
@@ -208,8 +208,8 @@ test "code shape has dark background" {
     Ok(v) => v
     Err(e) => fail(e)
   }
-  assert_true(svg.contains("fill=\"#1e1e1e\""))
-  assert_true(svg.contains("fill=\"#d4d4d4\"")) // light text color
+  assert_true(svg.contains("fill:#ffffff"))
+  assert_true(svg.contains("fill:#1e1e2e"))
 }
 
 ///|

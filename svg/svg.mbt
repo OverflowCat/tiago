@@ -381,6 +381,37 @@ fn points_to_string(points : Array[(Double, Double)]) -> String {
 }
 
 ///|
+fn stroke_dash_attributes(
+  stroke_width : Double,
+  dash_gap_size : Double,
+) -> (Double, Double) {
+  // Ported from ../d2/lib/svg/path.go GetStrokeDashAttributes.
+  let scale = @math.log10(-0.6 * stroke_width + 10.6) * 0.5 + 0.5
+  let scaled_dash_size = stroke_width * dash_gap_size
+  let scaled_gap_size = scale * scaled_dash_size
+  (scaled_dash_size, scaled_gap_size)
+}
+
+///|
+fn fixed6(value : Double) -> String {
+  let scaled = (value * 1000000.0).round().to_int()
+  let sign = if scaled < 0 { "-" } else { "" }
+  let abs_scaled = if scaled < 0 { -scaled } else { scaled }
+  let int_part = abs_scaled / 1000000
+  let frac_part = abs_scaled % 1000000
+  let frac_raw = frac_part.to_string()
+  let pad = 6 - frac_raw.length()
+  let frac = StringBuilder::new()
+  if pad > 0 {
+    for _ in 0..<pad {
+      frac.write_char('0')
+    }
+  }
+  frac.write_string(frac_raw)
+  "\{sign}\{int_part}.\{frac.to_string()}"
+}
+
+///|
 /// Build a path element
 pub fn path(
   d : String,
@@ -390,6 +421,7 @@ pub fn path(
   stroke_dash? : Double = 0.0,
   marker_start? : String = "",
   marker_end? : String = "",
+  mask? : String = "",
 ) -> String {
   let elem = @xml_emit.Element::new("path")
     .attr("d", d)
@@ -398,9 +430,16 @@ pub fn path(
     .attr_num("stroke-width", stroke_width)
     .attr_if("marker-start", marker_start)
     .attr_if("marker-end", marker_end)
+    .attr_if("mask", mask)
   // Add stroke-dasharray if dash value is set
   if stroke_dash > 0.0 {
-    elem.attr("stroke-dasharray", stroke_dash.to_string()).self_close().build()
+    let (dash_size, gap_size) = stroke_dash_attributes(
+      stroke_width, stroke_dash,
+    )
+    elem
+    .attr("stroke-dasharray", "\{fixed6(dash_size)},\{fixed6(gap_size)}")
+    .self_close()
+    .build()
   } else {
     elem.self_close().build()
   }
@@ -415,6 +454,7 @@ pub fn animated_path(
   stroke_width? : Double = 1.0,
   marker_start? : String = "",
   marker_end? : String = "",
+  mask? : String = "",
 ) -> String {
   // Create path with animation
   let path_elem = @xml_emit.Element::new("path")
@@ -425,6 +465,7 @@ pub fn animated_path(
     .attr("stroke-dasharray", "5,5")
     .attr_if("marker-start", marker_start)
     .attr_if("marker-end", marker_end)
+    .attr_if("mask", mask)
   // Add animate element for marching ants effect
   let animate = @xml_emit.Element::new("animate")
     .attr("attributeName", "stroke-dashoffset")
@@ -920,55 +961,82 @@ pub fn background(color : String) -> String {
 ///|
 /// Build a dots pattern definition
 pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
-  let size = 8.0
-  let r = 1.5
-  let rect_elem = @xml_emit.Element::new("rect")
-    .attr_num("width", size)
-    .attr_num("height", size)
-    .attr("fill", bg_color)
-    .self_close()
-    .build()
-  let circle_elem = @xml_emit.Element::new("circle")
-    .attr_num("cx", size / 2.0)
-    .attr_num("cy", size / 2.0)
-    .attr_num("r", r)
-    .attr("fill", color)
-    .self_close()
-    .build()
+  let _ = bg_color
+  let size = 15.0
+  let points = [
+    (2.0, 2.0),
+    (12.0, 2.0),
+    (12.0, 12.0),
+    (2.0, 12.0),
+    (2.0, 7.0),
+    (12.0, 7.0),
+    (7.0, 2.0),
+    (7.0, 12.0),
+    (7.0, 7.0),
+  ]
+  let children : Array[String] = []
+  for point in points {
+    let rect = @xml_emit.Element::new("rect")
+      .attr_num("x", point.0)
+      .attr_num("y", point.1)
+      .attr_num("width", 1.0)
+      .attr_num("height", 1.0)
+      .attr("fill", color)
+      .self_close()
+      .build()
+    let group = @xml_emit.Element::new("g")
+      .attr("style", "mix-blend-mode:multiply")
+      .attr("opacity", "0.1")
+      .child(rect)
+      .build()
+    children.push(group)
+  }
   @xml_emit.Element::new("pattern")
   .attr("id", id)
+  .attr_int("x", 0)
+  .attr_int("y", 0)
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .children([rect_elem, circle_elem])
+  .children(children)
   .build()
 }
 
 ///|
 /// Build a lines pattern definition (horizontal lines)
 pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
-  let size = 8.0
-  let rect_elem = @xml_emit.Element::new("rect")
-    .attr_num("width", size)
-    .attr_num("height", size)
-    .attr("fill", bg_color)
-    .self_close()
-    .build()
-  let line_elem = @xml_emit.Element::new("line")
-    .attr_num("x1", 0.0)
-    .attr_num("y1", size / 2.0)
-    .attr_num("x2", size)
-    .attr_num("y2", size / 2.0)
-    .attr("stroke", color)
-    .attr_int("stroke-width", 1)
-    .self_close()
+  let _ = bg_color
+  let size = 15.0
+  let rows = [2.0, 7.0, 12.0]
+  let line_groups : Array[String] = []
+  for y in rows {
+    let rect = @xml_emit.Element::new("rect")
+      .attr_num("y", y)
+      .attr_num("width", size)
+      .attr_num("height", 1.0)
+      .attr("fill", color)
+      .self_close()
+      .build()
+    line_groups.push(
+      @xml_emit.Element::new("g")
+      .attr("style", "mix-blend-mode:multiply")
+      .attr("opacity", "0.05")
+      .child(rect)
+      .build(),
+    )
+  }
+  let lines = @xml_emit.Element::new("g")
+    .attr("style", "mix-blend-mode:multiply")
+    .children(line_groups)
     .build()
   @xml_emit.Element::new("pattern")
   .attr("id", id)
+  .attr_int("x", 0)
+  .attr_int("y", 0)
   .attr("patternUnits", "userSpaceOnUse")
   .attr_num("width", size)
   .attr_num("height", size)
-  .children([rect_elem, line_elem])
+  .child(lines)
   .build()
 }
 

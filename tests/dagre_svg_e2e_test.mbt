@@ -61,6 +61,17 @@ test "examples: dagre svg e2e snapshots and d2 semantic parity" {
       d2_semantic,
       msg="\{name}: semantic snapshot diverges from d2 dagre output (\{semantic_diff})",
     )
+
+    let diago_visual_snapshot = d2_visual_style_snapshot(actual_svg)
+    let d2_visual = d2_visual_style_snapshot(d2_svg)
+    let visual_diff = semantic_snapshot_mismatch_summary(
+      diago_visual_snapshot, d2_visual,
+    )
+    assert_eq(
+      diago_visual_snapshot,
+      d2_visual,
+      msg="\{name}: visual style snapshot diverges from d2 dagre output (\{visual_diff})",
+    )
   }
 }
 
@@ -124,6 +135,167 @@ fn d2_semantic_snapshot(svg : String) -> String {
   }
 
   sort_strings(tokens).join("\n")
+}
+
+///|
+fn d2_visual_style_snapshot(svg : String) -> String {
+  let tokens : Array[String] = []
+  collect_text_style_tokens(svg, tokens)
+  collect_shape_style_tokens(svg, "path", tokens)
+  collect_shape_style_tokens(svg, "rect", tokens)
+  collect_shape_style_tokens(svg, "circle", tokens)
+  collect_shape_style_tokens(svg, "ellipse", tokens)
+  collect_shape_style_tokens(svg, "line", tokens)
+  collect_shape_style_tokens(svg, "polygon", tokens)
+  collect_shape_style_tokens(svg, "polyline", tokens)
+  sort_strings(tokens).join("\n")
+}
+
+///|
+fn collect_text_style_tokens(svg : String, out : Array[String]) -> Unit {
+  let parts = svg.split("<text").collect()
+  if parts.length() < 2 {
+    return
+  }
+  for i in 1..<parts.length() {
+    let part = parts[i].to_string()
+    let gt_parts = part.split(">").collect()
+    if gt_parts.length() < 2 {
+      continue
+    }
+    let attrs = gt_parts[0].to_string()
+    let tail = gt_parts[1].to_string()
+    let text_parts = tail.split("</text>").collect()
+    if text_parts.length() == 0 {
+      continue
+    }
+    let label = normalize_inline_text(strip_xml_tags(text_parts[0].to_string()))
+    if label.length() == 0 {
+      continue
+    }
+    let style_sig = visual_style_signature(attrs)
+    out.push("TEXT|\{label}|\{style_sig}")
+  }
+}
+
+///|
+fn collect_shape_style_tokens(
+  svg : String,
+  tag : String,
+  out : Array[String],
+) -> Unit {
+  let parts = svg.split("<" + tag).collect()
+  if parts.length() < 2 {
+    return
+  }
+  for i in 1..<parts.length() {
+    let part = parts[i].to_string()
+    let close_index = match find_substring(part, ">") {
+      Some(v) => v
+      None => continue
+    }
+    let attrs = slice_string(part, 0, close_index).trim().to_string()
+    if attrs.length() == 0 {
+      continue
+    }
+    let style_sig = visual_style_signature(attrs)
+    out.push("SHAPE|\{tag}|\{style_sig}")
+  }
+}
+
+///|
+fn visual_style_signature(attrs : String) -> String {
+  let style_map : Map[String, String] = {}
+  match parse_attr_string(attrs, "style") {
+    Some(style_raw) => merge_inline_style(style_map, style_raw)
+    None => ()
+  }
+  let keys = visual_style_keys()
+  for key in keys {
+    match parse_attr_string(attrs, key) {
+      Some(v) =>
+        match normalize_visual_style_value(key, v) {
+          Some(normalized) => style_map[key] = normalized
+          None => ()
+        }
+      None => ()
+    }
+  }
+  let pairs : Array[String] = []
+  for key in keys {
+    match style_map.get(key) {
+      Some(v) => pairs.push("\{key}=\{v}")
+      None => ()
+    }
+  }
+  if pairs.is_empty() {
+    "-"
+  } else {
+    pairs.join("|")
+  }
+}
+
+///|
+fn merge_inline_style(
+  style_map : Map[String, String],
+  raw_style : String,
+) -> Unit {
+  let declarations = raw_style.split(";").collect()
+  for declaration in declarations {
+    let item = declaration.to_string().trim().to_string()
+    if item.is_empty() {
+      continue
+    }
+    let colon = match find_substring(item, ":") {
+      Some(v) => v
+      None => continue
+    }
+    let key = slice_string(item, 0, colon).trim().to_string().to_lower()
+    let value = slice_string(item, colon + 1, item.length()).trim().to_string()
+    if value.is_empty() || !is_visual_style_key(key) {
+      continue
+    }
+    match normalize_visual_style_value(key, value) {
+      Some(normalized) => style_map[key] = normalized
+      None => ()
+    }
+  }
+}
+
+///|
+fn visual_style_keys() -> Array[String] {
+  [
+    "fill", "stroke", "stroke-width", "opacity", "fill-opacity", "stroke-opacity",
+    "stroke-dasharray", "stroke-linecap", "stroke-linejoin", "font-size", "text-anchor",
+  ]
+}
+
+///|
+fn normalize_visual_style_value(key : String, raw : String) -> String? {
+  let value = normalize_inline_text(raw)
+  if value.is_empty() {
+    return None
+  }
+  if key == "stroke" && value.to_lower() == "none" {
+    return None
+  }
+  if key == "font-size" {
+    if value.has_suffix("px") {
+      return Some(value)
+    }
+    return Some(value + "px")
+  }
+  Some(value)
+}
+
+///|
+fn is_visual_style_key(key : String) -> Bool {
+  for k in visual_style_keys() {
+    if k == key {
+      return true
+    }
+  }
+  false
 }
 
 ///|

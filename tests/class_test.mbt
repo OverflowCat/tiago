@@ -72,7 +72,7 @@ test "class applies cylinder shape" {
     #|}
     #|postgres: PostgreSQL { class: db }
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<ellipse"))
+  assert_true(svg.contains("<path"))
   assert_true(svg.contains("PostgreSQL"))
 }
 
@@ -128,7 +128,7 @@ test "class with hexagon shape" {
     #|}
     #|choice: Decision Point { class: decision }
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
   assert_true(svg.contains("Decision Point"))
 }
 
@@ -142,7 +142,7 @@ test "class with diamond shape" {
     #|}
     #|check: Check Condition { class: condition }
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("<polygon"))
+  assert_true(svg.contains("<path"))
   assert_true(svg.contains("Check Condition"))
 }
 

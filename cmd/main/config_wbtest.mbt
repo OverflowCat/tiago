@@ -362,8 +362,9 @@ test "salt namespaces SVG marker IDs" {
     false,
     None,
   ).unwrap()
-  assert_true(svg.contains("arrow-triangle"))
-  assert_true(not(svg.contains("id=\"arrow-triangle\"")))
+  assert_true(svg.contains("mk-"))
+  assert_true(not(svg.contains("id=\"mk-")))
+  assert_true(not(svg.contains("url(#mk-")))
 }
 
 ///|

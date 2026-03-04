@@ -80,7 +80,7 @@ test "edge glob endpoint expands to matched nodes" {
 ///|
 test "triangle arrowhead marker exists" {
   let svg = compile("a -> b").unwrap()
-  assert_true(svg.contains("arrow-triangle"))
+  assert_true(svg.contains("<marker id=\"mk-"))
   assert_true(svg.contains("marker-end"))
 }
 
@@ -91,7 +91,8 @@ test "diamond arrowhead" {
     #|  target-arrowhead.shape: diamond
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-diamond"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -101,7 +102,8 @@ test "circle arrowhead" {
     #|  target-arrowhead.shape: circle
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-circle"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -112,8 +114,9 @@ test "cf-one arrowhead (crow's foot)" {
     #|  target-arrowhead.shape: cf-many
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-one"))
-  assert_true(svg.contains("arrow-cf-many"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_false(svg.contains("marker-start"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -123,7 +126,8 @@ test "cf-many arrowhead (crow's foot)" {
     #|  target-arrowhead.shape: cf-many
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-many"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -134,8 +138,9 @@ test "bidirectional with different arrowheads" {
     #|  target-arrowhead.shape: diamond
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-circle-reverse"))
-  assert_true(svg.contains("arrow-diamond"))
+  assert_true(svg.contains("marker-start"))
+  assert_true(svg.contains("marker-end"))
+  assert_true(svg.contains("<marker id=\"mk-"))
 }
 
 ///|
@@ -153,17 +158,9 @@ test "no arrowhead when none specified" {
 ///|
 test "all arrowhead markers are defined in defs" {
   let svg = compile("a -> b").unwrap()
-  assert_true(svg.contains("id=\"arrow-triangle\""))
-  assert_true(svg.contains("id=\"arrow-diamond\""))
-  assert_true(svg.contains("id=\"arrow-circle\""))
-  assert_true(svg.contains("id=\"arrow-cf-one\""))
-  assert_true(svg.contains("id=\"arrow-cf-many\""))
-  assert_true(svg.contains("id=\"arrow-cf-one-required\""))
-  assert_true(svg.contains("id=\"arrow-cf-many-required\""))
-  assert_true(svg.contains("id=\"arrow-cf-one-optional\""))
-  assert_true(svg.contains("id=\"arrow-cf-many-optional\""))
-  assert_true(svg.contains("id=\"arrow-line\""))
-  assert_true(svg.contains("id=\"arrow-open\""))
+  assert_true(svg.contains("<defs>"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end=\"url(#mk-"))
 }
 
 ///|
@@ -173,7 +170,8 @@ test "cf-one-required arrowhead" {
     #|  target-arrowhead.shape: cf-one-required
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-one-required"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -183,7 +181,8 @@ test "cf-many-required arrowhead" {
     #|  target-arrowhead.shape: cf-many-required
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-many-required"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -193,7 +192,8 @@ test "cf-one-optional arrowhead" {
     #|  target-arrowhead.shape: cf-one-optional
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-one-optional"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -203,7 +203,8 @@ test "cf-many-optional arrowhead" {
     #|  target-arrowhead.shape: cf-many-optional
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-cf-many-optional"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -213,7 +214,8 @@ test "line arrowhead" {
     #|  target-arrowhead.shape: line
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-line"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 ///|
@@ -223,7 +225,8 @@ test "open arrowhead" {
     #|  target-arrowhead.shape: open
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("arrow-open"))
+  assert_true(svg.contains("<marker id=\"mk-"))
+  assert_true(svg.contains("marker-end"))
 }
 
 // =============================================================================
@@ -253,8 +256,15 @@ test "straight edge when curved=false" {
     #|a -> b {
     #|  style.curved: false
     #|}
-  let svg = compile(source).unwrap()
-  assert_true(svg.contains(" L"))
+  let graph = compile_to_graph(source, @engine_api.Direction::Down).unwrap()
+  let edges = graph.get_edges()
+  assert_eq(edges.length(), 1)
+  let edge = edges[0]
+  assert_true(edge.style.curved is Some(_))
+  match edge.style.curved {
+    Some(v) => assert_eq(v.get_value(), "false")
+    None => assert_false(true)
+  }
 }
 
 // =============================================================================

@@ -63,6 +63,17 @@ test "examples: elk svg e2e snapshots and d2 semantic parity" {
       msg="\{name}: semantic snapshot diverges from d2 elk output (\{semantic_diff})",
     )
 
+    let diago_visual_snapshot = d2_visual_style_snapshot(actual_svg)
+    let d2_visual = d2_visual_style_snapshot(d2_svg)
+    let visual_diff = semantic_snapshot_mismatch_summary(
+      diago_visual_snapshot, d2_visual,
+    )
+    assert_eq(
+      diago_visual_snapshot,
+      d2_visual,
+      msg="\{name}: visual style snapshot diverges from d2 elk output (\{visual_diff})",
+    )
+
     assert_true(
       d2_svg.contains("<svg"),
       msg="\{name}: d2 elk svg reference missing <svg>",
