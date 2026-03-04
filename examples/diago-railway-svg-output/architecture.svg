@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="1713" viewBox="-131 -101 760 1713" data-d2-version="0.2.0" class="d2-327844436 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-131" y="-101" width="760" height="1713"><rect x="-131" y="-101" width="760" height="1713" fill="white"></rect><rect x="-38" y="1360" width="35" height="21" fill="black"></rect><rect x="138" y="1374" width="35" height="21" fill="black"></rect></mask>
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-131" y="-101" width="760" height="1713"><rect x="-131" y="-101" width="760" height="1713" fill="white"></rect><rect x="-67" y="1360" width="35" height="21" fill="black"></rect><rect x="138" y="1514" width="35" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
 <rect x="-131" y="-101" width="760" height="1713" rx="0" fill="#FFFFFF" stroke-width="0"/>
@@ -33,9 +33,9 @@
 <rect x="178" y="1040" width="100" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="204" y="680" width="114" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 50 1322 L 50 1417" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="-20.5" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<text x="-49.5" y="1376" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <path d="M 94 1322 L 94 1360.5 S 94 1370.5 104 1370.5 L 206 1370.5 S 216 1370.5 216 1380.5 L 216 1417" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="155.5" y="1390" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
+<text x="155.5" y="1530" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <path d="M 443 62 L 443 90 S 443 100 433 100 L 60 100 S 50 100 50 110 L 50 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 50 202 L 50 233.75 C 50 246.25 62.5 233.75 62.5 246.25 L 62.5 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 58 342 L 58 456" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>

@@ -421,7 +421,12 @@ fn resolve_edge_label_obstacles(
     order.push(entry.0)
   }
   order.sort()
-  let step = @cmp.maximum(10.0, config.edge_padding * 0.7)
+  let route_by_edge : Map[Int, Array[@graph.Point]] = {}
+  for entry in patch.edges {
+    route_by_edge[entry.0] = entry.1
+  }
+  let step = @cmp.maximum(8.0, config.edge_padding * 0.55)
+  let max_rings = 14
   for edge_index in order {
     let base = match label_boxes.get(edge_index) {
       Some(box) => box
@@ -431,40 +436,125 @@ fn resolve_edge_label_obstacles(
       Some(v) => v
       None => continue
     }
+    let route = route_by_edge.get(edge_index).unwrap_or([])
+    let anchors : Array[@graph.Point] = []
+    anchors.push(
+      @graph.Point::new(base.x + base.width / 2.0, base.y + base.height / 2.0),
+    )
+    if route.length() >= 2 {
+      anchors.push(route_point_at_percent(route, 0.35))
+      anchors.push(route_point_at_percent(route, 0.5))
+      anchors.push(route_point_at_percent(route, 0.65))
+    }
+
     let mut best = base
     let mut best_score = label_obstacle_score(
       edge_index, base, base, edge, label_boxes, patch,
     )
-    for ring in 1..<=5 {
-      let d = ring.to_double() * step
-      let candidates : Array[(Double, Double)] = [
-        (d, 0.0),
-        (-d, 0.0),
-        (0.0, d),
-        (0.0, -d),
-        (d, d),
-        (d, -d),
-        (-d, d),
-        (-d, -d),
-      ]
-      for candidate in candidates {
-        let trial = @graph.Box::new(
-          base.x + candidate.0,
-          base.y + candidate.1,
-          base.width,
-          base.height,
-        )
-        let score = label_obstacle_score(
-          edge_index, trial, base, edge, label_boxes, patch,
-        )
-        if score < best_score {
-          best = trial
-          best_score = score
+    let mut best_feasible = base
+    let mut best_feasible_score = 0.0
+    let mut has_feasible = false
+    for anchor in anchors {
+      for ring in 0..<=max_rings {
+        let d = ring.to_double() * step
+        let candidates : Array[(Double, Double)] = if ring == 0 {
+          [(0.0, 0.0)]
+        } else {
+          [
+            (d, 0.0),
+            (-d, 0.0),
+            (0.0, d),
+            (0.0, -d),
+            (d, d),
+            (d, -d),
+            (-d, d),
+            (-d, -d),
+            (2.0 * d, 0.0),
+            (-2.0 * d, 0.0),
+            (0.0, 2.0 * d),
+            (0.0, -2.0 * d),
+          ]
+        }
+        for candidate in candidates {
+          let center_x = anchor.x + candidate.0
+          let center_y = anchor.y + candidate.1
+          let trial = @graph.Box::new(
+            center_x - base.width / 2.0,
+            center_y - base.height / 2.0,
+            base.width,
+            base.height,
+          )
+          let score = label_obstacle_score(
+            edge_index, trial, base, edge, label_boxes, patch,
+          )
+          if score < best_score {
+            best = trial
+            best_score = score
+          }
+          if label_candidate_is_feasible(
+              edge_index, trial, edge, label_boxes, patch,
+            ) {
+            let feasible_score = label_feasible_cost(trial, base)
+            if !has_feasible || feasible_score < best_feasible_score {
+              has_feasible = true
+              best_feasible = trial
+              best_feasible_score = feasible_score
+            }
+          }
         }
       }
     }
-    label_boxes[edge_index] = best
+    label_boxes[edge_index] = if has_feasible { best_feasible } else { best }
   }
+}
+
+///|
+fn label_candidate_is_feasible(
+  edge_index : Int,
+  box : @graph.Box,
+  edge : @graph.EdgeInput,
+  label_boxes : Map[Int, @graph.Box],
+  patch : @graph.LayoutPatch,
+) -> Bool {
+  for entry in label_boxes {
+    let other_edge = entry.0
+    if other_edge == edge_index {
+      continue
+    }
+    if overlap_area(box, entry.1) > 0.0 {
+      return false
+    }
+  }
+  for entry in patch.nodes {
+    let node_id = entry.0
+    if node_id == edge.src_id || node_id == edge.dst_id {
+      continue
+    }
+    if overlap_area(box, entry.1) > 0.0 {
+      return false
+    }
+  }
+  for entry in patch.edges {
+    let other_edge = entry.0
+    if other_edge == edge_index {
+      continue
+    }
+    let route = entry.1
+    if route.length() < 2 {
+      continue
+    }
+    for i in 0..<(route.length() - 1) {
+      if segment_intersects_box(route[i], route[i + 1], box) {
+        return false
+      }
+    }
+  }
+  true
+}
+
+///|
+fn label_feasible_cost(box : @graph.Box, base : @graph.Box) -> Double {
+  ((box.x - base.x).abs() + (box.y - base.y).abs()) * 0.8
 }
 
 ///|
