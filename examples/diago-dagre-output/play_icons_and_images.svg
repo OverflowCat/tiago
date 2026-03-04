@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="544" height="328" viewBox="-100 -100 544 328" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="544" height="328"><rect x="-100" y="-100" width="544" height="328" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="546" height="330" viewBox="-101 -101 546 330" data-d2-version="0.2.0" class="d2-629143618 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="546" height="330"><rect x="-101" y="-101" width="546" height="330" fill="white"></rect></mask>
 </defs>
-<rect x="-100" y="-100" width="544" height="328" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="546" height="330" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="18" width="156" height="92" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <image href="https://icons.terrastruct.com/infra/019-network.svg" x="66" y="32" width="24" height="24" preserveAspectRatio="xMidYMid meet"/>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="254" height="432" viewBox="-100 -100 254 432" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="254" height="432"><rect x="-100" y="-100" width="254" height="432" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="434" viewBox="-101 -101 256 434" data-d2-version="0.2.0" class="d2-1928972951 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="256" height="434"><rect x="-101" y="-101" width="256" height="434" fill="white"></rect></mask>
 <mask id="border-mask-1446229049" maskUnits="userSpaceOnUse" x="0" y="151" width="69" height="81"><rect x="0" y="151" width="69" height="81" fill="white"></rect><path d="M 0 166 L 15 151 L 69 151 L 69 217 L 54 232 L 0 232 L 0 166 L 54 166 L 54 232 M 54 166 L 69 151" style="stroke-width:2;stroke:#000;fill:none;opacity:1;"/></mask>
 <marker id="mk-499373415" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="green" stroke-width="2"/></marker>
 </defs>
-<rect x="-100" y="-100" width="254" height="432" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="256" height="434" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="1" y="0" width="53" height="66" fill="#F7F8FE" stroke="#53C0D8" stroke-width="5" rx="0" ry="0"/>
 <rect x="0" y="166" width="54" height="66" mask="url(#border-mask-1446229049)" stroke="none" fill="red" stroke-width="2"/>

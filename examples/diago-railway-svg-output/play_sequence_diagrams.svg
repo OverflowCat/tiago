@@ -7,12 +7,12 @@
 <g id="base-layer">
 <rect x="12" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="252" y="52" width="100" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="402" y="52" width="160" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="612" y="52" width="196" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 62 120 L 62 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
-<path d="M 302 120 L 302 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
-<path d="M 482 120 L 482 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
-<path d="M 710 120 L 710 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12,11.838767"/>
+<rect x="402" y="52" width="160" height="66" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="612" y="52" width="196" height="66" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 62 120 L 62 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12.000000,11.838767"/>
+<path d="M 302 120 L 302 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12.000000,11.838767"/>
+<path d="M 482 120 L 482 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12.000000,11.838767"/>
+<path d="M 710 120 L 710 357" stroke="#0D32B2" fill="none" stroke-width="2" stroke-dasharray="12.000000,11.838767"/>
 <path d="M 64 198 L 298 198" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="182" y="185" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">What does it mean</text>
 <path d="M 300 288 L 66 288" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>

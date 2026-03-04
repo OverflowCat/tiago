@@ -4,9 +4,7 @@
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 <marker id="mk-1734378072" markerWidth="24.200000000000003" markerHeight="18" refX="20.8" refY="9" viewBox="0 0 24.200000000000003 18" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,9 11,2.25 22,9 11,16.2" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/></marker>
 <marker id="mk-2052270848" markerWidth="18" markerHeight="18" refX="15" refY="9" viewBox="0 0 18 18" orient="auto" markerUnits="userSpaceOnUse"><circle cx="10" cy="9" r="7" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/></marker>
-<marker id="mk-852650235" markerWidth="18" markerHeight="18" refX="3" refY="9" viewBox="0 0 18 18" orient="auto" markerUnits="userSpaceOnUse"><g transform="scale(-1) translate(-18, -18)" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"><circle cx="5.3" cy="9" r="3.3" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/><path d="M15,9 24.6,9 M13.2,0 13.2,18"/></g></marker>
 <marker id="mk-1183370137" markerWidth="18" markerHeight="18" refX="15" refY="9" viewBox="0 0 18 18" orient="auto" markerUnits="userSpaceOnUse"><g fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"><circle cx="5.3" cy="9" r="3.3" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/><path d="M15,9 24.6,9 M9.6,9 24.6,0 M9.6,9 24.6,18"/></g></marker>
-<marker id="mk-1138614384" markerWidth="18" markerHeight="18" refX="3" refY="9" viewBox="0 0 18 18" orient="auto" markerUnits="userSpaceOnUse"><g transform="scale(-1) translate(-18, -18)" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"><circle cx="5.3" cy="9" r="3.3" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/><path d="M15,9 24.6,9 M9.6,9 24.6,0 M9.6,9 24.6,18"/></g></marker>
 <marker id="mk-548447935" markerWidth="18" markerHeight="18" refX="3" refY="9" viewBox="0 0 18 18" orient="auto" markerUnits="userSpaceOnUse"><circle cx="8" cy="9" r="7" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/></marker>
 </defs>
 <rect x="-94" y="-100" width="1100" height="421" rx="0" fill="#FFFFFF" stroke-width="0"/>
@@ -29,9 +27,9 @@
 <text x="216" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">diamond</text>
 <path d="M 376 62 L 376 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-2052270848)" mask="url(#edge-label-mask)"/>
 <text x="376" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">circle</text>
-<path d="M 536 62 L 536 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-852650235)" marker-end="url(#mk-1183370137)" mask="url(#edge-label-mask)"/>
+<path d="M 536 62 L 536 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-1183370137)" mask="url(#edge-label-mask)"/>
 <text x="536" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">one to many</text>
-<path d="M 696 62 L 696 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-1138614384)" marker-end="url(#mk-1183370137)" mask="url(#edge-label-mask)"/>
+<path d="M 696 62 L 696 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-1183370137)" mask="url(#edge-label-mask)"/>
 <text x="696.5" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">many to many</text>
 <path d="M 856 64 L 856 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-548447935)" marker-end="url(#mk-1734378072)" mask="url(#edge-label-mask)"/>
 <text x="856.5" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">mixed</text>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="367" height="489" viewBox="70 -157 367 489" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="70" y="-157" width="367" height="489"><rect x="70" y="-157" width="367" height="489" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="369" height="491" viewBox="69 -158 369 491" data-d2-version="0.2.0" class="d2-947333873 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="69" y="-158" width="369" height="491"><rect x="69" y="-158" width="369" height="491" fill="white"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="70" y="-157" width="367" height="489" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="69" y="-158" width="369" height="491" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="227" y="0" width="53" height="66" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="227" y="166" width="54" height="66" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>

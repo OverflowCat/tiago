@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="582" height="318" viewBox="-100 -100 582 318" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="582" height="318"><rect x="-100" y="-100" width="582" height="318" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="584" height="320" viewBox="-101 -101 584 320" data-d2-version="0.2.0" class="d2-1746807485 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="584" height="320"><rect x="-101" y="-101" width="584" height="320" fill="white"></rect></mask>
 </defs>
-<rect x="-100" y="-100" width="582" height="318" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="584" height="320" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <ellipse cx="54" cy="59" rx="54" ry="54" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 168 24 C 168 0 217.5 0 223 0 C 228.5 0 278 0 278 24 L 278 94 C 278 118 228.5 118 223 118 C 217.5 118 168 118 168 94 L 168 24 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>

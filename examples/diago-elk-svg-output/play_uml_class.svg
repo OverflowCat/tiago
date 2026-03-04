@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="692" height="626" viewBox="-100 -100 692 626" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="692" height="626"><rect x="-100" y="-100" width="692" height="626" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="694" height="628" viewBox="-101 -101 694 628" data-d2-version="0.2.0" class="d2-771631346 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="694" height="628"><rect x="-101" y="-101" width="694" height="628" fill="white"></rect></mask>
 </defs>
-<rect x="-100" y="-100" width="692" height="626" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="694" height="628" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="12" y="12" width="480" height="414" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <rect x="12" y="12" width="480" height="92" fill="#0A0F25"/>

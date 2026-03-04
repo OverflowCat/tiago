@@ -880,49 +880,117 @@ fn add_theme_styles(
 }
 
 ///|
+fn markdown_theme_vars_line(
+  theme : @themes.Theme,
+  scope_class : String,
+) -> String {
+  ".\{scope_class} .md{--color-fg-default:\{theme.colors.n1};--color-fg-muted:\{theme.colors.n2};--color-fg-subtle:\{theme.colors.n3};--color-canvas-default:\{theme.colors.n7};--color-canvas-subtle:\{theme.colors.n6};--color-border-default:\{theme.colors.b1};--color-border-muted:\{theme.colors.b2};--color-neutral-muted:\{theme.colors.n6};--color-accent-fg:\{theme.colors.b2};--color-accent-emphasis:\{theme.colors.b2};--color-attention-subtle:\{theme.colors.n2};--color-danger-fg:red;}"
+}
+
+///|
+fn replace_all(s : String, old : String, new : String) -> String {
+  if old == "" {
+    return s
+  }
+  s.split(old).collect().join(new)
+}
+
+///|
+fn markdown_css_for_svg(scope_class : String) -> String {
+  let mut css = markdown_css_template
+  css = replace_all(css, ".md", ".\{scope_class} .md")
+  css = replace_all(css, "font-italic", "\{scope_class}-font-italic")
+  css = replace_all(css, "font-bold", "\{scope_class}-font-bold")
+  css = replace_all(css, "font-mono", "\{scope_class}-font-mono")
+  css = replace_all(css, "font-regular", "\{scope_class}-font-regular")
+  css = replace_all(css, "font-semibold", "\{scope_class}-font-semibold")
+  css
+}
+
+///|
 fn add_base_styles(
   svg : @svg.Svg,
   light_theme : @themes.Theme,
-  has_dark_theme : Bool,
+  dark_theme : @themes.Theme?,
+  scope_class : String,
   has_code_shape : Bool,
+  has_markdown_shape : Bool,
 ) -> Unit {
-  if !has_code_shape {
+  if !has_code_shape && !has_markdown_shape {
     return
   }
   let lines : Array[String] = []
-  lines.push("@font-face {")
-  lines.push("  font-family: \"diago-font-mono\";")
-  lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
-  lines.push("}")
-  lines.push("@font-face {")
-  lines.push("  font-family: \"diago-font-mono-bold\";")
-  lines.push("  src: url(\"\{source_code_pro_bold_data}\");")
-  lines.push("}")
-  lines.push("@font-face {")
-  lines.push("  font-family: \"diago-font-mono-italic\";")
-  lines.push("  src: url(\"\{source_code_pro_italic_data}\");")
-  lines.push("}")
-  lines.push(".text-mono {")
-  lines.push("  font-family: \"diago-font-mono\";")
-  lines.push("}")
-  lines.push(".text-mono-bold {")
-  lines.push("  font-family: \"diago-font-mono-bold\";")
-  lines.push("}")
-  lines.push(".text-mono-italic {")
-  lines.push("  font-family: \"diago-font-mono-italic\";")
-  lines.push("}")
-  if light_theme.is_dark {
-    lines.push(".light-code{display: none}")
-    lines.push(".dark-code{display: block}")
-  } else {
-    lines.push(".light-code{display: block}")
-    lines.push(".dark-code{display: none}")
-  }
-  if has_dark_theme {
-    lines.push("@media screen and (prefers-color-scheme: dark) {")
-    lines.push("  .light-code{display: none}")
-    lines.push("  .dark-code{display: block}")
+  if has_markdown_shape {
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-regular;")
+    lines.push("  src: url(\"\{source_sans_pro_regular_data}\");")
     lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-semibold;")
+    lines.push("  src: url(\"\{source_sans_pro_semibold_data}\");")
+    lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-bold;")
+    lines.push("  src: url(\"\{source_sans_pro_bold_data}\");")
+    lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-italic;")
+    lines.push("  src: url(\"\{source_sans_pro_italic_data}\");")
+    lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-mono;")
+    lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
+    lines.push("}")
+  }
+  if has_code_shape {
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-mono;")
+    lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
+    lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-mono-bold;")
+    lines.push("  src: url(\"\{source_code_pro_bold_data}\");")
+    lines.push("}")
+    lines.push("@font-face {")
+    lines.push("  font-family: \{scope_class}-font-mono-italic;")
+    lines.push("  src: url(\"\{source_code_pro_italic_data}\");")
+    lines.push("}")
+  }
+  if has_markdown_shape {
+    lines.push(markdown_theme_vars_line(light_theme, scope_class))
+    match dark_theme {
+      Some(theme) => {
+        lines.push("@media screen and (prefers-color-scheme: dark) {")
+        lines.push("  \{markdown_theme_vars_line(theme, scope_class)}")
+        lines.push("}")
+      }
+      None => ()
+    }
+    lines.push(markdown_css_for_svg(scope_class))
+  }
+  if has_code_shape {
+    lines.push(".\{scope_class} .text-mono {")
+    lines.push("  font-family: \"\{scope_class}-font-mono\";")
+    lines.push("}")
+    lines.push(".\{scope_class} .text-mono-bold {")
+    lines.push("  font-family: \"\{scope_class}-font-mono-bold\";")
+    lines.push("}")
+    lines.push(".\{scope_class} .text-mono-italic {")
+    lines.push("  font-family: \"\{scope_class}-font-mono-italic\";")
+    lines.push("}")
+    if light_theme.is_dark {
+      lines.push(".light-code{display: none}")
+      lines.push(".dark-code{display: block}")
+    } else {
+      lines.push(".light-code{display: block}")
+      lines.push(".dark-code{display: none}")
+    }
+    if dark_theme is Some(_) {
+      lines.push("@media screen and (prefers-color-scheme: dark) {")
+      lines.push("  .light-code{display: none}")
+      lines.push("  .dark-code{display: block}")
+      lines.push("}")
+    }
   }
   let css = lines.join("\n")
   svg.add(
@@ -944,6 +1012,16 @@ fn graph_has_code_shape(graph : Diagram) -> Bool {
 }
 
 ///|
+fn graph_has_markdown_shape(graph : Diagram) -> Bool {
+  for shape in graph.shapes {
+    if has_class(shape, "lang:markdown") {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn hash_u32(s : String) -> Int {
   let mut h : Int = 216613626
   for i in 0..<s.length() {
@@ -952,6 +1030,38 @@ fn hash_u32(s : String) -> Int {
     h = (h * 16777619) & 0x7fffffff
   }
   h
+}
+
+///|
+fn style_scope_class(graph : Diagram, config : SvgConfig) -> String {
+  let seed = StringBuilder::new()
+  seed.write_string(graph.root.id)
+  seed.write_string("|")
+  seed.write_string(graph.shapes.length().to_string())
+  seed.write_string("|")
+  seed.write_string(graph.connections.length().to_string())
+  for shape in graph.shapes {
+    seed.write_string("|s:")
+    seed.write_string(shape.id)
+    seed.write_string("=")
+    seed.write_string(shape.label)
+  }
+  for edge in graph.connections {
+    seed.write_string("|e:")
+    seed.write_string(edge.src_id)
+    seed.write_string("->")
+    seed.write_string(edge.dst_id)
+    seed.write_string("=")
+    seed.write_string(edge.label)
+  }
+  match config.salt {
+    Some(s) => {
+      seed.write_string("|salt:")
+      seed.write_string(s)
+    }
+    None => ()
+  }
+  "d2-\{hash_u32(seed.to_string()).to_string()}"
 }
 
 ///|
@@ -1620,12 +1730,15 @@ pub fn render_svg(
   // Calculate dimensions accounting for negative coordinates
   let content_width = max_x - min_x
   let content_height = max_y - min_y
-  let base_viewbox_width = content_width + config.padding * 2.0
+  // Match d2's dimensions behavior: keep an extra 1px envelope on each side.
+  let envelope = 1.0
+  let base_viewbox_width = content_width + config.padding * 2.0 + envelope * 2.0
   let base_viewbox_height = content_height +
     config.padding * 2.0 +
-    control_height
-  let base_viewbox_x = min_x - config.padding
-  let base_viewbox_y = min_y - config.padding - control_height
+    control_height +
+    envelope * 2.0
+  let base_viewbox_x = min_x - config.padding - envelope
+  let base_viewbox_y = min_y - config.padding - control_height - envelope
   // The base render always uses the light theme. Dark theme is applied through
   // CSS media rules when configured.
   let light_theme = @themes.get_theme(config.theme_id).with_overrides(
@@ -1664,11 +1777,12 @@ pub fn render_svg(
   if graph_has_links(graph) {
     svg.add_root_attr("xmlns:xlink", "http://www.w3.org/1999/xlink")
   }
+  let scope_class = style_scope_class(graph, config)
+  svg.add_root_attr("class", "\{scope_class} d2-svg")
+  let has_code_shape = graph_has_code_shape(graph)
+  let has_markdown_shape = graph_has_markdown_shape(graph)
   add_base_styles(
-    svg,
-    light_theme,
-    dark_theme is Some(_),
-    graph_has_code_shape(graph),
+    svg, light_theme, dark_theme, scope_class, has_code_shape, has_markdown_shape,
   )
   if use_css_theme_vars {
     add_theme_styles(svg, light_theme, dark_theme)
@@ -2445,7 +2559,7 @@ fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
   }
   let div = @xml_emit.Element::new("div")
     .attr("xmlns", "http://www.w3.org/1999/xhtml")
-    .attr("class", "md")
+    .attr("class", "md color-N1")
     .raw(md_html)
     .build()
   let foreign = @xml_emit.Element::new("foreignObject")

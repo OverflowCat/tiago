@@ -140,6 +140,39 @@ const D2_PERSON_AR_LIMIT : Double = 1.5
 const D2_OVAL_AR_LIMIT : Double = 3.0
 
 ///|
+const D2_MARKDOWN_LINE_HEIGHT : Double = 1.5
+
+///|
+const D2_MARKDOWN_LINE_HEIGHT_HEADING : Double = 1.25
+
+///|
+const D2_MARKDOWN_UL_OL_PADDING_LEFT_EM : Double = 2.0
+
+///|
+const D2_MARKDOWN_UL_MARGIN_BOTTOM : Double = 16.0
+
+///|
+const D2_MARKDOWN_LI_P_MARGIN_TOP : Double = 16.0
+
+///|
+const D2_MARKDOWN_LI_MARGIN_TOP_EM : Double = 0.25
+
+///|
+const D2_MARKDOWN_P_MARGIN_BOTTOM : Double = 16.0
+
+///|
+const D2_MARKDOWN_H_MARGIN_TOP : Double = 24.0
+
+///|
+const D2_MARKDOWN_H_MARGIN_BOTTOM : Double = 16.0
+
+///|
+const D2_MARKDOWN_H1_H2_PADDING_BOTTOM_EM : Double = 0.3
+
+///|
+const D2_MARKDOWN_H1_H2_BORDER_BOTTOM : Double = 1.0
+
+///|
 const D2_C4_PERSON_AR_LIMIT : Double = 1.5
 
 ///|
@@ -3519,19 +3552,11 @@ fn estimate_object_size(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let label_dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-  } else {
-    @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
-  }
-  let mut content_width = label_dims.width
-  let mut content_height = label_dims.height
+  let (label_width, label_height) = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
+  let mut content_width = label_width
+  let mut content_height = label_height
 
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
@@ -3565,9 +3590,9 @@ fn estimate_object_size(
     obj.shape_type != @graph.Class &&
     obj.shape_type != @graph.Code &&
     obj.shape_type != @graph.Text {
-    let label_height = label_dims.height + D2_INNER_LABEL_PADDING
-    padding_x = padding_x + label_height
-    padding_y = padding_y + label_height
+    let label_height_with_padding = label_height + D2_INNER_LABEL_PADDING
+    padding_x = padding_x + label_height_with_padding
+    padding_y = padding_y + label_height_with_padding
   }
 
   let fitted = shape_dimensions_to_fit(
@@ -4007,24 +4032,16 @@ fn object_layout_spacing(
     let is_italic = style_bool(obj.style.italic, false)
     let is_mono = obj.shape_type == @graph.Code ||
       style_is_mono(obj.style.font_family)
-    let dims = if obj.shape_type == @graph.Code {
-      @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-    } else {
-      @text_metrics.measure_label(
-        obj.label,
-        font_size,
-        is_mono,
-        is_bold,
-        is_italic,
-      )
-    }
-    let label_width = if dims.width > 0.0 {
-      dims.width + D2_LABEL_PADDING
+    let (measured_width, measured_height) = measure_object_label_dims(
+      obj, font_size, is_mono, is_bold, is_italic,
+    )
+    let label_width = if measured_width > 0.0 {
+      measured_width + D2_LABEL_PADDING
     } else {
       obj.label.length().to_double() * 7.0 + D2_LABEL_PADDING
     }
-    let label_height = if dims.height > 0.0 {
-      dims.height + D2_LABEL_PADDING
+    let label_height = if measured_height > 0.0 {
+      measured_height + D2_LABEL_PADDING
     } else {
       font_size.to_double() + D2_LABEL_PADDING
     }
@@ -4247,24 +4264,16 @@ fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-  } else {
-    @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
-  }
-  let width = if dims.width > 0.0 {
-    round_double(dims.width)
+  let (measured_width, measured_height) = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
+  let width = if measured_width > 0.0 {
+    round_double(measured_width)
   } else {
     round_double(obj.label.length().to_double() * 7.0)
   }
-  let height = if dims.height > 0.0 {
-    round_double(dims.height)
+  let height = if measured_height > 0.0 {
+    round_double(measured_height)
   } else {
     round_double(font_size.to_double() + 5.0)
   }
@@ -4433,18 +4442,10 @@ fn label_width(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-  } else {
-    @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
-  }
-  positive_or(dims.width, config.default_width / 2.0)
+  let (width, _) = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
+  positive_or(width, config.default_width / 2.0)
 }
 
 ///|
@@ -4460,18 +4461,357 @@ fn label_height(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+  let (_, height) = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
+  positive_or(height, config.default_height / 3.0)
+}
+
+///|
+priv struct MarkdownBlockMetrics {
+  width : Double
+  height : Double
+  margin_top : Double
+  margin_bottom : Double
+}
+
+///|
+fn markdown_block_metrics_empty() -> MarkdownBlockMetrics {
+  { width: 0.0, height: 0.0, margin_top: 0.0, margin_bottom: 0.0 }
+}
+
+///|
+fn markdown_has_class(obj : @graph.ObjectInput, class_name : String) -> Bool {
+  for cls in obj.classes {
+    if cls == class_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn markdown_header_font_size(base_font_size : Int, level : Int) -> Int {
+  let base = base_font_size.to_double()
+  let scaled = match level {
+    1 => base * 2.0
+    2 => base * 1.5
+    3 => base * 1.25
+    4 => base * 1.0
+    5 => base * 0.875
+    6 => base * 0.85
+    _ => base
+  }
+  let out = scaled.to_int()
+  if out > 0 {
+    out
   } else {
-    @text_metrics.measure_label(
+    1
+  }
+}
+
+///|
+fn markdown_inline_dimensions(
+  inline : @cmark.Inline,
+  font_size : Int,
+  line_height : Double,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> (Double, Double) {
+  let lines = inline.to_plain_text(break_on_soft=false).to_array()
+  let mut max_width = 0.0
+  let mut line_count = 0
+  for line in lines {
+    let text = line.to_array().join("")
+    let dims = @text_metrics.measure_label(
+      text, font_size, is_mono, is_bold, is_italic,
+    )
+    if dims.width > max_width {
+      max_width = dims.width
+    }
+    line_count = line_count + 1
+  }
+  if line_count == 0 {
+    line_count = 1
+  }
+  (max_width, line_height * font_size.to_double() * line_count.to_double())
+}
+
+///|
+fn markdown_combine_blocks(
+  blocks : Array[MarkdownBlockMetrics],
+) -> MarkdownBlockMetrics {
+  if blocks.is_empty() {
+    return markdown_block_metrics_empty()
+  }
+  let mut width = 0.0
+  let mut height = 0.0
+  let mut margin_top = 0.0
+  let mut margin_bottom = 0.0
+  let mut prev_margin_bottom = 0.0
+  for i in 0..<blocks.length() {
+    let b = blocks[i]
+    if i == 0 {
+      margin_top = max_double(margin_top, b.margin_top)
+    } else {
+      let margin_diff = b.margin_top - prev_margin_bottom
+      if margin_diff > 0.0 {
+        height = height + margin_diff
+      }
+    }
+    if i == blocks.length() - 1 {
+      margin_bottom = max_double(margin_bottom, b.margin_bottom)
+    } else {
+      height = height + b.margin_bottom
+      prev_margin_bottom = b.margin_bottom
+    }
+    height = height + b.height
+    width = max_double(width, b.width)
+  }
+  { width, height, margin_top, margin_bottom }
+}
+
+///|
+fn markdown_measure_block(
+  block : @cmark.Block,
+  base_font_size : Int,
+  list_depth : Int,
+  in_list_item : Bool,
+) -> MarkdownBlockMetrics {
+  match block {
+    @cmark.Block::BlankLine(_)
+    | @cmark.Block::HtmlBlock(_)
+    | @cmark.Block::LinkRefDefinition(_) => markdown_block_metrics_empty()
+    @cmark.Block::Blocks(node) => {
+      let parts : Array[MarkdownBlockMetrics] = []
+      for child in node.v.to_array() {
+        parts.push(
+          markdown_measure_block(
+            child, base_font_size, list_depth, in_list_item,
+          ),
+        )
+      }
+      markdown_combine_blocks(parts)
+    }
+    @cmark.Block::Paragraph(node) => {
+      let (width, height) = markdown_inline_dimensions(
+        node.v.inline,
+        base_font_size,
+        D2_MARKDOWN_LINE_HEIGHT,
+        false,
+        false,
+        false,
+      )
+      {
+        width,
+        height,
+        margin_top: if in_list_item {
+          D2_MARKDOWN_LI_P_MARGIN_TOP
+        } else {
+          0.0
+        },
+        margin_bottom: D2_MARKDOWN_P_MARGIN_BOTTOM,
+      }
+    }
+    @cmark.Block::Heading(node) => {
+      let heading_font_size = markdown_header_font_size(
+        base_font_size,
+        node.v.level,
+      )
+      let (width, inline_height) = markdown_inline_dimensions(
+        node.v.inline,
+        heading_font_size,
+        D2_MARKDOWN_LINE_HEIGHT_HEADING,
+        false,
+        true,
+        false,
+      )
+      let mut height = inline_height
+      if node.v.level == 1 || node.v.level == 2 {
+        height = height +
+          D2_MARKDOWN_H1_H2_PADDING_BOTTOM_EM * heading_font_size.to_double() +
+          D2_MARKDOWN_H1_H2_BORDER_BOTTOM
+      }
+      {
+        width,
+        height,
+        margin_top: D2_MARKDOWN_H_MARGIN_TOP,
+        margin_bottom: D2_MARKDOWN_H_MARGIN_BOTTOM,
+      }
+    }
+    @cmark.Block::List(node) => {
+      let item_blocks : Array[MarkdownBlockMetrics] = []
+      for i in 0..<node.v.items.length() {
+        let item = node.v.items[i].v
+        let inner = markdown_measure_block(
+          item.block,
+          base_font_size,
+          list_depth + 1,
+          true,
+        )
+        item_blocks.push({
+          width: inner.width +
+          D2_MARKDOWN_UL_OL_PADDING_LEFT_EM * base_font_size.to_double(),
+          height: inner.height,
+          margin_top: if i == 0 {
+            0.0
+          } else {
+            D2_MARKDOWN_LI_MARGIN_TOP_EM * base_font_size.to_double()
+          },
+          margin_bottom: 0.0,
+        })
+      }
+      let merged = markdown_combine_blocks(item_blocks)
+      if list_depth == 0 {
+        return {
+          ..merged,
+          margin_bottom: max_double(
+            merged.margin_bottom,
+            D2_MARKDOWN_UL_MARGIN_BOTTOM,
+          ),
+        }
+      }
+      merged
+    }
+    @cmark.Block::CodeBlock(node) | @cmark.Block::ExtMathBlock(node) => {
+      let mut line_count = 0
+      let mut max_line_width = 0.0
+      let code_font_size = max_int(
+        1,
+        (base_font_size.to_double() * 0.85).to_int(),
+      )
+      for line in node.v.code.to_array() {
+        let dims = @text_metrics.measure_label(
+          line.v,
+          code_font_size,
+          true,
+          false,
+          false,
+        )
+        if dims.width > max_line_width {
+          max_line_width = dims.width
+        }
+        line_count = line_count + 1
+      }
+      if line_count == 0 {
+        line_count = 1
+      }
+      {
+        width: max_line_width + 32.0,
+        height: line_count.to_double() *
+        base_font_size.to_double() *
+        0.85 *
+        1.45 +
+        32.0,
+        margin_top: 0.0,
+        margin_bottom: D2_MARKDOWN_P_MARGIN_BOTTOM,
+      }
+    }
+    @cmark.Block::ThematicBreak(_) =>
+      {
+        width: 0.0,
+        height: 0.25 * base_font_size.to_double(),
+        margin_top: D2_MARKDOWN_H_MARGIN_TOP,
+        margin_bottom: D2_MARKDOWN_H_MARGIN_TOP,
+      }
+    @cmark.Block::BlockQuote(node) => {
+      let inner = markdown_measure_block(
+        node.v.block,
+        base_font_size,
+        list_depth,
+        false,
+      )
+      {
+        width: inner.width + 2.25 * base_font_size.to_double(),
+        height: inner.height,
+        margin_top: 0.0,
+        margin_bottom: D2_MARKDOWN_P_MARGIN_BOTTOM,
+      }
+    }
+    @cmark.Block::ExtTable(node) => {
+      let mut max_width = 0.0
+      let mut total_height = 0.0
+      let row_height = D2_MARKDOWN_LINE_HEIGHT * base_font_size.to_double()
+      for row in node.v.rows.to_array() {
+        total_height = total_height + row_height
+        match row.0.v {
+          @cmark.TableRow::Header(cols) | @cmark.TableRow::Data(cols) => {
+            let mut row_width = 1.0
+            for col in cols.to_array() {
+              let (cell_width, _) = markdown_inline_dimensions(
+                col.0,
+                base_font_size,
+                D2_MARKDOWN_LINE_HEIGHT,
+                false,
+                false,
+                false,
+              )
+              row_width = row_width + cell_width + 17.0
+            }
+            if row_width > max_width {
+              max_width = row_width
+            }
+          }
+          @cmark.TableRow::Sep(cols) => {
+            let row_width = cols.length().to_double() *
+              (base_font_size.to_double() + 17.0)
+            if row_width > max_width {
+              max_width = row_width
+            }
+          }
+        }
+      }
+      {
+        width: max_width,
+        height: total_height + 2.0,
+        margin_top: 0.0,
+        margin_bottom: D2_MARKDOWN_P_MARGIN_BOTTOM,
+      }
+    }
+    @cmark.Block::ExtFootnoteDefinition(node) =>
+      markdown_measure_block(node.v.block, base_font_size, list_depth, false)
+  }
+}
+
+///|
+fn markdown_measure_label_like_d2(
+  label : String,
+  font_size : Int,
+) -> (Double, Double) {
+  let doc = @cmark.Doc::from_string(strict=false, label)
+  let metrics = markdown_measure_block(doc.block, font_size, 0, false)
+  (metrics.width.ceil(), metrics.height.ceil())
+}
+
+///|
+fn measure_object_label_dims(
+  obj : @graph.ObjectInput,
+  font_size : Int,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> (Double, Double) {
+  if obj.shape_type == @graph.Code {
+    let dims = @text_metrics.measure_label_code(
       obj.label,
       font_size,
-      is_mono,
       is_bold,
       is_italic,
     )
+    return (dims.width, dims.height)
   }
-  positive_or(dims.height, config.default_height / 3.0)
+  if markdown_has_class(obj, "lang:markdown") {
+    return markdown_measure_label_like_d2(obj.label, font_size)
+  }
+  let dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  (dims.width, dims.height)
 }
 
 ///|

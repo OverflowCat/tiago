@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="271" height="266" viewBox="-100 -100 271 266" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="271" height="266"><rect x="-100" y="-100" width="271" height="266" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="273" height="268" viewBox="-101 -101 273 268" data-d2-version="0.2.0" class="d2-1984751553 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="273" height="268"><rect x="-101" y="-101" width="273" height="268" fill="white"></rect></mask>
 </defs>
-<rect x="-100" y="-100" width="271" height="266" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="273" height="268" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="71" height="66" fill="#065535" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <text x="35.5" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Joe</text>

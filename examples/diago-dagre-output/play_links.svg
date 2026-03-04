@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="334" height="453" viewBox="-100 -100 334 453" data-d2-version="0.2.0" xmlns:xlink="http://www.w3.org/1999/xlink">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="334" height="453"><rect x="-100" y="-100" width="334" height="453" fill="white"></rect><rect x="30" y="116" width="75" height="21" fill="black"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="336" height="455" viewBox="-101 -101 336 455" data-d2-version="0.2.0" xmlns:xlink="http://www.w3.org/1999/xlink" class="d2-1621340945 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="336" height="455"><rect x="-101" y="-101" width="336" height="455" fill="white"></rect><rect x="30" y="116" width="75" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-100" y="-100" width="334" height="453" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="336" height="455" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <a href="https://apple.com" xlink:href="https://apple.com">
 <rect x="12" y="0" width="111" height="66" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>

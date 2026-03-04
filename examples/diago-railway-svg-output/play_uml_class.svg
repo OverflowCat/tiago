@@ -4,8 +4,8 @@
 </defs>
 <rect x="-100" y="-100" width="303" height="260" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="0" y="0" width="103" height="60" fill="#0A0F25" stroke="#FFFFFF" stroke-width="2"/>
-<rect x="0" y="0" width="103" height="41" fill="#FFFFFF" stroke="none" stroke-width="0"/>
+<rect x="0" y="0" width="103" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="0" width="103" height="41" fill="#0A0F25"/>
 <text x="51.5" y="25" text-anchor="middle" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="24" fill="#FFFFFF">D2 Parser</text>
 <text x="10" y="49.333333333333336" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
 <text x="30" y="49.333333333333336" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">reader</text>
@@ -16,7 +16,7 @@
 <text x="10" y="62.666666666666664" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">-</text>
 <text x="30" y="62.666666666666664" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">lookahead</text>
 <text x="83" y="62.666666666666664" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">[]rune</text>
-<line x1="0" y1="60.99999999999999" x2="103" y2="60.99999999999999" stroke="#FFFFFF" stroke-width="1"/>
+<line x1="0" y1="60.99999999999999" x2="103" y2="60.99999999999999" stroke="#0A0F25" stroke-width="1"/>
 <text x="10" y="69.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">#</text>
 <text x="30" y="69.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">peekn(n int)</text>
 <text x="83" y="69.33333333333333" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">(s string, eof bool)</text>
