@@ -115,6 +115,7 @@ fn layout_graph(
       start,
       end,
       boxes,
+      object_by_id,
       direction,
       config,
       level_heights,

@@ -1256,6 +1256,7 @@ fn route_edge(
   start : @graph.Point,
   end : @graph.Point,
   boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
   level_heights : Array[Double],
@@ -1341,7 +1342,8 @@ fn route_edge(
   // virtual-node anchor. This keeps long edges compact and avoids sweeping
   // detours that hurt readability on deep graphs.
   let anchor = long_edge_channel_anchor(
-    start, end, flow, direction, rail_track, config, boxes, src_id, dst_id,
+    start, end, flow, direction, rail_track, config, boxes, object_by_id, src_id,
+    dst_id,
   )
 
   // Go from src exit to the first rail.
@@ -1361,6 +1363,12 @@ fn route_edge(
 }
 
 ///|
+priv struct AxisInterval {
+  lo : Double
+  hi : Double
+}
+
+///|
 fn long_edge_channel_anchor(
   start : @graph.Point,
   end : @graph.Point,
@@ -1369,6 +1377,7 @@ fn long_edge_channel_anchor(
   rail_track : Int,
   config : @engine_api.LayoutConfig,
   boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
   src_id : String,
   dst_id : String,
 ) -> Double {
@@ -1381,42 +1390,8 @@ fn long_edge_channel_anchor(
   let lateral = dst_axis - src_axis
   let side_tol = spacing * 0.75
   let side_clearance = @cmp.maximum(config.edge_padding * 1.8, spacing * 2.0)
-  let blocked_center = long_edge_center_axis_blocked(
-    center_axis,
-    start,
-    end,
-    flow,
-    boxes,
-    src_id,
-    dst_id,
-    config.edge_padding,
-  )
   let preferred = if lateral.abs() <= side_tol {
-    if blocked_center {
-      let (block_min, block_max) = long_edge_blocking_axis_bounds(
-        start, end, flow, boxes, src_id, dst_id,
-      )
-      match (block_min, block_max) {
-        (Some(lo), Some(hi)) => {
-          let left_anchor = lo -
-            side_clearance -
-            rail_track.to_double() * spacing
-          let right_anchor = hi +
-            side_clearance +
-            rail_track.to_double() * spacing
-          let left_cost = (center_axis - left_anchor).abs()
-          let right_cost = (right_anchor - center_axis).abs()
-          if right_cost <= left_cost {
-            right_anchor
-          } else {
-            left_anchor
-          }
-        }
-        _ => center_axis + side_clearance + rail_track.to_double() * spacing
-      }
-    } else {
-      center_axis + zigzag_track_offset(rail_track, spacing)
-    }
+    center_axis + zigzag_track_offset(rail_track, spacing)
   } else if lateral > 0.0 {
     @cmp.maximum(src_axis, dst_axis) +
     side_clearance +
@@ -1426,34 +1401,53 @@ fn long_edge_channel_anchor(
     side_clearance -
     rail_track.to_double() * spacing
   }
-  let margin = major_axis_spacing(direction, config) * 1.2 + spacing * 4.0
-  let lo = @cmp.minimum(src_axis, dst_axis) - margin
-  let hi = @cmp.maximum(src_axis, dst_axis) + margin
-  let unclamped = preferred
-  @cmp.maximum(lo, @cmp.minimum(unclamped, hi))
+  let blocked = long_edge_obstacle_intervals(
+    start,
+    end,
+    flow,
+    boxes,
+    object_by_id,
+    src_id,
+    dst_id,
+    config.edge_padding,
+  )
+  let margin = major_axis_spacing(direction, config) * 1.6 + spacing * 4.0
+  let mut lo = @cmp.minimum(src_axis, dst_axis) - margin
+  let mut hi = @cmp.maximum(src_axis, dst_axis) + margin
+  for interval in blocked {
+    lo = @cmp.minimum(lo, interval.lo - side_clearance)
+    hi = @cmp.maximum(hi, interval.hi + side_clearance)
+  }
+  nearest_unblocked_axis(preferred, lo, hi, blocked)
 }
 
 ///|
-fn long_edge_center_axis_blocked(
-  axis : Double,
+fn long_edge_obstacle_intervals(
   start : @graph.Point,
   end : @graph.Point,
   flow : @engine_api.Direction,
   boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
   src_id : String,
   dst_id : String,
   padding : Double,
-) -> Bool {
+) -> Array[AxisInterval] {
+  let intervals : Array[AxisInterval] = []
   let (major_lo, major_hi) = match flow {
     Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
     Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
   }
-  let inner_lo = major_lo + padding
-  let inner_hi = major_hi - padding
+  let inner_lo = major_lo + @cmp.maximum(1.0, padding * 0.4)
+  let inner_hi = major_hi - @cmp.maximum(1.0, padding * 0.4)
+  let axis_clearance = @cmp.maximum(8.0, padding * 0.8)
   for entry in boxes {
     let id = entry.0
     if id == src_id || id == dst_id {
       continue
+    }
+    match object_by_id.get(id) {
+      Some(obj) => if is_layout_container_candidate(obj) { continue }
+      None => ()
     }
     let b = entry.1
     let intersects_major = match flow {
@@ -1463,11 +1457,57 @@ fn long_edge_center_axis_blocked(
     if !intersects_major {
       continue
     }
-    let contains_axis = match flow {
-      Down | Up => b.x <= axis && axis <= b.x + b.width
-      Right | Left => b.y <= axis && axis <= b.y + b.height
+    let (axis_lo0, axis_hi0) = match flow {
+      Down | Up => (b.x, b.x + b.width)
+      Right | Left => (b.y, b.y + b.height)
     }
-    if contains_axis {
+    let axis_lo = axis_lo0 - axis_clearance
+    let axis_hi = axis_hi0 + axis_clearance
+    if axis_hi > axis_lo {
+      intervals.push({ lo: axis_lo, hi: axis_hi })
+    }
+  }
+  if intervals.length() <= 1 {
+    return intervals
+  }
+  intervals.sort_by(fn(a, b) {
+    if a.lo < b.lo {
+      -1
+    } else if a.lo > b.lo {
+      1
+    } else if a.hi < b.hi {
+      -1
+    } else if a.hi > b.hi {
+      1
+    } else {
+      0
+    }
+  })
+  let merged : Array[AxisInterval] = []
+  let mut cur_lo = intervals[0].lo
+  let mut cur_hi = intervals[0].hi
+  for i in 1..<intervals.length() {
+    let interval = intervals[i]
+    if interval.lo <= cur_hi + 1.0e-6 {
+      cur_hi = @cmp.maximum(cur_hi, interval.hi)
+    } else {
+      merged.push({ lo: cur_lo, hi: cur_hi })
+      cur_lo = interval.lo
+      cur_hi = interval.hi
+    }
+  }
+  merged.push({ lo: cur_lo, hi: cur_hi })
+  merged
+}
+
+///|
+fn axis_blocked_by_intervals(
+  axis : Double,
+  intervals : Array[AxisInterval],
+) -> Bool {
+  let tol = 1.0e-6
+  for interval in intervals {
+    if axis >= interval.lo - tol && axis <= interval.hi + tol {
       return true
     }
   }
@@ -1475,51 +1515,41 @@ fn long_edge_center_axis_blocked(
 }
 
 ///|
-fn long_edge_blocking_axis_bounds(
-  start : @graph.Point,
-  end : @graph.Point,
-  flow : @engine_api.Direction,
-  boxes : Map[String, @graph.Box],
-  src_id : String,
-  dst_id : String,
-) -> (Double?, Double?) {
-  let (major_lo, major_hi) = match flow {
-    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
-    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+fn nearest_unblocked_axis(
+  preferred : Double,
+  lo : Double,
+  hi : Double,
+  blocked : Array[AxisInterval],
+) -> Double {
+  let p = @cmp.maximum(lo, @cmp.minimum(preferred, hi))
+  if !axis_blocked_by_intervals(p, blocked) {
+    return p
   }
-  let mut min_axis : Double? = None
-  let mut max_axis : Double? = None
-  for entry in boxes {
-    let id = entry.0
-    if id == src_id || id == dst_id {
+  let eps = 1.0
+  let candidates : Array[Double] = [lo, hi]
+  for interval in blocked {
+    candidates.push(@cmp.maximum(lo, @cmp.minimum(hi, interval.lo - eps)))
+    candidates.push(@cmp.maximum(lo, @cmp.minimum(hi, interval.hi + eps)))
+  }
+  let mut found = false
+  let mut best = p
+  let mut best_cost = 0.0
+  for c in candidates {
+    if axis_blocked_by_intervals(c, blocked) {
       continue
     }
-    let b = entry.1
-    let intersects_major = match flow {
-      Down | Up => !(b.y + b.height <= major_lo || major_hi <= b.y)
-      Right | Left => !(b.x + b.width <= major_lo || major_hi <= b.x)
+    let cost = (c - p).abs()
+    if !found || cost < best_cost {
+      found = true
+      best = c
+      best_cost = cost
     }
-    if !intersects_major {
-      continue
-    }
-    let (axis_lo, axis_hi) = match flow {
-      Down | Up => (b.x, b.x + b.width)
-      Right | Left => (b.y, b.y + b.height)
-    }
-    min_axis = Some(
-      match min_axis {
-        Some(v) => @cmp.minimum(v, axis_lo)
-        None => axis_lo
-      },
-    )
-    max_axis = Some(
-      match max_axis {
-        Some(v) => @cmp.maximum(v, axis_hi)
-        None => axis_hi
-      },
-    )
   }
-  (min_axis, max_axis)
+  if found {
+    best
+  } else {
+    p
+  }
 }
 
 ///|
