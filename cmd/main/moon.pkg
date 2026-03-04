@@ -11,6 +11,7 @@ import {
   "Milky2018/diago/renderer_ascii",
   "Milky2018/diago/renderer_unicode",
   "Milky2018/diago/formatter",
+  "moonbitlang/x/codec/base64",
   "moonbitlang/x/fs",
   "moonbitlang/x/sys",
   "moonbitlang/x/path",

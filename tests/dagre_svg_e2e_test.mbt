@@ -472,11 +472,95 @@ fn read_required_file(path : String) -> Result[String, String] {
 
 ///|
 fn normalize_svg_snapshot(svg : String) -> String {
-  svg
-  .replace(old="\r\n", new="\n")
-  .replace(old="\r", new="\n")
+  normalize_image_href_payloads(
+    svg.replace(old="\r\n", new="\n").replace(old="\r", new="\n"),
+  )
   .trim()
   .to_string()
+}
+
+///|
+fn normalize_image_href_payloads(svg : String) -> String {
+  let parts = svg.split("<image").collect()
+  if parts.length() < 2 {
+    return svg
+  }
+  let out = StringBuilder::new()
+  out.write_string(parts[0].to_string())
+  for i in 1..<parts.length() {
+    let part = parts[i].to_string()
+    let close_index = match find_substring(part, "/>") {
+      Some(v) => v
+      None =>
+        match find_substring(part, ">") {
+          Some(v) => v
+          None => {
+            out.write_string("<image")
+            out.write_string(part)
+            continue
+          }
+        }
+    }
+    let attrs = slice_string(part, 0, close_index)
+    let suffix = slice_string(part, close_index, part.length())
+    out.write_string("<image")
+    out.write_string(normalize_single_image_attrs(attrs))
+    out.write_string(suffix)
+  }
+  out.to_string()
+}
+
+///|
+fn normalize_single_image_attrs(attrs : String) -> String {
+  let mut normalized = attrs
+  match parse_attr_string(attrs, "href") {
+    Some(v) =>
+      if should_normalize_image_href(v) {
+        normalized = replace_attr_string_value(normalized, "href", "__IMAGE__")
+      }
+    None => ()
+  }
+  match parse_attr_string(attrs, "xlink:href") {
+    Some(v) =>
+      if should_normalize_image_href(v) {
+        normalized = replace_attr_string_value(
+          normalized, "xlink:href", "__IMAGE__",
+        )
+      }
+    None => ()
+  }
+  normalized
+}
+
+///|
+fn should_normalize_image_href(href : String) -> Bool {
+  let lower = href.to_lower()
+  lower.has_prefix("data:") ||
+  lower.has_prefix("http://") ||
+  lower.has_prefix("https://")
+}
+
+///|
+fn replace_attr_string_value(
+  attrs : String,
+  name : String,
+  new_value : String,
+) -> String {
+  let pattern = name + "=\""
+  let start = match find_substring(attrs, pattern) {
+    Some(i) => i
+    None => return attrs
+  }
+  let value_start = start + pattern.length()
+  let rest = slice_string(attrs, value_start, attrs.length())
+  let end_rel = match find_substring(rest, "\"") {
+    Some(i) => i
+    None => return attrs
+  }
+  let value_end = value_start + end_rel
+  slice_string(attrs, 0, value_start) +
+  new_value +
+  slice_string(attrs, value_end, attrs.length())
 }
 
 ///|

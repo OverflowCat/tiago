@@ -214,6 +214,7 @@ fn main {
   let theme_overrides : Map[String, String] = {}
   let dark_theme_overrides : Map[String, String] = {}
   let mut scale : Double? = None
+  let mut bundle = true
   let mut no_xml_tag : Bool? = None
   let mut salt : String? = None
   let mut omit_version : Bool? = None
@@ -379,6 +380,12 @@ fn main {
       }
     } else if arg.has_prefix("--scale=") {
       scale = parse_scale_option(extract_value_after_eq(arg), scale)
+    } else if arg == "--bundle" {
+      bundle = true
+    } else if arg == "--no-bundle" {
+      bundle = false
+    } else if arg.has_prefix("--bundle=") {
+      bundle = parse_bool_option(extract_value_after_eq(arg), Some(bundle)).unwrap()
     } else if arg == "--no-xml-tag" {
       no_xml_tag = Some(true)
     } else if arg.has_prefix("--no-xml-tag=") {
@@ -460,6 +467,7 @@ fn main {
       theme_overrides~,
       dark_theme_overrides~,
       scale~,
+      bundle~,
       no_xml_tag~,
       salt~,
       omit_version~,
@@ -510,6 +518,7 @@ fn main {
       theme_overrides~,
       dark_theme_overrides~,
       scale~,
+      bundle~,
       no_xml_tag~,
       salt~,
       omit_version~,
@@ -553,6 +562,7 @@ fn main {
       theme_overrides~,
       dark_theme_overrides~,
       scale~,
+      bundle~,
       no_xml_tag~,
       salt~,
       omit_version~,
@@ -878,6 +888,8 @@ fn print_usage() -> Unit {
   println("  --theme-overrides K=V[,..]       Override light theme colors")
   println("  --dark-theme-overrides K=V[,..]  Override dark theme colors")
   println("  --scale N         Scale SVG width/height by factor N")
+  println("  --bundle          Bundle image hrefs as data URIs (default: true)")
+  println("  --no-bundle       Keep external/local image hrefs unchanged")
   println("  --no-xml-tag      Omit XML declaration in SVG output")
   println("  --salt TEXT       Salt SVG marker/pattern IDs")
   println("  --omit-version    Omit data-d2-version attribute in SVG output")
@@ -900,7 +912,7 @@ fn print_usage() -> Unit {
     "  --no-preview-open              Do not auto-open browser for preview URL",
   )
   println(
-    "  watch supports --ascii/--unicode/--layout/--target/--theme and SVG render flags",
+    "  watch supports --ascii/--unicode/--layout/--target/--theme and SVG render flags including --bundle/--no-bundle",
   )
   println("")
   println("Format Options (fmt command):")
@@ -1519,6 +1531,7 @@ fn run_watch(args : Array[String]) -> Unit {
   let theme_overrides : Map[String, String] = {}
   let dark_theme_overrides : Map[String, String] = {}
   let mut scale : Double? = None
+  let mut bundle = true
   let mut no_xml_tag : Bool? = None
   let mut salt : String? = None
   let mut omit_version : Bool? = None
@@ -1658,6 +1671,12 @@ fn run_watch(args : Array[String]) -> Unit {
       }
     } else if arg.has_prefix("--scale=") {
       scale = parse_scale_option(extract_value_after_eq(arg), scale)
+    } else if arg == "--bundle" {
+      bundle = true
+    } else if arg == "--no-bundle" {
+      bundle = false
+    } else if arg.has_prefix("--bundle=") {
+      bundle = parse_bool_option(extract_value_after_eq(arg), Some(bundle)).unwrap()
     } else if arg == "--no-xml-tag" {
       no_xml_tag = Some(true)
     } else if arg.has_prefix("--no-xml-tag=") {
@@ -1733,7 +1752,7 @@ fn run_watch(args : Array[String]) -> Unit {
   }
   guard input_path is Some(input) else {
     println(
-      "Usage: diago watch [--ascii|--unicode] [--ascii-mode MODE] [--layout NAME] [--target PATH] [--theme NAME] [--dark-theme ID] [--scale N] [--no-xml-tag] [--salt TEXT] [--omit-version] [-i MS] [--preview|--no-preview] [--preview-host HOST] [--preview-port PORT] [--no-preview-open] <input.d2> [output]",
+      "Usage: diago watch [--ascii|--unicode] [--ascii-mode MODE] [--layout NAME] [--target PATH] [--theme NAME] [--dark-theme ID] [--scale N] [--bundle|--no-bundle] [--no-xml-tag] [--salt TEXT] [--omit-version] [-i MS] [--preview|--no-preview] [--preview-host HOST] [--preview-port PORT] [--no-preview-open] <input.d2> [output]",
     )
     @sys.exit(1)
     return
@@ -1780,6 +1799,7 @@ fn run_watch(args : Array[String]) -> Unit {
     theme_overrides~,
     dark_theme_overrides~,
     scale~,
+    bundle~,
     no_xml_tag~,
     salt~,
     omit_version~,
@@ -1845,6 +1865,7 @@ fn run_watch(args : Array[String]) -> Unit {
       theme_overrides~,
       dark_theme_overrides~,
       scale~,
+      bundle~,
       no_xml_tag~,
       salt~,
       omit_version~,
@@ -2076,6 +2097,7 @@ fn compile_source(
   theme_overrides? : Map[String, String] = {},
   dark_theme_overrides? : Map[String, String] = {},
   scale? : Double? = None,
+  bundle? : Bool = false,
   no_xml_tag? : Bool? = None,
   salt? : String? = None,
   omit_version? : Bool? = None,
@@ -2093,6 +2115,7 @@ fn compile_source(
         theme_overrides~,
         dark_theme_overrides~,
         scale~,
+        bundle~,
         no_xml_tag~,
         salt~,
         omit_version~,
@@ -2141,6 +2164,7 @@ fn compile_diago_svg(
   theme_overrides? : Map[String, String] = {},
   dark_theme_overrides? : Map[String, String] = {},
   scale? : Double? = None,
+  bundle? : Bool = false,
   no_xml_tag? : Bool? = None,
   salt? : String? = None,
   omit_version? : Bool? = None,
@@ -2164,7 +2188,7 @@ fn compile_diago_svg(
       try @renderer_svg.render(diagram, render_config) catch {
         e => Err(e.to_string())
       } noraise {
-        v => Ok(v)
+        v => if bundle { bundle_svg_images(v, base_path) } else { Ok(v) }
       }
     }
     Err(e) => Err(e)
