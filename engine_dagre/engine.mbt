@@ -133,7 +133,6 @@ fn dagre_attr_to_json(attr : @moon_dagre.Attr) -> Json {
     @moon_dagre.Int(v) => Json::number(v.to_double())
     @moon_dagre.Ints(vs) =>
       Json::array(vs.map(fn(v) { Json::number(v.to_double()) }))
-    @moon_dagre.Null => Json::null()
     @moon_dagre.Point(v) => dagre_point_to_json(v)
     @moon_dagre.Points(vs) => Json::array(vs.map(dagre_point_to_json))
     @moon_dagre.String(v) => Json::string(v)
@@ -179,6 +178,14 @@ priv struct EdgeLayoutInfo {
   dst_id : String
   src_arrow : Bool
   dst_arrow : Bool
+}
+
+///|
+priv struct RawNodeGeometry {
+  left : Double
+  top : Double
+  width : Double
+  height : Double
 }
 
 ///|
@@ -387,13 +394,13 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   let laid_out_graph = @moon_dagre.layout(dagre_graph)
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
-  fill_patch_nodes(
+  let raw_node_geometry = fill_patch_nodes(
     patch, laid_out_graph, graph, node_size_by_id, dagre_node_id_by_object_id, config,
   )
   fill_patch_edges(patch, laid_out_graph, edge_layout_by_key, direction)
   orient_edge_routes_to_semantic_direction(patch, graph, parent_id_by_child_id)
   let mirrored_pre = maybe_unmirror_layout(
-    patch, graph, direction, parent_id_by_child_id,
+    patch, graph, direction, parent_id_by_child_id, raw_node_geometry,
   )
   adjust_rank_spacing(
     patch,
@@ -411,7 +418,7 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   fit_container_boxes(patch, graph, parent_id_by_child_id)
   if !mirrored_pre {
     ignore(
-      maybe_unmirror_layout(patch, graph, direction, parent_id_by_child_id),
+      maybe_unmirror_layout(patch, graph, direction, parent_id_by_child_id, {}),
     )
   }
   trace_routes_to_object_boundaries(patch, graph)
@@ -1027,7 +1034,8 @@ fn build_dagre_graph(
   let node_ids : Map[String, Bool] = {}
   let node_size_by_id : Map[String, (Double, Double)] = {}
   let dagre_node_id_by_object_id : Map[String, String] = {}
-  for i, obj in graph.objects {
+  let mut dagre_order = 0
+  for obj in graph.objects {
     if collapse_sql_or_class_endpoint_id(
         obj.id,
         object_by_id,
@@ -1037,7 +1045,8 @@ fn build_dagre_graph(
       continue
     }
     node_ids[obj.id] = true
-    let dagre_id = dagre_node_id(i, obj.id)
+    let dagre_id = dagre_node_id(dagre_order, obj.id)
+    dagre_order = dagre_order + 1
     dagre_node_id_by_object_id[obj.id] = dagre_id
     let (width, height) = object_size(obj, config, object_by_id)
     node_size_by_id[obj.id] = (width, height)
@@ -2436,21 +2445,23 @@ fn make_dagre_edge_attrs(
     "weight",
     clamp_positive(edge.reference_count.to_double(), 1.0),
   )
+  let mut width = 0.0
+  let mut height = 0.0
   match edge_label_size(edge) {
     Some((base_width, base_height)) => {
-      let mut width = base_width
-      let mut height = base_height
+      width = base_width
+      height = base_height
       if parallel_edge_count > 1 {
         match direction {
           Down | Up => width = width + D2_EDGE_LABEL_GAP
           Right | Left => height = height + D2_EDGE_LABEL_GAP
         }
       }
-      attrs.set_float("width", width)
-      attrs.set_float("height", height)
     }
     None => ()
   }
+  attrs.set_float("width", width)
+  attrs.set_float("height", height)
   attrs
 }
 
@@ -2519,7 +2530,8 @@ fn fill_patch_nodes(
   node_size_by_id : Map[String, (Double, Double)],
   dagre_node_id_by_object_id : Map[String, String],
   config : @engine_api.LayoutConfig,
-) -> Unit {
+) -> Map[String, RawNodeGeometry] {
+  let raw_node_geometry : Map[String, RawNodeGeometry] = {}
   for obj in graph.objects {
     let dagre_id = match dagre_node_id_by_object_id.get(obj.id) {
       Some(v) => v
@@ -2536,6 +2548,13 @@ fn fill_patch_nodes(
               clamp_positive(config.default_height, 60.0),
             )
         }
+        match
+          raw_node_geometry_from_dagre_node(
+            node_attrs, fallback_width, fallback_height,
+          ) {
+          Some(raw) => raw_node_geometry[obj.id] = raw
+          None => ()
+        }
         match box_from_dagre_node(node_attrs, fallback_width, fallback_height) {
           Some(box) => patch.nodes[obj.id] = box
           None => ()
@@ -2544,6 +2563,27 @@ fn fill_patch_nodes(
       None => ()
     }
   }
+  raw_node_geometry
+}
+
+///|
+fn raw_node_geometry_from_dagre_node(
+  attrs : @moon_dagre.Attrs,
+  fallback_width : Double,
+  fallback_height : Double,
+) -> RawNodeGeometry? {
+  guard attrs.get_float("x") is Some(x) && attrs.get_float("y") is Some(y) else {
+    return None
+  }
+  let width = clamp_positive(
+    attrs.get_float_or("width", fallback_width),
+    fallback_width,
+  )
+  let height = clamp_positive(
+    attrs.get_float_or("height", fallback_height),
+    fallback_height,
+  )
+  Some({ left: x - width / 2.0, top: y - height / 2.0, width, height })
 }
 
 ///|
@@ -2741,14 +2781,17 @@ fn maybe_unmirror_layout(
   graph : @graph.GraphInput,
   direction : @engine_api.Direction,
   parent_id_by_child_id : Map[String, String],
+  raw_node_geometry : Map[String, RawNodeGeometry],
 ) -> Bool {
   if direction != Down && direction != Up {
     return false
   }
 
   let object_index : Map[String, Int] = {}
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
   for i, obj in graph.objects {
     object_index[obj.id] = i
+    object_by_id[obj.id] = obj
   }
 
   let mut should_mirror = false
@@ -2886,10 +2929,6 @@ fn maybe_unmirror_layout(
   }
 
   if !should_mirror {
-    let object_by_id : Map[String, @graph.ObjectInput] = {}
-    for obj in graph.objects {
-      object_by_id[obj.id] = obj
-    }
     let targets_by_src : Map[String, Array[String]] = {}
     for edge in graph.edges {
       let src_id = collapse_sql_or_class_endpoint_id(
@@ -2979,12 +3018,23 @@ fn maybe_unmirror_layout(
   let axis_sum = min_x + max_x
 
   for id, box in patch.nodes {
-    patch.nodes[id] = @graph.Box::new(
-      axis_sum - box.x - box.width,
-      box.y,
-      box.width,
-      box.height,
-    )
+    match raw_node_geometry.get(id) {
+      Some(raw) if raw.width.ceil().to_int() % 2 != 0 &&
+        raw_node_geometry_correction_target(id, object_by_id) =>
+        patch.nodes[id] = @graph.Box::new(
+          round_double(axis_sum - raw.left - raw.width),
+          round_double(raw.top),
+          raw.width.ceil(),
+          raw.height.ceil(),
+        )
+      _ =>
+        patch.nodes[id] = @graph.Box::new(
+          axis_sum - box.x - box.width,
+          box.y,
+          box.width,
+          box.height,
+        )
+    }
   }
   for edge_index, route in patch.edges {
     let mirrored : Array[@graph.Point] = []
@@ -3002,10 +3052,8 @@ fn maybe_unmirror_layout(
     )
   }
 
-  let object_by_id : Map[String, @graph.ObjectInput] = {}
   let mut has_container_object = false
   for obj in graph.objects {
-    object_by_id[obj.id] = obj
     if !obj.child_ids.is_empty() {
       has_container_object = true
     }
@@ -3069,6 +3117,18 @@ fn incoming_edge_count(graph : @graph.GraphInput, obj_id : String) -> Int {
     }
   }
   count
+}
+
+///|
+fn raw_node_geometry_correction_target(
+  obj_id : String,
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> Bool {
+  match object_by_id.get(obj_id) {
+    Some(obj) =>
+      obj.shape_type == @graph.SqlTable || obj.shape_type == @graph.Class
+    None => false
+  }
 }
 
 ///|
@@ -3220,14 +3280,8 @@ fn default_label_position(
   label_height : Double,
 ) -> DefaultLabelPosition {
   let is_container = !obj.child_ids.is_empty()
-  let is_grid_container = is_container &&
-    (obj.grid_rows is Some(_) || obj.grid_columns is Some(_))
   let mut pos = if is_container {
-    if is_grid_container {
-      InsideTop
-    } else {
-      OutsideTop
-    }
+    OutsideTop
   } else if has_outside_bottom_label(obj.shape_type) {
     OutsideBottom
   } else if obj.icon is Some(_) {
@@ -3236,15 +3290,7 @@ fn default_label_position(
     InsideMiddle
   }
   if label_width > box.width || label_height > box.height {
-    pos = if is_container {
-      if is_grid_container {
-        InsideTop
-      } else {
-        OutsideTop
-      }
-    } else {
-      OutsideBottom
-    }
+    pos = if is_container { OutsideTop } else { OutsideBottom }
   }
   pos
 }
@@ -3342,7 +3388,7 @@ fn get_layout_ranks(
 ) {
   let aligned : Map[Int, Array[String]] = {}
   for obj in graph.objects {
-    if !obj.child_ids.is_empty() {
+    if is_layout_container_candidate(obj) {
       continue
     }
     match patch.nodes.get(obj.id) {
@@ -3379,7 +3425,7 @@ fn get_layout_ranks(
   let starting_parent_ranks : Map[String, Int] = {}
   let ending_parent_ranks : Map[String, Int] = {}
   for obj in graph.objects {
-    if !obj.child_ids.is_empty() {
+    if is_layout_container_candidate(obj) {
       continue
     }
     match object_ranks.get(obj.id) {
@@ -3819,7 +3865,7 @@ fn adjust_rank_spacing(
         position
       if end_delta > 0.0 {
         for obj in graph.objects {
-          if obj.child_ids.is_empty() {
+          if !is_layout_container_candidate(obj) {
             continue
           }
           let start_rank = match starting_parent_ranks.get(obj.id) {
@@ -3863,7 +3909,7 @@ fn adjust_rank_spacing(
         starting_ancestor_positions.get_or_default(ancestor_id, position)
       if start_delta > 0.0 {
         for obj in graph.objects {
-          if obj.child_ids.is_empty() {
+          if !is_layout_container_candidate(obj) {
             continue
           }
           let start_rank = match starting_parent_ranks.get(obj.id) {
@@ -4571,7 +4617,7 @@ fn fit_container_boxes(
   )
   let containers : Array[@graph.ObjectInput] = []
   for obj in graph.objects {
-    if obj.child_ids.is_empty() {
+    if !is_layout_container_candidate(obj) {
       continue
     }
     if obj.shape_type != @graph.Rectangle && obj.shape_type != @graph.Square {

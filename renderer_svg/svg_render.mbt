@@ -525,7 +525,7 @@ const ARROWHEAD_PADDING : Double = 2.0
 const MIN_ARROWHEAD_STROKE_WIDTH : Double = 2.0
 
 ///|
-const DIAGO_VERSION : String = "0.1.0"
+const DIAGO_VERSION : String = "0.2.0"
 
 ///|
 fn transform_label_text(text : String, text_transform : String) -> String {

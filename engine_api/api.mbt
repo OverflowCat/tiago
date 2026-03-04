@@ -411,18 +411,20 @@ priv struct GridSemanticContext {
 ///|
 fn prepare_layout_semantics(
   graph : @graph.GraphInput,
+  config : LayoutConfig,
 ) -> (@graph.GraphInput, GridSemanticContext) {
   let groups = collect_grid_semantic_groups(graph)
   if groups.is_empty() {
     return (graph, { groups, child_ids: {} })
   }
+  let pre_sized = apply_grid_semantic_parent_boxes(graph, groups, config)
   let child_ids : Map[String, Bool] = {}
   for _, ids in groups {
     for id in ids {
       child_ids[id] = true
     }
   }
-  (detach_grid_children(graph, groups), { groups, child_ids })
+  (detach_grid_children(pre_sized, groups), { groups, child_ids })
 }
 
 ///|
@@ -478,6 +480,81 @@ fn collect_grid_semantic_groups(
     groups[parent.id] = child_ids
   }
   groups
+}
+
+///|
+fn apply_grid_semantic_parent_boxes(
+  graph : @graph.GraphInput,
+  groups : Map[String, Array[String]],
+  config : LayoutConfig,
+) -> @graph.GraphInput {
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.id] = graph.root
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+
+  let parent_box_by_id : Map[String, @graph.Box] = {}
+  for parent_id, child_ids in groups {
+    if parent_id == graph.root.id {
+      continue
+    }
+    let parent = match object_by_id.get(parent_id) {
+      Some(v) => v
+      None => continue
+    }
+    let child_size_by_id : Map[String, (Double, Double)] = {}
+    for child_id in child_ids {
+      match object_by_id.get(child_id) {
+        Some(child) =>
+          child_size_by_id[child_id] = semantic_object_size(child, config)
+        None => ()
+      }
+    }
+    match estimate_grid_semantic_plan(parent, child_ids, child_size_by_id) {
+      Some(plan) => {
+        let (x, y) = match parent.box {
+          Some(box) => (box.x, box.y)
+          None => (0.0, 0.0)
+        }
+        parent_box_by_id[parent_id] = @graph.Box::new(
+          x,
+          y,
+          plan.width,
+          plan.height,
+        )
+      }
+      None => ()
+    }
+  }
+
+  if parent_box_by_id.is_empty() {
+    return graph
+  }
+
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    let box = match parent_box_by_id.get(obj.id) {
+      Some(v) => Some(v)
+      None => obj.box
+    }
+    objects.push(clone_object_with_parts(obj, box, obj.child_ids))
+  }
+
+  @graph.GraphInput::from_parts(
+    graph.name,
+    graph.root,
+    objects,
+    graph.edges,
+    graph.sequence_fragments,
+    graph.activation_boxes,
+    graph.sequence_notes,
+    graph.sequence_fragments_layout,
+    graph.layers,
+    graph.scenarios,
+    graph.steps,
+    graph.legend,
+  )
 }
 
 ///|
@@ -1372,14 +1449,7 @@ fn restore_grid_semantics(
       None => continue
     }
 
-    let center_x = parent_box.x + parent_box.width / 2.0
-    let center_y = parent_box.y + parent_box.height / 2.0
-    let parent_new = @graph.Box::new(
-      center_x - plan.width / 2.0,
-      center_y - plan.height / 2.0,
-      plan.width,
-      plan.height,
-    )
+    let parent_new = parent_box
     override_boxes[parent_id] = parent_new
 
     let mut y = parent_new.y + plan.pad_top
@@ -1405,7 +1475,6 @@ fn restore_grid_semantics(
       y = y + plan.row_heights[row] + plan.vgap
     }
   }
-  pack_top_level_grid_groups(override_boxes, context, original_graph, config)
   normalize_override_boxes_origin(override_boxes)
 
   let objects : Array[@graph.ObjectInput] = []
@@ -1475,73 +1544,6 @@ fn restore_grid_semantics(
     laid_out_graph.steps,
     laid_out_graph.legend,
   )
-}
-
-///|
-fn pack_top_level_grid_groups(
-  override_boxes : Map[String, @graph.Box],
-  context : GridSemanticContext,
-  original_graph : @graph.GraphInput,
-  _config : LayoutConfig,
-) -> Unit {
-  let top_parents : Array[String] = []
-  for child_id in original_graph.root.child_ids {
-    if context.groups.contains(child_id) {
-      top_parents.push(child_id)
-    }
-  }
-  if top_parents.is_empty() {
-    return
-  }
-
-  let (horizontal_gap, _) = root_grid_gaps(original_graph.root)
-  let top_anchor_y = 12.0
-  let mut first_parent_y : Double? = None
-  for parent_id in top_parents {
-    match override_boxes.get(parent_id) {
-      Some(parent_box) => {
-        first_parent_y = Some(parent_box.y)
-        break
-      }
-      None => ()
-    }
-  }
-  let global_dy = match first_parent_y {
-    Some(y) => top_anchor_y - y
-    None => return
-  }
-  let mut cursor_x = 12.0
-  for parent_id in top_parents {
-    let parent_box = match override_boxes.get(parent_id) {
-      Some(v) => v
-      None => continue
-    }
-    let dx = cursor_x - parent_box.x
-    let shifted_parent = @graph.Box::new(
-      parent_box.x + dx,
-      parent_box.y + global_dy,
-      parent_box.width,
-      parent_box.height,
-    )
-    override_boxes[parent_id] = shifted_parent
-    match context.groups.get(parent_id) {
-      Some(child_ids) =>
-        for child_id in child_ids {
-          match override_boxes.get(child_id) {
-            Some(child_box) =>
-              override_boxes[child_id] = @graph.Box::new(
-                child_box.x + dx,
-                child_box.y + global_dy,
-                child_box.width,
-                child_box.height,
-              )
-            None => ()
-          }
-        }
-      None => ()
-    }
-    cursor_x = cursor_x + shifted_parent.width + horizontal_gap
-  }
 }
 
 ///|
@@ -2129,7 +2131,7 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
   direction : Direction,
 ) -> @graph.GraphInput raise LayoutError {
   let prepared = prepare_graph_for_layout(graph)
-  let (engine_graph, semantic_ctx) = prepare_layout_semantics(prepared)
+  let (engine_graph, semantic_ctx) = prepare_layout_semantics(prepared, config)
   let laid_out_core = if engine_graph.objects.is_empty() {
     engine_graph
   } else {

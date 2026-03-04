@@ -5,7 +5,7 @@
      |                ^               |              
      |                |               |              
    chase              |To err is human, to moo bovine
-     |                |               |              
+     |                |               |  *           
      v                v               v              
 +---------+      +----------+    +--------+          
 |  cats   |      |replica 2 |    |   b    |          
