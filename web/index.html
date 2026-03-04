@@ -252,8 +252,8 @@
   <header>
     <h1><span>Diago</span> Playground</h1>
     <div class="header-right">
-      <span id="status" class="status loading">Loading WASM...</span>
-      <a href="https://github.com/moonbitlang/diago" target="_blank">GitHub</a>
+      <span id="status" class="status loading">Loading renderer...</span>
+      <a href="https://github.com/moonbit-community/diago" target="_blank">GitHub</a>
     </div>
   </header>
 
@@ -343,7 +343,7 @@ server -> database: queries"></textarea>
         return content;
       } catch (e) {
         console.error(`Error loading example ${name}:`, e);
-        return `# Failed to load example: ${name}\n# ${e.message}`;
+        return "# Failed to load example.\n# Please refresh and try again.";
       }
     }
 
@@ -543,7 +543,7 @@ server -> database: queries"></textarea>
       try {
         await downloadPngFromSvg(lastSvgOutput);
       } catch (e) {
-        errorBanner.textContent = 'PNG export error: ' + e.message;
+        errorBanner.textContent = 'Failed to export PNG.';
         errorBanner.style.display = 'block';
       }
     });
@@ -552,7 +552,7 @@ server -> database: queries"></textarea>
       try {
         exportPdfFromSvg(lastSvgOutput);
       } catch (e) {
-        errorBanner.textContent = 'PDF export error: ' + e.message;
+        errorBanner.textContent = 'Failed to export PDF.';
         errorBanner.style.display = 'block';
       }
     });
@@ -588,10 +588,10 @@ server -> database: queries"></textarea>
       document.body.style.userSelect = '';
     });
 
-    // WASM loading
+    // Renderer loading
     async function loadWasm() {
       try {
-        statusEl.textContent = 'Loading WASM...';
+        statusEl.textContent = 'Loading renderer...';
         statusEl.className = 'status loading';
 
         const response = await fetch('./wasm.wasm');
@@ -614,7 +614,7 @@ server -> database: queries"></textarea>
         render();
       } catch (e) {
         console.error('WASM load error:', e);
-        statusEl.textContent = 'WASM not available';
+        statusEl.textContent = 'Renderer unavailable';
         statusEl.className = 'status error';
         showPlaceholder();
       }
@@ -624,11 +624,31 @@ server -> database: queries"></textarea>
       preview.className = 'preview-content dark';
       preview.innerHTML = `
         <div style="text-align: center; color: #666;">
-          <p style="margin-bottom: 1rem;">WASM module not loaded.</p>
-          <p style="font-size: 0.8rem;">Build with: <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">moon build --target wasm</code></p>
-          <p style="font-size: 0.8rem; margin-top: 0.5rem;">Then copy <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">target/wasm/release/build/cmd/wasm/wasm.wasm</code> to <code style="background: #1a1a2e; padding: 0.25rem 0.5rem; border-radius: 4px;">web/</code></p>
+          <p style="margin-bottom: 0.75rem;">Failed to initialize the renderer.</p>
+          <p style="font-size: 0.8rem;">Please refresh the page and try again.</p>
         </div>
       `;
+    }
+
+    function formatRenderErrorMessage(raw) {
+      const text = String(raw ?? '').trim();
+      if (text.length === 0) {
+        return 'Failed to render diagram.';
+      }
+      if (text.startsWith('Error: Parse errors:')) {
+        return 'Syntax error in diagram source.';
+      }
+      if (
+        text.startsWith('Error: IR error:') ||
+        text.startsWith('Error: Graph error:') ||
+        text.startsWith('Error: Layout error:')
+      ) {
+        return 'Failed to layout diagram. Please check syntax and connections.';
+      }
+      if (text.startsWith('Error: ')) {
+        return text.slice('Error: '.length);
+      }
+      return text;
     }
 
     function setInput(str) {
@@ -696,7 +716,7 @@ server -> database: queries"></textarea>
         const output = getOutput();
 
         if (status !== 0) {
-          errorBanner.textContent = output;
+          errorBanner.textContent = formatRenderErrorMessage(output);
           errorBanner.style.display = 'block';
           updateExportButtons();
           return;
@@ -719,7 +739,7 @@ server -> database: queries"></textarea>
         lastRenderOk = true;
         updateExportButtons();
       } catch (e) {
-        errorBanner.textContent = 'Render error: ' + e.message;
+        errorBanner.textContent = 'Failed to render diagram.';
         errorBanner.style.display = 'block';
         updateExportButtons();
       }

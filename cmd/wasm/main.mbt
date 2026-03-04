@@ -136,11 +136,8 @@ pub fn render_unicode_with_engine(engine : Int) -> Int {
 
 ///|
 fn bytes_to_string(bytes : Array[Byte]) -> String {
-  let sb = StringBuilder::new()
-  for b in bytes {
-    sb.write_char(b.to_int().unsafe_to_char())
-  }
-  sb.to_string()
+  let data = Bytes::from_array(bytes[:])
+  @utf8.decode_lossy(data.view())
 }
 
 ///|
