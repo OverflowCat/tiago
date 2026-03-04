@@ -47,9 +47,13 @@ test "railway layout routes via virtual nodes" {
   let c_box = patch.nodes.get("C").unwrap()
   let rail_0_1 = (a_box.y + a_box.height + b_box.y) / 2.0
   let rail_1_2 = (b_box.y + b_box.height + c_box.y) / 2.0
-  let virt_x = config.default_width / 2.0
-  let virt_center = @graph.Point::new(virt_x, b_box.y + b_box.height / 2.0)
   let points = patch.edges.get(e_ac.index).unwrap_or([])
+  let virt_x = if points.is_empty() {
+    a_box.x + a_box.width / 2.0
+  } else {
+    points[0].x
+  }
+  let virt_center = @graph.Point::new(virt_x, b_box.y + b_box.height / 2.0)
   let mut has_rail_0_1 = false
   let mut has_rail_1_2 = false
   let mut has_virt_center = false
@@ -459,6 +463,32 @@ test "simple DAG" {
   assert_true(storage_box.y > ws1_box.y)
   assert_true(alice_box.x != bob_box.x)
   assert_true(ws1_box.x != ws2_box.x)
+}
+
+///|
+test "railway down direction left-aligns first node per rank" {
+  let root = @graph.ObjectInput::new("root")
+  let left = @graph.ObjectInput::new("left")
+  let right = @graph.ObjectInput::new("right")
+  let g = @graph.GraphInput::new("left-align")
+  g.objects.append([root, left, right])
+  g.edges.append([
+    @graph.EdgeInput::new(0, "root", "left", false, true),
+    @graph.EdgeInput::new(1, "root", "right", false, true),
+  ])
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let root_box = patch.nodes.get("root").unwrap()
+  let left_box = patch.nodes.get("left").unwrap()
+  let right_box = patch.nodes.get("right").unwrap()
+  assert_true(left_box.y == right_box.y)
+  assert_true(root_box.y < left_box.y)
+  let first_x = @cmp.minimum(left_box.x, right_box.x)
+  assert_true(
+    (first_x - root_box.x).abs() <= 0.000001,
+    msg="the first node in lower rank should align to left anchor",
+  )
+  assert_true((left_box.x - right_box.x).abs() > 0.000001)
 }
 
 ///|

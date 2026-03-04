@@ -116,6 +116,7 @@ fn place_nodes_dagre(
   let levels = levels_from_rank_and_order(
     graph, rank_by_id, dagre_node_id_by_object_id, laid_out,
   )
+  align_levels_to_left_anchor(boxes, levels, object_by_id, direction)
   let (level_main_mins, level_main_maxs, level_cross_mins, level_cross_maxs) = level_bounds_from_boxes(
     graph, boxes, levels, direction, config,
   )
@@ -127,6 +128,92 @@ fn place_nodes_dagre(
     direction, config,
   )
   { boxes, level_heights, rank_by_id }
+}
+
+///|
+fn align_levels_to_left_anchor(
+  boxes : Map[String, @graph.Box],
+  levels : Array[Level],
+  object_by_id : Map[String, @graph.ObjectInput],
+  direction : @engine_api.Direction,
+) -> Unit {
+  if direction != @engine_api.Down {
+    return
+  }
+  let first_crosses : Array[Double] = []
+  for level in levels {
+    match min_physical_cross_in_level(level, boxes, object_by_id, direction) {
+      Some(cross) => first_crosses.push(cross)
+      None => ()
+    }
+  }
+  if first_crosses.is_empty() {
+    return
+  }
+  let mut anchor = first_crosses[0]
+  for cross in first_crosses {
+    anchor = @cmp.minimum(anchor, cross)
+  }
+  for level in levels {
+    let first_cross = match
+      min_physical_cross_in_level(level, boxes, object_by_id, direction) {
+      Some(cross) => cross
+      None => continue
+    }
+    let delta = anchor - first_cross
+    if delta.abs() <= 0.000001 {
+      continue
+    }
+    for id in level {
+      match boxes.get(id) {
+        Some(box) =>
+          boxes[id] = match direction {
+            Down | Up =>
+              @graph.Box::new(box.x + delta, box.y, box.width, box.height)
+            Right | Left =>
+              @graph.Box::new(box.x, box.y + delta, box.width, box.height)
+          }
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+fn min_physical_cross_in_level(
+  level : Level,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  direction : @engine_api.Direction,
+) -> Double? {
+  let mut found = false
+  let mut cross_min = 0.0
+  for id in level {
+    match object_by_id.get(id) {
+      Some(obj) => if is_layout_container_candidate(obj) { continue }
+      None => ()
+    }
+    match boxes.get(id) {
+      Some(box) => {
+        let cross = match direction {
+          Down | Up => box.x
+          Right | Left => box.y
+        }
+        if !found {
+          cross_min = cross
+          found = true
+        } else {
+          cross_min = @cmp.minimum(cross_min, cross)
+        }
+      }
+      None => ()
+    }
+  }
+  if found {
+    Some(cross_min)
+  } else {
+    None
+  }
 }
 
 ///|

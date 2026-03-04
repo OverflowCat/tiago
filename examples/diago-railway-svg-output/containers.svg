@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="637" height="890" viewBox="-90 -100 637 890" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-90" y="-100" width="637" height="890"><rect x="-90" y="-100" width="637" height="890" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="699" height="892" viewBox="-151 -101 699 892" data-d2-version="0.2.0" class="d2-790920114 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-151" y="-101" width="699" height="892"><rect x="-151" y="-101" width="699" height="892" fill="white"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-90" y="-100" width="637" height="890" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-151" y="-101" width="699" height="892" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="10" y="150" width="437" height="540" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="247" y="0" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="245" y="180" width="104" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="-50" y="150" width="497" height="540" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="40" y="0" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="40" y="180" width="104" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="540" width="100" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="180" y="340" width="237" height="320" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="210" y="370" width="177" height="260" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="-20" y="340" width="437" height="320" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="10" y="370" width="377" height="260" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="257" y="540" width="100" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="240" y="400" width="113" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 297 62 L 297 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 297 242 L 297 319.75 C 297 320.25 296.5 319.75 296.5 320.25 L 296.5 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 307 462 L 307 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 250 462 L 250 490 S 250 500 240 500 L 100 500 S 90 500 90 510 L 90 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="228.5" y="137" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
-<text x="297" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
-<text x="297" y="215.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
+<rect x="40" y="400" width="113" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 90 62 L 90 119 C 90 121 92 119 92 121 L 92 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 92 242 L 92 317.75 C 92 322.25 96.5 317.75 96.5 322.25 L 96.5 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 143 462 L 143 490 S 143 500 153 500 L 297 500 S 307 500 307 510 L 307 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 90 462 L 90 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="198.5" y="137" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
+<text x="90" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
+<text x="92" y="215.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
 <text x="90" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">S3 Bucket</text>
-<text x="298.5" y="328" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">VPC</text>
-<text x="298.5" y="359" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
+<text x="198.5" y="328" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">VPC</text>
+<text x="198.5" y="359" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
 <text x="307" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">RDS</text>
-<text x="296.5" y="435.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">EC2 Instance</text>
+<text x="96.5" y="435.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">EC2 Instance</text>
 </g>
 </svg>

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="582" height="936" viewBox="-100 -100 582 936" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-100" y="-100" width="582" height="936"><rect x="-100" y="-100" width="582" height="936" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="506" height="938" viewBox="-101 -101 506 938" data-d2-version="0.2.0" class="d2-1487076318 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="506" height="938"><rect x="-101" y="-101" width="506" height="938" fill="white"></rect></mask>
 <marker id="mk-2090524415" markerWidth="10" markerHeight="12" refX="3" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="10,0 0,6 10,12" fill="#0D32B2" stroke-width="2"/></marker>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-100" y="-100" width="582" height="936" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="506" height="938" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="304" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <rect x="0" y="0" width="304" height="36" fill="#0A0F25"/>
@@ -12,22 +12,22 @@
 <line x1="0" y1="72" x2="304" y2="72" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="108" x2="304" y2="108" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="144" x2="304" y2="144" stroke="#0A0F25" stroke-width="2"/>
-<rect x="102" y="260" width="280" height="216" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="102" y="260" width="280" height="36" fill="#0A0F25"/>
-<line x1="102" y1="296" x2="382" y2="296" stroke="#0A0F25" stroke-width="2"/>
-<line x1="102" y1="332" x2="382" y2="332" stroke="#0A0F25" stroke-width="2"/>
-<line x1="102" y1="368" x2="382" y2="368" stroke="#0A0F25" stroke-width="2"/>
-<line x1="102" y1="404" x2="382" y2="404" stroke="#0A0F25" stroke-width="2"/>
-<line x1="102" y1="440" x2="382" y2="440" stroke="#0A0F25" stroke-width="2"/>
-<rect x="59" y="556" width="187" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="59" y="556" width="187" height="36" fill="#0A0F25"/>
-<line x1="59" y1="592" x2="246" y2="592" stroke="#0A0F25" stroke-width="2"/>
-<line x1="59" y1="628" x2="246" y2="628" stroke="#0A0F25" stroke-width="2"/>
-<line x1="59" y1="664" x2="246" y2="664" stroke="#0A0F25" stroke-width="2"/>
-<line x1="59" y1="700" x2="246" y2="700" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 244.58333333333334 184 L 244.58333333333334 218.70833333333331 C 244.58333333333334 221.29166666666669 242 218.70833333333331 242 221.29166666666669 L 242 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 242 480 L 242 513 C 242 519 236 513 236 519 L 236 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 149.91666666666666 184 L 149.91666666666666 210 S 149.91666666666666 220 139.91666666666666 220 L 46 220 S 36 220 36 230 L 36 506 S 36 516 46 516 L 142 516 S 152 516 152 526 L 152 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<rect x="0" y="260" width="280" height="216" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="260" width="280" height="36" fill="#0A0F25"/>
+<line x1="0" y1="296" x2="280" y2="296" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="332" x2="280" y2="332" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="368" x2="280" y2="368" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="404" x2="280" y2="404" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="440" x2="280" y2="440" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="556" width="187" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="556" width="187" height="36" fill="#0A0F25"/>
+<line x1="0" y1="592" x2="187" y2="592" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="628" x2="187" y2="628" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="664" x2="187" y2="664" stroke="#0A0F25" stroke-width="2"/>
+<line x1="0" y1="700" x2="187" y2="700" stroke="#0A0F25" stroke-width="2"/>
+<path d="M 164.08333333333334 184 L 164.08333333333334 210 S 164.08333333333334 220 154.08333333333334 220 L 150 220 S 140 220 140 230 L 140 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 140 480 L 140 506 S 140 516 130 516 L 128.16666666666666 516 S 118.16666666666666 516 118.16666666666666 526 L 118.16666666666666 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 69.41666666666666 184 L 69.41666666666666 210 S 69.41666666666666 220 79.41666666666666 220 L 199.83333333333331 220 S 209.83333333333331 220 209.83333333333331 230 L 209.83333333333331 506 S 209.83333333333331 516 199.83333333333331 516 L 183.83333333333331 516 S 173.83333333333331 516 173.83333333333331 526 L 173.83333333333331 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="10" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">users</text>
 <text x="10" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
 <text x="121" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
@@ -39,30 +39,30 @@
 <text x="294" y="131" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">UNQ</text>
 <text x="10" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">created_at</text>
 <text x="121" y="167" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">timestamp</text>
-<text x="112" y="285.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">posts</text>
-<text x="112" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
-<text x="214" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
-<text x="372" y="319" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">PK</text>
-<text x="112" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">user_id</text>
-<text x="214" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
-<text x="372" y="355" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
-<text x="112" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">title</text>
-<text x="214" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">varchar(255)</text>
-<text x="112" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">content</text>
-<text x="214" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">text</text>
-<text x="112" y="463" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">published</text>
-<text x="214" y="463" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">boolean</text>
-<text x="69" y="581.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">comments</text>
-<text x="69" y="615" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
-<text x="150" y="615" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
-<text x="236" y="615" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">PK</text>
-<text x="69" y="651" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">post_id</text>
-<text x="150" y="651" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
-<text x="236" y="651" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
-<text x="69" y="687" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">user_id</text>
-<text x="150" y="687" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
-<text x="236" y="687" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
-<text x="69" y="723" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">body</text>
-<text x="150" y="723" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">text</text>
+<text x="10" y="285.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">posts</text>
+<text x="10" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
+<text x="112" y="319" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
+<text x="270" y="319" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">PK</text>
+<text x="10" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">user_id</text>
+<text x="112" y="355" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
+<text x="270" y="355" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
+<text x="10" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">title</text>
+<text x="112" y="391" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">varchar(255)</text>
+<text x="10" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">content</text>
+<text x="112" y="427" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">text</text>
+<text x="10" y="463" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">published</text>
+<text x="112" y="463" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">boolean</text>
+<text x="10" y="581.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">comments</text>
+<text x="10" y="615" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
+<text x="91" y="615" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
+<text x="177" y="615" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">PK</text>
+<text x="10" y="651" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">post_id</text>
+<text x="91" y="651" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
+<text x="177" y="651" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
+<text x="10" y="687" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">user_id</text>
+<text x="91" y="687" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>
+<text x="177" y="687" text-anchor="end" font-family="Arial, sans-serif" font-size="20" fill="#4A6FF3">FK</text>
+<text x="10" y="723" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">body</text>
+<text x="91" y="723" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">text</text>
 </g>
 </svg>
