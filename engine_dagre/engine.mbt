@@ -1846,19 +1846,25 @@ fn estimate_object_size(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let label_dims = @text_metrics.measure_label(
-    obj.label,
-    font_size,
-    is_mono,
-    is_bold,
-    is_italic,
-  )
+  let label_dims = if obj.shape_type == @graph.Code {
+    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+  } else {
+    @text_metrics.measure_label(
+      obj.label,
+      font_size,
+      is_mono,
+      is_bold,
+      is_italic,
+    )
+  }
   let mut content_width = label_dims.width
   let mut content_height = label_dims.height
 
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
     content_height = content_height + font_size.to_double()
+    // D2 parity: code shape size is measured text + 0.5em padding each side only.
+    return (content_width, content_height)
   } else if obj.label != "" && obj.shape_type != @graph.Text {
     content_width = content_width + D2_INNER_LABEL_PADDING
     content_height = content_height + D2_INNER_LABEL_PADDING
@@ -3312,13 +3318,17 @@ fn object_layout_spacing(
     let is_italic = style_bool(obj.style.italic, false)
     let is_mono = obj.shape_type == @graph.Code ||
       style_is_mono(obj.style.font_family)
-    let dims = @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
+    let dims = if obj.shape_type == @graph.Code {
+      @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+    } else {
+      @text_metrics.measure_label(
+        obj.label,
+        font_size,
+        is_mono,
+        is_bold,
+        is_italic,
+      )
+    }
     let label_width = if dims.width > 0.0 {
       dims.width + D2_LABEL_PADDING * 2.0
     } else {
@@ -6463,13 +6473,17 @@ fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let dims = @text_metrics.measure_label(
-    obj.label,
-    font_size,
-    is_mono,
-    is_bold,
-    is_italic,
-  )
+  let dims = if obj.shape_type == @graph.Code {
+    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+  } else {
+    @text_metrics.measure_label(
+      obj.label,
+      font_size,
+      is_mono,
+      is_bold,
+      is_italic,
+    )
+  }
   let width = if dims.width > 0.0 {
     dims.width
   } else {

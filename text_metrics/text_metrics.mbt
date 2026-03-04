@@ -372,11 +372,16 @@ fn measure_text_with_mode(
 
   // Calculate height following D2's formula
   let base_height = font_size.to_double()
-  let line_height = line_height_for(font_size, use_code_line_height)
+  let line_height = if use_code_line_height {
+    // D2 parity for language-tagged code snippets.
+    font_size.to_double() * CODE_LINE_HEIGHT
+  } else {
+    line_height_for(font_size, bounds_with_dot)
+  }
   let mut total_height = (line_count + 1).to_double() * line_height
   if use_code_line_height {
     // D2: if hasLeading && numTrailing < len(lines) { h += t.FontSize }
-    if has_leading {
+    if has_leading && num_trailing < lines.length() {
       total_height = total_height + base_height
     }
 
@@ -411,7 +416,19 @@ pub fn measure_text(
   is_italic : Bool,
 ) -> MeasuredText {
   let kind = select_font_kind(is_mono, is_bold, is_italic)
-  measure_text_with_mode(text, font_size, kind, is_mono, is_mono)
+  measure_text_with_mode(text, font_size, kind, is_mono, false)
+}
+
+///|
+/// Measure code text using monospace font and CODE_LINE_HEIGHT semantics.
+pub fn measure_text_code(
+  text : String,
+  font_size : Int,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> MeasuredText {
+  let kind = select_font_kind(true, is_bold, is_italic)
+  measure_text_with_mode(text, font_size, kind, true, true)
 }
 
 ///|
@@ -433,6 +450,17 @@ pub fn measure_label(
   is_italic : Bool,
 ) -> TextDimensions {
   measure_text(text, font_size, is_mono, is_bold, is_italic).dimensions
+}
+
+///|
+/// Measure label dimensions for code snippets (language-tagged block strings).
+pub fn measure_label_code(
+  text : String,
+  font_size : Int,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> TextDimensions {
+  measure_text_code(text, font_size, is_bold, is_italic).dimensions
 }
 
 ///|

@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="928" height="388" viewBox="-88 -88 928 388" data-d2-version="0.2.0">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-88" y="-88" width="928" height="388"><rect x="-88" y="-88" width="928" height="388" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="888" height="320" viewBox="-88 -88 888 320" data-d2-version="0.2.0">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-88" y="-88" width="888" height="320"><rect x="-88" y="-88" width="888" height="320" fill="white"></rect></mask>
 </defs>
-<rect x="-88" y="-88" width="928" height="388" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-88" y="-88" width="888" height="320" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <g transform="translate(12,12)" class="light-code">
-<rect width="728" height="188" stroke="#0A0F25" class="shape" style="fill:#ffffff;stroke-width:2;"/>
+<rect width="688" height="120" stroke="#0A0F25" class="shape" style="fill:#ffffff;stroke-width:2;"/>
 <g transform="translate(8,8)">
-<text class="text-mono" x="0" y="1em">awsSession&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;From(c.Request.Context())</text>
-<text class="text-mono" x="0" y="2.3em">client&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;s3.New(awsSession)</text>
+<text class="text-mono" x="0" y="1em">awsSession&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;<tspan fill="#990000" class="text-mono-bold">From</tspan>(c.Request.<tspan fill="#990000" class="text-mono-bold">Context</tspan>())</text>
+<text class="text-mono" x="0" y="2.3em">client&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;s3.<tspan fill="#990000" class="text-mono-bold">New</tspan>(awsSession)</text>
 <text class="text-mono" x="0" y="3.6em"></text>
-<text class="text-mono" x="0" y="4.9em">ctx,&#160;cancelFn&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;context.WithTimeout(c.Request.Context(),&#160;AWS_TIMEOUT)</text>
-<text class="text-mono" x="0" y="6.2em"><tspan fill="#000000" class="text-mono-bold">defer</tspan>&#160;cancelFn()</text>
+<text class="text-mono" x="0" y="4.9em">ctx,&#160;cancelFn&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;context.<tspan fill="#990000" class="text-mono-bold">WithTimeout</tspan>(c.Request.<tspan fill="#990000" class="text-mono-bold">Context</tspan>(),&#160;AWS_TIMEOUT)</text>
+<text class="text-mono" x="0" y="6.2em"><tspan fill="#000000" class="text-mono-bold">defer</tspan>&#160;<tspan fill="#990000" class="text-mono-bold">cancelFn</tspan>()</text>
 </g>
 </g>
 <g transform="translate(12,12)" class="dark-code">
-<rect width="728" height="188" stroke="#0A0F25" class="shape" style="fill:#1e1e2e;stroke-width:2;"/>
+<rect width="688" height="120" stroke="#0A0F25" class="shape" style="fill:#1e1e2e;stroke-width:2;"/>
 <g transform="translate(8,8)">
-<text class="text-mono" x="0" y="1em"><tspan fill="#cdd6f4">awsSession&#160;:=&#160;From(c.Request.Context())</tspan></text>
-<text class="text-mono" x="0" y="2.3em"><tspan fill="#cdd6f4">client&#160;:=&#160;s3.New(awsSession)</tspan></text>
+<text class="text-mono" x="0" y="1em"><tspan fill="#cdd6f4">awsSession</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89dceb" class="text-mono-bold">:=</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89b4fa">From</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">c</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#cdd6f4">Request</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#89b4fa">Context</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">)</tspan><tspan fill="#cdd6f4">)</tspan></text>
+<text class="text-mono" x="0" y="2.3em"><tspan fill="#cdd6f4">client</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89dceb" class="text-mono-bold">:=</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#cdd6f4">s3</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#89b4fa">New</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">awsSession</tspan><tspan fill="#cdd6f4">)</tspan></text>
 <text class="text-mono" x="0" y="3.6em"></text>
-<text class="text-mono" x="0" y="4.9em"><tspan fill="#cdd6f4">ctx,&#160;cancelFn&#160;:=&#160;context.WithTimeout(c.Request.Context(),&#160;AWS_TIMEOUT)</tspan></text>
-<text class="text-mono" x="0" y="6.2em"><tspan fill="#cdd6f4">defer&#160;cancelFn()</tspan></text>
+<text class="text-mono" x="0" y="4.9em"><tspan fill="#cdd6f4">ctx</tspan><tspan fill="#cdd6f4">,</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#cdd6f4">cancelFn</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89dceb" class="text-mono-bold">:=</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#cdd6f4">context</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#89b4fa">WithTimeout</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">c</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#cdd6f4">Request</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#89b4fa">Context</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">)</tspan><tspan fill="#cdd6f4">,</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#cdd6f4">AWS_TIMEOUT</tspan><tspan fill="#cdd6f4">)</tspan></text>
+<text class="text-mono" x="0" y="6.2em"><tspan fill="#cba6f7">defer</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89b4fa">cancelFn</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">)</tspan></text>
 </g>
 </g>
 </g>

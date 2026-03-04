@@ -1667,19 +1667,25 @@ fn estimate_semantic_object_size(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let label_dims = @text_metrics.measure_label(
-    obj.label,
-    font_size,
-    is_mono,
-    is_bold,
-    is_italic,
-  )
+  let label_dims = if obj.shape_type == @graph.Code {
+    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+  } else {
+    @text_metrics.measure_label(
+      obj.label,
+      font_size,
+      is_mono,
+      is_bold,
+      is_italic,
+    )
+  }
   let mut content_width = label_dims.width
   let mut content_height = label_dims.height
 
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
     content_height = content_height + font_size.to_double()
+    // D2 parity: code shape size is measured text + 0.5em padding each side only.
+    return (content_width, content_height)
   } else if with_inner_label_padding &&
     obj.label != "" &&
     obj.shape_type != @graph.Text {

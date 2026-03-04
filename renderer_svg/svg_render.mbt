@@ -2332,6 +2332,19 @@ fn has_class(obj : Shape, class_name : String) -> Bool {
 }
 
 ///|
+fn object_language(obj : Shape) -> String? {
+  for c in obj.classes {
+    if c.has_prefix("lang:") {
+      let tag = code_slice(c, 5, c.length())
+      if tag.length() > 0 {
+        return Some(tag)
+      }
+    }
+  }
+  None
+}
+
+///|
 fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
   if obj.label == "" {
     return
@@ -2477,15 +2490,22 @@ fn render_svg_object(
         )
       }
     "code" => {
+      let default_font_size = default_object_font_size(obj, config)
+      let font_size = match obj.style.font_size {
+        Some(v) => v.as_int().unwrap_or(default_font_size)
+        None => default_font_size
+      }
       // Code shape - render in appropriate pass
       render_svg_code(
         svg,
         box,
         obj.label,
+        object_language(obj),
         fill,
         stroke,
         stroke_width,
         config,
+        font_size,
         pass~,
       )
       if is_foreground {
@@ -3520,26 +3540,31 @@ fn render_svg_code(
   svg : @svg.Svg,
   box : Box,
   label : String,
+  language : String?,
   _fill : String,
   stroke : String,
   stroke_width : Double,
   _config : SvgConfig,
+  font_size : Int,
   pass? : RenderPass = Foreground,
 ) -> Unit {
   // D2 parity: render both light and dark code groups and switch visibility via CSS.
   let code_bgs = [("light-code", "#ffffff"), ("dark-code", "#1e1e2e")]
-  let padding = 8.0
+  // D2 parity: code block has 0.5em inner padding.
+  let padding = font_size.to_double() / 2.0
   match pass {
     Background => ()
     Foreground => {
       let lines = split_lines(label)
       for code_bg in code_bgs {
-        svg.add(
-          @xml_emit.Element::new("g")
+        let code_group = @xml_emit.Element::new("g")
           .attr("transform", "translate(\{box.x},\{box.y})")
           .attr("class", code_bg.0)
-          .open_tag(),
-        )
+        if font_size != 16 {
+          svg.add(code_group.attr("style", "font-size:\{font_size}").open_tag())
+        } else {
+          svg.add(code_group.open_tag())
+        }
         svg.add(
           @xml_emit.Element::new("rect")
           .attr_num("width", box.width)
@@ -3553,11 +3578,7 @@ fn render_svg_code(
         svg.open_group("translate(\{padding},\{padding})")
         for i, line in lines {
           let y_em = "\{1.0 + i.to_double() * 1.3}em"
-          let raw = if code_bg.0 == "dark-code" {
-            code_line_svg_raw_dark(line)
-          } else {
-            code_line_svg_raw(line)
-          }
+          let raw = code_line_svg_raw(line, language, code_bg.0 == "dark-code")
           let text = @xml_emit.Element::new("text")
             .attr("class", "text-mono")
             .attr("x", "0")
@@ -3574,32 +3595,181 @@ fn render_svg_code(
 }
 
 ///|
-fn code_line_svg_raw(line : String) -> String {
-  match code_find_substring(line, ":=") {
-    Some(idx) => {
-      let prefix = code_slice(line, 0, idx)
-      let suffix = code_slice(line, idx + 2, line.length())
-      code_svg_escape(prefix) +
-      "<tspan fill=\"#000000\" class=\"text-mono-bold\">:=</tspan>" +
-      code_svg_escape(suffix)
+priv enum CodeTokenKind {
+  Plain
+  AssignOp
+  Keyword
+  Function
+}
+
+///|
+fn code_line_svg_raw(
+  line : String,
+  language : String?,
+  is_dark : Bool,
+) -> String {
+  match language {
+    Some("go") | Some("golang") => code_line_svg_go(line, is_dark)
+    _ => code_line_svg_fallback(line, is_dark)
+  }
+}
+
+///|
+fn code_line_svg_fallback(line : String, is_dark : Bool) -> String {
+  if line == "" {
+    return ""
+  }
+  if is_dark {
+    "<tspan fill=\"#cdd6f4\">\{code_svg_escape(line)}</tspan>"
+  } else {
+    code_svg_escape(line)
+  }
+}
+
+///|
+fn code_line_svg_go(line : String, is_dark : Bool) -> String {
+  let sb = StringBuilder::new()
+  let mut i = 0
+  while i < line.length() {
+    if i + 1 < line.length() && code_slice(line, i, i + 2) == ":=" {
+      code_write_span(
+        sb,
+        ":=",
+        code_token_fill(AssignOp, is_dark),
+        code_token_class(AssignOp, is_dark),
+      )
+      i = i + 2
+      continue
     }
+    match char_at(line, i) {
+      Some(c) =>
+        if code_is_ident_start(c) {
+          let start = i
+          i = i + 1
+          while i < line.length() {
+            match char_at(line, i) {
+              Some(next) =>
+                if code_is_ident_continue(next) {
+                  i = i + 1
+                } else {
+                  break
+                }
+              None => break
+            }
+          }
+          let ident = code_slice(line, start, i)
+          let next_non_space = code_next_non_space_char(line, i)
+          let token_kind = if ident == "defer" {
+            Keyword
+          } else if next_non_space == Some('(') {
+            Function
+          } else {
+            Plain
+          }
+          code_write_span(
+            sb,
+            ident,
+            code_token_fill(token_kind, is_dark),
+            code_token_class(token_kind, is_dark),
+          )
+        } else {
+          code_write_span(
+            sb,
+            code_slice(line, i, i + 1),
+            code_token_fill(Plain, is_dark),
+            code_token_class(Plain, is_dark),
+          )
+          i = i + 1
+        }
+      None => i = i + 1
+    }
+  }
+  sb.to_string()
+}
+
+///|
+fn code_token_fill(kind : CodeTokenKind, is_dark : Bool) -> String? {
+  if is_dark {
+    match kind {
+      AssignOp => Some("#89dceb")
+      Keyword => Some("#cba6f7")
+      Function => Some("#89b4fa")
+      Plain => Some("#cdd6f4")
+    }
+  } else {
+    match kind {
+      AssignOp => Some("#000000")
+      Keyword => Some("#000000")
+      Function => Some("#990000")
+      Plain => None
+    }
+  }
+}
+
+///|
+fn code_token_class(kind : CodeTokenKind, is_dark : Bool) -> String? {
+  if is_dark {
+    match kind {
+      AssignOp => Some("text-mono-bold")
+      _ => None
+    }
+  } else {
+    match kind {
+      AssignOp | Keyword | Function => Some("text-mono-bold")
+      Plain => None
+    }
+  }
+}
+
+///|
+fn code_write_span(
+  sb : StringBuilder,
+  raw_text : String,
+  fill : String?,
+  class_name : String?,
+) -> Unit {
+  let text = code_svg_escape(raw_text)
+  if text == "" {
+    return
+  }
+  match fill {
+    Some(color) =>
+      match class_name {
+        Some(cls) =>
+          sb.write_string(
+            "<tspan fill=\"\{color}\" class=\"\{cls}\">\{text}</tspan>",
+          )
+        None => sb.write_string("<tspan fill=\"\{color}\">\{text}</tspan>")
+      }
     None =>
-      if line.has_prefix("defer ") {
-        let suffix = code_slice(line, 5, line.length())
-        "<tspan fill=\"#000000\" class=\"text-mono-bold\">defer</tspan>" +
-        code_svg_escape(suffix)
-      } else {
-        code_svg_escape(line)
+      match class_name {
+        Some(cls) => sb.write_string("<tspan class=\"\{cls}\">\{text}</tspan>")
+        None => sb.write_string(text)
       }
   }
 }
 
 ///|
-fn code_line_svg_raw_dark(line : String) -> String {
-  if line == "" {
-    return ""
+fn code_is_ident_start(c : Char) -> Bool {
+  (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+///|
+fn code_is_ident_continue(c : Char) -> Bool {
+  code_is_ident_start(c) || (c >= '0' && c <= '9')
+}
+
+///|
+fn code_next_non_space_char(s : String, start : Int) -> Char? {
+  let mut i = start
+  while i < s.length() {
+    match char_at(s, i) {
+      Some(' ') | Some('\t') => i = i + 1
+      Some(c) => return Some(c)
+      None => i = i + 1
+    }
   }
-  "<tspan fill=\"#cdd6f4\">\{code_svg_escape(line)}</tspan>"
+  None
 }
 
 ///|
@@ -3617,23 +3787,6 @@ fn code_svg_escape(s : String) -> String {
     }
   }
   sb.to_string()
-}
-
-///|
-fn code_find_substring(s : String, pattern : String) -> Int? {
-  if pattern.length() == 0 {
-    return Some(0)
-  }
-  if pattern.length() > s.length() {
-    return None
-  }
-  let limit = s.length() - pattern.length()
-  for i = 0; i <= limit; i = i + 1 {
-    if code_slice(s, i, i + pattern.length()) == pattern {
-      return Some(i)
-    }
-  }
-  None
 }
 
 ///|
