@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1300" height="855" viewBox="-199 -101 1300 855" data-d2-version="0.2.0" class="d2-1716521580 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-199" y="-101" width="1300" height="855"><rect x="-199" y="-101" width="1300" height="855" fill="white"></rect><rect x="35" y="99" width="59" height="21" fill="black"></rect><rect x="47" y="301" width="35" height="21" fill="black"></rect><rect x="21" y="482" width="87" height="21" fill="black"></rect><rect x="351" y="385" width="138" height="21" fill="black"></rect><rect x="450" y="426" width="128" height="21" fill="black"></rect></mask>
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-199" y="-101" width="1300" height="855"><rect x="-199" y="-101" width="1300" height="855" fill="white"></rect><rect x="35" y="99" width="59" height="21" fill="black"></rect><rect x="47" y="301" width="35" height="21" fill="black"></rect><rect x="68" y="506" width="87" height="21" fill="black"></rect><rect x="345" y="429" width="138" height="21" fill="black"></rect><rect x="461" y="459" width="128" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
 <rect x="-199" y="-101" width="1300" height="855" rx="0" fill="#FFFFFF" stroke-width="0"/>
@@ -18,12 +18,12 @@
 <text x="64.5" y="115" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">browses</text>
 <path d="M 64 263 L 64 358" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="64.5" y="317" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">calls</text>
-<path d="M 64 424 L 64 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="64.5" y="498" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
-<path d="M 125.5 424 L 125.5 495 S 125.5 505 135.5 505 L 386 505 S 396 505 396 515 L 396 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="420" y="401" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
-<path d="M 187 424 L 187 470 S 187 480 197 480 L 718 480 S 728 480 728 490 L 728 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="514" y="442" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
+<path d="M 111.5 424 L 111.5 495 S 111.5 505 101.5 505 L 74 505 S 64 505 64 515 L 64 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="111.5" y="522" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
+<path d="M 234.5 424 L 234.5 495 S 234.5 505 244.5 505 L 386 505 S 396 505 396 515 L 396 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="414" y="445" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
+<path d="M 296 424 L 296 470 S 296 480 306 480 L 718 480 S 728 480 728 490 L 728 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="525" y="475" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
 <text x="318" y="112" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
 <text x="947" y="474" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>
 <text x="173" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Customer</text>

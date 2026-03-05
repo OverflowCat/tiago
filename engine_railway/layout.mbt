@@ -169,7 +169,79 @@ fn route_edges_railway(
   level_heights : Array[Double],
   reserved_label_boxes : Array[@graph.Box],
 ) -> Unit raise @engine_api.LayoutError {
-  for edge in layout_input.edges {
+  let ordered_edges = layout_input.edges.copy()
+  ordered_edges.sort_by(fn(a, b) {
+    let a_self = self_loop.contains(a.index)
+    let b_self = self_loop.contains(b.index)
+    let a_priority = if a_self {
+      3
+    } else {
+      let su = id_to_idx.get_or_default(a.src_id, -1)
+      let sv = id_to_idx.get_or_default(a.dst_id, -1)
+      if su < 0 || sv < 0 {
+        3
+      } else {
+        let span = Int::abs(depths[sv] - depths[su])
+        if span > 1 {
+          0
+        } else if span == 1 {
+          1
+        } else {
+          2
+        }
+      }
+    }
+    let b_priority = if b_self {
+      3
+    } else {
+      let su = id_to_idx.get_or_default(b.src_id, -1)
+      let sv = id_to_idx.get_or_default(b.dst_id, -1)
+      if su < 0 || sv < 0 {
+        3
+      } else {
+        let span = Int::abs(depths[sv] - depths[su])
+        if span > 1 {
+          0
+        } else if span == 1 {
+          1
+        } else {
+          2
+        }
+      }
+    }
+    if a_priority != b_priority {
+      a_priority - b_priority
+    } else {
+      let a_span = if a_self {
+        0
+      } else {
+        let su = id_to_idx.get_or_default(a.src_id, -1)
+        let sv = id_to_idx.get_or_default(a.dst_id, -1)
+        if su < 0 || sv < 0 {
+          0
+        } else {
+          Int::abs(depths[sv] - depths[su])
+        }
+      }
+      let b_span = if b_self {
+        0
+      } else {
+        let su = id_to_idx.get_or_default(b.src_id, -1)
+        let sv = id_to_idx.get_or_default(b.dst_id, -1)
+        if su < 0 || sv < 0 {
+          0
+        } else {
+          Int::abs(depths[sv] - depths[su])
+        }
+      }
+      if a_span != b_span {
+        b_span - a_span
+      } else {
+        a.index - b.index
+      }
+    }
+  })
+  for edge in ordered_edges {
     if self_loop.contains(edge.index) {
       let b = match boxes.get(edge.src_id) {
         Some(b) => b

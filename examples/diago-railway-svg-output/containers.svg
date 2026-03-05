@@ -15,8 +15,8 @@
 <rect x="256" y="540" width="150" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 64 62 L 64 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 64 242 L 64 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 107.33333333333334 462 L 107.33333333333334 490 S 107.33333333333334 500 117.33333333333334 500 L 270 500 S 280 500 280 510 L 280 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 462 L 64 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 180 462 L 180 490 S 180 500 190 500 L 270 500 S 280 500 280 510 L 280 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 115 462 L 115 490 S 115 500 105 500 L 74 500 S 64 500 64 510 L 64 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="223" y="91" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
 <text x="223" y="251" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">VPC</text>
 <text x="223" y="323" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>

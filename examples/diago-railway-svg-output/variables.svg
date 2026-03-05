@@ -10,8 +10,8 @@
 <rect x="209" y="280" width="143" height="60" fill="#4CAF50" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="280" width="143" height="60" fill="#f44336" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 24 62 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 65 202 L 65 230 S 65 240 75 240 L 223 240 S 233 240 233 250 L 233 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 24 202 L 24 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 133 202 L 133 230 S 133 240 143 240 L 223 240 S 233 240 233 250 L 233 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 71.5 202 L 71.5 230 S 71.5 240 61.5 240 L 34 240 S 24 240 24 250 L 24 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="71.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
 <text x="71.5" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Sidebar</text>
 <text x="280.5" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Success Message</text>

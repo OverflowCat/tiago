@@ -293,6 +293,66 @@ test "railway lane optimizer minimizes fanout rail crossings" {
 }
 
 ///|
+test "railway assign_ports keeps fanout ports ordered by destination axis" {
+  let s = @graph.ObjectInput::new("s")
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let c = @graph.ObjectInput::new("c")
+  let g = @graph.GraphInput::new("fanout")
+  g.objects.append([s, a, b, c])
+  let e0 = @graph.EdgeInput::new(0, "s", "a", false, true)
+  let e1 = @graph.EdgeInput::new(1, "s", "b", false, true)
+  let e2 = @graph.EdgeInput::new(2, "s", "c", false, true)
+  g.edges.append([e0, e1, e2])
+  let id_to_idx : Map[String, Int] = {}
+  id_to_idx["s"] = 0
+  id_to_idx["a"] = 1
+  id_to_idx["b"] = 2
+  id_to_idx["c"] = 3
+  let depths = [0, 1, 1, 1]
+  let self_loop : @hashset.HashSet[Int] = @hashset.HashSet::new()
+  let boxes : Map[String, @graph.Box] = {}
+  boxes["s"] = @graph.Box::new(0.0, 0.0, 180.0, 80.0)
+  boxes["a"] = @graph.Box::new(0.0, 220.0, 120.0, 70.0)
+  boxes["b"] = @graph.Box::new(260.0, 220.0, 120.0, 70.0)
+  boxes["c"] = @graph.Box::new(520.0, 220.0, 120.0, 70.0)
+  let (src_ports, _dst_ports) = assign_ports(
+    g,
+    id_to_idx,
+    depths,
+    self_loop,
+    @engine_api.Down,
+    @engine_api.LayoutConfig::new(),
+    boxes,
+  )
+  let p0 = src_ports.get(0).unwrap_or(@graph.Point::new(0.0, 0.0))
+  let p1 = src_ports.get(1).unwrap_or(@graph.Point::new(0.0, 0.0))
+  let p2 = src_ports.get(2).unwrap_or(@graph.Point::new(0.0, 0.0))
+  assert_true(p0.x < p1.x)
+  assert_true(p1.x < p2.x)
+}
+
+///|
+test "railway long edge anchor prefers central channel when clear" {
+  let start = @graph.Point::new(100.0, 90.0)
+  let end = @graph.Point::new(320.0, 520.0)
+  let anchor = long_edge_channel_anchor(
+    start,
+    end,
+    @engine_api.Down,
+    @engine_api.Down,
+    0,
+    @engine_api.LayoutConfig::new(),
+    {},
+    {},
+    "src",
+    "dst",
+    [],
+  )
+  assert_true(anchor >= 90.0 && anchor <= 330.0)
+}
+
+///|
 test "railway layout respects Right direction" {
   let a = @graph.ObjectInput::new("a")
   let b = @graph.ObjectInput::new("b")

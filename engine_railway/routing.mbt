@@ -202,15 +202,42 @@ fn assign_ports(
     let span = hi - lo
     let max_sep = span / (k - 1).to_double()
     let ideal_sep = span / (k + 1).to_double()
-    let base_sep = track_spacing(config) * 1.2
+    let base_sep = @cmp.maximum(track_spacing(config) * 1.2, 4.0)
     let sep = @cmp.minimum(max_sep, @cmp.maximum(base_sep, ideal_sep))
-    let base_abs_offset = @cmp.maximum(8.0, config.edge_padding * 0.7)
-    let max_start = hi - sep * (k - 1).to_double()
-    let start = @cmp.maximum(lo, @cmp.minimum(lo + base_abs_offset, max_start))
-    let pos : Array[Double] = Array::make(k, 0.0)
+    let pos : Array[Double] = Array::make(k, lo)
     for i in 0..<k {
-      let axis = start + i.to_double() * sep
-      pos[i] = @cmp.maximum(lo, @cmp.minimum(axis, hi))
+      pos[i] = @cmp.maximum(lo, @cmp.minimum(ordered[i].desired_axis, hi))
+    }
+    for i in 1..<k {
+      let min_axis = pos[i - 1] + sep
+      if pos[i] < min_axis {
+        pos[i] = min_axis
+      }
+    }
+    let overflow = pos[k - 1] - hi
+    if overflow > 0.0 {
+      for i in 0..<k {
+        pos[i] = pos[i] - overflow
+      }
+    }
+    for i = k - 2; i >= 0; i = i - 1 {
+      let max_axis = pos[i + 1] - sep
+      if pos[i] > max_axis {
+        pos[i] = max_axis
+      }
+    }
+    let underflow = lo - pos[0]
+    if underflow > 0.0 {
+      for i in 0..<k {
+        pos[i] = pos[i] + underflow
+      }
+    }
+    if pos[0] < lo - 1.0e-6 || pos[k - 1] > hi + 1.0e-6 {
+      let rebased_sep = max_sep
+      let start_axis = lo
+      for i in 0..<k {
+        pos[i] = start_axis + i.to_double() * rebased_sep
+      }
     }
     for i in 0..<k {
       let ei = ordered[i].edge_index
@@ -1495,6 +1522,13 @@ fn long_edge_channel_anchor(
     side_clearance -
     rail_track.to_double() * spacing
   }
+  let side_left = @cmp.minimum(src_axis, dst_axis) -
+    side_clearance -
+    rail_track.to_double() * spacing
+  let side_right = @cmp.maximum(src_axis, dst_axis) +
+    side_clearance +
+    rail_track.to_double() * spacing
+  let center_zigzag = center_axis + zigzag_track_offset(rail_track, spacing)
   let blocked = blocked_axis_intervals_for_edge(
     start,
     end,
@@ -1513,7 +1547,31 @@ fn long_edge_channel_anchor(
     lo = @cmp.minimum(lo, interval.lo - side_clearance)
     hi = @cmp.maximum(hi, interval.hi + side_clearance)
   }
-  nearest_unblocked_axis(preferred, lo, hi, blocked)
+  let candidates = [
+    preferred, center_axis, center_zigzag, side_left, side_right,
+  ]
+  let mut best_axis = nearest_unblocked_axis(candidates[0], lo, hi, blocked)
+  let mut best_cost = 0.0
+  let mut has_best = false
+  let band_lo = @cmp.minimum(src_axis, dst_axis) - spacing * 0.75
+  let band_hi = @cmp.maximum(src_axis, dst_axis) + spacing * 0.75
+  for candidate in candidates {
+    let axis = nearest_unblocked_axis(candidate, lo, hi, blocked)
+    let mut cost = 0.0
+    cost = cost + (axis - center_axis).abs() * 0.9
+    cost = cost + (axis - preferred).abs() * 0.45
+    cost = cost + (axis - src_axis).abs() * 0.15
+    cost = cost + (axis - dst_axis).abs() * 0.15
+    if axis < band_lo || axis > band_hi {
+      cost = cost + spacing * 2.0
+    }
+    if !has_best || cost < best_cost {
+      has_best = true
+      best_axis = axis
+      best_cost = cost
+    }
+  }
+  best_axis
 }
 
 ///|
