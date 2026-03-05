@@ -50,6 +50,12 @@ fn layout_graph(
   fit_container_boxes_in_map_railway(
     boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
   )
+  relax_layout_nodes_against_containers(
+    boxes, graph, parent_id_by_child_id, direction, config,
+  )
+  fit_container_boxes_in_map_railway(
+    boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+  )
   let (src_ports, dst_ports) = assign_ports(
     layout_input, id_to_idx, depths, self_loop, direction, config, boxes,
   )
@@ -77,6 +83,7 @@ fn layout_graph(
     dst_ports,
     boxes,
     object_by_id,
+    parent_id_by_child_id,
     direction,
     config,
     level_heights,
@@ -92,6 +99,7 @@ fn layout_graph(
   fit_container_boxes_railway(
     patch, graph, object_by_id, parent_id_by_child_id, config,
   )
+  sync_boxes_from_patch_railway(boxes, patch)
   recompute_container_label_boxes_railway(patch, graph)
   let reserved_label_boxes = collect_reserved_container_label_boxes_railway(
     patch, graph,
@@ -108,6 +116,7 @@ fn layout_graph(
     dst_ports,
     boxes,
     object_by_id,
+    parent_id_by_child_id,
     direction,
     config,
     level_heights,
@@ -136,6 +145,7 @@ fn layout_graph(
     dst_ports,
     boxes,
     object_by_id,
+    parent_id_by_child_id,
     direction,
     config,
     level_heights,
@@ -164,6 +174,7 @@ fn route_edges_railway(
   dst_ports : Map[Int, @graph.Point],
   boxes : Map[String, @graph.Box],
   object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
   level_heights : Array[Double],
@@ -292,6 +303,7 @@ fn route_edges_railway(
       end,
       boxes,
       object_by_id,
+      parent_id_by_child_id,
       direction,
       config,
       level_heights,
@@ -316,6 +328,16 @@ fn collect_reserved_container_label_boxes_railway(
     }
   }
   reserved
+}
+
+///|
+fn sync_boxes_from_patch_railway(
+  boxes : Map[String, @graph.Box],
+  patch : @graph.LayoutPatch,
+) -> Unit {
+  for entry in patch.nodes {
+    boxes[entry.0] = entry.1
+  }
 }
 
 ///|

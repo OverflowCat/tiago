@@ -1,36 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="855" viewBox="-199 -101 1300 855" data-d2-version="0.2.0" class="d2-1716521580 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-199" y="-101" width="1300" height="855"><rect x="-199" y="-101" width="1300" height="855" fill="white"></rect><rect x="35" y="99" width="59" height="21" fill="black"></rect><rect x="47" y="301" width="35" height="21" fill="black"></rect><rect x="21" y="482" width="87" height="21" fill="black"></rect><rect x="351" y="385" width="138" height="21" fill="black"></rect><rect x="450" y="426" width="128" height="21" fill="black"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="1528" height="897.5" viewBox="-91 -101 1528 897.5" data-d2-version="0.2.0" class="d2-1716521580 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-91" y="-101" width="1528" height="897.5"><rect x="-91" y="-101" width="1528" height="897.5" fill="white"></rect><rect x="35" y="99" width="59" height="21" fill="black"></rect><rect x="47" y="301" width="35" height="21" fill="black"></rect><rect x="609" y="445" width="87" height="21" fill="black"></rect><rect x="147" y="675" width="138" height="21" fill="black"></rect><rect x="292" y="675" width="128" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-199" y="-101" width="1300" height="855" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-91" y="-101" width="1528" height="897.5" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="-98" y="125" width="542" height="528" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="342" y="487" width="658" height="166" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="10" y="125" width="1326" height="528" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="454" y="487" width="546" height="166" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 306 60 H 40 v -0.8527131782945736 c 0 -10.232558139534882 29.209370424597367 -19.45736434108527 75.16544655929722 -23.875968992248062 C 89.85065885797951 31.705426356589143 74.66178623718888 25.89147286821705 74.66178623718888 19.53488372093023 C 74.66178623718888 8.75968992248062 118.6705710102489 0 172.80527086383603 0 c 54.13469985358712 0 98.14348462664715 8.75968992248062 98.14348462664715 19.53488372093023 c 0 6.356589147286821 -14.799414348462665 12.093023255813952 -40.50366032210835 15.813953488372091 c 45.956076134699856 4.4186046511627906 75.16544655929722 13.643410852713178 75.16544655929722 23.875968992248062 v 0.7751937984496123 Z" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2"/>
 <rect x="40" y="201" width="266" height="60" fill="#438DD5" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="362" width="266" height="60" fill="#438DD5" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 40 587 C 40 563 159.7 563 173 563 C 186.3 563 306 563 306 587 L 306 599 C 306 623 186.3 623 173 623 C 159.7 623 40 623 40 599 L 40 587 Z" fill="#438DD5" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 40 587 C 40 611 159.7 611 173 611 C 186.3 611 306 611 306 587" fill="#438DD5" stroke="#0D32B2" stroke-width="2"/>
-<rect x="372" y="563" width="266" height="60" fill="#999999" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 1040 587 C 1040 563 1159.7 563 1173 563 C 1186.3 563 1306 563 1306 587 L 1306 599 C 1306 623 1186.3 623 1173 623 C 1159.7 623 1040 623 1040 599 L 1040 587 Z" fill="#438DD5" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 1040 587 C 1040 611 1159.7 611 1173 611 C 1186.3 611 1306 611 1306 587" fill="#438DD5" stroke="#0D32B2" stroke-width="2"/>
+<rect x="484" y="563" width="266" height="60" fill="#999999" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="704" y="563" width="266" height="60" fill="#999999" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 64 62 L 64 197" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="64.5" y="115" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">browses</text>
 <path d="M 64 263 L 64 358" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="64.5" y="317" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">calls</text>
-<path d="M 64 424 L 64 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="64.5" y="498" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
-<path d="M 125.5 424 L 125.5 495 S 125.5 505 135.5 505 L 386 505 S 396 505 396 515 L 396 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="420" y="401" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
-<path d="M 187 424 L 187 470 S 187 480 197 480 L 718 480 S 728 480 728 490 L 728 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="514" y="442" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
-<text x="318" y="112" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
-<text x="947" y="474" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>
+<path d="M 187 424 L 187 456 S 187 466 197 466 L 1054 466 S 1064 466 1064 476 L 1064 559" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="652.5" y="461" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads/writes</text>
+<path d="M 64 424 L 64 664 S 64 674 74 674 L 498 674 S 508 674 508 664 L 508 567" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="216" y="691" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">processes payments</text>
+<path d="M 125.5 424 L 125.5 664 S 125.5 674 135.5 674 L 718 674 S 728 674 728 664 L 728 567" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="356" y="691" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sends notifications</text>
+<text x="673" y="112" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">E-Commerce System</text>
+<text x="727" y="520" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">external</text>
 <text x="173" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Customer</text>
 <text x="173" y="236.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Application</text>
 <text x="173" y="397.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">API Gateway</text>
-<text x="173" y="598.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
-<text x="505" y="598.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Payment Provider</text>
+<text x="1173" y="598.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Database</text>
+<text x="617" y="598.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Payment Provider</text>
 <text x="837" y="598.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Email Service</text>
 </g>
 </svg>

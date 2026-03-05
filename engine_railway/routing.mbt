@@ -1279,6 +1279,7 @@ fn route_edge(
   end : @graph.Point,
   boxes : Map[String, @graph.Box],
   object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
   level_heights : Array[Double],
@@ -1363,6 +1364,11 @@ fn route_edge(
         end,
         preferred_last_rail,
         flow,
+        boxes,
+        object_by_id,
+        parent_id_by_child_id,
+        src_id,
+        dst_id,
         reserved_label_boxes,
         config.edge_padding,
       )
@@ -1405,6 +1411,11 @@ fn route_edge(
         end,
         preferred_last_rail,
         flow,
+        boxes,
+        object_by_id,
+        parent_id_by_child_id,
+        src_id,
+        dst_id,
         reserved_label_boxes,
         config.edge_padding,
       )
@@ -1423,6 +1434,11 @@ fn route_edge(
       end,
       preferred_rail,
       flow,
+      boxes,
+      object_by_id,
+      parent_id_by_child_id,
+      src_id,
+      dst_id,
       reserved_label_boxes,
       config.edge_padding,
     )
@@ -1439,17 +1455,50 @@ fn route_edge(
     dst_id, reserved_label_boxes,
   )
 
+  let adjusted_rails = rails.copy()
+  if adjusted_rails.length() > 0 {
+    adjusted_rails[0] = choose_gap_rail_for_edge(
+      start,
+      end,
+      adjusted_rails[0],
+      flow,
+      boxes,
+      object_by_id,
+      parent_id_by_child_id,
+      src_id,
+      dst_id,
+      reserved_label_boxes,
+      config.edge_padding,
+      major_axis_spacing(direction, config),
+    )
+    let last = adjusted_rails.length() - 1
+    adjusted_rails[last] = choose_gap_rail_for_edge(
+      start,
+      end,
+      adjusted_rails[last],
+      flow,
+      boxes,
+      object_by_id,
+      parent_id_by_child_id,
+      src_id,
+      dst_id,
+      reserved_label_boxes,
+      config.edge_padding,
+      major_axis_spacing(direction, config),
+    )
+  }
+
   // Go from src exit to the first rail.
-  let first_rail = rails[0]
+  let first_rail = adjusted_rails[0]
   push_if_new(waypoints, point_on_rail(start, first_rail, flow))
   // Move onto the chosen rail anchor.
   push_if_new(waypoints, anchor_on_rail(anchor, first_rail, flow))
   // Traverse intermediate rails while staying on the same anchor.
-  for i in 1..<rails.length() {
-    push_if_new(waypoints, anchor_on_rail(anchor, rails[i], flow))
+  for i in 1..<adjusted_rails.length() {
+    push_if_new(waypoints, anchor_on_rail(anchor, adjusted_rails[i], flow))
   }
   // Leave the anchor on the last rail and enter the destination.
-  let last_rail = rails[rails.length() - 1]
+  let last_rail = adjusted_rails[adjusted_rails.length() - 1]
   push_if_new(waypoints, point_on_rail(end, last_rail, flow))
   push_if_new(waypoints, end)
   finalize_route(waypoints)
@@ -1577,14 +1626,17 @@ fn choose_span_one_reserved_rail(
   end : @graph.Point,
   preferred_rail : Double,
   flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  src_id : String,
+  dst_id : String,
   reserved_label_boxes : Array[@graph.Box],
   padding : Double,
 ) -> Double {
-  if reserved_label_boxes.is_empty() {
-    return preferred_rail
-  }
-  let blocked = span_one_reserved_rail_intervals(
-    start, end, flow, reserved_label_boxes, padding,
+  let blocked = blocked_span_one_rail_intervals(
+    start, end, flow, boxes, object_by_id, parent_id_by_child_id, src_id, dst_id,
+    reserved_label_boxes, padding,
   )
   if blocked.is_empty() {
     return preferred_rail
@@ -1600,6 +1652,69 @@ fn choose_span_one_reserved_rail(
     return preferred_rail
   }
   nearest_unblocked_axis(preferred_rail, lo, hi, blocked)
+}
+
+///|
+fn choose_gap_rail_for_edge(
+  start : @graph.Point,
+  end : @graph.Point,
+  preferred_rail : Double,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  src_id : String,
+  dst_id : String,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+  gap_span : Double,
+) -> Double {
+  let blocked = blocked_span_one_rail_intervals(
+    start, end, flow, boxes, object_by_id, parent_id_by_child_id, src_id, dst_id,
+    reserved_label_boxes, padding,
+  )
+  if blocked.is_empty() {
+    return preferred_rail
+  }
+  let gap = @cmp.maximum(4.0, padding * 0.25)
+  let lo = preferred_rail - gap_span / 2.0 + gap
+  let hi = preferred_rail + gap_span / 2.0 - gap
+  if hi <= lo {
+    return preferred_rail
+  }
+  nearest_unblocked_axis(preferred_rail, lo, hi, blocked)
+}
+
+///|
+fn blocked_span_one_rail_intervals(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  src_id : String,
+  dst_id : String,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Array[AxisInterval] {
+  let blocked = span_one_reserved_rail_intervals(
+    start, end, flow, reserved_label_boxes, padding,
+  )
+  let crossed_container_interiors = span_one_crossed_container_interior_intervals(
+    start, end, flow, boxes, object_by_id, parent_id_by_child_id, src_id, dst_id,
+    padding,
+  )
+  for interval in crossed_container_interiors {
+    blocked.push(interval)
+  }
+  let border_intervals = span_one_container_border_proximity_intervals(
+    start, end, flow, boxes, object_by_id, padding,
+  )
+  for interval in border_intervals {
+    blocked.push(interval)
+  }
+  merge_axis_intervals(blocked)
 }
 
 ///|
@@ -1641,6 +1756,140 @@ fn span_one_reserved_rail_intervals(
     let axis_hi = axis_hi0 + rail_clearance
     if axis_hi > axis_lo {
       intervals.push({ lo: axis_lo, hi: axis_hi })
+    }
+  }
+  merge_axis_intervals(intervals)
+}
+
+///|
+fn span_one_crossed_container_interior_intervals(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  src_id : String,
+  dst_id : String,
+  padding : Double,
+) -> Array[AxisInterval] {
+  let intervals : Array[AxisInterval] = []
+  let lateral_clearance = @cmp.maximum(4.0, padding * 0.4)
+  // Keep enough distance from crossed container interiors so rounded SVG
+  // corner smoothing (radius ~10) still stays outside the container border.
+  let rail_clearance = @cmp.maximum(14.0, padding * 0.8)
+  let (span_lo, span_hi) = match flow {
+    Down | Up =>
+      (
+        @cmp.minimum(start.x, end.x) - lateral_clearance,
+        @cmp.maximum(start.x, end.x) + lateral_clearance,
+      )
+    Right | Left =>
+      (
+        @cmp.minimum(start.y, end.y) - lateral_clearance,
+        @cmp.maximum(start.y, end.y) + lateral_clearance,
+      )
+  }
+  for entry in boxes {
+    let id = entry.0
+    if id == src_id || id == dst_id {
+      continue
+    }
+    let object = match object_by_id.get(id) {
+      Some(v) => v
+      None => continue
+    }
+    if !is_layout_container_candidate(object) {
+      continue
+    }
+    let src_in = is_descendant_of_id(src_id, id, parent_id_by_child_id)
+    let dst_in = is_descendant_of_id(dst_id, id, parent_id_by_child_id)
+    if src_in && dst_in {
+      continue
+    }
+    let box = entry.1
+    let intersects_lateral = match flow {
+      Down | Up => !(box.x + box.width <= span_lo || span_hi <= box.x)
+      Right | Left => !(box.y + box.height <= span_lo || span_hi <= box.y)
+    }
+    if !intersects_lateral {
+      continue
+    }
+    let (major_lo0, major_hi0) = match flow {
+      Down | Up => (box.y, box.y + box.height)
+      Right | Left => (box.x, box.x + box.width)
+    }
+    let major_lo = major_lo0 - rail_clearance
+    let major_hi = major_hi0 + rail_clearance
+    if major_hi > major_lo {
+      intervals.push({ lo: major_lo, hi: major_hi })
+    }
+  }
+  merge_axis_intervals(intervals)
+}
+
+///|
+fn span_one_container_border_proximity_intervals(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  padding : Double,
+) -> Array[AxisInterval] {
+  let intervals : Array[AxisInterval] = []
+  let lateral_clearance = @cmp.maximum(4.0, padding * 0.4)
+  let rail_clearance = @cmp.maximum(16.0, padding)
+  let (span_lo, span_hi) = match flow {
+    Down | Up =>
+      (
+        @cmp.minimum(start.x, end.x) - lateral_clearance,
+        @cmp.maximum(start.x, end.x) + lateral_clearance,
+      )
+    Right | Left =>
+      (
+        @cmp.minimum(start.y, end.y) - lateral_clearance,
+        @cmp.maximum(start.y, end.y) + lateral_clearance,
+      )
+  }
+  let (edge_major_lo, edge_major_hi) = match flow {
+    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
+    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+  }
+  for entry in boxes {
+    let id = entry.0
+    let object = match object_by_id.get(id) {
+      Some(v) => v
+      None => continue
+    }
+    if !is_layout_container_candidate(object) {
+      continue
+    }
+    let box = entry.1
+    let intersects_lateral = match flow {
+      Down | Up => !(box.x + box.width <= span_lo || span_hi <= box.x)
+      Right | Left => !(box.y + box.height <= span_lo || span_hi <= box.y)
+    }
+    if !intersects_lateral {
+      continue
+    }
+    let (major_lo0, major_hi0) = match flow {
+      Down | Up => (box.y, box.y + box.height)
+      Right | Left => (box.x, box.x + box.width)
+    }
+    if major_hi0 + rail_clearance < edge_major_lo ||
+      edge_major_hi < major_lo0 - rail_clearance {
+      continue
+    }
+    let top_lo = major_lo0 - rail_clearance
+    let top_hi = major_lo0 + rail_clearance
+    if top_hi > top_lo {
+      intervals.push({ lo: top_lo, hi: top_hi })
+    }
+    let bottom_lo = major_hi0 - rail_clearance
+    let bottom_hi = major_hi0 + rail_clearance
+    if bottom_hi > bottom_lo {
+      intervals.push({ lo: bottom_lo, hi: bottom_hi })
     }
   }
   merge_axis_intervals(intervals)
