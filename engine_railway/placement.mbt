@@ -36,13 +36,14 @@ fn place_nodes_dagre(
 
   let dagre_node_id_by_object_id : Map[String, String] = {}
   let node_size_by_id : Map[String, (Double, Double)] = {}
+  let logical_width = railway_uniform_logical_width(graph, config, object_by_id)
   for i, obj in graph.objects {
     let dagre_id = railway_dagre_node_id(i)
     dagre_node_id_by_object_id[obj.id] = dagre_id
-    let (width, height) = object_size_with_objects(obj, config, object_by_id)
-    node_size_by_id[obj.id] = (width, height)
+    let (_, height) = object_size_with_objects(obj, config, object_by_id)
+    node_size_by_id[obj.id] = (logical_width, height)
     let node_attrs = @moon_dagre.empty_attrs()
-    node_attrs.set_float("width", width)
+    node_attrs.set_float("width", logical_width)
     node_attrs.set_float("height", height)
     dagre_graph.set_node(dagre_id, label=node_attrs)
   }
@@ -924,6 +925,22 @@ fn railway_clamp_positive(value : Double, fallback : Double) -> Double {
   } else {
     value
   }
+}
+
+///|
+fn railway_uniform_logical_width(
+  graph : @graph.GraphInput,
+  config : @engine_api.LayoutConfig,
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> Double {
+  let mut max_width = railway_clamp_positive(config.default_width, 100.0)
+  for obj in graph.objects {
+    let (w, _) = object_size_with_objects(obj, config, object_by_id)
+    if w > max_width {
+      max_width = w
+    }
+  }
+  max_width
 }
 
 ///|

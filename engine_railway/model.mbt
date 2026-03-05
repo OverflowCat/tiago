@@ -247,6 +247,113 @@ fn is_layout_container_candidate(obj : @graph.ObjectInput) -> Bool {
 }
 
 ///|
+const RAILWAY_CONTAINER_LABEL_PADDING : Double = 5.0
+
+///|
+fn is_grid_container_candidate(obj : @graph.ObjectInput) -> Bool {
+  obj.grid_rows is Some(_) || obj.grid_columns is Some(_)
+}
+
+///|
+fn container_label_size_railway(level : Int) -> Int {
+  if level <= 1 {
+    28
+  } else if level == 2 {
+    24
+  } else if level == 3 {
+    20
+  } else {
+    16
+  }
+}
+
+///|
+fn object_depth_from_dotted_id(id : String) -> Int {
+  let mut depth = 1
+  for i = 0; i < id.length(); i = i + 1 {
+    if id[i] == '.' {
+      depth = depth + 1
+    }
+  }
+  depth
+}
+
+///|
+fn style_bool_for_container_padding(
+  value : @graph.StyleValue?,
+  default : Bool,
+) -> Bool {
+  match value {
+    Some(v) => v.as_bool().unwrap_or(default)
+    None => default
+  }
+}
+
+///|
+fn style_is_mono_for_container_padding(value : @graph.StyleValue?) -> Bool {
+  match value {
+    Some(v) =>
+      match v.get_value().to_lower() {
+        "mono" | "monospace" | "code" => true
+        _ => false
+      }
+    None => false
+  }
+}
+
+///|
+fn container_top_padding_railway(
+  obj : @graph.ObjectInput,
+  base_padding : Double,
+) -> Double {
+  if obj.label == "" || is_grid_container_candidate(obj) {
+    return base_padding
+  }
+  let (_, label_height) = match container_label_dimensions_railway(obj) {
+    Some(v) => v
+    None => (0.0, 0.0)
+  }
+  base_padding + label_height + RAILWAY_CONTAINER_LABEL_PADDING * 2.0
+}
+
+///|
+fn container_label_dimensions_railway(
+  obj : @graph.ObjectInput,
+) -> (Double, Double)? {
+  if obj.label == "" {
+    return None
+  }
+  let default_font_size = container_label_size_railway(
+    object_depth_from_dotted_id(obj.id),
+  )
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(default_font_size)
+    None => default_font_size
+  }
+  let is_bold = style_bool_for_container_padding(obj.style.bold, false)
+  let is_italic = style_bool_for_container_padding(obj.style.italic, false)
+  let is_mono = style_is_mono_for_container_padding(obj.style.font_family)
+  let dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let width = if dims.width > 0.0 {
+    dims.width
+  } else {
+    obj.label.length().to_double() * 7.0
+  }
+  let height = if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double()
+  }
+  Some((width, height))
+}
+
+///|
 fn get_longest_edge_chain_head_id(
   graph : @graph.GraphInput,
   container : @graph.ObjectInput,
@@ -509,6 +616,9 @@ fn fit_container_boxes_in_map_railway(
       Some(v) => v
       None => continue
     }
+    let top_padding = container_top_padding_railway(container, padding)
+    let side_padding = padding
+    let bottom_padding = padding
     let mut min_x = 1000000000000.0
     let mut max_x = -1000000000000.0
     let mut min_y = 1000000000000.0
@@ -537,11 +647,25 @@ fn fit_container_boxes_in_map_railway(
     if !seen {
       continue
     }
-    let width = max_x - min_x + 2.0 * padding
-    let height = max_y - min_y + 2.0 * padding
+    let mut x = min_x - side_padding
+    let mut width = max_x - min_x + side_padding * 2.0
+    if !is_grid_container_candidate(container) {
+      match container_label_dimensions_railway(container) {
+        Some((label_width, _)) => {
+          let min_width = label_width + side_padding * 10.0
+          if width < min_width {
+            let grow = min_width - width
+            width = min_width
+            x = x - grow / 2.0
+          }
+        }
+        None => ()
+      }
+    }
+    let height = max_y - min_y + top_padding + bottom_padding
     node_boxes[container_id] = @graph.Box::new(
-      min_x - padding,
-      min_y - padding,
+      x,
+      min_y - top_padding,
       width,
       height,
     )

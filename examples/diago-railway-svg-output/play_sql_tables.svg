@@ -17,7 +17,7 @@
 <line x1="0" y1="332" x2="294" y2="332" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="368" x2="294" y2="368" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="404" x2="294" y2="404" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 147 182 L 147 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 182 L 24 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="10" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">costumes</text>
 <text x="10" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
 <text x="140" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>

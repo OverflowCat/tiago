@@ -534,6 +534,16 @@ fn label_candidate_is_feasible(
       return false
     }
   }
+  for entry in patch.node_labels {
+    let node_id = entry.0
+    if node_id == edge.src_id || node_id == edge.dst_id {
+      continue
+    }
+    let buffered = expanded_box(entry.1, 6.0)
+    if overlap_area(box, buffered) > 0.0 {
+      return false
+    }
+  }
   for entry in patch.edges {
     let other_edge = entry.0
     if other_edge == edge_index {
@@ -593,6 +603,17 @@ fn label_obstacle_score(
       score += 1600.0 + area * 10.0
     }
   }
+  for entry in patch.node_labels {
+    let node_id = entry.0
+    if node_id == edge.src_id || node_id == edge.dst_id {
+      continue
+    }
+    let label_box = expanded_box(entry.1, 6.0)
+    let area = overlap_area(box, label_box)
+    if area > 0.0 {
+      score += 2200.0 + area * 12.0
+    }
+  }
 
   for entry in patch.edges {
     let other_edge = entry.0
@@ -626,6 +647,16 @@ fn overlap_area(a : @graph.Box, b : @graph.Box) -> Double {
   } else {
     (right - left) * (bottom - top)
   }
+}
+
+///|
+fn expanded_box(box : @graph.Box, padding : Double) -> @graph.Box {
+  @graph.Box::new(
+    box.x - padding,
+    box.y - padding,
+    box.width + padding * 2.0,
+    box.height + padding * 2.0,
+  )
 }
 
 ///|
@@ -730,5 +761,310 @@ fn style_is_mono(value : @graph.StyleValue?) -> Bool {
         _ => false
       }
     None => false
+  }
+}
+
+///|
+const RAILWAY_LABEL_BOX_PADDING : Double = 2.0
+
+///|
+const RAILWAY_CONTAINER_LABEL_INSET : Double = 5.0
+
+///|
+fn recompute_container_label_boxes_railway(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  let bounds = patch_label_bounds_railway(patch)
+  let placed_labels : Map[String, @graph.Box] = {}
+  for obj in graph.objects {
+    if !is_layout_container_candidate(obj) ||
+      is_grid_container_candidate(obj) ||
+      obj.label == "" {
+      continue
+    }
+    let container_box = match patch.nodes.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    let (label_width, label_height) = match
+      container_label_dimensions_railway(obj) {
+      Some(v) => v
+      None => continue
+    }
+    let candidates = container_label_candidates_railway(
+      container_box, label_width, label_height,
+    )
+    if candidates.is_empty() {
+      continue
+    }
+    let mut best_box = candidates[0]
+    let mut best_score = container_label_score_railway(
+      best_box,
+      patch,
+      obj.id,
+      container_box,
+      placed_labels,
+      bounds,
+      0,
+    )
+    for i in 1..<candidates.length() {
+      let candidate = candidates[i]
+      let score = container_label_score_railway(
+        candidate,
+        patch,
+        obj.id,
+        container_box,
+        placed_labels,
+        bounds,
+        i,
+      )
+      if score < best_score {
+        best_box = candidate
+        best_score = score
+      }
+    }
+    patch.node_labels[obj.id] = best_box
+    placed_labels[obj.id] = best_box
+  }
+}
+
+///|
+fn patch_label_bounds_railway(
+  patch : @graph.LayoutPatch,
+) -> (Double, Double, Double, Double) {
+  let mut seen = false
+  let mut min_x = 0.0
+  let mut min_y = 0.0
+  let mut max_x = 0.0
+  let mut max_y = 0.0
+  fn update_bounds(
+    p_x : Double,
+    p_y : Double,
+    seen_ref : Bool,
+    min_x_ref : Double,
+    min_y_ref : Double,
+    max_x_ref : Double,
+    max_y_ref : Double,
+  ) -> (Bool, Double, Double, Double, Double) {
+    if !seen_ref {
+      return (true, p_x, p_y, p_x, p_y)
+    }
+    (
+      true,
+      @cmp.minimum(min_x_ref, p_x),
+      @cmp.minimum(min_y_ref, p_y),
+      @cmp.maximum(max_x_ref, p_x),
+      @cmp.maximum(max_y_ref, p_y),
+    )
+  }
+  for entry in patch.nodes {
+    let box = entry.1
+    let r0 = update_bounds(box.x, box.y, seen, min_x, min_y, max_x, max_y)
+    seen = r0.0
+    min_x = r0.1
+    min_y = r0.2
+    max_x = r0.3
+    max_y = r0.4
+    let r1 = update_bounds(
+      box.x + box.width,
+      box.y + box.height,
+      seen,
+      min_x,
+      min_y,
+      max_x,
+      max_y,
+    )
+    seen = r1.0
+    min_x = r1.1
+    min_y = r1.2
+    max_x = r1.3
+    max_y = r1.4
+  }
+  for entry in patch.edges {
+    for p in entry.1 {
+      let r = update_bounds(p.x, p.y, seen, min_x, min_y, max_x, max_y)
+      seen = r.0
+      min_x = r.1
+      min_y = r.2
+      max_x = r.3
+      max_y = r.4
+    }
+  }
+  if !seen {
+    (0.0, 0.0, 0.0, 0.0)
+  } else {
+    (min_x, min_y, max_x, max_y)
+  }
+}
+
+///|
+fn container_label_candidates_railway(
+  container_box : @graph.Box,
+  label_width : Double,
+  label_height : Double,
+) -> Array[@graph.Box] {
+  let candidates : Array[@graph.Box] = []
+  let min_x = container_box.x + RAILWAY_CONTAINER_LABEL_INSET
+  let max_x = container_box.x +
+    container_box.width -
+    RAILWAY_CONTAINER_LABEL_INSET -
+    label_width
+  let center_x = container_box.x + (container_box.width - label_width) / 2.0
+  let clamped_center_x = clamp_label_x(center_x, min_x, max_x)
+  let clamped_left_x = clamp_label_x(min_x, min_x, max_x)
+  let clamped_right_x = clamp_label_x(max_x, min_x, max_x)
+  let inside_y = container_box.y + RAILWAY_CONTAINER_LABEL_INSET
+  let outside_y = container_box.y - RAILWAY_CONTAINER_LABEL_INSET - label_height
+  candidates.push(
+    @graph.Box::new(clamped_center_x, outside_y, label_width, label_height),
+  )
+  candidates.push(
+    @graph.Box::new(clamped_left_x, outside_y, label_width, label_height),
+  )
+  candidates.push(
+    @graph.Box::new(clamped_right_x, outside_y, label_width, label_height),
+  )
+  candidates.push(
+    @graph.Box::new(clamped_center_x, inside_y, label_width, label_height),
+  )
+  candidates.push(
+    @graph.Box::new(clamped_left_x, inside_y, label_width, label_height),
+  )
+  candidates.push(
+    @graph.Box::new(clamped_right_x, inside_y, label_width, label_height),
+  )
+  candidates
+}
+
+///|
+fn clamp_label_x(x : Double, lo : Double, hi : Double) -> Double {
+  if hi < lo {
+    return lo
+  }
+  if x < lo {
+    lo
+  } else if x > hi {
+    hi
+  } else {
+    x
+  }
+}
+
+///|
+fn container_label_score_railway(
+  candidate : @graph.Box,
+  patch : @graph.LayoutPatch,
+  container_id : String,
+  container_box : @graph.Box,
+  placed_labels : Map[String, @graph.Box],
+  bounds : (Double, Double, Double, Double),
+  candidate_order : Int,
+) -> Double {
+  let padded = @graph.Box::new(
+    candidate.x - RAILWAY_LABEL_BOX_PADDING,
+    candidate.y - RAILWAY_LABEL_BOX_PADDING,
+    candidate.width + 2.0 * RAILWAY_LABEL_BOX_PADDING,
+    candidate.height + 2.0 * RAILWAY_LABEL_BOX_PADDING,
+  )
+  let mut score = candidate_order.to_double() * 12.0
+  let horizontal_left_overhang = container_box.x - candidate.x
+  if horizontal_left_overhang > 0.0 {
+    score = score + 500.0 + horizontal_left_overhang * 40.0
+  }
+  let horizontal_right_overhang = candidate.x +
+    candidate.width -
+    (container_box.x + container_box.width)
+  if horizontal_right_overhang > 0.0 {
+    score = score + 500.0 + horizontal_right_overhang * 40.0
+  }
+  let min_x = bounds.0
+  let min_y = bounds.1
+  let max_x = bounds.2
+  let max_y = bounds.3
+  let overflow_left = min_x - padded.x
+  if overflow_left > 0.0 {
+    score = score + 1200.0 + overflow_left * 40.0
+  }
+  let overflow_top = min_y - padded.y
+  if overflow_top > 0.0 {
+    score = score + 1200.0 + overflow_top * 40.0
+  }
+  let overflow_right = padded.x + padded.width - max_x
+  if overflow_right > 0.0 {
+    score = score + 1200.0 + overflow_right * 40.0
+  }
+  let overflow_bottom = padded.y + padded.height - max_y
+  if overflow_bottom > 0.0 {
+    score = score + 1200.0 + overflow_bottom * 40.0
+  }
+  for entry in patch.nodes {
+    let node_id = entry.0
+    if node_id == container_id {
+      continue
+    }
+    let node_box = entry.1
+    let overlap = overlap_area(padded, node_box)
+    if overlap > 0.0 {
+      score = score + 20000.0 + overlap * 10.0
+    }
+  }
+  for entry in patch.edge_labels {
+    let overlap = overlap_area(padded, entry.1)
+    if overlap > 0.0 {
+      score = score + 12000.0 + overlap * 8.0
+    }
+  }
+  for entry in placed_labels {
+    let overlap = overlap_area(padded, entry.1)
+    if overlap > 0.0 {
+      score = score + 30000.0 + overlap * 10.0
+    }
+  }
+  for entry in patch.edges {
+    let route = entry.1
+    if route.length() <= 1 {
+      continue
+    }
+    for i in 0..<(route.length() - 1) {
+      score = score +
+        edge_segment_label_overlap_penalty(route[i], route[i + 1], padded)
+    }
+  }
+  score
+}
+
+///|
+fn edge_segment_label_overlap_penalty(
+  a : @graph.Point,
+  b : @graph.Point,
+  box : @graph.Box,
+) -> Double {
+  if !segment_intersects_box(a, b, box) {
+    return 0.0
+  }
+  let left = box.x
+  let right = box.x + box.width
+  let top = box.y
+  let bottom = box.y + box.height
+  let tol = 1.0e-6
+  if (a.x - b.x).abs() <= tol {
+    let overlap = @cmp.minimum(@cmp.maximum(a.y, b.y), bottom) -
+      @cmp.maximum(@cmp.minimum(a.y, b.y), top)
+    let center_x = box.x + box.width / 2.0
+    let half_width = @cmp.maximum(box.width / 2.0, 1.0)
+    let norm = @cmp.minimum((a.x - center_x).abs() / half_width, 1.0)
+    let center_factor = 1.0 - norm * 0.85
+    6000.0 + overlap * (30.0 + 60.0 * center_factor)
+  } else if (a.y - b.y).abs() <= tol {
+    let overlap = @cmp.minimum(@cmp.maximum(a.x, b.x), right) -
+      @cmp.maximum(@cmp.minimum(a.x, b.x), left)
+    let center_y = box.y + box.height / 2.0
+    let half_height = @cmp.maximum(box.height / 2.0, 1.0)
+    let norm = @cmp.minimum((a.y - center_y).abs() / half_height, 1.0)
+    let center_factor = 1.0 - norm * 0.85
+    6000.0 + overlap * (30.0 + 60.0 * center_factor)
+  } else {
+    12000.0
   }
 }

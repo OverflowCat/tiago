@@ -7,7 +7,7 @@
 <g id="base-layer">
 <rect x="0" y="0" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="140" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 50 62 L 50 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 62 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <g>
 <title>Total abstinence is easier than perfect moderation</title>
 <text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">x</text>

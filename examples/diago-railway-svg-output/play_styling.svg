@@ -10,7 +10,7 @@
 <rect x="0" y="140" width="100" height="60" mask="url(#border-mask-1446229049)" stroke="none" fill="red" stroke-width="2"/>
 <polygon mask="url(#border-mask-1446229049)" points="0,140 15,125 115,125 115,185 100,200 100,140" fill="#cc0000" stroke="none" stroke-width="2"/>
 <path d="M 0 140 L 15 125 L 115 125 L 115 185 L 100 200 L 0 200 L 0 140 L 100 140 L 100 200 M 100 140 L 115 125" fill="none" stroke="black" stroke-width="2"/>
-<path d="M 50 63.5 L 50 136" fill="none" stroke="green" stroke-width="2" marker-end="url(#mk-499373415)" mask="url(#edge-label-mask)" stroke-dasharray="10.000000,9.865639"/>
+<path d="M 24 63.5 L 24 136" fill="none" stroke="green" stroke-width="2" marker-end="url(#mk-499373415)" mask="url(#edge-label-mask)" stroke-dasharray="10.000000,9.865639"/>
 <text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">x</text>
 <text x="50" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">y</text>
 </g>

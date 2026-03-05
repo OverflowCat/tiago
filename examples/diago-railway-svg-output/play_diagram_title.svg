@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="553" height="402" viewBox="-101 -101 553 402" data-d2-version="0.2.0" class="d2-947333873 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="553" height="402"><rect x="-101" y="-101" width="553" height="402" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="644" height="402" viewBox="-101 -101 644 402" data-d2-version="0.2.0" class="d2-947333873 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="644" height="402"><rect x="-101" y="-101" width="644" height="402" fill="white"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-101" y="-101" width="553" height="402" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="644" height="402" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="251" y="0" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="0" y="140" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 301 62 L 301 90 S 301 100 291 100 L 60 100 S 50 100 50 110 L 50 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<rect x="251" y="0" width="191" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="140" width="191" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 275 62 L 275 90 S 275 100 265 100 L 34 100 S 24 100 24 110 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="95.5" y="40.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="29" style="fill: #0A0F25; font-weight: 700">Hello Friends</text>
-<text x="301" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">x</text>
-<text x="50" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">y</text>
+<text x="346.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">x</text>
+<text x="95.5" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">y</text>
 </g>
 </svg>

@@ -47,62 +47,6 @@ fn port_margin(
 }
 
 ///|
-fn exit_of_box_at(
-  box : @graph.Box,
-  flow : @engine_api.Direction,
-  t : Double,
-  config : @engine_api.LayoutConfig,
-) -> @graph.Point {
-  let m = port_margin(box, flow, config)
-  match flow {
-    Down => {
-      let x = box.x + m + (box.width - 2.0 * m) * t
-      @graph.Point::new(x, box.y + box.height)
-    }
-    Up => {
-      let x = box.x + m + (box.width - 2.0 * m) * t
-      @graph.Point::new(x, box.y)
-    }
-    Right => {
-      let y = box.y + m + (box.height - 2.0 * m) * t
-      @graph.Point::new(box.x + box.width, y)
-    }
-    Left => {
-      let y = box.y + m + (box.height - 2.0 * m) * t
-      @graph.Point::new(box.x, y)
-    }
-  }
-}
-
-///|
-fn entry_of_box_at(
-  box : @graph.Box,
-  flow : @engine_api.Direction,
-  t : Double,
-  config : @engine_api.LayoutConfig,
-) -> @graph.Point {
-  let m = port_margin(box, flow, config)
-  match flow {
-    Down => {
-      let x = box.x + m + (box.width - 2.0 * m) * t
-      @graph.Point::new(x, box.y)
-    }
-    Up => {
-      let x = box.x + m + (box.width - 2.0 * m) * t
-      @graph.Point::new(x, box.y + box.height)
-    }
-    Right => {
-      let y = box.y + m + (box.height - 2.0 * m) * t
-      @graph.Point::new(box.x, y)
-    }
-    Left => {
-      let y = box.y + m + (box.height - 2.0 * m) * t
-      @graph.Point::new(box.x + box.width, y)
-    }
-  }
-}
-
-///|
 fn assign_ports(
   graph : @graph.GraphInput,
   id_to_idx : Map[String, Int],
@@ -193,6 +137,32 @@ fn assign_ports(
     }
   }
 
+  fn choose_single_port_axis(
+    box : @graph.Box,
+    flow : @engine_api.Direction,
+  ) -> Double {
+    let m = port_margin(box, flow, config)
+    let (lo0, hi0) = axis_min_max(box, flow)
+    let lo = lo0 + m
+    let hi = hi0 - m
+    if hi <= lo + 1.0e-6 {
+      return (lo + hi) / 2.0
+    }
+    let center = (lo + hi) / 2.0
+    let span = hi - lo
+    let base_abs_offset = @cmp.maximum(8.0, config.edge_padding * 0.7)
+    let offset = @cmp.minimum(
+      base_abs_offset,
+      @cmp.maximum(0.0, span / 2.0 - 1.0),
+    )
+    if offset <= 1.0e-6 {
+      return center
+    }
+    // Use a stable left/top-biased port for single-edge sides.
+    let axis = lo + offset
+    @cmp.maximum(lo, @cmp.minimum(axis, hi))
+  }
+
   fn assign_group(
     items : Array[PortItem],
     is_source : Bool,
@@ -220,7 +190,7 @@ fn assign_ports(
     let hi = hi0 - m
     if k == 1 || hi <= lo + 1.0e-6 {
       let ei = ordered[0].edge_index
-      let axis = (lo + hi) / 2.0
+      let axis = choose_single_port_axis(box, flow)
       let p = port_point_on_axis(box, flow, is_source, axis)
       if is_source {
         src_ports[ei] = p
@@ -233,31 +203,17 @@ fn assign_ports(
     let max_sep = span / (k - 1).to_double()
     let ideal_sep = span / (k + 1).to_double()
     let base_sep = track_spacing(config) * 1.2
-    let min_sep = @cmp.minimum(max_sep, @cmp.maximum(base_sep, ideal_sep))
+    let sep = @cmp.minimum(max_sep, @cmp.maximum(base_sep, ideal_sep))
+    let base_abs_offset = @cmp.maximum(8.0, config.edge_padding * 0.7)
+    let max_start = hi - sep * (k - 1).to_double()
+    let start = @cmp.maximum(
+      lo,
+      @cmp.minimum(lo + base_abs_offset, max_start),
+    )
     let pos : Array[Double] = Array::make(k, 0.0)
-    let mut desired_sum = 0.0
     for i in 0..<k {
-      let v0 = ordered[i].desired_axis
-      let v1 = @cmp.maximum(lo, @cmp.minimum(v0, hi))
-      pos[i] = v1
-      desired_sum = desired_sum + v1
-    }
-    for i in 1..<k {
-      pos[i] = @cmp.maximum(pos[i], pos[i - 1] + min_sep)
-    }
-    pos[k - 1] = @cmp.minimum(pos[k - 1], hi)
-    for i = k - 2; i >= 0; i = i - 1 {
-      pos[i] = @cmp.minimum(pos[i], pos[i + 1] - min_sep)
-    }
-    pos[0] = @cmp.maximum(pos[0], lo)
-    let pos_min = pos[0]
-    let pos_max = pos[k - 1]
-    let desired_center = desired_sum / k.to_double()
-    let pos_center = (pos_min + pos_max) / 2.0
-    let delta0 = desired_center - pos_center
-    let delta = @cmp.maximum(lo - pos_min, @cmp.minimum(delta0, hi - pos_max))
-    for i in 0..<k {
-      pos[i] = pos[i] + delta
+      let axis = start + i.to_double() * sep
+      pos[i] = @cmp.maximum(lo, @cmp.minimum(axis, hi))
     }
     for i in 0..<k {
       let ei = ordered[i].edge_index
@@ -289,6 +245,64 @@ fn assign_ports(
     assign_group(items, false, node_id, flow)
   }
 
+  // If both endpoints own only one port on this flow side, align them on a
+  // shared axis so short edges stay visually straight.
+  for e in graph.edges {
+    if self_loop.contains(e.index) {
+      continue
+    }
+    let su = require_index(id_to_idx, e.src_id)
+    let sv = require_index(id_to_idx, e.dst_id)
+    let src_level = depths[su]
+    let dst_level = depths[sv]
+    if src_level == dst_level {
+      continue
+    }
+    let flow = edge_flow_direction(direction, src_level, dst_level)
+    let src_key = "s:\{e.src_id}:\{flow}"
+    let dst_key = "t:\{e.dst_id}:\{flow}"
+    let src_count = match src_groups.get(src_key) {
+      Some(items) => items.length()
+      None => 0
+    }
+    let dst_count = match dst_groups.get(dst_key) {
+      Some(items) => items.length()
+      None => 0
+    }
+    if src_count != 1 || dst_count != 1 {
+      continue
+    }
+    let src_box = match boxes.get(e.src_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.src_id}")
+    }
+    let dst_box = match boxes.get(e.dst_id) {
+      Some(b) => b
+      None => raise Unsupported("missing box for node: \{e.dst_id}")
+    }
+    let src_port = match src_ports.get(e.index) {
+      Some(p) => p
+      None => continue
+    }
+    let dst_port = match dst_ports.get(e.index) {
+      Some(p) => p
+      None => continue
+    }
+    let src_margin = port_margin(src_box, flow, config)
+    let dst_margin = port_margin(dst_box, flow, config)
+    let (src_lo0, src_hi0) = axis_min_max(src_box, flow)
+    let (dst_lo0, dst_hi0) = axis_min_max(dst_box, flow)
+    let lo = @cmp.maximum(src_lo0 + src_margin, dst_lo0 + dst_margin)
+    let hi = @cmp.minimum(src_hi0 - src_margin, dst_hi0 - dst_margin)
+    if hi <= lo + 1.0e-6 {
+      continue
+    }
+    let shared0 = @cmp.minimum(port_axis(src_port, flow), port_axis(dst_port, flow))
+    let shared = @cmp.maximum(lo, @cmp.minimum(shared0, hi))
+    src_ports[e.index] = port_point_on_axis(src_box, flow, true, shared)
+    dst_ports[e.index] = port_point_on_axis(dst_box, flow, false, shared)
+  }
+
   // Ensure every routed edge has a port, even if it didn't appear in groups.
   for e in graph.edges {
     if self_loop.contains(e.index) {
@@ -307,14 +321,26 @@ fn assign_ports(
         Some(b) => b
         None => raise Unsupported("missing box for node: \{e.src_id}")
       }
-      src_ports[e.index] = exit_of_box_at(b, flow, 0.5, config)
+      let other_box = match boxes.get(e.dst_id) {
+        Some(b) => b
+        None => raise Unsupported("missing box for node: \{e.dst_id}")
+      }
+      ignore(other_box)
+      let axis = choose_single_port_axis(b, flow)
+      src_ports[e.index] = port_point_on_axis(b, flow, true, axis)
     }
     if !dst_ports.contains(e.index) {
       let b = match boxes.get(e.dst_id) {
         Some(b) => b
         None => raise Unsupported("missing box for node: \{e.dst_id}")
       }
-      dst_ports[e.index] = entry_of_box_at(b, flow, 0.5, config)
+      let other_box = match boxes.get(e.src_id) {
+        Some(b) => b
+        None => raise Unsupported("missing box for node: \{e.src_id}")
+      }
+      ignore(other_box)
+      let axis = choose_single_port_axis(b, flow)
+      dst_ports[e.index] = port_point_on_axis(b, flow, false, axis)
     }
   }
 
@@ -983,10 +1009,6 @@ fn plan_gap_lanes(
       continue
     }
     let flow = edge_flow_direction(direction, src_level, dst_level)
-    if flow != direction {
-      // Back edges already get distinct rails by `rail_track`.
-      continue
-    }
     let start = match src_ports.get(e.index) {
       Some(p) => p
       None => raise Unsupported("missing src port for edge: \{e.index}")
@@ -1260,6 +1282,7 @@ fn route_edge(
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
   level_heights : Array[Double],
+  reserved_label_boxes : Array[@graph.Box],
 ) -> Array[@graph.Point] raise @engine_api.LayoutError {
   ignore(edge_index)
   if dst_level == src_level {
@@ -1294,6 +1317,9 @@ fn route_edge(
     continue next_level
   }
   let waypoints : Array[@graph.Point] = []
+  fn finalize_route(points : Array[@graph.Point]) -> Array[@graph.Point] {
+    enforce_flow_tangent(points, tangent_flow)
+  }
   waypoints.push(start)
   if rails.length() == 0 {
     // Defensive: should be unreachable when `src_level != dst_level`.
@@ -1304,46 +1330,113 @@ fn route_edge(
   // and avoid adding per-level intermediate waypoints.
   match (direction, flow) {
     (Down, Up) => {
-      let rail_x = @cmp.maximum(start.x, end.x) +
+      let spacing = track_spacing(config)
+      let preferred_rail_x = @cmp.maximum(start.x, end.x) +
         config.edge_padding * 2.0 +
-        track_spacing(config) * rail_track.to_double()
-      let start_on_rail = @graph.Point::new(rail_x, start.y)
-      // Leave the rail just below the destination, then enter vertically so the
-      // arrowhead direction is correct.
-      let last_rail = rails[rails.length() - 1]
-      push_if_new(waypoints, start_on_rail)
-      push_if_new(waypoints, @graph.Point::new(rail_x, last_rail))
+        spacing * rail_track.to_double()
+      let blocked = blocked_axis_intervals_for_edge(
+        start,
+        end,
+        flow,
+        boxes,
+        object_by_id,
+        src_id,
+        dst_id,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+      let side_clearance = @cmp.maximum(
+        config.edge_padding * 2.0,
+        spacing * 2.0,
+      )
+      let mut lo = @cmp.minimum(start.x, end.x) - side_clearance - spacing * 2.0
+      let mut hi = @cmp.maximum(start.x, end.x) + side_clearance + spacing * 4.0
+      for interval in blocked {
+        lo = @cmp.minimum(lo, interval.lo - side_clearance)
+        hi = @cmp.maximum(hi, interval.hi + side_clearance)
+      }
+      let rail_x = nearest_unblocked_axis(preferred_rail_x, lo, hi, blocked)
+      // Leave source along edge flow first, then shift laterally on rail.
+      let preferred_last_rail = rails[rails.length() - 1] + rail_shift
+      let last_rail = choose_span_one_reserved_rail(
+        start,
+        end,
+        preferred_last_rail,
+        flow,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+      push_if_new(waypoints, point_on_rail(start, last_rail, flow))
+      push_if_new(waypoints, anchor_on_rail(rail_x, last_rail, flow))
       push_if_new(waypoints, point_on_rail(end, last_rail, flow))
       push_if_new(waypoints, end)
-      return enforce_flow_tangent(waypoints, tangent_flow)
+      return finalize_route(waypoints)
     }
     (Up, Down) => {
-      let rail_x = @cmp.maximum(start.x, end.x) +
+      let spacing = track_spacing(config)
+      let preferred_rail_x = @cmp.maximum(start.x, end.x) +
         config.edge_padding * 2.0 +
-        track_spacing(config) * rail_track.to_double()
-      let start_on_rail = @graph.Point::new(rail_x, start.y)
-      let last_rail = rails[rails.length() - 1]
-      push_if_new(waypoints, start_on_rail)
-      push_if_new(waypoints, @graph.Point::new(rail_x, last_rail))
+        spacing * rail_track.to_double()
+      let blocked = blocked_axis_intervals_for_edge(
+        start,
+        end,
+        flow,
+        boxes,
+        object_by_id,
+        src_id,
+        dst_id,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+      let side_clearance = @cmp.maximum(
+        config.edge_padding * 2.0,
+        spacing * 2.0,
+      )
+      let mut lo = @cmp.minimum(start.x, end.x) - side_clearance - spacing * 2.0
+      let mut hi = @cmp.maximum(start.x, end.x) + side_clearance + spacing * 4.0
+      for interval in blocked {
+        lo = @cmp.minimum(lo, interval.lo - side_clearance)
+        hi = @cmp.maximum(hi, interval.hi + side_clearance)
+      }
+      let rail_x = nearest_unblocked_axis(preferred_rail_x, lo, hi, blocked)
+      let preferred_last_rail = rails[rails.length() - 1] + rail_shift
+      let last_rail = choose_span_one_reserved_rail(
+        start,
+        end,
+        preferred_last_rail,
+        flow,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+      push_if_new(waypoints, point_on_rail(start, last_rail, flow))
+      push_if_new(waypoints, anchor_on_rail(rail_x, last_rail, flow))
       push_if_new(waypoints, point_on_rail(end, last_rail, flow))
       push_if_new(waypoints, end)
-      return enforce_flow_tangent(waypoints, tangent_flow)
+      return finalize_route(waypoints)
     }
     _ => ()
   }
   if span == 1 {
-    let rail = rails[0] + rail_shift
+    let preferred_rail = rails[0] + rail_shift
+    let rail = choose_span_one_reserved_rail(
+      start,
+      end,
+      preferred_rail,
+      flow,
+      reserved_label_boxes,
+      config.edge_padding,
+    )
     let points = waypoints_between(start, end, rail, flow)
     waypoints.append(points)
     push_if_new(waypoints, end)
-    return enforce_flow_tangent(waypoints, tangent_flow)
+    return finalize_route(waypoints)
   }
   // Long edge: route through an edge-local channel anchor instead of a global
   // virtual-node anchor. This keeps long edges compact and avoids sweeping
   // detours that hurt readability on deep graphs.
   let anchor = long_edge_channel_anchor(
     start, end, flow, direction, rail_track, config, boxes, object_by_id, src_id,
-    dst_id,
+    dst_id, reserved_label_boxes,
   )
 
   // Go from src exit to the first rail.
@@ -1359,7 +1452,7 @@ fn route_edge(
   let last_rail = rails[rails.length() - 1]
   push_if_new(waypoints, point_on_rail(end, last_rail, flow))
   push_if_new(waypoints, end)
-  enforce_flow_tangent(waypoints, tangent_flow)
+  finalize_route(waypoints)
 }
 
 ///|
@@ -1380,6 +1473,7 @@ fn long_edge_channel_anchor(
   object_by_id : Map[String, @graph.ObjectInput],
   src_id : String,
   dst_id : String,
+  reserved_label_boxes : Array[@graph.Box],
 ) -> Double {
   let (src_axis, dst_axis) = match flow {
     Down | Up => (start.x, end.x)
@@ -1388,7 +1482,7 @@ fn long_edge_channel_anchor(
   let spacing = track_spacing(config)
   let center_axis = (src_axis + dst_axis) / 2.0
   let lateral = dst_axis - src_axis
-  let side_tol = spacing * 0.75
+  let side_tol = spacing * 0.35
   let side_clearance = @cmp.maximum(config.edge_padding * 1.8, spacing * 2.0)
   let preferred = if lateral.abs() <= side_tol {
     center_axis + zigzag_track_offset(rail_track, spacing)
@@ -1401,7 +1495,7 @@ fn long_edge_channel_anchor(
     side_clearance -
     rail_track.to_double() * spacing
   }
-  let blocked = long_edge_obstacle_intervals(
+  let blocked = blocked_axis_intervals_for_edge(
     start,
     end,
     flow,
@@ -1409,6 +1503,7 @@ fn long_edge_channel_anchor(
     object_by_id,
     src_id,
     dst_id,
+    reserved_label_boxes,
     config.edge_padding,
   )
   let margin = major_axis_spacing(direction, config) * 1.6 + spacing * 4.0
@@ -1419,6 +1514,148 @@ fn long_edge_channel_anchor(
     hi = @cmp.maximum(hi, interval.hi + side_clearance)
   }
   nearest_unblocked_axis(preferred, lo, hi, blocked)
+}
+
+///|
+fn blocked_axis_intervals_for_edge(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  src_id : String,
+  dst_id : String,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Array[AxisInterval] {
+  let blocked = long_edge_obstacle_intervals(
+    start, end, flow, boxes, object_by_id, src_id, dst_id, padding,
+  )
+  let reserved = reserved_label_obstacle_intervals(
+    start, end, flow, reserved_label_boxes, padding,
+  )
+  for interval in reserved {
+    blocked.push(interval)
+  }
+  merge_axis_intervals(blocked)
+}
+
+///|
+fn choose_span_one_reserved_rail(
+  start : @graph.Point,
+  end : @graph.Point,
+  preferred_rail : Double,
+  flow : @engine_api.Direction,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Double {
+  if reserved_label_boxes.is_empty() {
+    return preferred_rail
+  }
+  let blocked = span_one_reserved_rail_intervals(
+    start, end, flow, reserved_label_boxes, padding,
+  )
+  if blocked.is_empty() {
+    return preferred_rail
+  }
+  let gap = @cmp.maximum(4.0, padding * 0.25)
+  let (major_lo, major_hi) = match flow {
+    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
+    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+  }
+  let lo = major_lo + gap
+  let hi = major_hi - gap
+  if hi <= lo {
+    return preferred_rail
+  }
+  nearest_unblocked_axis(preferred_rail, lo, hi, blocked)
+}
+
+///|
+fn span_one_reserved_rail_intervals(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Array[AxisInterval] {
+  let intervals : Array[AxisInterval] = []
+  let lateral_clearance = @cmp.maximum(4.0, padding * 0.4)
+  let rail_clearance = @cmp.maximum(6.0, padding * 0.7)
+  let (span_lo, span_hi) = match flow {
+    Down | Up =>
+      (
+        @cmp.minimum(start.x, end.x) - lateral_clearance,
+        @cmp.maximum(start.x, end.x) + lateral_clearance,
+      )
+    Right | Left =>
+      (
+        @cmp.minimum(start.y, end.y) - lateral_clearance,
+        @cmp.maximum(start.y, end.y) + lateral_clearance,
+      )
+  }
+  for box in reserved_label_boxes {
+    let intersects_lateral = match flow {
+      Down | Up => !(box.x + box.width <= span_lo || span_hi <= box.x)
+      Right | Left => !(box.y + box.height <= span_lo || span_hi <= box.y)
+    }
+    if !intersects_lateral {
+      continue
+    }
+    let (axis_lo0, axis_hi0) = match flow {
+      Down | Up => (box.y, box.y + box.height)
+      Right | Left => (box.x, box.x + box.width)
+    }
+    let axis_lo = axis_lo0 - rail_clearance
+    let axis_hi = axis_hi0 + rail_clearance
+    if axis_hi > axis_lo {
+      intervals.push({ lo: axis_lo, hi: axis_hi })
+    }
+  }
+  merge_axis_intervals(intervals)
+}
+
+///|
+fn reserved_label_obstacle_intervals(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Array[AxisInterval] {
+  if reserved_label_boxes.is_empty() {
+    return []
+  }
+  let intervals : Array[AxisInterval] = []
+  let (major_lo, major_hi) = match flow {
+    Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
+    Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
+  }
+  let major_margin = @cmp.maximum(1.0, padding * 0.25)
+  let axis_clearance = @cmp.maximum(6.0, padding * 0.6)
+  for box in reserved_label_boxes {
+    let intersects_major = match flow {
+      Down | Up =>
+        !(box.y + box.height <= major_lo + major_margin ||
+        major_hi - major_margin <= box.y)
+      Right | Left =>
+        !(box.x + box.width <= major_lo + major_margin ||
+        major_hi - major_margin <= box.x)
+    }
+    if !intersects_major {
+      continue
+    }
+    let (axis_lo0, axis_hi0) = match flow {
+      Down | Up => (box.x, box.x + box.width)
+      Right | Left => (box.y, box.y + box.height)
+    }
+    let axis_lo = axis_lo0 - axis_clearance
+    let axis_hi = axis_hi0 + axis_clearance
+    if axis_hi > axis_lo {
+      intervals.push({ lo: axis_lo, hi: axis_hi })
+    }
+  }
+  merge_axis_intervals(intervals)
 }
 
 ///|
@@ -1445,21 +1682,39 @@ fn long_edge_obstacle_intervals(
     if id == src_id || id == dst_id {
       continue
     }
-    match object_by_id.get(id) {
-      Some(obj) => if is_layout_container_candidate(obj) { continue }
-      None => ()
+    let node_box = entry.1
+    let obstacle_box = match object_by_id.get(id) {
+      Some(obj) =>
+        if is_layout_container_candidate(obj) {
+          match container_label_dimensions_railway(obj) {
+            Some((_, label_height)) => {
+              let reserved_height = label_height +
+                RAILWAY_CONTAINER_LABEL_PADDING * 2.0 +
+                6.0
+              let height = @cmp.minimum(node_box.height, reserved_height)
+              @graph.Box::new(node_box.x, node_box.y, node_box.width, height)
+            }
+            None => continue
+          }
+        } else {
+          node_box
+        }
+      None => node_box
     }
-    let b = entry.1
     let intersects_major = match flow {
-      Down | Up => !(b.y + b.height <= inner_lo || inner_hi <= b.y)
-      Right | Left => !(b.x + b.width <= inner_lo || inner_hi <= b.x)
+      Down | Up =>
+        !(obstacle_box.y + obstacle_box.height <= inner_lo ||
+        inner_hi <= obstacle_box.y)
+      Right | Left =>
+        !(obstacle_box.x + obstacle_box.width <= inner_lo ||
+        inner_hi <= obstacle_box.x)
     }
     if !intersects_major {
       continue
     }
     let (axis_lo0, axis_hi0) = match flow {
-      Down | Up => (b.x, b.x + b.width)
-      Right | Left => (b.y, b.y + b.height)
+      Down | Up => (obstacle_box.x, obstacle_box.x + obstacle_box.width)
+      Right | Left => (obstacle_box.y, obstacle_box.y + obstacle_box.height)
     }
     let axis_lo = axis_lo0 - axis_clearance
     let axis_hi = axis_hi0 + axis_clearance
@@ -1467,6 +1722,11 @@ fn long_edge_obstacle_intervals(
       intervals.push({ lo: axis_lo, hi: axis_hi })
     }
   }
+  merge_axis_intervals(intervals)
+}
+
+///|
+fn merge_axis_intervals(intervals : Array[AxisInterval]) -> Array[AxisInterval] {
   if intervals.length() <= 1 {
     return intervals
   }
@@ -1548,7 +1808,17 @@ fn nearest_unblocked_axis(
   if found {
     best
   } else {
-    p
+    if blocked.is_empty() {
+      return p
+    }
+    let eps = 1.0
+    let left = blocked[0].lo - eps
+    let right = blocked[blocked.length() - 1].hi + eps
+    if (p - left).abs() <= (right - p).abs() {
+      left
+    } else {
+      right
+    }
   }
 }
 

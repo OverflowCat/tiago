@@ -917,6 +917,138 @@ test "railway fits container box around children" {
 }
 
 ///|
+test "railway reserves extra top space for container title band" {
+  let container_plain = @graph.ObjectInput::from_parts(
+    "container",
+    "",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["a", "b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let a_plain = @graph.ObjectInput::new("a")
+  let b_plain = @graph.ObjectInput::new("b")
+  let g_plain = @graph.GraphInput::new("testgraph")
+  g_plain.objects.append([container_plain, a_plain, b_plain])
+  g_plain.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let patch_plain = layout_graph(
+    g_plain,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Down,
+  )
+  let c_box_plain = patch_plain.nodes.get("container").unwrap()
+  let a_box_plain = patch_plain.nodes.get("a").unwrap()
+  let b_box_plain = patch_plain.nodes.get("b").unwrap()
+  let plain_gap = @cmp.minimum(a_box_plain.y, b_box_plain.y) - c_box_plain.y
+
+  let container_titled = @graph.ObjectInput::from_parts(
+    "container",
+    "Web Tier",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["a", "b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let a_titled = @graph.ObjectInput::new("a")
+  let b_titled = @graph.ObjectInput::new("b")
+  let g_titled = @graph.GraphInput::new("testgraph")
+  g_titled.objects.append([container_titled, a_titled, b_titled])
+  g_titled.edges.push(@graph.EdgeInput::new(0, "a", "b", false, true))
+  let patch_titled = layout_graph(
+    g_titled,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Down,
+  )
+  let c_box_titled = patch_titled.nodes.get("container").unwrap()
+  let a_box_titled = patch_titled.nodes.get("a").unwrap()
+  let b_box_titled = patch_titled.nodes.get("b").unwrap()
+  let titled_gap = @cmp.minimum(a_box_titled.y, b_box_titled.y) - c_box_titled.y
+
+  assert_true(
+    titled_gap > plain_gap + 8.0,
+    msg="container with outside-top title should reserve extra top band",
+  )
+}
+
+///|
+test "railway container label avoids crossing central edge track" {
+  let container = @graph.ObjectInput::from_parts(
+    "container",
+    "Web Tier",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["a"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let child = @graph.ObjectInput::new("a")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([container, child])
+
+  let patch = @graph.LayoutPatch::new()
+  patch.nodes["container"] = @graph.Box::new(0.0, 0.0, 420.0, 160.0)
+  patch.nodes["a"] = @graph.Box::new(190.0, 80.0, 40.0, 40.0)
+  let a = @graph.Point::new(210.0, 0.0)
+  let b = @graph.Point::new(210.0, 160.0)
+  patch.edges[0] = [a, b]
+
+  recompute_container_label_boxes_railway(patch, g)
+  let label_box = patch.node_labels.get("container").unwrap()
+
+  assert_true(
+    !segment_intersects_box(a, b, label_box),
+    msg="container title should move off the center rail when a side slot is available",
+  )
+}
+
+///|
 test "railway keeps external node outside container bounds" {
   let container = @graph.ObjectInput::from_parts(
     "container",

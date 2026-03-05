@@ -2329,6 +2329,35 @@ fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
       }
       None => ()
     }
+    match obj.label_box {
+      Some(b) => {
+        let left = b.x
+        let top = b.y
+        let right = b.x + b.width
+        let bottom = b.y + b.height
+        if first {
+          min_x = left
+          min_y = top
+          max_x = right
+          max_y = bottom
+          first = false
+        } else {
+          if left < min_x {
+            min_x = left
+          }
+          if top < min_y {
+            min_y = top
+          }
+          if right > max_x {
+            max_x = right
+          }
+          if bottom > max_y {
+            max_y = bottom
+          }
+        }
+      }
+      None => ()
+    }
   }
   // Include activation boxes (for sequence diagrams)
   for ab in graph.activation_boxes {
@@ -2360,6 +2389,35 @@ fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
   }
   // Include edge routes
   for edge in graph.connections {
+    match edge.label_box {
+      Some(b) => {
+        let left = b.x
+        let top = b.y
+        let right = b.x + b.width
+        let bottom = b.y + b.height
+        if first {
+          min_x = left
+          min_y = top
+          max_x = right
+          max_y = bottom
+          first = false
+        } else {
+          if left < min_x {
+            min_x = left
+          }
+          if top < min_y {
+            min_y = top
+          }
+          if right > max_x {
+            max_x = right
+          }
+          if bottom > max_y {
+            max_y = bottom
+          }
+        }
+      }
+      None => ()
+    }
     for point in edge.route {
       if first {
         min_x = point.x

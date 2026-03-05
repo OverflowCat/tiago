@@ -1,57 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1179" height="542" viewBox="-101 -101 1179 542" data-d2-version="0.2.0" class="d2-174037647 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="1179" height="542"><rect x="-101" y="-101" width="1179" height="542" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="1306" height="542" viewBox="-101 -101 1306 542" data-d2-version="0.2.0" class="d2-174037647 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="1306" height="542"><rect x="-101" y="-101" width="1306" height="542" fill="white"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-101" y="-101" width="1179" height="542" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="1306" height="542" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="0" y="0" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="0" y="140" width="100" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 0 280 L 80 280 L 100 300 L 100 340 L 0 340 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 100 340 L 0 340 L 0 280 L 80 280 L 80 300 L 100 300 L 100 340 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 192 0 L 289 0 L 263 60 L 166 60 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 172 191.6776750330251 L 172 140 L 272 140 L 272 191.6776750330251 C 255.33333333333334 180.58124174372523 238.66666666666666 180.58124174372523 222 191.6776750330251 C 205.33333333333331 202.77410832232496 188.66666666666666 202.77410832232496 172 191.6776750330251 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 166 304 C 166 280 211 280 216 280 C 221 280 266 280 266 304 L 266 316 C 266 340 221 340 216 340 C 211 340 166 340 166 316 L 166 304 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 166 304 C 166 328 211 328 216 328 C 221 328 266 328 266 304" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 379 0 L 455 0 C 479 0 479 27 479 30 C 479 33 479 60 455 60 L 379 60 C 365.8 60 355 33 355 30 C 355 27 365.8 0 379 0 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 455 0 C 431 0 431 27 431 30 C 431 33 431 60 455 60" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 344 140 L 394 140 L 394 152 L 444 152 L 444 200 L 344 200 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 332 280 L 397 280 L 432 310 L 397 340 L 332 340 L 367 310 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 545 0 L 545 30 L 595 30 L 595 60 L 625 30 L 645 30 L 645 0 L 545 0 Z" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 531 140 L 611 140 C 621.95 140 626 155 626 170 C 626 185 621.95 200 611 200 L 531 200 C 520.05 200 516 185 516 170 C 516 155 520.05 140 531 140 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 598 340 H 498 v -0.8527131782945736 c 0 -10.232558139534882 10.980966325036604 -19.45736434108527 28.25768667642753 -23.875968992248062 C 516.7408491947291 311.70542635658916 511.0307467057101 305.8914728682171 511.0307467057101 299.5348837209302 C 511.0307467057101 288.7596899224806 527.5754026354319 280 547.9267935578331 280 c 20.351390922401173 0 36.896046852122986 8.75968992248062 36.896046852122986 19.53488372093023 c 0 6.356589147286821 -5.563689604685212 12.093023255813952 -15.226939970717424 15.813953488372091 c 17.276720351390924 4.4186046511627906 28.25768667642753 13.643410852713178 28.25768667642753 23.875968992248062 v 0.7751937984496123 Z" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 761 60 C 760.6103896103896 60 760.3506493506493 59.921976592977884 760.0909090909091 59.765929778933675 L 711.3896103896104 30.5851755526658 C 710.8701298701299 30.27308192457737 710.8701298701299 29.804941482444733 711.3896103896104 29.492847854356302 L 760.0909090909091 0.23407022106631986 C 760.6103896103896 -0.07802340702210664 761.3896103896104 -0.07802340702210664 761.9090909090909 0.23407022106631986 L 810.6103896103896 29.492847854356302 C 811.1298701298701 29.804941482444733 811.1298701298701 30.27308192457737 810.6103896103896 30.5851755526658 L 761.9090909090909 59.765929778933675 C 761.6493506493507 59.921976592977884 761.3896103896104 60 761 60 Z" fill="#CFD2DD" stroke="#0D32B2" stroke-width="2"/>
-<ellipse cx="748" cy="170" rx="50" ry="30" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
-<ellipse cx="714" cy="310" rx="50" ry="30" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 902 0 L 952 0 L 977 30 L 952 60 L 902 60 L 877 30 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 886.5267386091127 160.9751051625239 C 886.5267386091127 161.61250478011473 885.8605515587531 162.2497896749522 885.19448441247 162.2497896749522 C 876.7013189448442 163.0464244741874 870.039928057554 171.17269598470364 870.039928057554 181.05158699808797 C 870.039928057554 191.5678776290631 877.533932853717 200.01273422562144 887.0263788968825 200.01273422562144 H 951.4748201438849 C 961.6334532374101 200.01273422562144 969.9600719424461 190.9304780114723 969.9600719424461 179.9362523900574 C 969.9600719424461 169.41996175908227 962.2994004796163 160.65640535372853 952.6406474820145 160.01912045889105 C 951.9744604316548 160.01912045889105 951.3083932853718 159.54107074569794 951.1418465227819 158.74443594646274 C 948.9768585131895 148.06891013384325 938.9847721822542 140.1019885277247 927.32757793765 140.1019885277247 C 919.6670263788969 140.1019885277247 912.8390887290169 143.44810707456983 908.5093525179857 148.70619502868072 C 908.0097122302159 149.34359464627155 907.177098321343 149.50294455066924 906.6774580335732 149.34359464627155 C 905.0121103117507 148.70619502868072 903.180335731415 148.38760994263868 901.1818944844125 148.38760994263868 C 893.5212230215827 148.22814531548758 887.1929256594724 153.80493307839387 886.5267386091127 160.9751051625239 Z" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 50 62 L 50 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 50 202 L 50 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 227.5 62 L 227.5 97.25 C 227.5 102.75 222 97.25 222 102.75 L 222 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 222 202 L 222 237 C 222 243 216 237 216 243 L 216 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 417 62 L 417 90 S 417 100 407 100 L 404 100 S 394 100 394 110 L 394 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 394 202 L 394 234 C 394 246 382 234 382 246 L 382 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 595 62 L 595 90 S 595 100 585 100 L 581 100 S 571 100 571 110 L 571 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 571 202 L 571 230 S 571 240 561 240 L 558 240 S 548 240 548 250 L 548 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 761 62 L 761 93.5 C 761 106.5 748 93.5 748 106.5 L 748 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 748 202 L 748 230 S 748 240 738 240 L 724 240 S 714 240 714 250 L 714 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 927 62 L 927 96.5 C 927 103.5 920 96.5 920 103.5 L 920 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="50" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">rectangle</text>
-<text x="50" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">square</text>
-<text x="50" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">page</text>
-<text x="227.5" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">parallelogram</text>
-<text x="222" y="167.69286657859973" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">document</text>
-<text x="216" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cylinder</text>
-<text x="405" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">queue</text>
-<text x="394" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">package</text>
-<text x="382" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">step</text>
-<text x="595" y="20.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">callout</text>
-<text x="571" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">stored_data</text>
-<text x="548" y="361" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">person</text>
-<text x="761" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">diamond</text>
-<text x="748" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">oval</text>
-<text x="714" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">circle</text>
-<text x="927" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">hexagon</text>
-<text x="919.95" y="186.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cloud</text>
+<rect x="0" y="0" width="124" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="0" y="140" width="124" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<path d="M 0 280 L 104 280 L 124 300 L 124 340 L 0 340 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 124 340 L 0 340 L 0 280 L 104 280 L 104 300 L 124 300 L 124 340 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 216 0 L 314 0 L 288 60 L 190 60 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 196 191.6776750330251 L 196 140 L 320 140 L 320 191.6776750330251 C 299.33333333333337 180.58124174372523 278.66666666666663 180.58124174372523 258 191.6776750330251 C 237.33333333333331 202.77410832232496 216.66666666666666 202.77410832232496 196 191.6776750330251 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 190 304 C 190 280 245.8 280 252 280 C 258.2 280 314 280 314 304 L 314 316 C 314 340 258.2 340 252 340 C 245.8 340 190 340 190 316 L 190 304 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 190 304 C 190 328 245.8 328 252 328 C 258.2 328 314 328 314 304" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 404 0 L 480 0 C 504 0 504 27 504 30 C 504 33 504 60 480 60 L 404 60 C 390.8 60 380 33 380 30 C 380 27 390.8 0 404 0 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 480 0 C 456 0 456 27 456 30 C 456 33 456 60 480 60" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 392 140 L 454 140 L 454 152 L 516 152 L 516 200 L 392 200 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 380 280 L 469 280 L 504 310 L 469 340 L 380 340 L 415 310 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 570 0 L 570 30 L 632 30 L 632 60 L 662 30 L 694 30 L 694 0 L 570 0 Z" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 603 140 L 697 140 C 707.95 140 712 155 712 170 C 712 185 707.95 200 697 200 L 603 200 C 592.05 200 588 185 588 170 C 588 155 592.05 140 603 140 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 694 340 H 570 v -0.8527131782945736 c 0 -10.232558139534882 13.616398243045388 -19.45736434108527 35.03953147877014 -23.875968992248062 C 593.2386530014642 311.70542635658916 586.1581259150805 305.8914728682171 586.1581259150805 299.5348837209302 C 586.1581259150805 288.7596899224806 606.6734992679355 280 631.909224011713 280 c 25.235724743777453 0 45.751098096632504 8.75968992248062 45.751098096632504 19.53488372093023 c 0 6.356589147286821 -6.898975109809663 12.093023255813952 -18.881405563689604 15.813953488372091 c 21.423133235724745 4.4186046511627906 35.03953147877014 13.643410852713178 35.03953147877014 23.875968992248062 v 0.7751937984496123 Z" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 822 60 C 821.5168831168832 60 821.1948051948052 59.921976592977884 820.8727272727273 59.765929778933675 L 760.4831168831168 30.5851755526658 C 759.8389610389611 30.27308192457737 759.8389610389611 29.804941482444733 760.4831168831168 29.492847854356302 L 820.8727272727273 0.23407022106631986 C 821.5168831168832 -0.07802340702210664 822.4831168831168 -0.07802340702210664 823.1272727272727 0.23407022106631986 L 883.5168831168832 29.492847854356302 C 884.1610389610389 29.804941482444733 884.1610389610389 30.27308192457737 883.5168831168832 30.5851755526658 L 823.1272727272727 59.765929778933675 C 822.8051948051948 59.921976592977884 822.4831168831168 60 822 60 Z" fill="#CFD2DD" stroke="#0D32B2" stroke-width="2"/>
+<ellipse cx="846" cy="170" rx="62" ry="30" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
+<ellipse cx="822" cy="310" rx="62" ry="30" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 981 0 L 1043 0 L 1074 30 L 1043 60 L 981 60 L 950 30 Z" fill="#DEE1EB" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 1000.4931558752997 160.9751051625239 C 1000.4931558752997 161.61250478011473 999.6670839328538 162.2497896749522 998.8411606714628 162.2497896749522 C 988.3096354916067 163.0464244741874 980.0495107913669 171.17269598470364 980.0495107913669 181.05158699808797 C 980.0495107913669 191.5678776290631 989.3420767386091 200.01273422562144 1001.1127098321342 200.01273422562144 H 1081.0287769784172 C 1093.6254820143884 200.01273422562144 1103.9504892086331 190.9304780114723 1103.9504892086331 179.9362523900574 C 1103.9504892086331 169.41996175908227 1094.4512565947243 160.65640535372853 1082.474402877698 160.01912045889105 C 1081.6483309352518 160.01912045889105 1080.8224076738609 159.54107074569794 1080.6158896882496 158.74443594646274 C 1077.9313045563551 148.06891013384325 1065.5411175059953 140.1019885277247 1051.086196642686 140.1019885277247 C 1041.5871127098324 140.1019885277247 1033.120470023981 143.44810707456983 1027.7515971223022 148.70619502868072 C 1027.1320431654676 149.34359464627155 1026.0996019184652 149.50294455066924 1025.4800479616308 149.34359464627155 C 1023.4150167865708 148.70619502868072 1021.1436163069545 148.38760994263868 1018.6655491606716 148.38760994263868 C 1009.1663165467626 148.22814531548758 1001.3192278177459 153.80493307839387 1000.4931558752997 160.9751051625239 Z" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 24 62 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 202 L 24 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 214 62 L 214 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 214 202 L 214 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 404 62 L 404 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 404 202 L 404 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 598 62 L 598 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 598 202 L 598 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 794 62 L 794 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 794 202 L 794 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 990 62 L 990 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="62" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">rectangle</text>
+<text x="62" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">square</text>
+<text x="62" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">page</text>
+<text x="252" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">parallelogram</text>
+<text x="258" y="167.69286657859973" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">document</text>
+<text x="252" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cylinder</text>
+<text x="430" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">queue</text>
+<text x="454" y="181.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">package</text>
+<text x="442" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">step</text>
+<text x="632" y="20.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">callout</text>
+<text x="650" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">stored_data</text>
+<text x="632" y="361" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">person</text>
+<text x="822" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">diamond</text>
+<text x="846" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">oval</text>
+<text x="822" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">circle</text>
+<text x="1012" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">hexagon</text>
+<text x="1041.778" y="186.94" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cloud</text>
 </g>
 </svg>

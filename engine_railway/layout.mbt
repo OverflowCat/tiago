@@ -65,6 +65,110 @@ fn layout_graph(
       None => ()
     }
   }
+  route_edges_railway(
+    patch,
+    layout_input,
+    self_loop,
+    id_to_idx,
+    depths,
+    rail_tracks,
+    lane_plan.shift_by_edge,
+    src_ports,
+    dst_ports,
+    boxes,
+    object_by_id,
+    direction,
+    config,
+    level_heights,
+    [],
+  )
+  recompute_edge_label_boxes(
+    patch,
+    graph,
+    direction,
+    config,
+    lane_plan.lane_by_edge,
+  )
+  fit_container_boxes_railway(
+    patch, graph, object_by_id, parent_id_by_child_id, config,
+  )
+  recompute_container_label_boxes_railway(patch, graph)
+  let reserved_label_boxes = collect_reserved_container_label_boxes_railway(
+    patch, graph,
+  )
+  route_edges_railway(
+    patch,
+    layout_input,
+    self_loop,
+    id_to_idx,
+    depths,
+    rail_tracks,
+    lane_plan.shift_by_edge,
+    src_ports,
+    dst_ports,
+    boxes,
+    object_by_id,
+    direction,
+    config,
+    level_heights,
+    reserved_label_boxes,
+  )
+  recompute_edge_label_boxes(
+    patch,
+    graph,
+    direction,
+    config,
+    lane_plan.lane_by_edge,
+  )
+  recompute_container_label_boxes_railway(patch, graph)
+  let final_reserved_label_boxes = collect_reserved_container_label_boxes_railway(
+    patch, graph,
+  )
+  route_edges_railway(
+    patch,
+    layout_input,
+    self_loop,
+    id_to_idx,
+    depths,
+    rail_tracks,
+    lane_plan.shift_by_edge,
+    src_ports,
+    dst_ports,
+    boxes,
+    object_by_id,
+    direction,
+    config,
+    level_heights,
+    final_reserved_label_boxes,
+  )
+  recompute_edge_label_boxes(
+    patch,
+    graph,
+    direction,
+    config,
+    lane_plan.lane_by_edge,
+  )
+  patch
+}
+
+///|
+fn route_edges_railway(
+  patch : @graph.LayoutPatch,
+  layout_input : @graph.GraphInput,
+  self_loop : @hashset.HashSet[Int],
+  id_to_idx : Map[String, Int],
+  depths : Array[Int],
+  rail_tracks : Map[Int, Int],
+  shift_by_edge : Map[Int, Double],
+  src_ports : Map[Int, @graph.Point],
+  dst_ports : Map[Int, @graph.Point],
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+  level_heights : Array[Double],
+  reserved_label_boxes : Array[@graph.Box],
+) -> Unit raise @engine_api.LayoutError {
   for edge in layout_input.edges {
     if self_loop.contains(edge.index) {
       let b = match boxes.get(edge.src_id) {
@@ -111,7 +215,7 @@ fn layout_graph(
       du,
       dv,
       rail_tracks.get(edge.index).unwrap_or(0),
-      lane_plan.shift_by_edge.get(edge.index).unwrap_or(0.0),
+      shift_by_edge.get(edge.index).unwrap_or(0.0),
       start,
       end,
       boxes,
@@ -119,19 +223,27 @@ fn layout_graph(
       direction,
       config,
       level_heights,
+      reserved_label_boxes,
     )
   }
-  recompute_edge_label_boxes(
-    patch,
-    graph,
-    direction,
-    config,
-    lane_plan.lane_by_edge,
-  )
-  fit_container_boxes_railway(
-    patch, graph, object_by_id, parent_id_by_child_id, config,
-  )
-  patch
+}
+
+///|
+fn collect_reserved_container_label_boxes_railway(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Array[@graph.Box] {
+  let reserved : Array[@graph.Box] = []
+  for obj in graph.objects {
+    if !is_layout_container_candidate(obj) {
+      continue
+    }
+    match patch.node_labels.get(obj.id) {
+      Some(label_box) => reserved.push(label_box)
+      None => ()
+    }
+  }
+  reserved
 }
 
 ///|
