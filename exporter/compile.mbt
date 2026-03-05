@@ -825,7 +825,7 @@ fn set_object_label_from_scalar(obj : Object, scalar : @ir.Scalar) -> Unit {
     Some(tag_raw) => {
       let tag = normalize_block_string_language(tag_raw)
       if tag.length() > 0 {
-        obj.classes.push("lang:" + tag)
+        set_object_language(obj, Some(tag))
         if tag == "latex" || tag == "markdown" {
           // D2 parity: markdown/latex default to text shape unless explicitly overridden.
           obj.shape_type = ShapeType::Text
@@ -841,9 +841,32 @@ fn set_object_label_from_scalar(obj : Object, scalar : @ir.Scalar) -> Unit {
 ///|
 fn normalize_block_string_language(tag : String) -> String {
   match tag.to_lower() {
+    "js" => "javascript"
+    "go" => "golang"
+    "py" => "python"
+    "rb" => "ruby"
+    "ts" => "typescript"
     "tex" => "latex"
     "md" => "markdown"
     other => other
+  }
+}
+
+///|
+fn set_object_language(obj : Object, language : String?) -> Unit {
+  let kept : Array[String] = []
+  for c in obj.classes {
+    if !c.has_prefix("lang:") {
+      kept.push(c)
+    }
+  }
+  obj.classes.clear()
+  for c in kept {
+    obj.classes.push(c)
+  }
+  match language {
+    Some(lang) => if lang.length() > 0 { obj.classes.push("lang:" + lang) }
+    None => ()
   }
 }
 
@@ -886,6 +909,10 @@ fn process_special_fields(
           let shape = s.to_string()
           obj.raw_shape = Some(shape)
           obj.shape_type = ShapeType::from_string(shape)
+          if obj.shape_type == ShapeType::Code {
+            // D2 parity: explicit code shape is plaintext.
+            set_object_language(obj, Some("text"))
+          }
         }
         None => ()
       }
@@ -895,7 +922,7 @@ fn process_special_fields(
   match ir.get_field("label") {
     Some(f) =>
       match f.primary {
-        Some(s) => obj.label = s.to_string()
+        Some(s) => set_object_label_from_scalar(obj, s)
         None => ()
       }
     None => ()
