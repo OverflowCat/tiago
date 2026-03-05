@@ -9,16 +9,16 @@
 <rect x="516" y="50" width="97" height="66" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 532 311 C 532 287 561.25 287 564.5 287 C 567.75 287 597 287 597 311 L 597 381 C 597 405 567.75 405 564.5 405 C 561.25 405 532 405 532 381 L 532 311 Z" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 532 311 C 532 335 561.25 335 564.5 335 C 567.75 335 597 335 597 311" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2"/>
-<rect x="341" y="50" width="95" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="50" width="72" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="172" y="50" width="109" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="341" y="50" width="95" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 564.5 118 C 564.5 156 564.6 238.6 564.9669432776503 283.00013659569385" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="565" y="207" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">reads</text>
 <text x="238" y="7" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">legend</text>
 <text x="564.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Service</text>
 <text x="564.5" y="363.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">DB</text>
-<text x="388.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">entries</text>
 <text x="76" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Key</text>
 <text x="226.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">top-right</text>
+<text x="388.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">entries</text>
 </g>
 </svg>

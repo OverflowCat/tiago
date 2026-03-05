@@ -10,14 +10,14 @@
 <rect x="10" y="1216" width="113" height="458" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="10" y="1814" width="113" height="458" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="50" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="40" y="216" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="40" y="382" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="648" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="814" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="980" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="40" y="216" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1246" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1412" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1578" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="40" y="382" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="1844" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="2010" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="2176" width="53" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
@@ -37,14 +37,14 @@
 <text x="66.5" y="1203" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Left</text>
 <text x="66.5" y="1801" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Up</text>
 <text x="66.5" y="88.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
+<text x="66.5" y="254.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
+<text x="66.5" y="420.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
 <text x="66.5" y="686.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
 <text x="66.5" y="852.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
 <text x="66.5" y="1018.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
-<text x="66.5" y="254.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
 <text x="66.5" y="1284.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
 <text x="66.5" y="1450.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
 <text x="66.5" y="1616.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
-<text x="66.5" y="420.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>
 <text x="66.5" y="1882.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">a</text>
 <text x="66.5" y="2048.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">b</text>
 <text x="66.5" y="2214.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">c</text>

@@ -5,33 +5,33 @@
 </defs>
 <rect x="-101" y="-101" width="1044" height="2184" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
+<rect x="191" y="549" width="591" height="126" fill="#e8f5e9" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="245" y="815" width="412" height="126" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="174" y="1565" width="402" height="417" fill="#fff8e1" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="506" y="1299" width="336" height="126" fill="#fce4ec" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="0" width="354" height="76" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 478 61 H 424 v -0.937984496124031 c 0 -11.25581395348837 5.929721815519766 -21.4031007751938 15.259150805270865 -26.26356589147287 C 434.1200585651537 29.875968992248062 431.03660322108345 23.480620155038757 431.03660322108345 16.488372093023255 C 431.03660322108345 4.6356589147286815 439.97071742313324 -5 450.96046852122987 -5 c 10.989751098096633 0 19.923865300146414 9.635658914728682 19.923865300146414 21.488372093023255 c 0 6.992248062015503 -3.0043923865300144 13.302325581395348 -8.222547584187408 17.3953488372093 c 9.329428989751099 4.8604651162790695 15.259150805270865 15.007751937984496 15.259150805270865 26.26356589147287 v 0.8527131782945736 Z" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 468 71 H 414 v -0.937984496124031 c 0 -11.25581395348837 5.929721815519766 -21.4031007751938 15.259150805270865 -26.26356589147287 C 424.1200585651537 39.87596899224806 421.03660322108345 33.48062015503876 421.03660322108345 26.488372093023255 C 421.03660322108345 14.635658914728682 429.97071742313324 5 440.96046852122987 5 c 10.989751098096633 0 19.923865300146414 9.635658914728682 19.923865300146414 21.488372093023255 c 0 6.992248062015503 -3.0043923865300144 13.302325581395348 -8.222547584187408 17.3953488372093 c 9.329428989751099 4.8604651162790695 15.259150805270865 15.007751937984496 15.259150805270865 26.26356589147287 v 0.8527131782945736 Z" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 410.2045995203837 205.36514722753347 C 410.2045995203837 206.25750669216063 409.59170743405275 207.14970554493308 408.9789256594724 207.14970554493308 C 401.1652134292566 208.26499426386235 395.0367338129496 219.6417743785851 395.0367338129496 233.47222179732313 C 395.0367338129496 248.19502868068832 401.9312182254196 260.01782791587 410.6642685851318 260.01782791587 H 469.95683453237405 C 479.3027769784172 260.01782791587 486.9632661870503 247.3026692160612 486.9632661870503 231.9107533460803 C 486.9632661870503 217.1879464627151 479.91544844124695 204.91896749521987 471.0293956834532 204.02676864244742 C 470.41650359712224 204.02676864244742 469.8037218225419 203.35749904397707 469.65049880095916 202.2422103250478 C 467.6587098321342 187.2964741873805 458.46599040767376 176.14278393881455 447.7413717026378 176.14278393881455 C 440.69366426858505 176.14278393881455 434.4119616306954 180.82734990439772 430.4286043165467 188.188673040153 C 429.9689352517985 189.08103250478015 429.2029304556354 189.30412237093694 428.7432613908872 189.08103250478015 C 427.21114148681045 188.188673040153 425.5259088729016 187.7426539196941 423.6873429256594 187.7426539196941 C 416.6395251798561 187.51940344168258 410.8174916067146 195.32690630975142 410.2045995203837 205.36514722753347 Z" fill="#e3f2fd" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 394.25 360 L 488.75 360 L 536 394.5 L 488.75 429 L 394.25 429 L 347 394.5 Z" fill="#fff3e0" stroke="#0D32B2" stroke-width="2"/>
-<rect x="191" y="549" width="591" height="126" fill="#e8f5e9" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="245" y="815" width="412" height="126" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 163 1085 C 163 1061 221.05 1061 227.5 1061 C 233.95 1061 292 1061 292 1085 L 292 1155 C 292 1179 233.95 1179 227.5 1179 C 221.05 1179 163 1179 163 1155 L 163 1085 Z" fill="#ffebee" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 163 1085 C 163 1109 221.05 1109 227.5 1109 C 233.95 1109 292 1109 292 1085" fill="#ffebee" stroke="#0D32B2" stroke-width="2"/>
-<rect x="174" y="1565" width="402" height="417" fill="#fff8e1" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 620 1087 L 777 1087 C 801 1087 801 1116.7 801 1120 C 801 1123.3 801 1153 777 1153 L 620 1153 C 606.8 1153 596 1123.3 596 1120 C 596 1116.7 606.8 1087 620 1087 Z" fill="#e0f2f1" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 777 1087 C 753 1087 753 1116.7 753 1120 C 753 1123.3 753 1153 777 1153" fill="#e0f2f1" stroke="#0D32B2" stroke-width="2"/>
-<rect x="506" y="1299" width="336" height="126" fill="#fce4ec" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 678 1621 L 818 1621 C 828.95 1621 833 1637.5 833 1654 C 833 1670.5 828.95 1687 818 1687 L 678 1687 C 667.05 1687 663 1670.5 663 1654 C 663 1637.5 667.05 1621 678 1621 Z" fill="#f5f5f5" stroke="#0D32B2" stroke-width="2"/>
+<rect x="221" y="579" width="137" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="418" y="579" width="137" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="615" y="579" width="137" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="275" y="845" width="135" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="492" y="845" width="135" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 345 1619 C 345 1595 401.25 1595 407.5 1595 C 413.75 1595 470 1595 470 1619 L 470 1689 C 470 1713 413.75 1713 407.5 1713 C 401.25 1713 345 1713 345 1689 L 345 1619 Z" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 345 1619 C 345 1643 401.25 1643 407.5 1643 C 413.75 1643 470 1643 470 1619" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 204 1858 C 204 1834 252.6 1834 258 1834 C 263.4 1834 312 1834 312 1858 L 312 1928 C 312 1952 263.4 1952 258 1952 C 252.6 1952 204 1952 204 1928 L 204 1858 Z" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 204 1858 C 204 1882 252.6 1882 258 1882 C 263.4 1882 312 1882 312 1858" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 438 1858 C 438 1834 486.6 1834 492 1834 C 497.4 1834 546 1834 546 1858 L 546 1928 C 546 1952 497.4 1952 492 1952 C 486.6 1952 438 1952 438 1928 L 438 1858 Z" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 438 1858 C 438 1882 486.6 1882 492 1882 C 497.4 1882 546 1882 546 1858" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2"/>
-<rect x="221" y="579" width="137" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="275" y="845" width="135" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="536" y="1329" width="108" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="704" y="1329" width="108" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="492" y="845" width="135" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 348.4341420811715 1701.2442222382042 C 276 1758.8 257.6 1785.6 257.9669432776504 1830.000136595694" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="281.5" y="1760" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <path d="M 447.1528689488651 1710.634286751688 C 482.4 1760.6 491.6 1785.6 491.9669432776504 1830.000136595694" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
@@ -56,26 +56,26 @@
 <path d="M 620.0879294632449 1396.4865882924944 C 654.75 1435 663.75 1455 663.75 1470 C 663.75 1485 675.6 1560.2 720.540647090968 1617.8453869858831" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 757.75 1397 C 757.75 1435 757.75 1455 757.75 1470 C 757.75 1485 756.4 1560.2 751.3538701922205 1617.0156837616653" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 575.7255350312898 1396.8439642112148 C 559.7 1435 555.5 1455 555.5 1470 C 555.5 1485 537.8 1558 470.2238819380463 1607.6321771076496" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="486.5" y="536" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Web Tier</text>
+<text x="451" y="802" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Application Tier</text>
+<text x="375" y="1552" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
+<text x="674" y="1286" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Background Workers</text>
 <text x="177" y="46.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
 <text x="441" y="92" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
 <text x="440.674" y="239.516" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CDN</text>
 <text x="441.5" y="400" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Load Balancer</text>
-<text x="486.5" y="536" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Web Tier</text>
-<text x="451" y="802" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Application Tier</text>
 <text x="227.5" y="1137.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Redis Cache</text>
-<text x="375" y="1552" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
 <text x="686.5" y="1125.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Message Queue</text>
-<text x="674" y="1286" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Background Workers</text>
 <text x="748" y="1659.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Object Storage</text>
+<text x="289.5" y="617.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
 <text x="486.5" y="617.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
 <text x="683.5" y="617.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 3</text>
+<text x="342.5" y="883.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 1</text>
+<text x="559.5" y="883.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 2</text>
 <text x="407.5" y="1671.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Primary DB</text>
 <text x="258" y="1910.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 1</text>
 <text x="492" y="1910.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Replica 2</text>
-<text x="289.5" y="617.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
-<text x="342.5" y="883.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 1</text>
 <text x="590" y="1367.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 1</text>
 <text x="758" y="1367.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Worker 2</text>
-<text x="559.5" y="883.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">App Server 2</text>
 </g>
 </svg>

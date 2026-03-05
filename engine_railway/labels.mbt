@@ -282,7 +282,7 @@ fn recompute_edge_label_boxes(
     )
   }
   resolve_edge_label_collisions(label_boxes, direction, config, lane_by_edge)
-  resolve_edge_label_obstacles(label_boxes, patch, graph, config)
+  resolve_edge_label_obstacles(label_boxes, patch, graph, direction, config)
   resolve_edge_label_collisions(label_boxes, direction, config, lane_by_edge)
   for entry in label_boxes {
     patch.edge_labels[entry.0] = entry.1
@@ -407,6 +407,7 @@ fn resolve_edge_label_obstacles(
   label_boxes : Map[Int, @graph.Box],
   patch : @graph.LayoutPatch,
   graph : @graph.GraphInput,
+  direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
 ) -> Unit {
   if label_boxes.is_empty() {
@@ -484,6 +485,9 @@ fn resolve_edge_label_obstacles(
             base.width,
             base.height,
           )
+          if !label_within_route_band(trial, route, direction, config) {
+            continue
+          }
           let score = label_obstacle_score(
             edge_index, trial, base, edge, label_boxes, patch,
           )
@@ -505,6 +509,67 @@ fn resolve_edge_label_obstacles(
       }
     }
     label_boxes[edge_index] = if has_feasible { best_feasible } else { best }
+  }
+}
+
+///|
+fn route_bounds(
+  route : Array[@graph.Point],
+) -> (Double, Double, Double, Double)? {
+  if route.is_empty() {
+    return None
+  }
+  let mut min_x = route[0].x
+  let mut max_x = route[0].x
+  let mut min_y = route[0].y
+  let mut max_y = route[0].y
+  for p in route {
+    if p.x < min_x {
+      min_x = p.x
+    }
+    if p.x > max_x {
+      max_x = p.x
+    }
+    if p.y < min_y {
+      min_y = p.y
+    }
+    if p.y > max_y {
+      max_y = p.y
+    }
+  }
+  Some((min_x, min_y, max_x, max_y))
+}
+
+///|
+fn label_within_route_band(
+  box : @graph.Box,
+  route : Array[@graph.Point],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+) -> Bool {
+  match route_bounds(route) {
+    None => true
+    Some((min_x, min_y, max_x, max_y)) => {
+      let center_x = box.x + box.width / 2.0
+      let center_y = box.y + box.height / 2.0
+      let minor_pad = @cmp.maximum(12.0, config.edge_padding * 1.2)
+      let major_pad = match direction {
+        Down | Up => @cmp.maximum(24.0, config.vertical_spacing * 0.45)
+        Right | Left => @cmp.maximum(24.0, config.horizontal_spacing * 0.45)
+      }
+      match direction {
+        Down | Up =>
+          center_x >= min_x - minor_pad &&
+          center_x <= max_x + minor_pad &&
+          center_y >= min_y - major_pad &&
+          center_y <= max_y + major_pad
+        Right | Left =>
+          center_y >= min_y - minor_pad &&
+          center_y <= max_y + minor_pad &&
+          center_x >= min_x - major_pad &&
+          center_x <= max_x + major_pad
+      }
+    }
   }
 }
 

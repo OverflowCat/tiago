@@ -1807,8 +1807,27 @@ pub fn render_svg(
   // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
   // Lifelines are rendered as dashed edges, activation boxes as regular objects
   let sorted_objects = sort_objects_by_depth(graph.shapes)
-  // Pass 1: Render object backgrounds (shapes, fills, borders)
+  // Pass 1a: render container backgrounds first so nested fills do not
+  // occlude sibling leaf nodes (e.g. container examples with side resources).
   for obj in sorted_objects {
+    if !is_container(obj) {
+      continue
+    }
+    render_svg_object(
+      svg,
+      obj,
+      graph.shapes,
+      config,
+      light_theme,
+      use_css_theme_vars,
+      pass=Background,
+    )
+  }
+  // Pass 1b: render non-container backgrounds on top of container fills.
+  for obj in sorted_objects {
+    if is_container(obj) {
+      continue
+    }
     render_svg_object(
       svg,
       obj,
@@ -2510,21 +2529,34 @@ fn shape_type_name(shape : ShapeType) -> String {
 }
 
 ///|
-/// Sort objects by depth (parents before children) for proper SVG layering
+/// Sort objects for SVG rendering using d2-compatible object precedence:
+/// 1) lower z-index first
+/// 2) for same z-index, containers first
+/// 3) then shallower objects first
+/// 4) then preserve export order
 fn sort_objects_by_depth(objects : Array[Shape]) -> Array[Shape] {
   let sorted = objects.copy()
-  // Simple bubble sort by depth (shallow objects first)
-  for i = 0; i < sorted.length(); i = i + 1 {
-    for j = i + 1; j < sorted.length(); j = j + 1 {
-      let depth_i = get_object_depth(sorted[i].id)
-      let depth_j = get_object_depth(sorted[j].id)
-      if depth_i > depth_j {
-        let temp = sorted[i]
-        sorted[i] = sorted[j]
-        sorted[j] = temp
-      }
-    }
+  let original_index : Map[String, Int] = {}
+  for i = 0; i < objects.length(); i = i + 1 {
+    original_index[objects[i].id] = i
   }
+  sorted.sort_by(fn(a, b) {
+    if a.z_index != b.z_index {
+      return a.z_index - b.z_index
+    }
+    let container_a = is_container(a)
+    let container_b = is_container(b)
+    if container_a != container_b {
+      return if container_a { -1 } else { 1 }
+    }
+    let depth_a = get_object_depth(a.id)
+    let depth_b = get_object_depth(b.id)
+    if depth_a != depth_b {
+      return depth_a - depth_b
+    }
+    original_index.get(a.id).unwrap_or(0) -
+    original_index.get(b.id).unwrap_or(0)
+  })
   sorted
 }
 

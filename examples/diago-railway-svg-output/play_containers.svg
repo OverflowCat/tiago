@@ -7,20 +7,20 @@
 <rect x="8" y="4" width="429" height="166" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="436" y="4" width="426" height="166" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="760" y="-67" width="416" height="267" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="797" y="9" width="342" height="161" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="80" width="153" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="253" y="80" width="153" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="466" y="80" width="153" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="679" y="80" width="153" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="253" y="80" width="153" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="797" y="9" width="342" height="161" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="892" y="80" width="153" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <text x="223" y="-9" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">good chips</text>
 <text x="649" y="-9" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">bad chips</text>
 <text x="968.5" y="-34" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">chocolate</text>
+<text x="1113.5" y="-3" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">chip</text>
 <text x="116.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">doritos</text>
+<text x="329.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">ruffles</text>
 <text x="542.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">lays</text>
 <text x="755.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">pringles</text>
-<text x="329.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">ruffles</text>
-<text x="1113.5" y="-3" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">chip</text>
 <text x="968.5" y="115.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">cookies</text>
 </g>
 </svg>

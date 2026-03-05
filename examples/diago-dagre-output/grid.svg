@@ -6,12 +6,12 @@
 <g id="base-layer">
 <rect x="0" y="0" width="534" height="292" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="594" y="9" width="306" height="274" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="60" y="60" width="101" height="66" fill="#e3f2fd" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="201" y="60" width="139" height="66" fill="#fff3e0" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="380" y="60" width="94" height="66" fill="#f3e5f5" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="60" y="166" width="101" height="66" fill="#e8f5e9" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="201" y="166" width="139" height="66" fill="#fafafa" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="380" y="166" width="94" height="66" fill="#eceff1" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="60" y="60" width="101" height="66" fill="#e3f2fd" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="604" y="55" width="58" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="672" y="55" width="66" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="748" y="55" width="66" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
@@ -26,12 +26,12 @@
 <rect x="824" y="207" width="66" height="66" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <text x="267" y="33" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Dashboard</text>
 <text x="747" y="42" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Icon Grid</text>
+<text x="110.5" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
 <text x="270.5" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Navigation</text>
 <text x="427" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Search</text>
 <text x="110.5" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Sidebar</text>
 <text x="270.5" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Main Content</text>
 <text x="427" y="204.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Footer</text>
-<text x="110.5" y="98.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Header</text>
 <text x="633" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i1</text>
 <text x="705" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i2</text>
 <text x="781" y="93.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">i3</text>

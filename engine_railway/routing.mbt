@@ -206,10 +206,7 @@ fn assign_ports(
     let sep = @cmp.minimum(max_sep, @cmp.maximum(base_sep, ideal_sep))
     let base_abs_offset = @cmp.maximum(8.0, config.edge_padding * 0.7)
     let max_start = hi - sep * (k - 1).to_double()
-    let start = @cmp.maximum(
-      lo,
-      @cmp.minimum(lo + base_abs_offset, max_start),
-    )
+    let start = @cmp.maximum(lo, @cmp.minimum(lo + base_abs_offset, max_start))
     let pos : Array[Double] = Array::make(k, 0.0)
     for i in 0..<k {
       let axis = start + i.to_double() * sep
@@ -297,7 +294,10 @@ fn assign_ports(
     if hi <= lo + 1.0e-6 {
       continue
     }
-    let shared0 = @cmp.minimum(port_axis(src_port, flow), port_axis(dst_port, flow))
+    let shared0 = @cmp.minimum(
+      port_axis(src_port, flow),
+      port_axis(dst_port, flow),
+    )
     let shared = @cmp.maximum(lo, @cmp.minimum(shared0, hi))
     src_ports[e.index] = port_point_on_axis(src_box, flow, true, shared)
     dst_ports[e.index] = port_point_on_axis(dst_box, flow, false, shared)
