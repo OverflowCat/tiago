@@ -281,7 +281,13 @@ fn Lexer::scan_line_comment(self : Lexer, start : Position) -> Unit {
   while not(self.is_at_end()) && self.peek() != '\n' {
     let _ = self.advance()
   }
-  let content = self.slice_source(content_start, self.pos)
+  let raw = self.slice_source(content_start, self.pos)
+  let chars = raw.to_array()
+  let content = if chars.length() > 0 && chars[0] == ' ' {
+    substring_comment_by_offsets(raw, 1, chars.length())
+  } else {
+    raw
+  }
   self.add_token(Comment(content), start)
 }
 

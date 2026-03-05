@@ -116,7 +116,7 @@ fn Parser::advance(self : Parser) -> @lexer.Token {
 fn Parser::skip_trivia(self : Parser) -> Unit {
   while not(self.is_at_end()) {
     match self.peek() {
-      @lexer.Newline | @lexer.Comment(_) | @lexer.BlockComment(_) => {
+      @lexer.Newline => {
         let _ = self.advance()
       }
       _ => break
@@ -125,15 +125,8 @@ fn Parser::skip_trivia(self : Parser) -> Unit {
 }
 
 ///|
-fn Parser::skip_whitespace_not_newline(self : Parser) -> Unit {
-  while not(self.is_at_end()) {
-    match self.peek() {
-      @lexer.Comment(_) | @lexer.BlockComment(_) => {
-        let _ = self.advance()
-      }
-      _ => break
-    }
-  }
+fn Parser::skip_whitespace_not_newline(_self : Parser) -> Unit {
+  ()
 }
 
 ///|

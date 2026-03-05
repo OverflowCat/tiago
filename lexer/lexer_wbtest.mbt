@@ -106,7 +106,7 @@ test "tokenize line comment" {
   let (tokens, _) = tokenize("server # this is a comment")
   assert_eq(tokens.length(), 3) // server, comment, EOF
   assert_eq(tokens[0].kind, Ident("server"))
-  assert_eq(tokens[1].kind, Comment(" this is a comment"))
+  assert_eq(tokens[1].kind, Comment("this is a comment"))
 }
 
 ///|

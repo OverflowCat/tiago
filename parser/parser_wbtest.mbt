@@ -293,8 +293,12 @@ test "parse triple-quote block comment" {
     #|x
   let (ast, errors) = parse(source)
   assert_true(errors.is_empty())
-  assert_eq(ast.nodes.length(), 1)
-  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+  assert_eq(ast.nodes.length(), 2)
+  guard ast.nodes[0] is @ast.MapNode::BlockComment(_, text) else {
+    fail("expected block comment node")
+  }
+  assert_eq(text, "hi")
+  guard ast.nodes[1] is @ast.MapNode::Key(key) else {
     fail("expected key node")
   }
   guard key.key is Some(kp) else { fail("expected key path") }
@@ -316,7 +320,11 @@ test "parse multiple keys" {
 test "parse comment" {
   let (ast, errors) = parse("# this is a comment")
   assert_true(errors.is_empty())
-  assert_eq(ast.nodes.length(), 0) // comments are skipped as trivia
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Comment(_, text) else {
+    fail("expected comment node")
+  }
+  assert_eq(text, "this is a comment")
 }
 
 ///|
@@ -598,7 +606,7 @@ test "parse one-line block string" {
     #|"""   hello  """
   let (ast, errors) = parse(source)
   assert_true(errors.is_empty())
-  assert_eq(ast.nodes.length(), 1)
+  assert_eq(ast.nodes.length(), 2)
   guard ast.nodes[0] is @ast.MapNode::Key(key) else {
     fail("expected key node")
   }
@@ -611,6 +619,10 @@ test "parse one-line block string" {
   assert_eq(bs.quote, "")
   assert_eq(bs.tag, "md")
   assert_eq(bs.value, "hello")
+  guard ast.nodes[1] is @ast.MapNode::BlockComment(_, text) else {
+    fail("expected trailing block comment")
+  }
+  assert_eq(text, "hello")
 }
 
 ///|
@@ -625,7 +637,7 @@ test "parse block string with embedded delimiters" {
     #|"""
   let (ast, errors) = parse(source)
   assert_true(errors.is_empty())
-  assert_eq(ast.nodes.length(), 1)
+  assert_eq(ast.nodes.length(), 2)
   guard ast.nodes[0] is @ast.MapNode::Key(key) else {
     fail("expected key node")
   }
@@ -635,6 +647,10 @@ test "parse block string with embedded delimiters" {
   guard sv is @ast.StringValue::Block(bs) else { fail("expected block string") }
   assert_eq(bs.quote, "|")
   assert_eq(bs.value, "|pipe|")
+  guard ast.nodes[1] is @ast.MapNode::BlockComment(_, text) else {
+    fail("expected trailing block comment")
+  }
+  assert_eq(text, "\nb: \"\"")
 }
 
 ///|
