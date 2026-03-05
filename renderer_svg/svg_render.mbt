@@ -3870,10 +3870,58 @@ fn render_svg_code(
 
 ///|
 priv enum CodeTokenKind {
-  Plain
-  AssignOp
+  Text
+  Comment
   Keyword
-  Function
+  KeywordType
+  NameFunction
+  NameBuiltin
+  NameClass
+  NameAttribute
+  NameTag
+  LiteralString
+  LiteralStringEscape
+  LiteralNumber
+  Operator
+  OperatorWord
+  Punctuation
+}
+
+///|
+priv enum CodeLanguage {
+  Unknown
+  Go
+  JavaScript
+  TypeScript
+  Python
+  Rust
+  Java
+  C
+  Cpp
+  CSharp
+  Kotlin
+  Swift
+  Php
+  Ruby
+  Bash
+  Sql
+  Json
+  Yaml
+  Toml
+  Html
+  Xml
+  Markdown
+} derive(Eq)
+
+///|
+priv struct CodeToken {
+  text : String
+  kind : CodeTokenKind
+}
+
+///|
+fn CodeToken::new(text : String, kind : CodeTokenKind) -> CodeToken {
+  { text, kind }
 }
 
 ///|
@@ -3882,100 +3930,1246 @@ fn code_line_svg_raw(
   language : String?,
   is_dark : Bool,
 ) -> String {
-  match language {
-    Some("go") | Some("golang") => code_line_svg_go(line, is_dark)
-    _ => code_line_svg_fallback(line, is_dark)
-  }
-}
-
-///|
-fn code_line_svg_fallback(line : String, is_dark : Bool) -> String {
-  if line == "" {
-    return ""
-  }
-  if is_dark {
-    "<tspan fill=\"#cdd6f4\">\{code_svg_escape(line)}</tspan>"
-  } else {
-    code_svg_escape(line)
-  }
-}
-
-///|
-fn code_line_svg_go(line : String, is_dark : Bool) -> String {
+  let normalized = code_language_from_tag(language)
   let sb = StringBuilder::new()
+  for token in code_tokenize_line(line, normalized) {
+    code_write_span(
+      sb,
+      token.text,
+      code_token_fill(token.kind, is_dark),
+      code_token_class(token.kind, is_dark),
+    )
+  }
+  sb.to_string()
+}
+
+///|
+fn code_tokenize_line(
+  line : String,
+  language : CodeLanguage,
+) -> Array[CodeToken] {
+  if line.length() == 0 {
+    return []
+  }
+  if language == Html || language == Xml {
+    return code_tokenize_markup_line(line)
+  }
+  let out : Array[CodeToken] = []
   let mut i = 0
   while i < line.length() {
-    if i + 1 < line.length() && code_slice(line, i, i + 2) == ":=" {
-      code_write_span(
-        sb,
-        ":=",
-        code_token_fill(AssignOp, is_dark),
-        code_token_class(AssignOp, is_dark),
-      )
-      i = i + 2
+    match char_at(line, i) {
+      Some(c) =>
+        if c == ' ' || c == '\t' {
+          let start = i
+          i = code_consume_while(line, i, fn(ch) { ch == ' ' || ch == '\t' })
+          out.push(CodeToken::new(code_slice(line, start, i), Text))
+        } else {
+          match code_line_comment_prefix_len(line, i, language) {
+            Some(prefix_len) => {
+              let comment = code_slice(line, i, line.length())
+              out.push(CodeToken::new(comment, Comment))
+              i = line.length()
+              ignore(prefix_len)
+            }
+            None =>
+              match code_block_comment_bounds(line, i, language) {
+                Some(end_index) => {
+                  out.push(
+                    CodeToken::new(code_slice(line, i, end_index), Comment),
+                  )
+                  i = end_index
+                }
+                None =>
+                  match code_string_bounds(line, i, language) {
+                    Some((end_index, has_escape)) => {
+                      if has_escape {
+                        code_push_string_with_escapes(
+                          out,
+                          code_slice(line, i, end_index),
+                        )
+                      } else {
+                        out.push(
+                          CodeToken::new(
+                            code_slice(line, i, end_index),
+                            LiteralString,
+                          ),
+                        )
+                      }
+                      i = end_index
+                    }
+                    None =>
+                      if code_is_number_start(line, i) {
+                        let end_index = code_number_end(line, i)
+                        out.push(
+                          CodeToken::new(
+                            code_slice(line, i, end_index),
+                            LiteralNumber,
+                          ),
+                        )
+                        i = end_index
+                      } else if code_is_ident_start(c) {
+                        let start = i
+                        i = code_consume_while(
+                          line,
+                          i + 1,
+                          code_is_ident_continue,
+                        )
+                        let ident = code_slice(line, start, i)
+                        let prev_non_space = code_prev_non_space_char(
+                          line,
+                          start - 1,
+                        )
+                        let next_non_space = code_next_non_space_char(line, i)
+                        let kind = code_ident_kind(
+                          ident, language, prev_non_space, next_non_space,
+                        )
+                        out.push(CodeToken::new(ident, kind))
+                      } else if code_is_operator_char(c) {
+                        let end_index = code_operator_end(line, i)
+                        let op = code_slice(line, i, end_index)
+                        out.push(CodeToken::new(op, Operator))
+                        i = end_index
+                      } else if code_is_punctuation_char(c) {
+                        out.push(
+                          CodeToken::new(
+                            code_slice(line, i, i + 1),
+                            Punctuation,
+                          ),
+                        )
+                        i = i + 1
+                      } else {
+                        out.push(
+                          CodeToken::new(code_slice(line, i, i + 1), Text),
+                        )
+                        i = i + 1
+                      }
+                  }
+              }
+          }
+        }
+      None => i = i + 1
+    }
+  }
+  out
+}
+
+///|
+fn code_tokenize_markup_line(line : String) -> Array[CodeToken] {
+  let out : Array[CodeToken] = []
+  let mut i = 0
+  while i < line.length() {
+    if code_starts_with_at(line, i, "<!--") {
+      let end_index = code_find_substring_from(line, "-->", i + 4)
+      let end = match end_index {
+        Some(v) => v + 3
+        None => line.length()
+      }
+      out.push(CodeToken::new(code_slice(line, i, end), Comment))
+      i = end
       continue
     }
     match char_at(line, i) {
-      Some(c) =>
-        if code_is_ident_start(c) {
-          let start = i
-          i = i + 1
-          while i < line.length() {
-            match char_at(line, i) {
-              Some(next) =>
-                if code_is_ident_continue(next) {
-                  i = i + 1
-                } else {
-                  break
-                }
-              None => break
-            }
-          }
-          let ident = code_slice(line, start, i)
-          let next_non_space = code_next_non_space_char(line, i)
-          let token_kind = if ident == "defer" {
-            Keyword
-          } else if next_non_space == Some('(') {
-            Function
-          } else {
-            Plain
-          }
-          code_write_span(
-            sb,
-            ident,
-            code_token_fill(token_kind, is_dark),
-            code_token_class(token_kind, is_dark),
-          )
+      Some('<') => {
+        if code_starts_with_at(line, i, "</") {
+          out.push(CodeToken::new("</", Punctuation))
+          i = i + 2
         } else {
-          code_write_span(
-            sb,
-            code_slice(line, i, i + 1),
-            code_token_fill(Plain, is_dark),
-            code_token_class(Plain, is_dark),
+          out.push(CodeToken::new("<", Punctuation))
+          i = i + 1
+        }
+        let tag_start = i
+        i = code_consume_while(line, i, code_is_tag_ident_continue)
+        if i > tag_start {
+          out.push(CodeToken::new(code_slice(line, tag_start, i), NameTag))
+        }
+        while i < line.length() {
+          match char_at(line, i) {
+            Some('>') => {
+              out.push(CodeToken::new(">", Punctuation))
+              i = i + 1
+              break
+            }
+            Some(' ') | Some('\t') => {
+              let start = i
+              i = code_consume_while(line, i, fn(ch) { ch == ' ' || ch == '\t' })
+              out.push(CodeToken::new(code_slice(line, start, i), Text))
+            }
+            Some('=') => {
+              out.push(CodeToken::new("=", Operator))
+              i = i + 1
+            }
+            Some('"') | Some('\'') =>
+              match code_string_bounds(line, i, Xml) {
+                Some((end_index, has_escape)) => {
+                  if has_escape {
+                    code_push_string_with_escapes(
+                      out,
+                      code_slice(line, i, end_index),
+                    )
+                  } else {
+                    out.push(
+                      CodeToken::new(
+                        code_slice(line, i, end_index),
+                        LiteralString,
+                      ),
+                    )
+                  }
+                  i = end_index
+                }
+                None => {
+                  out.push(
+                    CodeToken::new(code_slice(line, i, i + 1), LiteralString),
+                  )
+                  i = i + 1
+                }
+              }
+            Some('/') => {
+              out.push(CodeToken::new("/", Punctuation))
+              i = i + 1
+            }
+            Some(_) => {
+              let start = i
+              i = code_consume_while(line, i, code_is_tag_ident_continue)
+              if i > start {
+                out.push(
+                  CodeToken::new(code_slice(line, start, i), NameAttribute),
+                )
+              } else {
+                out.push(CodeToken::new(code_slice(line, i, i + 1), Text))
+                i = i + 1
+              }
+            }
+            None => break
+          }
+        }
+      }
+      Some(_) => {
+        let start = i
+        i = code_consume_until_char(line, i, '<')
+        out.push(CodeToken::new(code_slice(line, start, i), Text))
+      }
+      None => i = i + 1
+    }
+  }
+  out
+}
+
+///|
+fn code_push_string_with_escapes(
+  out : Array[CodeToken],
+  quoted : String,
+) -> Unit {
+  if quoted.length() == 0 {
+    return
+  }
+  let mut i = 0
+  let mut segment_start = 0
+  while i < quoted.length() {
+    match char_at(quoted, i) {
+      Some('\\') => {
+        if i > segment_start {
+          out.push(
+            CodeToken::new(code_slice(quoted, segment_start, i), LiteralString),
           )
+        }
+        let escape_end = if i + 1 < quoted.length() { i + 2 } else { i + 1 }
+        out.push(
+          CodeToken::new(code_slice(quoted, i, escape_end), LiteralStringEscape),
+        )
+        i = escape_end
+        segment_start = i
+      }
+      Some(_) => i = i + 1
+      None => i = i + 1
+    }
+  }
+  if segment_start < quoted.length() {
+    out.push(
+      CodeToken::new(
+        code_slice(quoted, segment_start, quoted.length()),
+        LiteralString,
+      ),
+    )
+  }
+}
+
+///|
+fn code_language_from_tag(language : String?) -> CodeLanguage {
+  match language {
+    Some(raw) =>
+      match raw.to_lower() {
+        "go" | "golang" => Go
+        "js" | "jsx" | "javascript" | "node" => JavaScript
+        "ts" | "tsx" | "typescript" => TypeScript
+        "py" | "python" | "python3" => Python
+        "rs" | "rust" => Rust
+        "java" => Java
+        "c" => C
+        "cpp" | "c++" | "cc" | "cxx" => Cpp
+        "cs" | "csharp" | "c#" => CSharp
+        "kt" | "kotlin" => Kotlin
+        "swift" => Swift
+        "php" => Php
+        "rb" | "ruby" => Ruby
+        "bash" | "shell" | "sh" | "zsh" => Bash
+        "sql" | "postgres" | "postgresql" | "mysql" => Sql
+        "json" | "jsonc" => Json
+        "yaml" | "yml" => Yaml
+        "toml" => Toml
+        "html" | "xhtml" => Html
+        "xml" | "svg" => Xml
+        "markdown" | "md" => Markdown
+        _ => Unknown
+      }
+    None => Unknown
+  }
+}
+
+///|
+fn code_ident_kind(
+  ident : String,
+  language : CodeLanguage,
+  prev_non_space : Char?,
+  next_non_space : Char?,
+) -> CodeTokenKind {
+  if code_is_operator_word(ident, language) {
+    return OperatorWord
+  }
+  if code_is_keyword(ident, language) {
+    return Keyword
+  }
+  if code_is_keyword_type(ident, language) {
+    return KeywordType
+  }
+  if code_is_builtin(ident, language) {
+    return NameBuiltin
+  }
+  if language == Html || language == Xml {
+    if prev_non_space == Some('<') || prev_non_space == Some('/') {
+      return NameTag
+    }
+  }
+  if code_is_probable_class_name(ident, language) {
+    return NameClass
+  }
+  if next_non_space == Some('(') && !code_is_call_control_word(ident, language) {
+    return NameFunction
+  }
+  Text
+}
+
+///|
+fn code_is_keyword(word : String, language : CodeLanguage) -> Bool {
+  match language {
+    Go =>
+      match word {
+        "break"
+        | "case"
+        | "chan"
+        | "const"
+        | "continue"
+        | "default"
+        | "defer"
+        | "else"
+        | "fallthrough"
+        | "for"
+        | "func"
+        | "go"
+        | "goto"
+        | "if"
+        | "import"
+        | "interface"
+        | "map"
+        | "package"
+        | "range"
+        | "return"
+        | "select"
+        | "struct"
+        | "switch"
+        | "type"
+        | "var" => true
+        _ => false
+      }
+    JavaScript | TypeScript =>
+      match word {
+        "as"
+        | "async"
+        | "await"
+        | "break"
+        | "case"
+        | "catch"
+        | "class"
+        | "const"
+        | "continue"
+        | "debugger"
+        | "default"
+        | "delete"
+        | "do"
+        | "else"
+        | "export"
+        | "extends"
+        | "finally"
+        | "for"
+        | "from"
+        | "function"
+        | "if"
+        | "import"
+        | "in"
+        | "instanceof"
+        | "new"
+        | "of"
+        | "return"
+        | "switch"
+        | "throw"
+        | "try"
+        | "typeof"
+        | "var"
+        | "void"
+        | "while"
+        | "with"
+        | "yield"
+        | "let"
+        | "implements"
+        | "interface"
+        | "namespace"
+        | "private"
+        | "protected"
+        | "public"
+        | "readonly"
+        | "static"
+        | "enum"
+        | "declare" => true
+        _ => false
+      }
+    Python =>
+      match word {
+        "and"
+        | "as"
+        | "assert"
+        | "async"
+        | "await"
+        | "break"
+        | "class"
+        | "continue"
+        | "def"
+        | "del"
+        | "elif"
+        | "else"
+        | "except"
+        | "finally"
+        | "for"
+        | "from"
+        | "global"
+        | "if"
+        | "import"
+        | "in"
+        | "is"
+        | "lambda"
+        | "nonlocal"
+        | "not"
+        | "or"
+        | "pass"
+        | "raise"
+        | "return"
+        | "try"
+        | "while"
+        | "with"
+        | "yield" => true
+        _ => false
+      }
+    Rust =>
+      match word {
+        "as"
+        | "async"
+        | "await"
+        | "break"
+        | "const"
+        | "continue"
+        | "crate"
+        | "else"
+        | "enum"
+        | "extern"
+        | "fn"
+        | "for"
+        | "if"
+        | "impl"
+        | "in"
+        | "let"
+        | "loop"
+        | "match"
+        | "mod"
+        | "move"
+        | "mut"
+        | "pub"
+        | "ref"
+        | "return"
+        | "self"
+        | "Self"
+        | "static"
+        | "struct"
+        | "super"
+        | "trait"
+        | "type"
+        | "unsafe"
+        | "use"
+        | "where"
+        | "while" => true
+        _ => false
+      }
+    Java | C | Cpp | CSharp | Kotlin | Swift =>
+      match word {
+        "abstract"
+        | "break"
+        | "case"
+        | "catch"
+        | "class"
+        | "const"
+        | "continue"
+        | "default"
+        | "do"
+        | "else"
+        | "enum"
+        | "extends"
+        | "final"
+        | "finally"
+        | "for"
+        | "if"
+        | "implements"
+        | "import"
+        | "interface"
+        | "new"
+        | "override"
+        | "package"
+        | "private"
+        | "protected"
+        | "public"
+        | "return"
+        | "static"
+        | "struct"
+        | "switch"
+        | "throw"
+        | "throws"
+        | "try"
+        | "using"
+        | "var"
+        | "virtual"
+        | "while" => true
+        _ => false
+      }
+    Php =>
+      match word {
+        "abstract"
+        | "as"
+        | "break"
+        | "case"
+        | "catch"
+        | "class"
+        | "const"
+        | "continue"
+        | "declare"
+        | "default"
+        | "do"
+        | "echo"
+        | "else"
+        | "elseif"
+        | "extends"
+        | "final"
+        | "for"
+        | "foreach"
+        | "function"
+        | "if"
+        | "implements"
+        | "interface"
+        | "namespace"
+        | "new"
+        | "private"
+        | "protected"
+        | "public"
+        | "return"
+        | "static"
+        | "switch"
+        | "throw"
+        | "trait"
+        | "try"
+        | "use"
+        | "while" => true
+        _ => false
+      }
+    Ruby =>
+      match word {
+        "BEGIN"
+        | "END"
+        | "alias"
+        | "and"
+        | "begin"
+        | "break"
+        | "case"
+        | "class"
+        | "def"
+        | "defined?"
+        | "do"
+        | "else"
+        | "elsif"
+        | "end"
+        | "ensure"
+        | "for"
+        | "if"
+        | "in"
+        | "module"
+        | "next"
+        | "or"
+        | "redo"
+        | "rescue"
+        | "retry"
+        | "return"
+        | "super"
+        | "then"
+        | "undef"
+        | "unless"
+        | "until"
+        | "when"
+        | "while"
+        | "yield" => true
+        _ => false
+      }
+    Bash =>
+      match word {
+        "if"
+        | "then"
+        | "else"
+        | "elif"
+        | "fi"
+        | "for"
+        | "while"
+        | "until"
+        | "do"
+        | "done"
+        | "case"
+        | "esac"
+        | "function"
+        | "select"
+        | "in" => true
+        _ => false
+      }
+    Sql =>
+      match word.to_upper() {
+        "SELECT"
+        | "FROM"
+        | "WHERE"
+        | "JOIN"
+        | "LEFT"
+        | "RIGHT"
+        | "INNER"
+        | "OUTER"
+        | "ON"
+        | "GROUP"
+        | "BY"
+        | "ORDER"
+        | "LIMIT"
+        | "OFFSET"
+        | "INSERT"
+        | "INTO"
+        | "VALUES"
+        | "UPDATE"
+        | "SET"
+        | "DELETE"
+        | "CREATE"
+        | "TABLE"
+        | "ALTER"
+        | "DROP"
+        | "INDEX"
+        | "VIEW"
+        | "DISTINCT"
+        | "HAVING"
+        | "UNION"
+        | "ALL"
+        | "AS"
+        | "AND"
+        | "OR"
+        | "NOT"
+        | "IN"
+        | "EXISTS"
+        | "BETWEEN"
+        | "LIKE"
+        | "IS"
+        | "NULL" => true
+        _ => false
+      }
+    Json | Yaml | Toml =>
+      match word {
+        "true" | "false" | "null" | "none" => true
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn code_is_keyword_type(word : String, language : CodeLanguage) -> Bool {
+  match language {
+    Go =>
+      match word {
+        "any"
+        | "bool"
+        | "byte"
+        | "comparable"
+        | "complex64"
+        | "complex128"
+        | "error"
+        | "float32"
+        | "float64"
+        | "int"
+        | "int8"
+        | "int16"
+        | "int32"
+        | "int64"
+        | "rune"
+        | "string"
+        | "uint"
+        | "uint8"
+        | "uint16"
+        | "uint32"
+        | "uint64"
+        | "uintptr" => true
+        _ => false
+      }
+    Java | C | Cpp | CSharp | Kotlin | Swift =>
+      match word {
+        "bool"
+        | "boolean"
+        | "byte"
+        | "char"
+        | "double"
+        | "float"
+        | "int"
+        | "long"
+        | "short"
+        | "string"
+        | "void"
+        | "var" => true
+        _ => false
+      }
+    TypeScript =>
+      match word {
+        "any"
+        | "bigint"
+        | "boolean"
+        | "never"
+        | "number"
+        | "object"
+        | "string"
+        | "symbol"
+        | "unknown"
+        | "void" => true
+        _ => false
+      }
+    Python =>
+      match word {
+        "bool"
+        | "bytes"
+        | "dict"
+        | "float"
+        | "int"
+        | "list"
+        | "set"
+        | "str"
+        | "tuple" => true
+        _ => false
+      }
+    Rust =>
+      match word {
+        "bool"
+        | "char"
+        | "f32"
+        | "f64"
+        | "i8"
+        | "i16"
+        | "i32"
+        | "i64"
+        | "i128"
+        | "isize"
+        | "str"
+        | "u8"
+        | "u16"
+        | "u32"
+        | "u64"
+        | "u128"
+        | "usize" => true
+        _ => false
+      }
+    Sql =>
+      match word.to_upper() {
+        "BIGINT"
+        | "BOOLEAN"
+        | "CHAR"
+        | "DATE"
+        | "DECIMAL"
+        | "FLOAT"
+        | "INT"
+        | "INTEGER"
+        | "NUMERIC"
+        | "TEXT"
+        | "TIMESTAMP"
+        | "UUID"
+        | "VARCHAR" => true
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn code_is_builtin(word : String, language : CodeLanguage) -> Bool {
+  match language {
+    Go =>
+      match word {
+        "append"
+        | "cap"
+        | "clear"
+        | "close"
+        | "complex"
+        | "copy"
+        | "delete"
+        | "imag"
+        | "len"
+        | "make"
+        | "max"
+        | "min"
+        | "new"
+        | "panic"
+        | "print"
+        | "println"
+        | "real"
+        | "recover" => true
+        _ => false
+      }
+    JavaScript | TypeScript =>
+      match word {
+        "Array"
+        | "Boolean"
+        | "Date"
+        | "Error"
+        | "JSON"
+        | "Map"
+        | "Math"
+        | "Number"
+        | "Object"
+        | "Promise"
+        | "RegExp"
+        | "Set"
+        | "String"
+        | "console"
+        | "parseFloat"
+        | "parseInt" => true
+        _ => false
+      }
+    Python =>
+      match word {
+        "abs"
+        | "all"
+        | "any"
+        | "dict"
+        | "enumerate"
+        | "filter"
+        | "int"
+        | "len"
+        | "list"
+        | "map"
+        | "max"
+        | "min"
+        | "print"
+        | "range"
+        | "set"
+        | "str"
+        | "sum"
+        | "tuple" => true
+        _ => false
+      }
+    Rust =>
+      match word {
+        "Option"
+        | "Result"
+        | "String"
+        | "Vec"
+        | "format"
+        | "panic"
+        | "println" => true
+        _ => false
+      }
+    Java | CSharp | Kotlin =>
+      match word {
+        "System" | "String" | "println" | "printf" => true
+        _ => false
+      }
+    Bash =>
+      match word {
+        "echo" | "export" | "printf" | "read" | "source" | "test" => true
+        _ => false
+      }
+    Sql =>
+      match word.to_upper() {
+        "COUNT" | "MAX" | "MIN" | "AVG" | "SUM" | "NOW" | "COALESCE" => true
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn code_is_operator_word(word : String, language : CodeLanguage) -> Bool {
+  match language {
+    Python =>
+      match word {
+        "and" | "is" | "not" | "or" => true
+        _ => false
+      }
+    Sql =>
+      match word.to_upper() {
+        "AND" | "OR" | "NOT" => true
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn code_is_probable_class_name(word : String, language : CodeLanguage) -> Bool {
+  if word.length() == 0 {
+    return false
+  }
+  if language == Sql || language == Json || language == Yaml || language == Toml {
+    return false
+  }
+  match char_at(word, 0) {
+    Some(c) => c >= 'A' && c <= 'Z'
+    None => false
+  }
+}
+
+///|
+fn code_is_call_control_word(word : String, language : CodeLanguage) -> Bool {
+  if code_is_keyword(word, language) || code_is_keyword_type(word, language) {
+    return true
+  }
+  match word {
+    "assert" | "await" | "sizeof" | "typeof" => true
+    _ => false
+  }
+}
+
+///|
+fn code_line_comment_prefix_len(
+  line : String,
+  index : Int,
+  language : CodeLanguage,
+) -> Int? {
+  match language {
+    Go
+    | JavaScript
+    | TypeScript
+    | Rust
+    | Java
+    | C
+    | Cpp
+    | CSharp
+    | Kotlin
+    | Swift
+    | Php => if code_starts_with_at(line, index, "//") { Some(2) } else { None }
+    Python | Ruby | Bash | Yaml | Toml =>
+      if code_starts_with_at(line, index, "#") {
+        Some(1)
+      } else {
+        None
+      }
+    Sql => if code_starts_with_at(line, index, "--") { Some(2) } else { None }
+    _ => None
+  }
+}
+
+///|
+fn code_block_comment_bounds(
+  line : String,
+  index : Int,
+  language : CodeLanguage,
+) -> Int? {
+  let supports = match language {
+    Go
+    | JavaScript
+    | TypeScript
+    | Rust
+    | Java
+    | C
+    | Cpp
+    | CSharp
+    | Kotlin
+    | Swift
+    | Php
+    | Sql => true
+    _ => false
+  }
+  if !supports || !code_starts_with_at(line, index, "/*") {
+    return None
+  }
+  match code_find_substring_from(line, "*/", index + 2) {
+    Some(end_index) => Some(end_index + 2)
+    None => Some(line.length())
+  }
+}
+
+///|
+fn code_string_bounds(
+  line : String,
+  index : Int,
+  language : CodeLanguage,
+) -> (Int, Bool)? {
+  if index >= line.length() {
+    return None
+  }
+  if language == Python {
+    if code_starts_with_at(line, index, "\"\"\"") ||
+      code_starts_with_at(line, index, "'''") {
+      let triple = code_slice(line, index, index + 3)
+      let end = code_find_substring_from(line, triple, index + 3)
+      let triple_end = match end {
+        Some(v) => v + 3
+        None => line.length()
+      }
+      return Some((triple_end, true))
+    }
+  }
+  match char_at(line, index) {
+    Some('"') => code_parse_quoted_string(line, index, language, '"')
+    Some('\'') => code_parse_quoted_string(line, index, language, '\'')
+    Some('`') =>
+      if code_language_supports_backtick(language) {
+        code_parse_quoted_string(line, index, language, '`')
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn code_parse_quoted_string(
+  line : String,
+  index : Int,
+  language : CodeLanguage,
+  quote_char : Char,
+) -> (Int, Bool)? {
+  let mut i = index + 1
+  let mut has_escape = false
+  while i < line.length() {
+    match char_at(line, i) {
+      Some('\\') =>
+        if quote_char != '`' && language != Markdown {
+          has_escape = true
+          if i + 1 < line.length() {
+            i = i + 2
+          } else {
+            i = i + 1
+          }
+        } else {
+          i = i + 1
+        }
+      Some(c) =>
+        if c == quote_char {
+          return Some((i + 1, has_escape))
+        } else {
           i = i + 1
         }
       None => i = i + 1
     }
   }
-  sb.to_string()
+  Some((line.length(), has_escape))
+}
+
+///|
+fn code_language_supports_backtick(language : CodeLanguage) -> Bool {
+  match language {
+    Go | JavaScript | TypeScript | Bash | Markdown => true
+    _ => false
+  }
+}
+
+///|
+fn code_is_number_start(line : String, index : Int) -> Bool {
+  if index >= line.length() {
+    return false
+  }
+  match char_at(line, index) {
+    Some(c) =>
+      if c >= '0' && c <= '9' {
+        true
+      } else if c == '.' && index + 1 < line.length() {
+        match char_at(line, index + 1) {
+          Some(n) => n >= '0' && n <= '9'
+          None => false
+        }
+      } else {
+        false
+      }
+    None => false
+  }
+}
+
+///|
+fn code_number_end(line : String, start : Int) -> Int {
+  let mut i = start
+  let mut seen_dot = false
+  let mut seen_exp = false
+  while i < line.length() {
+    match char_at(line, i) {
+      Some(c) =>
+        if c >= '0' && c <= '9' {
+          i = i + 1
+        } else if c == '_' {
+          i = i + 1
+        } else if c == '.' && !seen_dot && !seen_exp {
+          seen_dot = true
+          i = i + 1
+        } else if (c == 'e' || c == 'E') && !seen_exp {
+          seen_exp = true
+          i = i + 1
+          if i < line.length() {
+            match char_at(line, i) {
+              Some('+') | Some('-') => i = i + 1
+              _ => ()
+            }
+          }
+        } else {
+          break
+        }
+      None => break
+    }
+  }
+  i
+}
+
+///|
+fn code_is_operator_char(c : Char) -> Bool {
+  match c {
+    '+'
+    | '-'
+    | '*'
+    | '/'
+    | '%'
+    | '='
+    | '!'
+    | '<'
+    | '>'
+    | '&'
+    | '|'
+    | '^'
+    | '~'
+    | ':'
+    | '?' => true
+    _ => false
+  }
+}
+
+///|
+fn code_operator_end(line : String, start : Int) -> Int {
+  code_consume_while(line, start, code_is_operator_char)
+}
+
+///|
+fn code_is_punctuation_char(c : Char) -> Bool {
+  match c {
+    '(' | ')' | '[' | ']' | '{' | '}' | ',' | '.' | ';' => true
+    _ => false
+  }
+}
+
+///|
+fn code_consume_while(
+  s : String,
+  start : Int,
+  predicate : (Char) -> Bool,
+) -> Int {
+  let mut i = start
+  while i < s.length() {
+    match char_at(s, i) {
+      Some(c) => if predicate(c) { i = i + 1 } else { break }
+      None => break
+    }
+  }
+  i
+}
+
+///|
+fn code_consume_until_char(s : String, start : Int, ch : Char) -> Int {
+  let mut i = start
+  while i < s.length() {
+    if char_at(s, i) == Some(ch) {
+      break
+    }
+    i = i + 1
+  }
+  i
+}
+
+///|
+fn code_starts_with_at(s : String, index : Int, prefix : String) -> Bool {
+  if index < 0 || index + prefix.length() > s.length() {
+    return false
+  }
+  code_slice(s, index, index + prefix.length()) == prefix
+}
+
+///|
+fn code_find_substring_from(s : String, needle : String, start : Int) -> Int? {
+  if needle.length() == 0 || start >= s.length() {
+    return None
+  }
+  let mut i = if start < 0 { 0 } else { start }
+  while i + needle.length() <= s.length() {
+    if code_starts_with_at(s, i, needle) {
+      return Some(i)
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+fn code_is_tag_ident_continue(c : Char) -> Bool {
+  code_is_ident_continue(c) || c == '-' || c == ':' || c == '_'
 }
 
 ///|
 fn code_token_fill(kind : CodeTokenKind, is_dark : Bool) -> String? {
   if is_dark {
     match kind {
-      AssignOp => Some("#89dceb")
+      Text | Punctuation => Some("#cdd6f4")
+      Comment => Some("#6c7086")
       Keyword => Some("#cba6f7")
-      Function => Some("#89b4fa")
-      Plain => Some("#cdd6f4")
+      KeywordType => Some("#f38ba8")
+      NameFunction => Some("#89b4fa")
+      NameBuiltin => Some("#89dceb")
+      NameClass => Some("#f9e2af")
+      NameAttribute => Some("#89b4fa")
+      NameTag => Some("#cba6f7")
+      LiteralString => Some("#a6e3a1")
+      LiteralStringEscape => Some("#89b4fa")
+      LiteralNumber => Some("#fab387")
+      Operator | OperatorWord => Some("#89dceb")
     }
   } else {
     match kind {
-      AssignOp => Some("#000000")
+      Text | Punctuation => None
+      Comment => Some("#999988")
       Keyword => Some("#000000")
-      Function => Some("#990000")
-      Plain => None
+      KeywordType => Some("#445588")
+      NameFunction => Some("#990000")
+      NameBuiltin => Some("#0086b3")
+      NameClass => Some("#445588")
+      NameAttribute => Some("#008080")
+      NameTag => Some("#000080")
+      LiteralString => Some("#dd1144")
+      LiteralStringEscape => Some("#dd1144")
+      LiteralNumber => Some("#009999")
+      Operator | OperatorWord => Some("#000000")
     }
   }
 }
@@ -3984,13 +5178,20 @@ fn code_token_fill(kind : CodeTokenKind, is_dark : Bool) -> String? {
 fn code_token_class(kind : CodeTokenKind, is_dark : Bool) -> String? {
   if is_dark {
     match kind {
-      AssignOp => Some("text-mono-bold")
+      Comment => Some("text-mono-italic")
+      Operator | OperatorWord => Some("text-mono-bold")
       _ => None
     }
   } else {
     match kind {
-      AssignOp | Keyword | Function => Some("text-mono-bold")
-      Plain => None
+      Comment => Some("text-mono-italic")
+      Keyword
+      | KeywordType
+      | NameFunction
+      | NameClass
+      | Operator
+      | OperatorWord => Some("text-mono-bold")
+      _ => None
     }
   }
 }
@@ -4041,6 +5242,19 @@ fn code_next_non_space_char(s : String, start : Int) -> Char? {
       Some(' ') | Some('\t') => i = i + 1
       Some(c) => return Some(c)
       None => i = i + 1
+    }
+  }
+  None
+}
+
+///|
+fn code_prev_non_space_char(s : String, start : Int) -> Char? {
+  let mut i = start
+  while i >= 0 {
+    match char_at(s, i) {
+      Some(' ') | Some('\t') => i = i - 1
+      Some(c) => return Some(c)
+      None => i = i - 1
     }
   }
   None
