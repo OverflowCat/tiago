@@ -180,6 +180,7 @@ fn route_edges_railway(
   level_heights : Array[Double],
   reserved_label_boxes : Array[@graph.Box],
 ) -> Unit raise @engine_api.LayoutError {
+  let gap_rail_reservations = Ref::new({})
   let ordered_edges = layout_input.edges.copy()
   ordered_edges.sort_by(fn(a, b) {
     let a_self = self_loop.contains(a.index)
@@ -308,6 +309,7 @@ fn route_edges_railway(
       config,
       level_heights,
       reserved_label_boxes,
+      gap_rail_reservations,
     )
   }
 }

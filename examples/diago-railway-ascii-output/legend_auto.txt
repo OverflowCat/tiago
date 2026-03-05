@@ -5,16 +5,16 @@
                    | ^       
                    | |       
   +-----request----+ |       
-  |  +-----response--+----   
-  v  |                       
+  |                  |       
+  v  ------response--+----   
  +-----------+               
  |API Server |               
  |           |               
  +-----------+               
   |  ^                       
-  |  |                       
-querresults                  
-  |  |                       
+  results                    
+query|                       
+  |  +----                   
   v  |                       
   .------.                   
  |\-____-/|                  

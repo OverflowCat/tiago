@@ -1284,8 +1284,8 @@ fn route_edge(
   config : @engine_api.LayoutConfig,
   level_heights : Array[Double],
   reserved_label_boxes : Array[@graph.Box],
+  gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
 ) -> Array[@graph.Point] raise @engine_api.LayoutError {
-  ignore(edge_index)
   if dst_level == src_level {
     raise Unsupported(
       "route_edge: dst_level is \{dst_level}, src_level is \{src_level}",
@@ -1318,6 +1318,10 @@ fn route_edge(
     continue next_level
   }
   let waypoints : Array[@graph.Point] = []
+  let first_gap = if step == 1 { src_level } else { src_level - 1 }
+  let last_gap = if step == 1 { dst_level - 1 } else { dst_level }
+  let start_axis = port_axis(start, flow)
+  let end_axis = port_axis(end, flow)
   fn finalize_route(points : Array[@graph.Point]) -> Array[@graph.Point] {
     enforce_flow_tangent(points, tangent_flow)
   }
@@ -1331,6 +1335,9 @@ fn route_edge(
   // and avoid adding per-level intermediate waypoints.
   match (direction, flow) {
     (Down, Up) => {
+      let gap_shift = multi_edge_gap_shift(
+        flow, direction, start, end, rail_track, config,
+      )
       let spacing = track_spacing(config)
       let preferred_rail_x = @cmp.maximum(start.x, end.x) +
         config.edge_padding * 2.0 +
@@ -1358,7 +1365,9 @@ fn route_edge(
       }
       let rail_x = nearest_unblocked_axis(preferred_rail_x, lo, hi, blocked)
       // Leave source along edge flow first, then shift laterally on rail.
-      let preferred_last_rail = rails[rails.length() - 1] + rail_shift
+      let preferred_last_rail = rails[rails.length() - 1] +
+        rail_shift +
+        gap_shift
       let last_rail = choose_span_one_reserved_rail(
         start,
         end,
@@ -1371,6 +1380,11 @@ fn route_edge(
         dst_id,
         reserved_label_boxes,
         config.edge_padding,
+        config,
+        gap_rail_reservations,
+        last_gap,
+        @cmp.minimum(@cmp.minimum(start_axis, end_axis), rail_x),
+        @cmp.maximum(@cmp.maximum(start_axis, end_axis), rail_x),
       )
       push_if_new(waypoints, point_on_rail(start, last_rail, flow))
       push_if_new(waypoints, anchor_on_rail(rail_x, last_rail, flow))
@@ -1379,6 +1393,9 @@ fn route_edge(
       return finalize_route(waypoints)
     }
     (Up, Down) => {
+      let gap_shift = multi_edge_gap_shift(
+        flow, direction, start, end, rail_track, config,
+      )
       let spacing = track_spacing(config)
       let preferred_rail_x = @cmp.maximum(start.x, end.x) +
         config.edge_padding * 2.0 +
@@ -1405,7 +1422,9 @@ fn route_edge(
         hi = @cmp.maximum(hi, interval.hi + side_clearance)
       }
       let rail_x = nearest_unblocked_axis(preferred_rail_x, lo, hi, blocked)
-      let preferred_last_rail = rails[rails.length() - 1] + rail_shift
+      let preferred_last_rail = rails[rails.length() - 1] +
+        rail_shift +
+        gap_shift
       let last_rail = choose_span_one_reserved_rail(
         start,
         end,
@@ -1418,6 +1437,11 @@ fn route_edge(
         dst_id,
         reserved_label_boxes,
         config.edge_padding,
+        config,
+        gap_rail_reservations,
+        last_gap,
+        @cmp.minimum(@cmp.minimum(start_axis, end_axis), rail_x),
+        @cmp.maximum(@cmp.maximum(start_axis, end_axis), rail_x),
       )
       push_if_new(waypoints, point_on_rail(start, last_rail, flow))
       push_if_new(waypoints, anchor_on_rail(rail_x, last_rail, flow))
@@ -1428,7 +1452,9 @@ fn route_edge(
     _ => ()
   }
   if span == 1 {
-    let preferred_rail = rails[0] + rail_shift
+    let preferred_rail = rails[0] +
+      rail_shift +
+      span_one_edge_seed_shift(edge_index, config)
     let rail = choose_span_one_reserved_rail(
       start,
       end,
@@ -1441,6 +1467,11 @@ fn route_edge(
       dst_id,
       reserved_label_boxes,
       config.edge_padding,
+      config,
+      gap_rail_reservations,
+      first_gap,
+      @cmp.minimum(start_axis, end_axis),
+      @cmp.maximum(start_axis, end_axis),
     )
     let points = waypoints_between(start, end, rail, flow)
     waypoints.append(points)
@@ -1455,8 +1486,12 @@ fn route_edge(
     dst_id, reserved_label_boxes,
   )
 
+  let gap_shift = 0.0
   let adjusted_rails = rails.copy()
   if adjusted_rails.length() > 0 {
+    for i in 0..<adjusted_rails.length() {
+      adjusted_rails[i] = adjusted_rails[i] + rail_shift + gap_shift
+    }
     adjusted_rails[0] = choose_gap_rail_for_edge(
       start,
       end,
@@ -1470,6 +1505,11 @@ fn route_edge(
       reserved_label_boxes,
       config.edge_padding,
       major_axis_spacing(direction, config),
+      config,
+      gap_rail_reservations,
+      first_gap,
+      @cmp.minimum(start_axis, anchor),
+      @cmp.maximum(start_axis, anchor),
     )
     let last = adjusted_rails.length() - 1
     adjusted_rails[last] = choose_gap_rail_for_edge(
@@ -1485,6 +1525,11 @@ fn route_edge(
       reserved_label_boxes,
       config.edge_padding,
       major_axis_spacing(direction, config),
+      config,
+      gap_rail_reservations,
+      last_gap,
+      @cmp.minimum(end_axis, anchor),
+      @cmp.maximum(end_axis, anchor),
     )
   }
 
@@ -1508,6 +1553,13 @@ fn route_edge(
 priv struct AxisInterval {
   lo : Double
   hi : Double
+}
+
+///|
+priv struct GapRailReservation {
+  span_lo : Double
+  span_hi : Double
+  rail : Double
 }
 
 ///|
@@ -1633,14 +1685,16 @@ fn choose_span_one_reserved_rail(
   dst_id : String,
   reserved_label_boxes : Array[@graph.Box],
   padding : Double,
+  config : @engine_api.LayoutConfig,
+  gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+  gap_index : Int,
+  span_lo : Double,
+  span_hi : Double,
 ) -> Double {
   let blocked = blocked_span_one_rail_intervals(
     start, end, flow, boxes, object_by_id, parent_id_by_child_id, src_id, dst_id,
     reserved_label_boxes, padding,
   )
-  if blocked.is_empty() {
-    return preferred_rail
-  }
   let gap = @cmp.maximum(4.0, padding * 0.25)
   let (major_lo, major_hi) = match flow {
     Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
@@ -1651,7 +1705,10 @@ fn choose_span_one_reserved_rail(
   if hi <= lo {
     return preferred_rail
   }
-  nearest_unblocked_axis(preferred_rail, lo, hi, blocked)
+  reserve_gap_rail(
+    preferred_rail, lo, hi, blocked, gap_rail_reservations, gap_index, span_lo, span_hi,
+    flow, config,
+  )
 }
 
 ///|
@@ -1668,21 +1725,26 @@ fn choose_gap_rail_for_edge(
   reserved_label_boxes : Array[@graph.Box],
   padding : Double,
   gap_span : Double,
+  config : @engine_api.LayoutConfig,
+  gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+  gap_index : Int,
+  span_lo : Double,
+  span_hi : Double,
 ) -> Double {
   let blocked = blocked_span_one_rail_intervals(
     start, end, flow, boxes, object_by_id, parent_id_by_child_id, src_id, dst_id,
     reserved_label_boxes, padding,
   )
-  if blocked.is_empty() {
-    return preferred_rail
-  }
   let gap = @cmp.maximum(4.0, padding * 0.25)
   let lo = preferred_rail - gap_span / 2.0 + gap
   let hi = preferred_rail + gap_span / 2.0 - gap
   if hi <= lo {
     return preferred_rail
   }
-  nearest_unblocked_axis(preferred_rail, lo, hi, blocked)
+  reserve_gap_rail(
+    preferred_rail, lo, hi, blocked, gap_rail_reservations, gap_index, span_lo, span_hi,
+    flow, config,
+  )
 }
 
 ///|
@@ -2055,6 +2117,60 @@ fn axis_blocked_by_intervals(
 }
 
 ///|
+fn nearest_unblocked_axis_bounded(
+  preferred : Double,
+  lo : Double,
+  hi : Double,
+  blocked : Array[AxisInterval],
+) -> Double {
+  let p = @cmp.maximum(lo, @cmp.minimum(preferred, hi))
+  if !axis_blocked_by_intervals(p, blocked) {
+    return p
+  }
+  let eps = 1.0
+  let candidates : Array[Double] = [lo, hi]
+  for interval in blocked {
+    let left = @cmp.maximum(lo, @cmp.minimum(hi, interval.lo - eps))
+    let right = @cmp.maximum(lo, @cmp.minimum(hi, interval.hi + eps))
+    candidates.push(left)
+    candidates.push(right)
+    if p >= interval.lo - 1.0e-6 && p <= interval.hi + 1.0e-6 {
+      let d_left = @cmp.maximum(0.0, p - interval.lo)
+      let d_right = @cmp.maximum(0.0, interval.hi - p)
+      let mirror_left = @cmp.maximum(
+        lo,
+        @cmp.minimum(hi, interval.lo - eps - d_left),
+      )
+      let mirror_right = @cmp.maximum(
+        lo,
+        @cmp.minimum(hi, interval.hi + eps + d_right),
+      )
+      candidates.push(mirror_left)
+      candidates.push(mirror_right)
+    }
+  }
+  let mut found = false
+  let mut best = p
+  let mut best_cost = 0.0
+  for c in candidates {
+    if axis_blocked_by_intervals(c, blocked) {
+      continue
+    }
+    let cost = (c - p).abs()
+    if !found || cost < best_cost {
+      found = true
+      best = c
+      best_cost = cost
+    }
+  }
+  if found {
+    best
+  } else {
+    p
+  }
+}
+
+///|
 fn nearest_unblocked_axis(
   preferred : Double,
   lo : Double,
@@ -2100,6 +2216,189 @@ fn nearest_unblocked_axis(
       right
     }
   }
+}
+
+///|
+fn multi_edge_gap_shift(
+  flow : @engine_api.Direction,
+  direction : @engine_api.Direction,
+  start : @graph.Point,
+  end : @graph.Point,
+  rail_track : Int,
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  let group = if flow != direction {
+    3
+  } else {
+    match long_edge_lateral_side(direction, start, end) {
+      -1 => 1
+      1 => 2
+      _ => 0
+    }
+  }
+  let idx = rail_track * 4 + group
+  let spacing = track_spacing(config)
+  let raw = zigzag_track_offset(idx, spacing)
+  let min_clear = @cmp.maximum(10.0, config.edge_padding / 2.0)
+  let max_offset = @cmp.maximum(
+    0.0,
+    major_axis_spacing(direction, config) / 2.0 - min_clear,
+  )
+  @cmp.maximum(-max_offset, @cmp.minimum(raw, max_offset))
+}
+
+///|
+fn reserve_gap_rail(
+  preferred : Double,
+  lo : Double,
+  hi : Double,
+  blocked : Array[AxisInterval],
+  gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+  gap_index : Int,
+  span_lo : Double,
+  span_hi : Double,
+  flow : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  ignore(flow)
+  let lo_norm = @cmp.minimum(lo, hi)
+  let hi_norm = @cmp.maximum(lo, hi)
+  if hi_norm <= lo_norm {
+    return preferred
+  }
+  let span_lo_norm = @cmp.minimum(span_lo, span_hi)
+  let span_hi_norm = @cmp.maximum(span_lo, span_hi)
+  let preferred_clamped = @cmp.maximum(
+    lo_norm,
+    @cmp.minimum(preferred, hi_norm),
+  )
+  let base = nearest_unblocked_axis_bounded(
+    preferred_clamped, lo_norm, hi_norm, blocked,
+  )
+  let min_sep = @cmp.maximum(track_spacing(config), 10.0)
+  let tol = 1.0e-6
+
+  fn overlaps_on_lateral_axis(
+    a_lo : Double,
+    a_hi : Double,
+    b_lo : Double,
+    b_hi : Double,
+  ) -> Bool {
+    !(a_hi <= b_lo + tol || b_hi <= a_lo + tol)
+  }
+
+  fn conflicts_with_gap(
+    rail : Double,
+    span_lo : Double,
+    span_hi : Double,
+    reservations : Array[GapRailReservation],
+    min_sep : Double,
+  ) -> Bool {
+    for reservation in reservations {
+      if !overlaps_on_lateral_axis(
+          span_lo,
+          span_hi,
+          reservation.span_lo,
+          reservation.span_hi,
+        ) {
+        continue
+      }
+      if (rail - reservation.rail).abs() < min_sep {
+        return true
+      }
+    }
+    false
+  }
+
+  fn append_reservation(
+    gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+    gap_index : Int,
+    span_lo : Double,
+    span_hi : Double,
+    rail : Double,
+  ) -> Unit {
+    let item : GapRailReservation = { span_lo, span_hi, rail }
+    match gap_rail_reservations.val.get(gap_index) {
+      Some(arr) => arr.push(item)
+      None => gap_rail_reservations.val[gap_index] = [item]
+    }
+  }
+
+  fn acceptable(
+    rail : Double,
+    blocked : Array[AxisInterval],
+    gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+    gap_index : Int,
+    span_lo : Double,
+    span_hi : Double,
+    min_sep : Double,
+  ) -> Bool {
+    if axis_blocked_by_intervals(rail, blocked) {
+      return false
+    }
+    match gap_rail_reservations.val.get(gap_index) {
+      Some(arr) => !conflicts_with_gap(rail, span_lo, span_hi, arr, min_sep)
+      None => true
+    }
+  }
+
+  if acceptable(
+      base, blocked, gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm,
+      min_sep,
+    ) {
+    append_reservation(
+      gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm, base,
+    )
+    return base
+  }
+
+  for k in 1..<96 {
+    let delta = k.to_double() * min_sep
+    let up = base + delta
+    if up <= hi_norm + tol &&
+      acceptable(
+        up, blocked, gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm,
+        min_sep,
+      ) {
+      append_reservation(
+        gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm, up,
+      )
+      return up
+    }
+    let down = base - delta
+    if down >= lo_norm - tol &&
+      acceptable(
+        down, blocked, gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm,
+        min_sep,
+      ) {
+      append_reservation(
+        gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm, down,
+      )
+      return down
+    }
+    if up > hi_norm + tol && down < lo_norm - tol {
+      break
+    }
+  }
+
+  let fallback = nearest_unblocked_axis_bounded(
+    preferred_clamped, lo_norm, hi_norm, blocked,
+  )
+  append_reservation(
+    gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm, fallback,
+  )
+  fallback
+}
+
+///|
+fn span_one_edge_seed_shift(
+  edge_index : Int,
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  ignore(edge_index)
+  ignore(config)
+  // Keep span-1 rails deterministic and driven by channel reservation only.
+  0.0
 }
 
 ///|
