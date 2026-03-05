@@ -3885,6 +3885,7 @@ priv enum CodeTokenKind {
   Operator
   OperatorWord
   Punctuation
+  Bracket
 }
 
 ///|
@@ -3911,6 +3912,7 @@ priv enum CodeLanguage {
   Html
   Xml
   Markdown
+  MoonBit
 } derive(Eq)
 
 ///|
@@ -4030,11 +4032,14 @@ fn code_tokenize_line(
                         out.push(CodeToken::new(op, Operator))
                         i = end_index
                       } else if code_is_punctuation_char(c) {
+                        let token_kind = if language == MoonBit &&
+                          code_is_bracket_char(c) {
+                          Bracket
+                        } else {
+                          Punctuation
+                        }
                         out.push(
-                          CodeToken::new(
-                            code_slice(line, i, i + 1),
-                            Punctuation,
-                          ),
+                          CodeToken::new(code_slice(line, i, i + 1), token_kind),
                         )
                         i = i + 1
                       } else {
@@ -4219,6 +4224,7 @@ fn code_language_from_tag(language : String?) -> CodeLanguage {
         "html" | "xhtml" => Html
         "xml" | "svg" => Xml
         "markdown" | "md" => Markdown
+        "moonbit" | "mbt" => MoonBit
         _ => Unknown
       }
     None => Unknown
@@ -4232,6 +4238,12 @@ fn code_ident_kind(
   prev_non_space : Char?,
   next_non_space : Char?,
 ) -> CodeTokenKind {
+  if language == MoonBit {
+    if code_is_keyword(ident, language) {
+      return Keyword
+    }
+    return Text
+  }
   if code_is_operator_word(ident, language) {
     return OperatorWord
   }
@@ -4600,6 +4612,59 @@ fn code_is_keyword(word : String, language : CodeLanguage) -> Bool {
         "true" | "false" | "null" | "none" => true
         _ => false
       }
+    MoonBit =>
+      match word {
+        "as"
+        | "else"
+        | "extern"
+        | "fn"
+        | "fnalias"
+        | "if"
+        | "let"
+        | "const"
+        | "match"
+        | "using"
+        | "mut"
+        | "type"
+        | "typealias"
+        | "struct"
+        | "enum"
+        | "trait"
+        | "traitalias"
+        | "derive"
+        | "while"
+        | "break"
+        | "continue"
+        | "import"
+        | "return"
+        | "throw"
+        | "raise"
+        | "try"
+        | "catch"
+        | "pub"
+        | "priv"
+        | "readonly"
+        | "true"
+        | "false"
+        | "_"
+        | "test"
+        | "loop"
+        | "for"
+        | "in"
+        | "impl"
+        | "with"
+        | "guard"
+        | "async"
+        | "is"
+        | "suberror"
+        | "and"
+        | "letrec"
+        | "enumview"
+        | "noraise"
+        | "defer"
+        | "where" => true
+        _ => false
+      }
     _ => false
   }
 }
@@ -4874,7 +4939,13 @@ fn code_line_comment_prefix_len(
     | CSharp
     | Kotlin
     | Swift
-    | Php => if code_starts_with_at(line, index, "//") { Some(2) } else { None }
+    | Php
+    | MoonBit =>
+      if code_starts_with_at(line, index, "//") {
+        Some(2)
+      } else {
+        None
+      }
     Python | Ruby | Bash | Yaml | Toml =>
       if code_starts_with_at(line, index, "#") {
         Some(1)
@@ -4904,6 +4975,7 @@ fn code_block_comment_bounds(
     | Kotlin
     | Swift
     | Php
+    | MoonBit
     | Sql => true
     _ => false
   }
@@ -5082,6 +5154,14 @@ fn code_is_punctuation_char(c : Char) -> Bool {
 }
 
 ///|
+fn code_is_bracket_char(c : Char) -> Bool {
+  match c {
+    '(' | ')' | '[' | ']' | '{' | '}' => true
+    _ => false
+  }
+}
+
+///|
 fn code_consume_while(
   s : String,
   start : Int,
@@ -5142,6 +5222,7 @@ fn code_token_fill(kind : CodeTokenKind, is_dark : Bool) -> String? {
   if is_dark {
     match kind {
       Text | Punctuation => Some("#cdd6f4")
+      Bracket => Some("#89b4fa")
       Comment => Some("#6c7086")
       Keyword => Some("#cba6f7")
       KeywordType => Some("#f38ba8")
@@ -5158,6 +5239,7 @@ fn code_token_fill(kind : CodeTokenKind, is_dark : Bool) -> String? {
   } else {
     match kind {
       Text | Punctuation => None
+      Bracket => Some("#0550ae")
       Comment => Some("#999988")
       Keyword => Some("#000000")
       KeywordType => Some("#445588")
