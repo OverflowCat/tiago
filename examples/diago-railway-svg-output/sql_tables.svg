@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="553" height="938" viewBox="-101 -101 553 938" data-d2-version="0.2.0" class="d2-1487076318 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="553" height="938"><rect x="-101" y="-101" width="553" height="938" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="553" height="938" viewBox="-148 -101 553 938" data-d2-version="0.2.0" class="d2-1487076318 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-148" y="-101" width="553" height="938"><rect x="-148" y="-101" width="553" height="938" fill="white"></rect></mask>
 <marker id="mk-2090524415" markerWidth="10" markerHeight="12" refX="3" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="10,0 0,6 10,12" fill="#0D32B2" stroke-width="2"/></marker>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-101" y="-101" width="553" height="938" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-148" y="-101" width="553" height="938" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="0" width="304" height="180" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
 <rect x="0" y="0" width="304" height="36" fill="#0A0F25"/>
@@ -25,9 +25,9 @@
 <line x1="0" y1="628" x2="304" y2="628" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="664" x2="304" y2="664" stroke="#0A0F25" stroke-width="2"/>
 <line x1="0" y1="700" x2="304" y2="700" stroke="#0A0F25" stroke-width="2"/>
-<path d="M 152 184 L 152 210 S 152 220 142 220 L 34 220 S 24 220 24 230 L 24 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 24 480 L 24 506 S 24 516 34 516 L 142 516 S 152 516 152 526 L 152 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 246.66666666666669 184 L 246.66666666666669 210 S 246.66666666666669 220 256.6666666666667 220 L 341 220 S 351 220 351 230 L 351 506 S 351 516 341 516 L 256.6666666666667 516 S 246.66666666666669 516 246.66666666666669 526 L 246.66666666666669 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 184 L 24 256" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 480 L 24 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 118.66666666666667 184 L 118.66666666666667 210 S 118.66666666666667 220 108.66666666666667 220 L -37 220 S -47 220 -47 230 L -47 506 S -47 516 -37 516 L 108.66666666666667 516 S 118.66666666666667 516 118.66666666666667 526 L 118.66666666666667 552" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="10" y="25.75" text-anchor="start" font-family="Arial, sans-serif" font-size="24" fill="#FFFFFF">users</text>
 <text x="10" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#0D32B2">id</text>
 <text x="121" y="59" text-anchor="start" font-family="Arial, sans-serif" font-size="20" fill="#676C7E">int</text>

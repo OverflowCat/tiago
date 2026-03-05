@@ -202,42 +202,15 @@ fn assign_ports(
     let span = hi - lo
     let max_sep = span / (k - 1).to_double()
     let ideal_sep = span / (k + 1).to_double()
-    let base_sep = @cmp.maximum(track_spacing(config) * 1.2, 4.0)
+    let base_sep = track_spacing(config) * 1.2
     let sep = @cmp.minimum(max_sep, @cmp.maximum(base_sep, ideal_sep))
-    let pos : Array[Double] = Array::make(k, lo)
+    let base_abs_offset = @cmp.maximum(8.0, config.edge_padding * 0.7)
+    let max_start = hi - sep * (k - 1).to_double()
+    let start = @cmp.maximum(lo, @cmp.minimum(lo + base_abs_offset, max_start))
+    let pos : Array[Double] = Array::make(k, 0.0)
     for i in 0..<k {
-      pos[i] = @cmp.maximum(lo, @cmp.minimum(ordered[i].desired_axis, hi))
-    }
-    for i in 1..<k {
-      let min_axis = pos[i - 1] + sep
-      if pos[i] < min_axis {
-        pos[i] = min_axis
-      }
-    }
-    let overflow = pos[k - 1] - hi
-    if overflow > 0.0 {
-      for i in 0..<k {
-        pos[i] = pos[i] - overflow
-      }
-    }
-    for i = k - 2; i >= 0; i = i - 1 {
-      let max_axis = pos[i + 1] - sep
-      if pos[i] > max_axis {
-        pos[i] = max_axis
-      }
-    }
-    let underflow = lo - pos[0]
-    if underflow > 0.0 {
-      for i in 0..<k {
-        pos[i] = pos[i] + underflow
-      }
-    }
-    if pos[0] < lo - 1.0e-6 || pos[k - 1] > hi + 1.0e-6 {
-      let rebased_sep = max_sep
-      let start_axis = lo
-      for i in 0..<k {
-        pos[i] = start_axis + i.to_double() * rebased_sep
-      }
+      let axis = start + i.to_double() * sep
+      pos[i] = @cmp.maximum(lo, @cmp.minimum(axis, hi))
     }
     for i in 0..<k {
       let ei = ordered[i].edge_index

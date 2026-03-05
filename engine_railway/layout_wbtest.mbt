@@ -353,6 +353,43 @@ test "railway long edge anchor prefers central channel when clear" {
 }
 
 ///|
+test "railway downward destination ports keep left bias" {
+  let a = @graph.ObjectInput::new("a")
+  let b = @graph.ObjectInput::new("b")
+  let t = @graph.ObjectInput::new("t")
+  let g = @graph.GraphInput::new("fanin")
+  g.objects.append([a, b, t])
+  let e0 = @graph.EdgeInput::new(0, "a", "t", false, true)
+  let e1 = @graph.EdgeInput::new(1, "b", "t", false, true)
+  g.edges.append([e0, e1])
+  let id_to_idx : Map[String, Int] = {}
+  id_to_idx["a"] = 0
+  id_to_idx["b"] = 1
+  id_to_idx["t"] = 2
+  let depths = [0, 0, 1]
+  let self_loop : @hashset.HashSet[Int] = @hashset.HashSet::new()
+  let boxes : Map[String, @graph.Box] = {}
+  boxes["a"] = @graph.Box::new(0.0, 0.0, 120.0, 70.0)
+  boxes["b"] = @graph.Box::new(260.0, 0.0, 120.0, 70.0)
+  boxes["t"] = @graph.Box::new(80.0, 220.0, 220.0, 80.0)
+  let (_src_ports, dst_ports) = assign_ports(
+    g,
+    id_to_idx,
+    depths,
+    self_loop,
+    @engine_api.Down,
+    @engine_api.LayoutConfig::new(),
+    boxes,
+  )
+  let p0 = dst_ports.get(0).unwrap_or(@graph.Point::new(0.0, 0.0))
+  let p1 = dst_ports.get(1).unwrap_or(@graph.Point::new(0.0, 0.0))
+  let t_box = boxes.get("t").unwrap_or(@graph.Box::new(0.0, 0.0, 0.0, 0.0))
+  let right_limit = t_box.x + t_box.width * 0.7
+  assert_true(p0.x < right_limit)
+  assert_true(p1.x < right_limit)
+}
+
+///|
 test "railway layout respects Right direction" {
   let a = @graph.ObjectInput::new("a")
   let b = @graph.ObjectInput::new("b")

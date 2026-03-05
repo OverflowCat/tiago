@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="308" height="724" viewBox="-101 -101 308 724" data-d2-version="0.2.0" class="d2-995504761 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="308" height="724"><rect x="-101" y="-101" width="308" height="724" fill="white"></rect><rect x="27" y="401" width="53" height="21" fill="black"></rect><rect x="33" y="240" width="40" height="21" fill="black"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="308.5" height="724" viewBox="-101.5 -101 308.5 724" data-d2-version="0.2.0" class="d2-995504761 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101.5" y="-101" width="308.5" height="724"><rect x="-101.5" y="-101" width="308.5" height="724" fill="white"></rect><rect x="-3" y="401" width="53" height="21" fill="black"></rect><rect x="4" y="240" width="40" height="21" fill="black"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 <marker id="mk-2090524415" markerWidth="10" markerHeight="12" refX="3" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="10,0 0,6 10,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-101" y="-101" width="308" height="724" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101.5" y="-101" width="308.5" height="724" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <rect x="0" y="301" width="106" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="462" width="106" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="140" width="106" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="0" y="0" width="106" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 53 363 L 53 458" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="53.5" y="417" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
-<path d="M 53 204 L 53 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="53" y="256" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
+<path d="M 24 363 L 24 458" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="23.5" y="417" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<path d="M 24 204 L 24 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-start="url(#mk-2090524415)" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="24" y="256" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">HTTP</text>
 <path d="M 24 62 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 81.66666666666667 202 L 81.66666666666667 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 81.66666666666667 363 L 81.66666666666667 458" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 52.66666666666667 202 L 52.66666666666667 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 52.66666666666667 363 L 52.66666666666667 458" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="53" y="336.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server</text>
 <text x="53" y="497.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">PostgreSQL</text>
 <text x="53" y="175.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">client</text>
