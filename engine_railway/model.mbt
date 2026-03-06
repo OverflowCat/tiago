@@ -680,6 +680,98 @@ fn relax_layout_nodes_against_containers(
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
 ) -> Unit {
+  fn merge_scalar_intervals(
+    intervals : Array[(Double, Double)],
+  ) -> Array[(Double, Double)] {
+    if intervals.length() <= 1 {
+      return intervals
+    }
+    intervals.sort_by(fn(a, b) {
+      if a.0 < b.0 {
+        -1
+      } else if a.0 > b.0 {
+        1
+      } else if a.1 < b.1 {
+        -1
+      } else if a.1 > b.1 {
+        1
+      } else {
+        0
+      }
+    })
+    let merged : Array[(Double, Double)] = []
+    let mut cur_lo = intervals[0].0
+    let mut cur_hi = intervals[0].1
+    for i in 1..<intervals.length() {
+      let it = intervals[i]
+      if it.0 <= cur_hi + 1.0e-6 {
+        cur_hi = @cmp.maximum(cur_hi, it.1)
+      } else {
+        merged.push((cur_lo, cur_hi))
+        cur_lo = it.0
+        cur_hi = it.1
+      }
+    }
+    merged.push((cur_lo, cur_hi))
+    merged
+  }
+
+  fn nearest_value_outside_intervals(
+    value : Double,
+    lo_bound : Double,
+    hi_bound : Double,
+    intervals : Array[(Double, Double)],
+  ) -> Double {
+    if hi_bound <= lo_bound + 1.0e-6 {
+      return value
+    }
+    let merged = merge_scalar_intervals(intervals)
+    if merged.is_empty() {
+      return @cmp.maximum(lo_bound, @cmp.minimum(value, hi_bound))
+    }
+    let clamped = @cmp.maximum(lo_bound, @cmp.minimum(value, hi_bound))
+    let eps = 1.0
+    let candidates : Array[Double] = [clamped]
+    for interval in merged {
+      let left = @cmp.maximum(
+        lo_bound,
+        @cmp.minimum(hi_bound, interval.0 - eps),
+      )
+      let right = @cmp.maximum(
+        lo_bound,
+        @cmp.minimum(hi_bound, interval.1 + eps),
+      )
+      candidates.push(left)
+      candidates.push(right)
+    }
+    let mut best = clamped
+    let mut best_cost = 0.0
+    let mut found = false
+    for cand in candidates {
+      let mut blocked = false
+      for interval in merged {
+        if cand >= interval.0 - 1.0e-6 && cand <= interval.1 + 1.0e-6 {
+          blocked = true
+          break
+        }
+      }
+      if blocked {
+        continue
+      }
+      let cost = (cand - value).abs()
+      if !found || cost < best_cost {
+        found = true
+        best = cand
+        best_cost = cost
+      }
+    }
+    if found {
+      best
+    } else {
+      clamped
+    }
+  }
+
   let container_ids : Array[String] = []
   for obj in graph.objects {
     if is_layout_container_candidate(obj) {
@@ -697,41 +789,76 @@ fn relax_layout_nodes_against_containers(
         Some(v) => v
         None => continue
       }
-      let mut dx = 0.0
-      let mut dy = 0.0
-      for container_id in container_ids {
-        if is_descendant_of_id(obj.id, container_id, parent_id_by_child_id) ||
-          is_descendant_of_id(container_id, obj.id, parent_id_by_child_id) {
-          continue
-        }
-        let c_box = match node_boxes.get(container_id) {
-          Some(v) => v
-          None => continue
-        }
-        if !boxes_overlap_with_gap(box, c_box, gap) {
-          continue
-        }
-        match direction {
-          Down | Up => {
-            let target_x = c_box.x + c_box.width + gap
-            let delta_x = target_x - box.x
-            if delta_x > dx {
-              dx = delta_x
+      let mut next_x = box.x
+      let mut next_y = box.y
+      match direction {
+        Down | Up => {
+          let lo_bound = -1000000000000.0
+          let hi_bound = 1000000000000.0
+          let forbidden : Array[(Double, Double)] = []
+          for container_id in container_ids {
+            if is_descendant_of_id(obj.id, container_id, parent_id_by_child_id) ||
+              is_descendant_of_id(container_id, obj.id, parent_id_by_child_id) {
+              continue
             }
+            let c_box = match node_boxes.get(container_id) {
+              Some(v) => v
+              None => continue
+            }
+            let y_overlap = !(box.y + box.height <= c_box.y ||
+              c_box.y + c_box.height <= box.y)
+            if !y_overlap {
+              continue
+            }
+            forbidden.push(
+              (c_box.x - box.width - gap, c_box.x + c_box.width + gap),
+            )
           }
-          Right | Left => {
-            let target_y = c_box.y + c_box.height + gap
-            let delta_y = target_y - box.y
-            if delta_y > dy {
-              dy = delta_y
+          if !forbidden.is_empty() {
+            next_x = nearest_value_outside_intervals(
+              box.x,
+              lo_bound,
+              hi_bound,
+              forbidden,
+            )
+          }
+        }
+        Right | Left => {
+          let lo_bound = -1000000000000.0
+          let hi_bound = 1000000000000.0
+          let forbidden : Array[(Double, Double)] = []
+          for container_id in container_ids {
+            if is_descendant_of_id(obj.id, container_id, parent_id_by_child_id) ||
+              is_descendant_of_id(container_id, obj.id, parent_id_by_child_id) {
+              continue
             }
+            let c_box = match node_boxes.get(container_id) {
+              Some(v) => v
+              None => continue
+            }
+            let x_overlap = !(box.x + box.width <= c_box.x ||
+              c_box.x + c_box.width <= box.x)
+            if !x_overlap {
+              continue
+            }
+            forbidden.push(
+              (c_box.y - box.height - gap, c_box.y + c_box.height + gap),
+            )
+          }
+          if !forbidden.is_empty() {
+            next_y = nearest_value_outside_intervals(
+              box.y,
+              lo_bound,
+              hi_bound,
+              forbidden,
+            )
           }
         }
       }
-      if dx > 0.0 || dy > 0.0 {
+      if (next_x - box.x).abs() > 1.0e-6 || (next_y - box.y).abs() > 1.0e-6 {
         node_boxes[obj.id] = @graph.Box::new(
-          box.x + dx,
-          box.y + dy,
+          next_x,
+          next_y,
           box.width,
           box.height,
         )
@@ -829,14 +956,6 @@ fn spread_sibling_boxes_railway(
       }
     }
   }
-}
-
-///|
-fn boxes_overlap_with_gap(a : @graph.Box, b : @graph.Box, gap : Double) -> Bool {
-  !(a.x + a.width + gap <= b.x ||
-  b.x + b.width + gap <= a.x ||
-  a.y + a.height + gap <= b.y ||
-  b.y + b.height + gap <= a.y)
 }
 
 ///|

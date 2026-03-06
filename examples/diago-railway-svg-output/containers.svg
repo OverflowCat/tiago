@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="938" height="892" viewBox="-151 -101 938 892" data-d2-version="0.2.0" class="d2-790920114 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-151" y="-101" width="938" height="892"><rect x="-151" y="-101" width="938" height="892" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="939" height="892" viewBox="-342 -101 939 892" data-d2-version="0.2.0" class="d2-790920114 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-342" y="-101" width="939" height="892"><rect x="-342" y="-101" width="939" height="892" fill="white"></rect></mask>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
 </defs>
-<rect x="-151" y="-101" width="938" height="892" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-342" y="-101" width="939" height="892" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="-50" y="104" width="736" height="586" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="-241" y="104" width="737" height="586" fill="#E3E9FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="-20" y="263" width="486" height="397" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="10" y="334" width="426" height="296" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="0" width="150" height="60" fill="#F7F8FE" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="506" y="180" width="150" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<rect x="506" y="540" width="150" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="40" y="180" width="150" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
+<rect x="-211" y="540" width="150" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="400" width="150" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="256" y="540" width="150" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
-<path d="M 64 62 L 64 73 S 64 83 74 83 L 520 83 S 530 83 530 93 L 530 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 530 242 L 530 310 S 530 320 520 320 L 74 320 S 64 320 64 330 L 64 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 462 L 64 495 S 64 505 74 505 L 270 505 S 280 505 280 515 L 280 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 107.33333333333334 462 L 107.33333333333334 485 S 107.33333333333334 495 117.33333333333334 495 L 520 495 S 530 495 530 505 L 530 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<text x="618" y="91" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
+<path d="M 64 62 L 64 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 242 L 64 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 107.33333333333334 462 L 107.33333333333334 490 S 107.33333333333334 500 117.33333333333334 500 L 270 500 S 280 500 280 510 L 280 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 462 L 64 490 S 64 500 54 500 L -177 500 S -187 500 -187 510 L -187 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<text x="-173" y="91" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
 <text x="223" y="251" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">VPC</text>
-<text x="223" y="359" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
+<text x="223" y="323" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
 <text x="115" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
-<text x="581" y="215.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
-<text x="581" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">S3 Bucket</text>
+<text x="115" y="215.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
+<text x="-136" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">S3 Bucket</text>
 <text x="115" y="435.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">EC2 Instance</text>
 <text x="331" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">RDS</text>
 </g>
