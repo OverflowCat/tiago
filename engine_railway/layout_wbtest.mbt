@@ -1254,6 +1254,108 @@ test "railway routes aligned external edge around container title band" {
 }
 
 ///|
+test "railway keeps nested title-band detours local" {
+  let aws = @graph.ObjectInput::from_parts(
+    "aws",
+    "AWS Cloud",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc", "aws.cdn"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let vpc = @graph.ObjectInput::from_parts(
+    "aws.vpc",
+    "VPC",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let subnet = @graph.ObjectInput::from_parts(
+    "aws.vpc.subnet",
+    "Private Subnet",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet.server"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let cdn = @graph.ObjectInput::new("aws.cdn")
+  let server = @graph.ObjectInput::new("aws.vpc.subnet.server")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([aws, vpc, subnet, cdn, server])
+  g.edges.push(
+    @graph.EdgeInput::new(0, "aws.cdn", "aws.vpc.subnet.server", false, true),
+  )
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let route = patch.edges.get(0).unwrap_or([])
+  let subnet_label = patch.node_labels.get("aws.vpc.subnet").unwrap()
+
+  assert_true(
+    route.length() >= 5,
+    msg="expected a local detour around the nested title band",
+  )
+  assert_true(
+    route[1].x == route[0].x,
+    msg="detour should stay vertical first instead of bending immediately from the source",
+  )
+  for i in 0..<(route.length() - 1) {
+    assert_true(
+      !segment_intersects_box(route[i], route[i + 1], subnet_label),
+      msg="nested detour segment \{i} should avoid the nested title band",
+    )
+  }
+}
+
+///|
 test "railway does not detour for container top band outside title box" {
   let system = @graph.ObjectInput::from_parts(
     "system",

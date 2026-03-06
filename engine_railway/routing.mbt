@@ -1452,8 +1452,8 @@ fn route_edge(
     _ => ()
   }
   if span == 1 {
-    let blocked_axes = if (start_axis - end_axis).abs() <= 1.0e-6 {
-      blocked_axis_intervals_for_edge(
+    let blocked_obstacles = if (start_axis - end_axis).abs() <= 1.0e-6 {
+      blocked_axis_obstacles_for_edge(
         start,
         end,
         flow,
@@ -1467,6 +1467,7 @@ fn route_edge(
     } else {
       []
     }
+    let blocked_axes = axis_intervals_from_obstacles(blocked_obstacles)
     let preferred_rail = rails[0] +
       rail_shift +
       span_one_edge_seed_shift(edge_index, config)
@@ -1489,31 +1490,21 @@ fn route_edge(
       @cmp.maximum(start_axis, end_axis),
     )
     let direct_axis_blocked = (start_axis - end_axis).abs() <= 1.0e-6 &&
-      axis_blocked_by_intervals(start_axis, blocked_axes)
+      axis_blocked_by_obstacles(start_axis, blocked_obstacles)
     if direct_axis_blocked {
-      let blocked_rails = blocked_span_one_rail_intervals(
-        start,
-        end,
-        flow,
-        boxes,
-        object_by_id,
-        parent_id_by_child_id,
-        src_id,
-        dst_id,
-        reserved_label_boxes,
-        config.edge_padding,
-      )
       let anchor = span_one_local_channel_anchor(
         start_axis, rail_track, config, blocked_axes,
       )
-      let shoulder_major = span_one_detour_shoulder_major(
+      let (shoulder_before, shoulder_after) = span_one_detour_major_window(
         start,
+        end,
         flow,
-        blocked_rails,
+        start_axis,
+        blocked_obstacles,
         config.edge_padding,
       )
-      let points = waypoints_between_via_anchor(
-        end, rail, anchor, flow, shoulder_major,
+      let points = waypoints_between_via_local_anchor(
+        start, end, rail, anchor, flow, shoulder_before, shoulder_after,
       )
       waypoints.append(points)
     } else {
@@ -1598,6 +1589,14 @@ fn route_edge(
 priv struct AxisInterval {
   lo : Double
   hi : Double
+}
+
+///|
+priv struct AxisObstacle {
+  axis_lo : Double
+  axis_hi : Double
+  major_lo : Double
+  major_hi : Double
 }
 
 ///|
@@ -1715,6 +1714,60 @@ fn span_one_local_channel_anchor(
 }
 
 ///|
+fn axis_intervals_from_obstacles(
+  obstacles : Array[AxisObstacle],
+) -> Array[AxisInterval] {
+  let intervals : Array[AxisInterval] = []
+  for obstacle in obstacles {
+    intervals.push({ lo: obstacle.axis_lo, hi: obstacle.axis_hi })
+  }
+  merge_axis_intervals(intervals)
+}
+
+///|
+fn obstacle_blocks_axis(axis : Double, obstacle : AxisObstacle) -> Bool {
+  let tol = 1.0e-6
+  axis >= obstacle.axis_lo - tol && axis <= obstacle.axis_hi + tol
+}
+
+///|
+fn axis_blocked_by_obstacles(
+  axis : Double,
+  obstacles : Array[AxisObstacle],
+) -> Bool {
+  for obstacle in obstacles {
+    if obstacle_blocks_axis(axis, obstacle) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn blocked_axis_obstacles_for_edge(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  src_id : String,
+  dst_id : String,
+  reserved_label_boxes : Array[@graph.Box],
+  padding : Double,
+) -> Array[AxisObstacle] {
+  let blocked = long_edge_axis_obstacles(
+    start, end, flow, boxes, object_by_id, src_id, dst_id, padding,
+  )
+  let reserved = reserved_label_axis_obstacles(
+    start, end, flow, reserved_label_boxes, padding,
+  )
+  for obstacle in reserved {
+    blocked.push(obstacle)
+  }
+  blocked
+}
+
+///|
 fn blocked_axis_intervals_for_edge(
   start : @graph.Point,
   end : @graph.Point,
@@ -1726,16 +1779,12 @@ fn blocked_axis_intervals_for_edge(
   reserved_label_boxes : Array[@graph.Box],
   padding : Double,
 ) -> Array[AxisInterval] {
-  let blocked = long_edge_obstacle_intervals(
-    start, end, flow, boxes, object_by_id, src_id, dst_id, padding,
+  axis_intervals_from_obstacles(
+    blocked_axis_obstacles_for_edge(
+      start, end, flow, boxes, object_by_id, src_id, dst_id, reserved_label_boxes,
+      padding,
+    ),
   )
-  let reserved = reserved_label_obstacle_intervals(
-    start, end, flow, reserved_label_boxes, padding,
-  )
-  for interval in reserved {
-    blocked.push(interval)
-  }
-  merge_axis_intervals(blocked)
 }
 
 ///|
@@ -2024,17 +2073,17 @@ fn span_one_container_border_proximity_intervals(
 }
 
 ///|
-fn reserved_label_obstacle_intervals(
+fn reserved_label_axis_obstacles(
   start : @graph.Point,
   end : @graph.Point,
   flow : @engine_api.Direction,
   reserved_label_boxes : Array[@graph.Box],
   padding : Double,
-) -> Array[AxisInterval] {
+) -> Array[AxisObstacle] {
   if reserved_label_boxes.is_empty() {
     return []
   }
-  let intervals : Array[AxisInterval] = []
+  let obstacles : Array[AxisObstacle] = []
   let (major_lo, major_hi) = match flow {
     Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
     Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
@@ -2060,14 +2109,23 @@ fn reserved_label_obstacle_intervals(
     let axis_lo = axis_lo0 - axis_clearance
     let axis_hi = axis_hi0 + axis_clearance
     if axis_hi > axis_lo {
-      intervals.push({ lo: axis_lo, hi: axis_hi })
+      let (obstacle_major_lo, obstacle_major_hi) = match flow {
+        Down | Up => (box.y, box.y + box.height)
+        Right | Left => (box.x, box.x + box.width)
+      }
+      obstacles.push({
+        axis_lo,
+        axis_hi,
+        major_lo: obstacle_major_lo,
+        major_hi: obstacle_major_hi,
+      })
     }
   }
-  merge_axis_intervals(intervals)
+  obstacles
 }
 
 ///|
-fn long_edge_obstacle_intervals(
+fn long_edge_axis_obstacles(
   start : @graph.Point,
   end : @graph.Point,
   flow : @engine_api.Direction,
@@ -2076,8 +2134,8 @@ fn long_edge_obstacle_intervals(
   src_id : String,
   dst_id : String,
   padding : Double,
-) -> Array[AxisInterval] {
-  let intervals : Array[AxisInterval] = []
+) -> Array[AxisObstacle] {
+  let obstacles : Array[AxisObstacle] = []
   let (major_lo, major_hi) = match flow {
     Down | Up => (@cmp.minimum(start.y, end.y), @cmp.maximum(start.y, end.y))
     Right | Left => (@cmp.minimum(start.x, end.x), @cmp.maximum(start.x, end.x))
@@ -2118,10 +2176,19 @@ fn long_edge_obstacle_intervals(
     let axis_lo = axis_lo0 - axis_clearance
     let axis_hi = axis_hi0 + axis_clearance
     if axis_hi > axis_lo {
-      intervals.push({ lo: axis_lo, hi: axis_hi })
+      let (obstacle_major_lo, obstacle_major_hi) = match flow {
+        Down | Up => (obstacle_box.y, obstacle_box.y + obstacle_box.height)
+        Right | Left => (obstacle_box.x, obstacle_box.x + obstacle_box.width)
+      }
+      obstacles.push({
+        axis_lo,
+        axis_hi,
+        major_lo: obstacle_major_lo,
+        major_hi: obstacle_major_hi,
+      })
     }
   }
-  merge_axis_intervals(intervals)
+  obstacles
 }
 
 ///|
@@ -2689,6 +2756,115 @@ fn major_coordinate_for_flow(
 }
 
 ///|
+fn span_one_detour_major_window(
+  start : @graph.Point,
+  end : @graph.Point,
+  flow : @engine_api.Direction,
+  direct_axis : Double,
+  obstacles : Array[AxisObstacle],
+  padding : Double,
+) -> (Double, Double) {
+  let start_major = major_coordinate_for_flow(start, flow)
+  let end_major = major_coordinate_for_flow(end, flow)
+  let major_lo_bound = @cmp.minimum(start_major, end_major)
+  let major_hi_bound = @cmp.maximum(start_major, end_major)
+  let matched : Array[AxisObstacle] = []
+  for obstacle in obstacles {
+    if !obstacle_blocks_axis(direct_axis, obstacle) {
+      continue
+    }
+    if obstacle.major_hi <= major_lo_bound + 1.0e-6 ||
+      major_hi_bound - 1.0e-6 <= obstacle.major_lo {
+      continue
+    }
+    matched.push(obstacle)
+  }
+  if matched.is_empty() {
+    let shoulder = span_one_detour_shoulder_major(start, flow, [], padding)
+    return (shoulder, shoulder)
+  }
+  matched.sort_by(fn(a, b) {
+    if a.major_lo < b.major_lo {
+      -1
+    } else if a.major_lo > b.major_lo {
+      1
+    } else if a.major_hi < b.major_hi {
+      -1
+    } else if a.major_hi > b.major_hi {
+      1
+    } else {
+      0
+    }
+  })
+  let clearance = @cmp.maximum(8.0, padding * 0.6)
+  match flow {
+    Down | Right => {
+      let mut window_lo = start_major
+      let mut window_hi = start_major
+      let mut found = false
+      for obstacle in matched {
+        if obstacle.major_hi <= start_major + 1.0e-6 {
+          continue
+        }
+        if !found {
+          window_lo = obstacle.major_lo
+          window_hi = obstacle.major_hi
+          found = true
+        } else if obstacle.major_lo <= window_hi + clearance {
+          window_hi = @cmp.maximum(window_hi, obstacle.major_hi)
+        } else {
+          break
+        }
+      }
+      if !found {
+        let shoulder = span_one_detour_shoulder_major(start, flow, [], padding)
+        return (shoulder, shoulder)
+      }
+      let before = @cmp.maximum(start_major + 1.0, window_lo - clearance)
+      let after = @cmp.minimum(end_major - 1.0, window_hi + clearance)
+      if after > before + 1.0e-6 {
+        (before, after)
+      } else {
+        let shoulder = span_one_detour_shoulder_major(start, flow, [], padding)
+        (shoulder, shoulder)
+      }
+    }
+    Up | Left => {
+      let mut window_lo = start_major
+      let mut window_hi = start_major
+      let mut found = false
+      for i in 0..<matched.length() {
+        let obstacle = matched[matched.length() - 1 - i]
+        if obstacle.major_lo >= start_major - 1.0e-6 {
+          continue
+        }
+        if !found {
+          window_lo = obstacle.major_lo
+          window_hi = obstacle.major_hi
+          found = true
+        } else if window_lo <= obstacle.major_hi + clearance {
+          window_lo = @cmp.minimum(window_lo, obstacle.major_lo)
+        } else {
+          break
+        }
+      }
+      if !found {
+        let shoulder = span_one_detour_shoulder_major(start, flow, [], padding)
+        return (shoulder, shoulder)
+      }
+      let before = @cmp.minimum(start_major - 1.0, window_hi + clearance)
+      let after = @cmp.maximum(end_major + 1.0, window_lo - clearance)
+      if before > after + 1.0e-6 {
+        (before, after)
+      } else {
+        let shoulder = span_one_detour_shoulder_major(start, flow, [], padding)
+        (shoulder, shoulder)
+      }
+    }
+  }
+}
+
+///|
 fn span_one_detour_shoulder_major(
   start : @graph.Point,
   flow : @engine_api.Direction,
@@ -2779,17 +2955,21 @@ fn waypoints_between(
 }
 
 ///|
-fn waypoints_between_via_anchor(
+fn waypoints_between_via_local_anchor(
+  src : @graph.Point,
   dst : @graph.Point,
   rail : Double,
   anchor : Double,
   direction : @engine_api.Direction,
-  shoulder_major : Double,
+  shoulder_before : Double,
+  shoulder_after : Double,
 ) -> Array[@graph.Point] {
+  ignore(rail)
   let points : Array[@graph.Point] = []
-  push_if_new(points, anchor_on_rail(anchor, shoulder_major, direction))
-  push_if_new(points, anchor_on_rail(anchor, rail, direction))
-  push_if_new(points, point_on_rail(dst, rail, direction))
+  push_if_new(points, point_on_rail(src, shoulder_before, direction))
+  push_if_new(points, anchor_on_rail(anchor, shoulder_before, direction))
+  push_if_new(points, anchor_on_rail(anchor, shoulder_after, direction))
+  push_if_new(points, point_on_rail(dst, shoulder_after, direction))
   points
 }
 
