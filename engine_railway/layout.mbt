@@ -47,18 +47,6 @@ fn layout_graph(
     RAILWAY_CONTAINER_PADDING,
     config.edge_padding,
   )
-  fit_container_boxes_in_map_railway(
-    boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
-  )
-  // NOTE: container relaxation can over-shift sibling nodes in nested container
-  // graphs and produce very wide layouts. Keep it disabled until constraints are
-  // made hierarchy-aware.
-  // relax_layout_nodes_against_containers(
-  //   boxes, graph, parent_id_by_child_id, direction, config,
-  // )
-  fit_container_boxes_in_map_railway(
-    boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
-  )
   let mut has_layout_container = false
   for obj in graph.objects {
     if is_layout_container_candidate(obj) {
@@ -66,27 +54,17 @@ fn layout_graph(
       break
     }
   }
-  if has_layout_container {
-    spread_sibling_boxes_railway(
-      boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
-    )
-    let levels_after_spread = levels_from_rank_only_railway(
-      graph,
-      node_layout.rank_by_id,
-    )
-    repack_levels_left_to_right(
-      graph, boxes, levels_after_spread, object_by_id, direction, config,
-    )
-    fit_container_boxes_in_map_railway(
-      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
-    )
-    spread_sibling_boxes_railway(
-      boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
-    )
-    fit_container_boxes_in_map_railway(
-      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
-    )
-  }
+  stabilize_container_layout_railway(
+    boxes,
+    graph,
+    object_by_id,
+    parent_id_by_child_id,
+    node_layout.rank_by_id,
+    direction,
+    config,
+    container_padding,
+    has_layout_container,
+  )
   let (src_ports, dst_ports) = assign_ports(
     layout_input, id_to_idx, depths, self_loop, direction, config, boxes,
   )
@@ -190,6 +168,96 @@ fn layout_graph(
     lane_plan.lane_by_edge,
   )
   patch
+}
+
+///|
+fn clone_boxes_railway(
+  boxes : Map[String, @graph.Box],
+) -> Map[String, @graph.Box] {
+  let cloned : Map[String, @graph.Box] = {}
+  for entry in boxes {
+    cloned[entry.0] = entry.1
+  }
+  cloned
+}
+
+///|
+fn box_changed_railway(a : @graph.Box, b : @graph.Box) -> Bool {
+  let tol = 1.0e-6
+  (a.x - b.x).abs() > tol ||
+  (a.y - b.y).abs() > tol ||
+  (a.width - b.width).abs() > tol ||
+  (a.height - b.height).abs() > tol
+}
+
+///|
+fn boxes_changed_railway(
+  before : Map[String, @graph.Box],
+  after : Map[String, @graph.Box],
+) -> Bool {
+  if before.length() != after.length() {
+    return true
+  }
+  for entry in before {
+    match after.get(entry.0) {
+      Some(other) => if box_changed_railway(entry.1, other) { return true }
+      None => return true
+    }
+  }
+  false
+}
+
+///|
+fn stabilize_container_layout_railway(
+  boxes : Map[String, @graph.Box],
+  graph : @graph.GraphInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  rank_by_id : Map[String, Int],
+  direction : @engine_api.Direction,
+  config : @engine_api.LayoutConfig,
+  container_padding : Double,
+  has_layout_container : Bool,
+) -> Unit {
+  let levels = if has_layout_container {
+    levels_from_rank_only_railway(graph, rank_by_id)
+  } else {
+    []
+  }
+  for _ in 0..<6 {
+    let before = clone_boxes_railway(boxes)
+    fit_container_boxes_in_map_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+    )
+    // NOTE: container relaxation can over-shift sibling nodes in nested
+    // container graphs and produce very wide layouts. Keep it disabled until
+    // constraints are made hierarchy-aware.
+    // relax_layout_nodes_against_containers(
+    //   boxes, graph, parent_id_by_child_id, direction, config,
+    // )
+    if has_layout_container {
+      spread_sibling_boxes_railway(
+        boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
+      )
+      repack_levels_left_to_right(
+        graph, boxes, levels, object_by_id, direction, config,
+      )
+    }
+    fit_container_boxes_in_map_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+    )
+    if has_layout_container {
+      spread_sibling_boxes_railway(
+        boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
+      )
+      fit_container_boxes_in_map_railway(
+        boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+      )
+    }
+    if !boxes_changed_railway(before, boxes) {
+      break
+    }
+  }
 }
 
 ///|
