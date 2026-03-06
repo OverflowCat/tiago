@@ -1285,6 +1285,7 @@ fn route_edge(
   level_heights : Array[Double],
   reserved_label_boxes : Array[@graph.Box],
   gap_rail_reservations : Ref[Map[Int, Array[GapRailReservation]]],
+  channel_reservations : Ref[Array[ChannelReservation]],
 ) -> Array[@graph.Point] raise @engine_api.LayoutError {
   if dst_level == src_level {
     raise Unsupported(
@@ -1492,7 +1493,7 @@ fn route_edge(
     let direct_axis_blocked = (start_axis - end_axis).abs() <= 1.0e-6 &&
       axis_blocked_by_obstacles(start_axis, blocked_obstacles)
     if direct_axis_blocked {
-      let anchor = span_one_local_channel_anchor(
+      let preferred_anchor = span_one_local_channel_anchor(
         start_axis, rail_track, config, blocked_axes,
       )
       let (shoulder_before, shoulder_after) = span_one_detour_major_window(
@@ -1502,6 +1503,14 @@ fn route_edge(
         start_axis,
         blocked_obstacles,
         config.edge_padding,
+      )
+      let anchor = reserve_channel_anchor(
+        preferred_anchor,
+        @cmp.minimum(shoulder_before, shoulder_after),
+        @cmp.maximum(shoulder_before, shoulder_after),
+        blocked_axes,
+        channel_reservations,
+        config,
       )
       let points = waypoints_between_via_local_anchor(
         start, end, rail, anchor, flow, shoulder_before, shoulder_after,
@@ -1517,7 +1526,7 @@ fn route_edge(
   // Long edge: route through an edge-local channel anchor instead of a global
   // virtual-node anchor. This keeps long edges compact and avoids sweeping
   // detours that hurt readability on deep graphs.
-  let anchor = long_edge_channel_anchor(
+  let preferred_anchor = long_edge_channel_anchor(
     start, end, flow, direction, rail_track, config, boxes, object_by_id, src_id,
     dst_id, reserved_label_boxes,
   )
@@ -1544,8 +1553,8 @@ fn route_edge(
       config,
       gap_rail_reservations,
       first_gap,
-      @cmp.minimum(start_axis, anchor),
-      @cmp.maximum(start_axis, anchor),
+      @cmp.minimum(start_axis, preferred_anchor),
+      @cmp.maximum(start_axis, preferred_anchor),
     )
     let last = adjusted_rails.length() - 1
     adjusted_rails[last] = choose_gap_rail_for_edge(
@@ -1564,10 +1573,29 @@ fn route_edge(
       config,
       gap_rail_reservations,
       last_gap,
-      @cmp.minimum(end_axis, anchor),
-      @cmp.maximum(end_axis, anchor),
+      @cmp.minimum(end_axis, preferred_anchor),
+      @cmp.maximum(end_axis, preferred_anchor),
     )
   }
+  let blocked_axes = blocked_axis_intervals_for_edge(
+    start,
+    end,
+    flow,
+    boxes,
+    object_by_id,
+    src_id,
+    dst_id,
+    reserved_label_boxes,
+    config.edge_padding,
+  )
+  let anchor = reserve_channel_anchor(
+    preferred_anchor,
+    @cmp.minimum(adjusted_rails[0], adjusted_rails[adjusted_rails.length() - 1]),
+    @cmp.maximum(adjusted_rails[0], adjusted_rails[adjusted_rails.length() - 1]),
+    blocked_axes,
+    channel_reservations,
+    config,
+  )
 
   // Go from src exit to the first rail.
   let first_rail = adjusted_rails[0]
@@ -1604,6 +1632,13 @@ priv struct GapRailReservation {
   span_lo : Double
   span_hi : Double
   rail : Double
+}
+
+///|
+priv struct ChannelReservation {
+  major_lo : Double
+  major_hi : Double
+  axis : Double
 }
 
 ///|
@@ -2512,6 +2547,45 @@ fn reserve_gap_rail(
     gap_rail_reservations, gap_index, span_lo_norm, span_hi_norm, fallback,
   )
   fallback
+}
+
+///|
+fn reserve_channel_anchor(
+  preferred : Double,
+  major_lo : Double,
+  major_hi : Double,
+  blocked : Array[AxisInterval],
+  channel_reservations : Ref[Array[ChannelReservation]],
+  config : @engine_api.LayoutConfig,
+) -> Double {
+  let major_lo_norm = @cmp.minimum(major_lo, major_hi)
+  let major_hi_norm = @cmp.maximum(major_lo, major_hi)
+  let min_sep = @cmp.maximum(track_spacing(config), 10.0)
+  let tol = 1.0e-6
+  let occupied = blocked.copy()
+  for reservation in channel_reservations.val {
+    if reservation.major_hi <= major_lo_norm + tol ||
+      major_hi_norm <= reservation.major_lo + tol {
+      continue
+    }
+    occupied.push({
+      lo: reservation.axis - min_sep + 1.0e-6,
+      hi: reservation.axis + min_sep - 1.0e-6,
+    })
+  }
+  let mut lo = preferred - min_sep * 8.0
+  let mut hi = preferred + min_sep * 8.0
+  for interval in occupied {
+    lo = @cmp.minimum(lo, interval.lo - min_sep * 2.0)
+    hi = @cmp.maximum(hi, interval.hi + min_sep * 2.0)
+  }
+  let chosen = nearest_unblocked_axis(preferred, lo, hi, occupied)
+  channel_reservations.val.push({
+    major_lo: major_lo_norm,
+    major_hi: major_hi_norm,
+    axis: chosen,
+  })
+  chosen
 }
 
 ///|

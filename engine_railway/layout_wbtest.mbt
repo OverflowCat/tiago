@@ -1513,6 +1513,32 @@ test "railway does not detour for container top band outside title box" {
 }
 
 ///|
+test "railway offsets overlapping vertical channel anchors" {
+  let reservations = Ref::new(([] : Array[ChannelReservation]))
+  let config = @engine_api.LayoutConfig::new()
+  let first = reserve_channel_anchor(
+    -47.0,
+    800.0,
+    1153.0,
+    [],
+    reservations,
+    config,
+  )
+  let second = reserve_channel_anchor(
+    -47.0,
+    810.0,
+    1143.0,
+    [],
+    reservations,
+    config,
+  )
+  assert_true(
+    (second - first).abs() >= track_spacing(config) - 1.0e-6,
+    msg="overlapping vertical channels should reserve distinct anchor columns",
+  )
+}
+
+///|
 test "railway keeps external node outside container bounds" {
   let container = @graph.ObjectInput::from_parts(
     "container",
