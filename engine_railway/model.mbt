@@ -872,6 +872,225 @@ fn relax_layout_nodes_against_containers(
 }
 
 ///|
+priv struct RailwaySubtreeEnvelope {
+  id : String
+  cross_start : Double
+  cross_end : Double
+  main_start : Double
+  main_end : Double
+}
+
+///|
+fn subtree_union_box_railway(
+  root_id : String,
+  node_boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> @graph.Box? {
+  let stack : Array[String] = [root_id]
+  let mut min_x = 1000000000000.0
+  let mut max_x = -1000000000000.0
+  let mut min_y = 1000000000000.0
+  let mut max_y = -1000000000000.0
+  let mut seen = false
+  while !stack.is_empty() {
+    let id = stack.pop().unwrap()
+    match node_boxes.get(id) {
+      Some(b) => {
+        seen = true
+        if b.x < min_x {
+          min_x = b.x
+        }
+        if b.y < min_y {
+          min_y = b.y
+        }
+        if b.x + b.width > max_x {
+          max_x = b.x + b.width
+        }
+        if b.y + b.height > max_y {
+          max_y = b.y + b.height
+        }
+      }
+      None => ()
+    }
+    match object_by_id.get(id) {
+      Some(obj) =>
+        for child_id in obj.child_ids {
+          stack.push(child_id)
+        }
+      None => ()
+    }
+  }
+  if !seen {
+    None
+  } else {
+    Some(@graph.Box::new(min_x, min_y, max_x - min_x, max_y - min_y))
+  }
+}
+
+///|
+fn shift_subtree_railway(
+  root_id : String,
+  dx : Double,
+  dy : Double,
+  node_boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> Unit {
+  if dx.abs() <= 1.0e-6 && dy.abs() <= 1.0e-6 {
+    return
+  }
+  let stack : Array[String] = [root_id]
+  while !stack.is_empty() {
+    let id = stack.pop().unwrap()
+    match node_boxes.get(id) {
+      Some(b) =>
+        node_boxes[id] = @graph.Box::new(b.x + dx, b.y + dy, b.width, b.height)
+      None => ()
+    }
+    match object_by_id.get(id) {
+      Some(obj) =>
+        for child_id in obj.child_ids {
+          stack.push(child_id)
+        }
+      None => ()
+    }
+  }
+}
+
+///|
+fn railway_box_cross_start(
+  box : @graph.Box,
+  direction : @engine_api.Direction,
+) -> Double {
+  match direction {
+    Down | Up => box.x
+    Right | Left => box.y
+  }
+}
+
+///|
+fn railway_box_cross_end(
+  box : @graph.Box,
+  direction : @engine_api.Direction,
+) -> Double {
+  match direction {
+    Down | Up => box.x + box.width
+    Right | Left => box.y + box.height
+  }
+}
+
+///|
+fn railway_box_main_start(
+  box : @graph.Box,
+  direction : @engine_api.Direction,
+) -> Double {
+  match direction {
+    Down | Up => box.y
+    Right | Left => box.x
+  }
+}
+
+///|
+fn railway_box_main_end(
+  box : @graph.Box,
+  direction : @engine_api.Direction,
+) -> Double {
+  match direction {
+    Down | Up => box.y + box.height
+    Right | Left => box.x + box.width
+  }
+}
+
+///|
+fn railway_subtree_envelope(
+  root_id : String,
+  node_boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  direction : @engine_api.Direction,
+) -> RailwaySubtreeEnvelope? {
+  match subtree_union_box_railway(root_id, node_boxes, object_by_id) {
+    Some(box) =>
+      Some({
+        id: root_id,
+        cross_start: railway_box_cross_start(box, direction),
+        cross_end: railway_box_cross_end(box, direction),
+        main_start: railway_box_main_start(box, direction),
+        main_end: railway_box_main_end(box, direction),
+      })
+    None => None
+  }
+}
+
+///|
+fn railway_subtree_envelopes_overlap_on_main(
+  a : RailwaySubtreeEnvelope,
+  b : RailwaySubtreeEnvelope,
+) -> Bool {
+  !(a.main_end <= b.main_start || b.main_end <= a.main_start)
+}
+
+///|
+fn spread_sibling_subtrees_once_railway(
+  sibling_ids : Array[String],
+  node_boxes : Map[String, @graph.Box],
+  object_by_id : Map[String, @graph.ObjectInput],
+  direction : @engine_api.Direction,
+  gap : Double,
+) -> Bool {
+  let envelopes : Array[RailwaySubtreeEnvelope] = []
+  for sibling_id in sibling_ids {
+    match
+      railway_subtree_envelope(sibling_id, node_boxes, object_by_id, direction) {
+      Some(envelope) => envelopes.push(envelope)
+      None => ()
+    }
+  }
+  if envelopes.length() <= 1 {
+    return false
+  }
+  envelopes.sort_by(fn(a, b) {
+    if a.cross_start < b.cross_start {
+      -1
+    } else if a.cross_start > b.cross_start {
+      1
+    } else {
+      a.id.compare(b.id)
+    }
+  })
+  let mut changed = false
+  for i in 1..<envelopes.length() {
+    let current = envelopes[i]
+    let mut target_cross_start = current.cross_start
+    for j in 0..<i {
+      let previous = envelopes[j]
+      if !railway_subtree_envelopes_overlap_on_main(current, previous) {
+        continue
+      }
+      let candidate = previous.cross_end + gap
+      if candidate > target_cross_start {
+        target_cross_start = candidate
+      }
+    }
+    if current.cross_start >= target_cross_start {
+      continue
+    }
+    let delta = target_cross_start - current.cross_start
+    match direction {
+      Down | Up =>
+        shift_subtree_railway(current.id, delta, 0.0, node_boxes, object_by_id)
+      Right | Left =>
+        shift_subtree_railway(current.id, 0.0, delta, node_boxes, object_by_id)
+    }
+    envelopes[i] = {
+      ..current,
+      cross_start: target_cross_start,
+      cross_end: current.cross_end + delta,
+    }
+    changed = true
+  }
+  changed
+}
+
+///|
 fn spread_sibling_boxes_railway(
   node_boxes : Map[String, @graph.Box],
   graph : @graph.GraphInput,
@@ -880,85 +1099,6 @@ fn spread_sibling_boxes_railway(
   direction : @engine_api.Direction,
   config : @engine_api.LayoutConfig,
 ) -> Unit {
-  fn subtree_union_box_railway(
-    root_id : String,
-    node_boxes : Map[String, @graph.Box],
-    object_by_id : Map[String, @graph.ObjectInput],
-  ) -> @graph.Box? {
-    let stack : Array[String] = [root_id]
-    let mut min_x = 1000000000000.0
-    let mut max_x = -1000000000000.0
-    let mut min_y = 1000000000000.0
-    let mut max_y = -1000000000000.0
-    let mut seen = false
-    while !stack.is_empty() {
-      let id = stack.pop().unwrap()
-      match node_boxes.get(id) {
-        Some(b) => {
-          seen = true
-          if b.x < min_x {
-            min_x = b.x
-          }
-          if b.y < min_y {
-            min_y = b.y
-          }
-          if b.x + b.width > max_x {
-            max_x = b.x + b.width
-          }
-          if b.y + b.height > max_y {
-            max_y = b.y + b.height
-          }
-        }
-        None => ()
-      }
-      match object_by_id.get(id) {
-        Some(obj) =>
-          for child_id in obj.child_ids {
-            stack.push(child_id)
-          }
-        None => ()
-      }
-    }
-    if !seen {
-      None
-    } else {
-      Some(@graph.Box::new(min_x, min_y, max_x - min_x, max_y - min_y))
-    }
-  }
-
-  fn shift_subtree_railway(
-    root_id : String,
-    dx : Double,
-    dy : Double,
-    node_boxes : Map[String, @graph.Box],
-    object_by_id : Map[String, @graph.ObjectInput],
-  ) -> Unit {
-    if dx.abs() <= 1.0e-6 && dy.abs() <= 1.0e-6 {
-      return
-    }
-    let stack : Array[String] = [root_id]
-    while !stack.is_empty() {
-      let id = stack.pop().unwrap()
-      match node_boxes.get(id) {
-        Some(b) =>
-          node_boxes[id] = @graph.Box::new(
-            b.x + dx,
-            b.y + dy,
-            b.width,
-            b.height,
-          )
-        None => ()
-      }
-      match object_by_id.get(id) {
-        Some(obj) =>
-          for child_id in obj.child_ids {
-            stack.push(child_id)
-          }
-        None => ()
-      }
-    }
-  }
-
   let root_key = "__railway_root__"
   let children_by_parent : Map[String, Array[String]] = {}
   for obj in graph.objects {
@@ -1038,92 +1178,10 @@ fn spread_sibling_boxes_railway(
       if !parent_is_container && !has_container_sibling {
         continue
       }
-      sibling_ids.sort_by(fn(a, b) {
-        let ba = subtree_union_box_railway(a, node_boxes, object_by_id)
-        let bb = subtree_union_box_railway(b, node_boxes, object_by_id)
-        let pa = match ba {
-          Some(v) => v
-          None => return a.compare(b)
-        }
-        let pb = match bb {
-          Some(v) => v
-          None => return a.compare(b)
-        }
-        let aa = match direction {
-          Down | Up => pa.x
-          Right | Left => pa.y
-        }
-        let bb_ = match direction {
-          Down | Up => pb.x
-          Right | Left => pb.y
-        }
-        if aa < bb_ {
-          -1
-        } else if aa > bb_ {
-          1
-        } else {
-          a.compare(b)
-        }
-      })
-      for i in 1..<sibling_ids.length() {
-        let curr_id = sibling_ids[i]
-        let curr_box = match
-          subtree_union_box_railway(curr_id, node_boxes, object_by_id) {
-          Some(v) => v
-          None => continue
-        }
-        match direction {
-          Down | Up => {
-            let mut required_left = curr_box.x
-            for j in 0..<i {
-              let prev_id = sibling_ids[j]
-              let prev_box = match
-                subtree_union_box_railway(prev_id, node_boxes, object_by_id) {
-                Some(v) => v
-                None => continue
-              }
-              let y_overlap = !(curr_box.y + curr_box.height <= prev_box.y ||
-                prev_box.y + prev_box.height <= curr_box.y)
-              if !y_overlap {
-                continue
-              }
-              let candidate_left = prev_box.x + prev_box.width + gap
-              if candidate_left > required_left {
-                required_left = candidate_left
-              }
-            }
-            if curr_box.x < required_left {
-              let dx = required_left - curr_box.x
-              shift_subtree_railway(curr_id, dx, 0.0, node_boxes, object_by_id)
-              changed = true
-            }
-          }
-          Right | Left => {
-            let mut required_top = curr_box.y
-            for j in 0..<i {
-              let prev_id = sibling_ids[j]
-              let prev_box = match
-                subtree_union_box_railway(prev_id, node_boxes, object_by_id) {
-                Some(v) => v
-                None => continue
-              }
-              let x_overlap = !(curr_box.x + curr_box.width <= prev_box.x ||
-                prev_box.x + prev_box.width <= curr_box.x)
-              if !x_overlap {
-                continue
-              }
-              let candidate_top = prev_box.y + prev_box.height + gap
-              if candidate_top > required_top {
-                required_top = candidate_top
-              }
-            }
-            if curr_box.y < required_top {
-              let dy = required_top - curr_box.y
-              shift_subtree_railway(curr_id, 0.0, dy, node_boxes, object_by_id)
-              changed = true
-            }
-          }
-        }
+      if spread_sibling_subtrees_once_railway(
+          sibling_ids, node_boxes, object_by_id, direction, gap,
+        ) {
+        changed = true
       }
     }
     if !changed {
