@@ -77,6 +77,9 @@ fn layout_graph(
     repack_levels_left_to_right(
       graph, boxes, levels_after_spread, object_by_id, direction, config,
     )
+    fit_container_boxes_in_map_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+    )
     spread_sibling_boxes_railway(
       boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
     )

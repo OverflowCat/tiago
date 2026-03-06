@@ -1318,6 +1318,128 @@ test "railway spreads overlapping top-level container subtrees" {
 }
 
 ///|
+test "railway keeps sibling root containers disjoint in container-only graph" {
+  let good = @graph.ObjectInput::from_parts(
+    "good chips",
+    "good chips",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["good chips.doritos", "good chips.ruffles"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let bad = @graph.ObjectInput::from_parts(
+    "bad chips",
+    "bad chips",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["bad chips.lays", "bad chips.pringles"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let chocolate = @graph.ObjectInput::from_parts(
+    "chocolate",
+    "chocolate",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["chocolate.chip"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let chip = @graph.ObjectInput::from_parts(
+    "chocolate.chip",
+    "chip",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["chocolate.chip.cookies"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let doritos = @graph.ObjectInput::new("good chips.doritos")
+  let ruffles = @graph.ObjectInput::new("good chips.ruffles")
+  let lays = @graph.ObjectInput::new("bad chips.lays")
+  let pringles = @graph.ObjectInput::new("bad chips.pringles")
+  let cookies = @graph.ObjectInput::new("chocolate.chip.cookies")
+  let g = @graph.GraphInput::new("containers_only")
+  g.objects.append([
+    good, bad, chocolate, chip, doritos, ruffles, lays, pringles, cookies,
+  ])
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let good_box = patch.nodes.get("good chips").unwrap()
+  let bad_box = patch.nodes.get("bad chips").unwrap()
+  let chocolate_box = patch.nodes.get("chocolate").unwrap()
+  let chip_box = patch.nodes.get("chocolate.chip").unwrap()
+
+  assert_true(bad_box.x >= good_box.x + good_box.width - 1.0)
+  assert_true(
+    chocolate_box.x >= bad_box.x + bad_box.width + 12.0,
+    msg="root sibling containers should not overlap",
+  )
+  assert_true(chip_box.x >= chocolate_box.x + 30.0)
+}
+
+///|
 test "railway readability gate on architecture style DAG" {
   let users = @graph.ObjectInput::new("users")
   let cdn = @graph.ObjectInput::new("cdn")
