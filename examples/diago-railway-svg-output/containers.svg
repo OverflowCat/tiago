@@ -14,12 +14,12 @@
 <rect x="40" y="400" width="150" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="40" y="540" width="150" height="60" fill="#FFFFFF" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <path d="M 64 62 L 64 176" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 242 L 64 281 S 64 291 54 291 L 50.5 291 S 40.5 291 40.5 301 L 40.5 331 S 40.5 341 50.5 341 L 54 341 S 64 341 64 351 L 64 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 242 L 64 396" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 64 462 L 64 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 107.33333333333334 462 L 107.33333333333334 490 S 107.33333333333334 500 117.33333333333334 500 L 390.5 500 S 400.5 500 400.5 510 L 400.5 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="200" y="91" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">AWS Cloud</text>
 <text x="-102" y="251" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25">VPC</text>
-<text x="115" y="323" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
+<text x="-30" y="323" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="20" style="fill: #0A0F25">Private Subnet</text>
 <text x="115" y="35.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">user</text>
 <text x="115" y="215.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">CloudFront</text>
 <text x="451" y="575.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">S3 Bucket</text>

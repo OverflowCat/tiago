@@ -999,6 +999,40 @@ const RAILWAY_LABEL_BOX_PADDING : Double = 2.0
 const RAILWAY_CONTAINER_LABEL_INSET : Double = 5.0
 
 ///|
+priv struct ContainerLabelScoreRailway {
+  overflow_penalty : Double
+  node_overlap_penalty : Double
+  placed_label_penalty : Double
+  edge_label_penalty : Double
+  edge_route_penalty : Double
+  candidate_order : Int
+}
+
+///|
+fn container_label_score_less_railway(
+  a : ContainerLabelScoreRailway,
+  b : ContainerLabelScoreRailway,
+) -> Bool {
+  let tol = 1.0e-6
+  if (a.overflow_penalty - b.overflow_penalty).abs() > tol {
+    return a.overflow_penalty < b.overflow_penalty
+  }
+  if (a.node_overlap_penalty - b.node_overlap_penalty).abs() > tol {
+    return a.node_overlap_penalty < b.node_overlap_penalty
+  }
+  if (a.placed_label_penalty - b.placed_label_penalty).abs() > tol {
+    return a.placed_label_penalty < b.placed_label_penalty
+  }
+  if (a.edge_label_penalty - b.edge_label_penalty).abs() > tol {
+    return a.edge_label_penalty < b.edge_label_penalty
+  }
+  if (a.edge_route_penalty - b.edge_route_penalty).abs() > tol {
+    return a.edge_route_penalty < b.edge_route_penalty
+  }
+  a.candidate_order < b.candidate_order
+}
+
+///|
 fn recompute_container_label_boxes_railway(
   patch : @graph.LayoutPatch,
   graph : @graph.GraphInput,
@@ -1047,7 +1081,7 @@ fn recompute_container_label_boxes_railway(
         bounds,
         i,
       )
-      if score < best_score {
+      if container_label_score_less_railway(score, best_score) {
         best_box = candidate
         best_score = score
       }
@@ -1188,23 +1222,31 @@ fn container_label_score_railway(
   placed_labels : Map[String, @graph.Box],
   bounds : (Double, Double, Double, Double),
   candidate_order : Int,
-) -> Double {
+) -> ContainerLabelScoreRailway {
   let padded = @graph.Box::new(
     candidate.x - RAILWAY_LABEL_BOX_PADDING,
     candidate.y - RAILWAY_LABEL_BOX_PADDING,
     candidate.width + 2.0 * RAILWAY_LABEL_BOX_PADDING,
     candidate.height + 2.0 * RAILWAY_LABEL_BOX_PADDING,
   )
-  let mut score = candidate_order.to_double() * 12.0
+  let mut overflow_penalty = 0.0
+  let mut node_overlap_penalty = 0.0
+  let mut placed_label_penalty = 0.0
+  let mut edge_label_penalty = 0.0
+  let mut edge_route_penalty = 0.0
   let horizontal_left_overhang = container_box.x - candidate.x
   if horizontal_left_overhang > 0.0 {
-    score = score + 500.0 + horizontal_left_overhang * 40.0
+    overflow_penalty = overflow_penalty +
+      500.0 +
+      horizontal_left_overhang * 40.0
   }
   let horizontal_right_overhang = candidate.x +
     candidate.width -
     (container_box.x + container_box.width)
   if horizontal_right_overhang > 0.0 {
-    score = score + 500.0 + horizontal_right_overhang * 40.0
+    overflow_penalty = overflow_penalty +
+      500.0 +
+      horizontal_right_overhang * 40.0
   }
   let min_x = bounds.0
   let min_y = bounds.1
@@ -1212,19 +1254,19 @@ fn container_label_score_railway(
   let max_y = bounds.3
   let overflow_left = min_x - padded.x
   if overflow_left > 0.0 {
-    score = score + 1200.0 + overflow_left * 40.0
+    overflow_penalty = overflow_penalty + 1200.0 + overflow_left * 40.0
   }
   let overflow_top = min_y - padded.y
   if overflow_top > 0.0 {
-    score = score + 1200.0 + overflow_top * 40.0
+    overflow_penalty = overflow_penalty + 1200.0 + overflow_top * 40.0
   }
   let overflow_right = padded.x + padded.width - max_x
   if overflow_right > 0.0 {
-    score = score + 1200.0 + overflow_right * 40.0
+    overflow_penalty = overflow_penalty + 1200.0 + overflow_right * 40.0
   }
   let overflow_bottom = padded.y + padded.height - max_y
   if overflow_bottom > 0.0 {
-    score = score + 1200.0 + overflow_bottom * 40.0
+    overflow_penalty = overflow_penalty + 1200.0 + overflow_bottom * 40.0
   }
   for entry in patch.nodes {
     let node_id = entry.0
@@ -1234,19 +1276,19 @@ fn container_label_score_railway(
     let node_box = entry.1
     let overlap = overlap_area(padded, node_box)
     if overlap > 0.0 {
-      score = score + 20000.0 + overlap * 10.0
+      node_overlap_penalty = node_overlap_penalty + 20000.0 + overlap * 10.0
     }
   }
   for entry in patch.edge_labels {
     let overlap = overlap_area(padded, entry.1)
     if overlap > 0.0 {
-      score = score + 12000.0 + overlap * 8.0
+      edge_label_penalty = edge_label_penalty + 12000.0 + overlap * 8.0
     }
   }
   for entry in placed_labels {
     let overlap = overlap_area(padded, entry.1)
     if overlap > 0.0 {
-      score = score + 30000.0 + overlap * 10.0
+      placed_label_penalty = placed_label_penalty + 30000.0 + overlap * 10.0
     }
   }
   for entry in patch.edges {
@@ -1255,11 +1297,18 @@ fn container_label_score_railway(
       continue
     }
     for i in 0..<(route.length() - 1) {
-      score = score +
+      edge_route_penalty = edge_route_penalty +
         edge_segment_label_overlap_penalty(route[i], route[i + 1], padded)
     }
   }
-  score
+  {
+    overflow_penalty,
+    node_overlap_penalty,
+    placed_label_penalty,
+    edge_label_penalty,
+    edge_route_penalty,
+    candidate_order,
+  }
 }
 
 ///|

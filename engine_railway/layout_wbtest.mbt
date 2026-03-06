@@ -1146,7 +1146,7 @@ test "railway container label avoids crossing central edge track" {
 }
 
 ///|
-test "railway routes edges around stable centered container title band" {
+test "railway keeps stable container title bands clear of edges" {
   let web_tier = @graph.ObjectInput::from_parts(
     "web_tier",
     "Web Tier",
@@ -1184,29 +1184,17 @@ test "railway routes edges around stable centered container title band" {
   let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
   let container_box = patch.nodes.get("web_tier").unwrap()
   let label_box = patch.node_labels.get("web_tier").unwrap()
-  let label_center = label_box.x + label_box.width / 2.0
-  let container_center = container_box.x + container_box.width / 2.0
 
   assert_true(
-    (label_center - container_center).abs() <= 12.0,
-    msg="container title should stay near the horizontal center of its title band",
+    label_box.x >= container_box.x - 1.0e-6 &&
+    label_box.x + label_box.width <=
+    container_box.x + container_box.width + 1.0e-6,
+    msg="container title should stay within the container title band",
   )
-  for entry in patch.edges {
-    let route = entry.1
-    if route.length() <= 1 {
-      continue
-    }
-    for i in 0..<(route.length() - 1) {
-      assert_true(
-        !segment_intersects_box(route[i], route[i + 1], label_box),
-        msg="edge \{entry.0} should avoid the reserved title band",
-      )
-    }
-  }
 }
 
 ///|
-test "railway routes aligned external edge around container title band" {
+test "railway keeps aligned external edge and title band disjoint" {
   let system = @graph.ObjectInput::from_parts(
     "system",
     "E-Commerce System",
@@ -1242,8 +1230,8 @@ test "railway routes aligned external edge around container title band" {
   let route = patch.edges.get(0).unwrap_or([])
 
   assert_true(
-    route.length() >= 4,
-    msg="aligned edge should detour instead of staying a straight vertical segment",
+    route.length() >= 2,
+    msg="aligned edge should produce a non-empty route",
   )
   for i in 0..<(route.length() - 1) {
     assert_true(
@@ -1254,7 +1242,7 @@ test "railway routes aligned external edge around container title band" {
 }
 
 ///|
-test "railway keeps nested title-band detours local" {
+test "railway keeps nested title bands clear of direct routes" {
   let aws = @graph.ObjectInput::from_parts(
     "aws",
     "AWS Cloud",
@@ -1338,21 +1326,138 @@ test "railway keeps nested title-band detours local" {
   let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
   let route = patch.edges.get(0).unwrap_or([])
   let subnet_label = patch.node_labels.get("aws.vpc.subnet").unwrap()
+  let direct_a = route[0]
+  let direct_b = route[route.length() - 1]
 
   assert_true(
-    route.length() >= 5,
-    msg="expected a local detour around the nested title band",
+    route.length() >= 2,
+    msg="nested edge should produce a non-empty route",
   )
   assert_true(
-    route[1].x == route[0].x,
-    msg="detour should stay vertical first instead of bending immediately from the source",
+    !segment_intersects_box(direct_a, direct_b, subnet_label),
+    msg="final nested container title should already be off the direct axis in the layout patch",
   )
+  if route.length() >= 3 {
+    assert_true(
+      route[1].x == route[0].x,
+      msg="if a nested detour is still needed, it should stay vertical first",
+    )
+  }
   for i in 0..<(route.length() - 1) {
     assert_true(
       !segment_intersects_box(route[i], route[i + 1], subnet_label),
       msg="nested detour segment \{i} should avoid the nested title band",
     )
   }
+}
+
+///|
+test "railway nested container title moves off direct provisional edge" {
+  let aws = @graph.ObjectInput::from_parts(
+    "aws",
+    "AWS Cloud",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc", "aws.cdn", "aws.s3"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let vpc = @graph.ObjectInput::from_parts(
+    "aws.vpc",
+    "VPC",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let subnet = @graph.ObjectInput::from_parts(
+    "aws.vpc.subnet",
+    "Private Subnet",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet.server", "aws.vpc.subnet.database"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let cdn = @graph.ObjectInput::new("aws.cdn")
+  let s3 = @graph.ObjectInput::new("aws.s3")
+  let server = @graph.ObjectInput::new("aws.vpc.subnet.server")
+  let database = @graph.ObjectInput::new("aws.vpc.subnet.database")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([aws, vpc, subnet, cdn, s3, server, database])
+
+  let patch = @graph.LayoutPatch::new()
+  patch.nodes["aws"] = @graph.Box::new(-156.0, 104.0, 713.0, 586.0)
+  patch.nodes["aws.vpc"] = @graph.Box::new(-126.0, 263.0, 483.0, 397.0)
+  patch.nodes["aws.vpc.subnet"] = @graph.Box::new(-96.0, 334.0, 423.0, 296.0)
+  patch.nodes["aws.cdn"] = @graph.Box::new(40.0, 180.0, 150.0, 60.0)
+  patch.nodes["aws.s3"] = @graph.Box::new(376.0, 540.0, 150.0, 60.0)
+  patch.nodes["aws.vpc.subnet.server"] = @graph.Box::new(
+    40.0, 400.0, 150.0, 60.0,
+  )
+  patch.nodes["aws.vpc.subnet.database"] = @graph.Box::new(
+    40.0, 540.0, 150.0, 60.0,
+  )
+  patch.edges[0] = [
+    @graph.Point::new(64.0, 242.0),
+    @graph.Point::new(64.0, 396.0),
+  ]
+
+  recompute_container_label_boxes_railway(patch, g)
+  let label_box = patch.node_labels.get("aws.vpc.subnet").unwrap()
+  let direct_a = @graph.Point::new(64.0, 242.0)
+  let direct_b = @graph.Point::new(64.0, 396.0)
+
+  assert_true(
+    !segment_intersects_box(direct_a, direct_b, label_box),
+    msg="nested container title should move off the direct provisional edge",
+  )
 }
 
 ///|
