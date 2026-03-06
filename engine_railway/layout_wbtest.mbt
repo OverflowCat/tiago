@@ -1222,6 +1222,7 @@ test "railway spreads overlapping siblings in same container" {
   boxes["right"] = @graph.Box::new(150.0, 200.0, 100.0, 60.0)
   spread_sibling_boxes_railway(
     boxes,
+    g,
     object_by_id,
     parent_id_by_child_id,
     @engine_api.Down,
@@ -1230,6 +1231,90 @@ test "railway spreads overlapping siblings in same container" {
   let l = boxes.get("left").unwrap()
   let r = boxes.get("right").unwrap()
   assert_true(r.x >= l.x + l.width + 12.0)
+}
+
+///|
+test "railway spreads overlapping top-level container subtrees" {
+  let left_container = @graph.ObjectInput::from_parts(
+    "left_container",
+    "left_container",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["left_a", "left_b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let right_container = @graph.ObjectInput::from_parts(
+    "right_container",
+    "right_container",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["right_a", "right_b"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let left_a = @graph.ObjectInput::new("left_a")
+  let left_b = @graph.ObjectInput::new("left_b")
+  let right_a = @graph.ObjectInput::new("right_a")
+  let right_b = @graph.ObjectInput::new("right_b")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([
+    left_container, right_container, left_a, left_b, right_a, right_b,
+  ])
+
+  let (object_by_id, parent_id_by_child_id) = build_object_maps_railway(g)
+  let boxes : Map[String, @graph.Box] = {}
+  boxes["left_a"] = @graph.Box::new(40.0, 80.0, 153.0, 60.0)
+  boxes["left_b"] = @graph.Box::new(242.0, 80.0, 153.0, 60.0)
+  boxes["right_a"] = @graph.Box::new(478.0, 80.0, 153.0, 60.0)
+  boxes["right_b"] = @graph.Box::new(566.0, 80.0, 153.0, 60.0)
+  fit_container_boxes_in_map_railway(
+    boxes, g, object_by_id, parent_id_by_child_id, 30.0,
+  )
+  spread_sibling_boxes_railway(
+    boxes,
+    g,
+    object_by_id,
+    parent_id_by_child_id,
+    @engine_api.Down,
+    @engine_api.LayoutConfig::new(),
+  )
+  fit_container_boxes_in_map_railway(
+    boxes, g, object_by_id, parent_id_by_child_id, 30.0,
+  )
+  let left_box = boxes.get("left_container").unwrap()
+  let right_box = boxes.get("right_container").unwrap()
+  assert_true(right_box.x >= left_box.x + left_box.width + 12.0)
 }
 
 ///|

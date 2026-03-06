@@ -26,62 +26,135 @@ fn object_size_with_objects(
   config : @engine_api.LayoutConfig,
   object_by_id : Map[String, @graph.ObjectInput],
 ) -> (Double, Double) {
-  if obj.shape_type == @graph.SqlTable && !object_by_id.is_empty() {
-    let (estimated_w, estimated_h) = estimate_sql_table_size(obj, object_by_id)
-    let (base_w, base_h) = match obj.box {
+  fn explicit_or_auto(explicit : Double, auto : Double) -> Double {
+    if explicit > 0.0 {
+      explicit
+    } else {
+      auto
+    }
+  }
+
+  fn normalize_explicit_size(
+    shape_type : @graph.ShapeType,
+    explicit_w : Double,
+    explicit_h : Double,
+  ) -> (Double, Double) {
+    if shape_type == @graph.Circle || shape_type == @graph.Square {
+      if explicit_w > 0.0 && explicit_h <= 0.0 {
+        return (explicit_w, explicit_w)
+      }
+      if explicit_h > 0.0 && explicit_w <= 0.0 {
+        return (explicit_h, explicit_h)
+      }
+    }
+    (explicit_w, explicit_h)
+  }
+
+  if obj.shape_type == @graph.Code {
+    let font_size = match obj.style.font_size {
+      Some(v) => v.as_int().unwrap_or(16)
+      None => 16
+    }
+    // Keep sizing aligned with renderer_svg/render_svg_code:
+    // - monospace code metrics
+    // - inner padding is 0.5em on each side
+    // - some tokens are semibold, so use bold metrics as an upper bound
+    let dims = @text_metrics.measure_label_code(
+      obj.label,
+      font_size,
+      true,
+      false,
+    )
+    let pad = font_size.to_double() / 2.0
+    let auto_w = @cmp.maximum(
+      config.default_width,
+      dims.width + pad * 2.0 + 2.0,
+    )
+    let auto_h = @cmp.maximum(
+      config.default_height,
+      dims.height + pad * 2.0 + 2.0,
+    )
+    let (raw_explicit_w, raw_explicit_h) = match obj.box {
       Some(b) => (b.width, b.height)
       None => (0.0, 0.0)
     }
+    let (explicit_w, explicit_h) = normalize_explicit_size(
+      obj.shape_type,
+      raw_explicit_w,
+      raw_explicit_h,
+    )
     return (
-      @cmp.maximum(config.default_width, @cmp.maximum(base_w, estimated_w)),
-      @cmp.maximum(config.default_height, @cmp.maximum(base_h, estimated_h)),
+      explicit_or_auto(explicit_w, auto_w),
+      explicit_or_auto(explicit_h, auto_h),
     )
   }
+  if obj.shape_type == @graph.SqlTable && !object_by_id.is_empty() {
+    let (estimated_w, estimated_h) = estimate_sql_table_size(obj, object_by_id)
+    let auto_w = @cmp.maximum(config.default_width, estimated_w)
+    let auto_h = @cmp.maximum(config.default_height, estimated_h)
+    let (raw_explicit_w, raw_explicit_h) = match obj.box {
+      Some(b) => (b.width, b.height)
+      None => (0.0, 0.0)
+    }
+    let (explicit_w, explicit_h) = normalize_explicit_size(
+      obj.shape_type,
+      raw_explicit_w,
+      raw_explicit_h,
+    )
+    return (
+      explicit_or_auto(explicit_w, auto_w),
+      explicit_or_auto(explicit_h, auto_h),
+    )
+  }
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(obj.style.bold, default_object_bold_for_sizing(obj))
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = style_is_mono(obj.style.font_family)
+  let dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  let label_width = if dims.width > 0.0 {
+    dims.width + 24.0
+  } else {
+    config.default_width
+  }
+  let label_height = if dims.height > 0.0 {
+    dims.height + 16.0
+  } else {
+    config.default_height
+  }
+  let queue_min_width = if obj.shape_type == @graph.Queue {
+    // Queue labels are placed in a narrower inner box.
+    // Keep width generous enough to avoid clipping/overflow.
+    dims.width + 80.0
+  } else {
+    0.0
+  }
+  let auto_w = @cmp.maximum(
+    config.default_width,
+    @cmp.maximum(label_width, queue_min_width),
+  )
+  let auto_h = @cmp.maximum(config.default_height, label_height)
   match obj.box {
-    Some(b) => (b.width, b.height)
-    None => {
-      let font_size = match obj.style.font_size {
-        Some(v) => v.as_int().unwrap_or(16)
-        None => 16
-      }
-      let is_bold = style_bool(
-        obj.style.bold,
-        default_object_bold_for_sizing(obj),
+    Some(b) => {
+      let (explicit_w, explicit_h) = normalize_explicit_size(
+        obj.shape_type,
+        b.width,
+        b.height,
       )
-      let is_italic = style_bool(obj.style.italic, false)
-      let is_mono = style_is_mono(obj.style.font_family)
-      let dims = @text_metrics.measure_label(
-        obj.label,
-        font_size,
-        is_mono,
-        is_bold,
-        is_italic,
-      )
-      let label_width = if dims.width > 0.0 {
-        dims.width + 24.0
-      } else {
-        config.default_width
-      }
-      let label_height = if dims.height > 0.0 {
-        dims.height + 16.0
-      } else {
-        config.default_height
-      }
-      let queue_min_width = if obj.shape_type == @graph.Queue {
-        // Queue labels are placed in a narrower inner box.
-        // Keep width generous enough to avoid clipping/overflow.
-        dims.width + 80.0
-      } else {
-        0.0
-      }
       (
-        @cmp.maximum(
-          config.default_width,
-          @cmp.maximum(label_width, queue_min_width),
-        ),
-        @cmp.maximum(config.default_height, label_height),
+        explicit_or_auto(explicit_w, auto_w),
+        explicit_or_auto(explicit_h, auto_h),
       )
     }
+    None => (auto_w, auto_h)
   }
 }
 

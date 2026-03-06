@@ -18,7 +18,7 @@
 <path d="M 0 884 C 0 908 149.85 908 166.5 908 C 183.15 908 333 908 333 884" fill="#ffebee" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 429 860 L 714 860 C 738 860 738 887 738 890 C 738 893 738 920 714 920 L 429 920 C 415.8 920 405 893 405 890 C 405 887 415.8 860 429 860 Z" fill="#e0f2f1" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 714 860 C 690 860 690 887 690 890 C 690 893 690 920 714 920" fill="#e0f2f1" stroke="#0D32B2" stroke-width="2"/>
-<path d="M 818 1260 L 1121 1260 C 1131.95 1260 1136 1275 1136 1290 C 1136 1305 1131.95 1320 1121 1320 L 818 1320 C 807.05 1320 803 1305 803 1290 C 803 1275 807.05 1260 818 1260 Z" fill="#f5f5f5" stroke="#0D32B2" stroke-width="2"/>
+<path d="M 438 1260 L 741 1260 C 751.95 1260 756 1275 756 1290 C 756 1305 751.95 1320 741 1320 L 438 1320 C 427.05 1320 423 1305 423 1290 C 423 1275 427.05 1260 438 1260 Z" fill="#f5f5f5" stroke="#0D32B2" stroke-width="2"/>
 <rect x="0" y="460" width="333" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="405" y="460" width="333" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
 <rect x="816" y="460" width="333" height="60" fill="#EDF0FD" stroke="#0D32B2" stroke-width="2" rx="0" ry="0"/>
@@ -53,12 +53,12 @@
 <path d="M 603.5 742 L 603.5 785 S 603.5 795 593.5 795 L 543.3333333333334 795 S 533.3333333333334 795 533.3333333333334 805 L 533.3333333333334 856" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 429 922 L 429 933 S 429 943 419 943 L 34 943 S 24 943 24 953 L 24 1036" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 533.3333333333334 922 L 533.3333333333334 933 S 533.3333333333334 943 523.3333333333334 943 L 445 943 S 435 943 435 953 L 435 1036" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 128.33333333333331 1102 L 128.33333333333331 1153 S 128.33333333333331 1163 138.33333333333331 1163 L 817 1163 S 827 1163 827 1173 L 827 1256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 435 1102 L 435 1143 S 435 1153 445 1153 L 921.3333333333334 1153 S 931.3333333333334 1153 931.3333333333334 1163 L 931.3333333333334 1256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 128.33333333333331 1102 L 128.33333333333331 1153 S 128.33333333333331 1163 138.33333333333331 1163 L 437 1163 S 447 1163 447 1173 L 447 1256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 435 1102 L 435 1165 S 435 1175 445 1175 L 541.3333333333334 1175 S 551.3333333333334 1175 551.3333333333334 1185 L 551.3333333333334 1256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 24 1102 L 24 1153 S 24 1163 34 1163 L 92.25 1163 S 102.25 1163 102.25 1173 L 102.25 1256" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="1122" y="371" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Web Tier</text>
 <text x="688" y="637" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Application Tier</text>
-<text x="366" y="1217" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
+<text x="658" y="1171" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Database Cluster</text>
 <text x="647.5" y="997" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Background Workers</text>
 <text x="166.5" y="38.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="24" style="fill: #0A0F25; font-weight: 700">Web Application Architecture</text>
 <text x="559.5" y="81" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Users</text>
@@ -66,7 +66,7 @@
 <text x="166.5" y="315.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Load Balancer</text>
 <text x="166.5" y="895.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Redis Cache</text>
 <text x="559.5" y="895.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Message Queue</text>
-<text x="969.5" y="1295.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Object Storage</text>
+<text x="589.5" y="1295.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Object Storage</text>
 <text x="166.5" y="495.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 1</text>
 <text x="571.5" y="495.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 2</text>
 <text x="982.5" y="495.5" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #0A0F25; font-weight: 700">Web Server 3</text>

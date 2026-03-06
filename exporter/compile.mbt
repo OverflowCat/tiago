@@ -1113,7 +1113,19 @@ fn process_special_fields(
     None => ()
   }
 
+  normalize_object_dimensions_for_shape(obj)
   validate_link_safety(obj)
+}
+
+///|
+fn normalize_object_dimensions_for_shape(obj : Object) -> Unit {
+  if obj.shape_type == ShapeType::Circle || obj.shape_type == ShapeType::Square {
+    match (obj.width, obj.height) {
+      (Some(w), None) => obj.height = Some(w)
+      (None, Some(h)) => obj.width = Some(h)
+      _ => ()
+    }
+  }
 }
 
 ///|

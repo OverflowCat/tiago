@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="755" height="319" viewBox="-101 -101 755 319" data-d2-version="0.2.0" class="d2-861239848 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="755" height="319"><rect x="-101" y="-101" width="755" height="319" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="892" height="324" viewBox="-101 -101 892 324" data-d2-version="0.2.0" class="d2-861239848 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="892" height="324"><rect x="-101" y="-101" width="892" height="324" fill="white"></rect></mask>
 </defs>
 <style type="text/css"><![CDATA[@font-face {
   font-family: d2-861239848-font-mono;
@@ -26,10 +26,10 @@
 .light-code{display: block}
 .dark-code{display: none}
 ]]></style>
-<rect x="-101" y="-101" width="755" height="319" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="892" height="324" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
 <g transform="translate(0,0)" class="light-code">
-<rect width="553" height="117" stroke="#0A0F25" class="shape" style="fill:#ffffff;stroke-width:2;"/>
+<rect width="690" height="122" stroke="#0A0F25" class="shape" style="fill:#ffffff;stroke-width:2;"/>
 <g transform="translate(8,8)">
 <text class="text-mono" x="0" y="1em">awsSession&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;<tspan fill="#445588" class="text-mono-bold">From</tspan>(c.<tspan fill="#445588" class="text-mono-bold">Request</tspan>.<tspan fill="#445588" class="text-mono-bold">Context</tspan>())</text>
 <text class="text-mono" x="0" y="2.3em">client&#160;<tspan fill="#000000" class="text-mono-bold">:=</tspan>&#160;s3.<tspan fill="#445588" class="text-mono-bold">New</tspan>(awsSession)</text>
@@ -39,7 +39,7 @@
 </g>
 </g>
 <g transform="translate(0,0)" class="dark-code">
-<rect width="553" height="117" stroke="#0A0F25" class="shape" style="fill:#1e1e2e;stroke-width:2;"/>
+<rect width="690" height="122" stroke="#0A0F25" class="shape" style="fill:#1e1e2e;stroke-width:2;"/>
 <g transform="translate(8,8)">
 <text class="text-mono" x="0" y="1em"><tspan fill="#cdd6f4">awsSession</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89dceb" class="text-mono-bold">:=</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#f9e2af">From</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">c</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#f9e2af">Request</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#f9e2af">Context</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">)</tspan><tspan fill="#cdd6f4">)</tspan></text>
 <text class="text-mono" x="0" y="2.3em"><tspan fill="#cdd6f4">client</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#89dceb" class="text-mono-bold">:=</tspan><tspan fill="#cdd6f4">&#160;</tspan><tspan fill="#cdd6f4">s3</tspan><tspan fill="#cdd6f4">.</tspan><tspan fill="#f9e2af">New</tspan><tspan fill="#cdd6f4">(</tspan><tspan fill="#cdd6f4">awsSession</tspan><tspan fill="#cdd6f4">)</tspan></text>

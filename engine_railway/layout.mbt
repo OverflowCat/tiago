@@ -50,12 +50,40 @@ fn layout_graph(
   fit_container_boxes_in_map_railway(
     boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
   )
-  relax_layout_nodes_against_containers(
-    boxes, graph, parent_id_by_child_id, direction, config,
-  )
+  // NOTE: container relaxation can over-shift sibling nodes in nested container
+  // graphs and produce very wide layouts. Keep it disabled until constraints are
+  // made hierarchy-aware.
+  // relax_layout_nodes_against_containers(
+  //   boxes, graph, parent_id_by_child_id, direction, config,
+  // )
   fit_container_boxes_in_map_railway(
     boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
   )
+  let mut has_layout_container = false
+  for obj in graph.objects {
+    if is_layout_container_candidate(obj) {
+      has_layout_container = true
+      break
+    }
+  }
+  if has_layout_container {
+    spread_sibling_boxes_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
+    )
+    let levels_after_spread = levels_from_rank_only_railway(
+      graph,
+      node_layout.rank_by_id,
+    )
+    repack_levels_left_to_right(
+      graph, boxes, levels_after_spread, object_by_id, direction, config,
+    )
+    spread_sibling_boxes_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, direction, config,
+    )
+    fit_container_boxes_in_map_railway(
+      boxes, graph, object_by_id, parent_id_by_child_id, container_padding,
+    )
+  }
   let (src_ports, dst_ports) = assign_ports(
     layout_input, id_to_idx, depths, self_loop, direction, config, boxes,
   )
@@ -159,6 +187,24 @@ fn layout_graph(
     lane_plan.lane_by_edge,
   )
   patch
+}
+
+///|
+fn levels_from_rank_only_railway(
+  graph : @graph.GraphInput,
+  rank_by_id : Map[String, Int],
+) -> Array[Level] {
+  let mut max_rank = 0
+  for entry in rank_by_id {
+    if entry.1 > max_rank {
+      max_rank = entry.1
+    }
+  }
+  let levels : Array[Level] = Array::makei(max_rank + 1, _ => ([] : Level))
+  for obj in graph.objects {
+    levels[rank_by_id.get_or_default(obj.id, 0)].push(obj.id)
+  }
+  levels
 }
 
 ///|

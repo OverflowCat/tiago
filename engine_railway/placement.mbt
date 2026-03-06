@@ -180,6 +180,31 @@ fn repack_levels_left_to_right(
     if physical_ids.is_empty() {
       continue
     }
+    physical_ids.sort_by(fn(a, b) {
+      let a_cross = match boxes.get(a) {
+        Some(box) =>
+          match direction {
+            Down | Up => box.x
+            Right | Left => box.y
+          }
+        None => 0.0
+      }
+      let b_cross = match boxes.get(b) {
+        Some(box) =>
+          match direction {
+            Down | Up => box.x
+            Right | Left => box.y
+          }
+        None => 0.0
+      }
+      if a_cross < b_cross {
+        -1
+      } else if a_cross > b_cross {
+        1
+      } else {
+        a.compare(b)
+      }
+    })
     let mut cursor = anchor
     for id in physical_ids {
       match boxes.get(id) {
@@ -255,6 +280,24 @@ fn rank_by_layout_constraints(
   dagre_node_id_by_object_id : Map[String, String],
   laid_out : @moon_dagre.Graph,
 ) -> Map[String, Int] {
+  fn unique_rank_count(rank_by_id : Map[String, Int]) -> Int {
+    let unique_ranks : Array[Int] = []
+    for entry in rank_by_id {
+      let r = entry.1
+      let mut found = false
+      for existing in unique_ranks {
+        if existing == r {
+          found = true
+          break
+        }
+      }
+      if !found {
+        unique_ranks.push(r)
+      }
+    }
+    unique_ranks.length()
+  }
+
   let rank_by_id : Map[String, Int] = {}
   let physical_axis : Array[AxisSample] = []
   let raw_rank_by_id : Map[String, Int] = {}
@@ -292,6 +335,18 @@ fn rank_by_layout_constraints(
       Some(r) => raw_rank_by_id[obj.id] = r
       None =>
         raw_rank_by_id[obj.id] = fallback_rank_by_id.get_or_default(obj.id, 0)
+    }
+  }
+
+  // In container-heavy graphs, dagre rank metadata can occasionally collapse
+  // while node coordinates are still layered. Prefer axis-cluster fallback in
+  // that degenerate case to avoid over-aggressive same-rank repacking.
+  let raw_unique = unique_rank_count(raw_rank_by_id)
+  let fallback_unique = unique_rank_count(fallback_rank_by_id)
+  if raw_unique <= 1 && fallback_unique > 1 {
+    raw_rank_by_id.clear()
+    for entry in fallback_rank_by_id {
+      raw_rank_by_id[entry.0] = entry.1
     }
   }
 
