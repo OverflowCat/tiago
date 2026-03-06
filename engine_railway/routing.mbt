@@ -1504,10 +1504,7 @@ fn route_edge(
         config.edge_padding,
       )
       let anchor = span_one_local_channel_anchor(
-        start_axis,
-        rail_track,
-        config,
-        blocked_axes,
+        start_axis, rail_track, config, blocked_axes,
       )
       let shoulder_major = span_one_detour_shoulder_major(
         start,
@@ -2097,16 +2094,7 @@ fn long_edge_obstacle_intervals(
     let obstacle_box = match object_by_id.get(id) {
       Some(obj) =>
         if is_layout_container_candidate(obj) {
-          match container_label_dimensions_railway(obj) {
-            Some((_, label_height)) => {
-              let reserved_height = label_height +
-                RAILWAY_CONTAINER_LABEL_PADDING * 2.0 +
-                6.0
-              let height = @cmp.minimum(node_box.height, reserved_height)
-              @graph.Box::new(node_box.x, node_box.y, node_box.width, height)
-            }
-            None => continue
-          }
+          continue
         } else {
           node_box
         }

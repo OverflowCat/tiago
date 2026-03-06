@@ -29,9 +29,9 @@
 <path d="M 64 1242 L 64 1316" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 64 1602 L 64 1676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 64 1742 L 64 1816" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 382 L 64 391 S 64 381 54 381 L -50 381 S -60 381 -60 391 L -60 433 S -60 443 -50 443 L 54 443 S 64 443 64 453 L 64 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 882 L 64 891 S 64 881 54 881 L -42 881 S -52 881 -52 891 L -52 933 S -52 943 -42 943 L 54 943 S 64 943 64 953 L 64 1036" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 64 1382 L 64 1391 S 64 1381 54 1381 L -36 1381 S -46 1381 -46 1391 L -46 1433 S -46 1443 -36 1443 L 54 1443 S 64 1443 64 1453 L 64 1536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 382 L 64 536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 882 L 64 1036" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 64 1382 L 64 1536" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <text x="137.5" y="-3" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Down (default)</text>
 <text x="137.5" y="451" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Right</text>
 <text x="137.5" y="951" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="28" style="fill: #0A0F25">Left</text>

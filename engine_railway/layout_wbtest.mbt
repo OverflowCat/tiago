@@ -1254,6 +1254,58 @@ test "railway routes aligned external edge around container title band" {
 }
 
 ///|
+test "railway does not detour for container top band outside title box" {
+  let system = @graph.ObjectInput::from_parts(
+    "system",
+    "Title",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["app", "spacer"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let user = @graph.ObjectInput::new("user")
+  let app = @graph.ObjectInput::new("app")
+  let spacer = @graph.ObjectInput::new("spacer")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([system, user, app, spacer])
+  g.edges.push(@graph.EdgeInput::new(0, "user", "app", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let title_box = patch.node_labels.get("system").unwrap()
+  let route = patch.edges.get(0).unwrap_or([])
+
+  assert_true(route.length() >= 2, msg="expected routed edge points")
+  let start = route[0]
+  let start_x = start.x
+  assert_true(
+    start_x < title_box.x - 8.0 || start_x > title_box.x + title_box.width + 8.0,
+    msg="test setup requires the ingress axis to be outside the centered title box",
+  )
+  for p in route {
+    assert_true(
+      (p.x - start_x).abs() <= 1.0e-6,
+      msg="edge should remain on its straight ingress axis when it does not intersect the title box",
+    )
+  }
+}
+
+///|
 test "railway keeps external node outside container bounds" {
   let container = @graph.ObjectInput::from_parts(
     "container",

@@ -38,10 +38,10 @@
 <text x="275.5" y="1387" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">sync</text>
 <path d="M 417 62 L 417 90 S 417 100 407 100 L 34 100 S 24 100 24 110 L 24 136" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 24 202 L 24 276" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 24 342 L 24 338 S 24 348 14 348 L -39.5 348 C -54.5 348 -54.5 363 -39.5 363 L 14 363 S 24 363 24 373 L 24 456" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 342 L 24 456" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 102.25 342 L 102.25 353 S 102.25 363 112.25 363 L 419 363 S 429 363 429 373 L 429 456" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 180.5 342 L 180.5 385 S 180.5 395 190.5 395 L 830 395 S 840 395 840 405 L 840 456" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
-<path d="M 24 522 L 24 531 S 24 521 14 521 L -37 521 S -47 521 -47 531 L -47 573 S -47 583 -37 583 L 14 583 S 24 583 24 593 L 24 676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
+<path d="M 24 522 L 24 676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 429 522 L 429 590 S 429 600 419 600 L 138.33333333333331 600 S 128.33333333333331 600 128.33333333333331 610 L 128.33333333333331 676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 533.3333333333334 522 L 533.3333333333334 590 S 533.3333333333334 600 523.3333333333334 600 L 457 600 S 447 600 447 610 L 447 676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 840 522 L 840 573 S 840 583 830 583 L 561.3333333333334 583 S 551.3333333333334 583 551.3333333333334 593 L 551.3333333333334 676" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
