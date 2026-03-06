@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="598" height="563" viewBox="-101 -101 598 563" data-d2-version="0.2.0" class="d2-1341585658 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="598" height="563"><rect x="-101" y="-101" width="598" height="563" fill="white"></rect><rect x="138" y="100" width="53" height="21" fill="black"></rect></mask>
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="598" height="563"><rect x="-101" y="-101" width="598" height="563" fill="white"></rect><rect x="232" y="125" width="53" height="21" fill="black"></rect></mask>
 <mask id="border-mask-1267179592" maskUnits="userSpaceOnUse" x="228" y="286" width="177" height="75"><rect x="228" y="286" width="177" height="75" fill="white"></rect><path d="M 228 301 L 243 286 L 405 286 L 405 346 L 390 361 L 228 361 L 228 301 L 390 301 L 390 361 M 390 301 L 405 286" style="stroke-width:2;stroke:#000;fill:none;opacity:1;"/></mask>
 <marker id="mk-1554537013" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#666" stroke-width="2"/></marker>
 <marker id="mk-161592640" markerWidth="10" markerHeight="12" refX="7" refY="6" viewBox="0 0 10 12" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0,0 10,6 0,12" fill="#0D32B2" stroke-width="2"/></marker>
@@ -19,7 +19,7 @@
 <polygon mask="url(#border-mask-1267179592)" points="228,301 243,286 405,286 405,346 390,361 390,301" fill="#e2c0e7" stroke="none" stroke-width="2"/>
 <path d="M 228 301 L 243 286 L 405 286 L 405 346 L 390 361 L 228 361 L 228 301 L 390 301 L 390 361 M 390 301 L 405 286" fill="none" stroke="#0D32B2" stroke-width="2"/>
 <path d="M 71.33333333333334 62 L 71.33333333333334 100.5 S 71.33333333333334 110.5 81.33333333333334 110.5 L 248 110.5 S 258 110.5 258 120.5 L 258 157" fill="none" stroke="#666" stroke-width="2" marker-end="url(#mk-1554537013)" mask="url(#edge-label-mask)" stroke-dasharray="10.000000,9.865639"/>
-<text x="164.5" y="116" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
+<text x="258.5" y="141" text-anchor="middle" dominant-baseline="alphabetic" font-family="Arial, sans-serif" font-size="16" style="fill: #676C7E; font-style: italic">queries</text>
 <path d="M 24 62 L 24 157" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 24 223 L 24 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>
 <path d="M 252 223 L 252 297" fill="none" stroke="#0D32B2" stroke-width="2" marker-end="url(#mk-161592640)" mask="url(#edge-label-mask)"/>

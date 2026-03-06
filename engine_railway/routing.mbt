@@ -1452,6 +1452,21 @@ fn route_edge(
     _ => ()
   }
   if span == 1 {
+    let blocked_axes = if (start_axis - end_axis).abs() <= 1.0e-6 {
+      blocked_axis_intervals_for_edge(
+        start,
+        end,
+        flow,
+        boxes,
+        object_by_id,
+        src_id,
+        dst_id,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+    } else {
+      []
+    }
     let preferred_rail = rails[0] +
       rail_shift +
       span_one_edge_seed_shift(edge_index, config)
@@ -1473,8 +1488,41 @@ fn route_edge(
       @cmp.minimum(start_axis, end_axis),
       @cmp.maximum(start_axis, end_axis),
     )
-    let points = waypoints_between(start, end, rail, flow)
-    waypoints.append(points)
+    let direct_axis_blocked = (start_axis - end_axis).abs() <= 1.0e-6 &&
+      axis_blocked_by_intervals(start_axis, blocked_axes)
+    if direct_axis_blocked {
+      let blocked_rails = blocked_span_one_rail_intervals(
+        start,
+        end,
+        flow,
+        boxes,
+        object_by_id,
+        parent_id_by_child_id,
+        src_id,
+        dst_id,
+        reserved_label_boxes,
+        config.edge_padding,
+      )
+      let anchor = span_one_local_channel_anchor(
+        start_axis,
+        rail_track,
+        config,
+        blocked_axes,
+      )
+      let shoulder_major = span_one_detour_shoulder_major(
+        start,
+        flow,
+        blocked_rails,
+        config.edge_padding,
+      )
+      let points = waypoints_between_via_anchor(
+        end, rail, anchor, flow, shoulder_major,
+      )
+      waypoints.append(points)
+    } else {
+      let points = waypoints_between(start, end, rail, flow)
+      waypoints.append(points)
+    }
     push_if_new(waypoints, end)
     return finalize_route(waypoints)
   }
@@ -1646,6 +1694,27 @@ fn long_edge_channel_anchor(
     }
   }
   best_axis
+}
+
+///|
+fn span_one_local_channel_anchor(
+  direct_axis : Double,
+  rail_track : Int,
+  config : @engine_api.LayoutConfig,
+  blocked : Array[AxisInterval],
+) -> Double {
+  let spacing = track_spacing(config)
+  let preferred = direct_axis + zigzag_track_offset(rail_track, spacing)
+  let margin = @cmp.maximum(config.edge_padding * 1.5, spacing * 4.0)
+  let mut lo = preferred - margin
+  let mut hi = preferred + margin
+  for interval in blocked {
+    if preferred >= interval.lo - 1.0e-6 && preferred <= interval.hi + 1.0e-6 {
+      lo = @cmp.minimum(lo, interval.lo - margin)
+      hi = @cmp.maximum(hi, interval.hi + margin)
+    }
+  }
+  nearest_unblocked_axis(preferred, lo, hi, blocked)
 }
 
 ///|
@@ -2621,6 +2690,69 @@ fn push_if_new(points : Array[@graph.Point], p : @graph.Point) -> Unit {
 }
 
 ///|
+fn major_coordinate_for_flow(
+  p : @graph.Point,
+  flow : @engine_api.Direction,
+) -> Double {
+  match flow {
+    Down | Up => p.y
+    Right | Left => p.x
+  }
+}
+
+///|
+fn span_one_detour_shoulder_major(
+  start : @graph.Point,
+  flow : @engine_api.Direction,
+  blocked : Array[AxisInterval],
+  padding : Double,
+) -> Double {
+  let start_major = major_coordinate_for_flow(start, flow)
+  let min_step = 1.0
+  let preferred_step = @cmp.maximum(6.0, padding * 0.4)
+  match flow {
+    Down | Right => {
+      let min_major = start_major + min_step
+      let max_major = start_major + preferred_step
+      for interval in blocked {
+        if interval.hi <= start_major + 1.0e-6 {
+          continue
+        }
+        let safe_hi = interval.lo - 1.0
+        if safe_hi >= min_major {
+          return @cmp.minimum(max_major, safe_hi)
+        } else {
+          return min_major
+        }
+      }
+      max_major
+    }
+    Up | Left => {
+      let max_major = start_major - min_step
+      let min_major = start_major - preferred_step
+      let mut nearest_hi = None
+      for interval in blocked {
+        if interval.lo >= start_major - 1.0e-6 {
+          break
+        }
+        nearest_hi = Some(interval.hi)
+      }
+      match nearest_hi {
+        Some(v) => {
+          let safe_lo = v + 1.0
+          if safe_lo <= max_major {
+            @cmp.maximum(min_major, safe_lo)
+          } else {
+            max_major
+          }
+        }
+        None => min_major
+      }
+    }
+  }
+}
+
+///|
 fn calculate_rail(
   level_heights : Array[Double],
   level : Int,
@@ -2656,6 +2788,21 @@ fn waypoints_between(
         [@graph.Point::new(rail, src.y), @graph.Point::new(rail, dst.y)]
       }
   }
+}
+
+///|
+fn waypoints_between_via_anchor(
+  dst : @graph.Point,
+  rail : Double,
+  anchor : Double,
+  direction : @engine_api.Direction,
+  shoulder_major : Double,
+) -> Array[@graph.Point] {
+  let points : Array[@graph.Point] = []
+  push_if_new(points, anchor_on_rail(anchor, shoulder_major, direction))
+  push_if_new(points, anchor_on_rail(anchor, rail, direction))
+  push_if_new(points, point_on_rail(dst, rail, direction))
+  points
 }
 
 ///|

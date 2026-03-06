@@ -346,7 +346,7 @@ fn recompute_edge_label_boxes(
       Some(v) => v
       None => continue
     }
-    let center = route_point_at_percent(route, 0.5)
+    let center = preferred_route_label_anchor(route, direction)
     label_boxes[edge.index] = @graph.Box::new(
       center.x - width / 2.0,
       center.y - height / 2.0,
@@ -515,7 +515,10 @@ fn resolve_edge_label_obstacles(
     anchors.push(
       @graph.Point::new(base.x + base.width / 2.0, base.y + base.height / 2.0),
     )
+    let preferred_anchor = preferred_route_label_anchor(route, direction)
+    anchors.push(preferred_anchor)
     if route.length() >= 2 {
+      anchors.append(route_segment_label_anchors(route, direction))
       anchors.push(route_point_at_percent(route, 0.35))
       anchors.push(route_point_at_percent(route, 0.5))
       anchors.push(route_point_at_percent(route, 0.65))
@@ -611,6 +614,93 @@ fn route_bounds(
     }
   }
   Some((min_x, min_y, max_x, max_y))
+}
+
+///|
+fn preferred_route_label_anchor(
+  route : Array[@graph.Point],
+  direction : @engine_api.Direction,
+) -> @graph.Point {
+  if route.length() < 2 {
+    return route_point_at_percent(route, 0.5)
+  }
+  let start = route[0]
+  let end = route[route.length() - 1]
+  let target = @graph.Point::new(
+    (start.x + end.x) / 2.0,
+    (start.y + end.y) / 2.0,
+  )
+  let mut best = route_point_at_percent(route, 0.5)
+  let mut best_cost = 0.0
+  let mut has_best = false
+  for i in 0..<(route.length() - 1) {
+    let a = route[i]
+    let b = route[i + 1]
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    let horizontal = dy.abs() <= 1.0e-6 && dx.abs() > 1.0e-6
+    let vertical = dx.abs() <= 1.0e-6 && dy.abs() > 1.0e-6
+    if !horizontal && !vertical {
+      continue
+    }
+    let parallel_to_flow = match direction {
+      Down | Up => vertical
+      Right | Left => horizontal
+    }
+    let midpoint = @graph.Point::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+    let length = if vertical { dy.abs() } else { dx.abs() }
+    let mut cost = point_distance(midpoint, target)
+    if !parallel_to_flow {
+      cost = cost + 120.0
+    }
+    cost = cost - length * 0.1
+    if !has_best || cost < best_cost {
+      has_best = true
+      best = midpoint
+      best_cost = cost
+    }
+  }
+  best
+}
+
+///|
+fn route_segment_label_anchors(
+  route : Array[@graph.Point],
+  direction : @engine_api.Direction,
+) -> Array[@graph.Point] {
+  let anchors : Array[@graph.Point] = []
+  if route.length() < 2 {
+    return anchors
+  }
+  let preferred = preferred_route_label_anchor(route, direction)
+  anchors.push(preferred)
+  for i in 0..<(route.length() - 1) {
+    let a = route[i]
+    let b = route[i + 1]
+    let dx = b.x - a.x
+    let dy = b.y - a.y
+    let horizontal = dy.abs() <= 1.0e-6 && dx.abs() > 1.0e-6
+    let vertical = dx.abs() <= 1.0e-6 && dy.abs() > 1.0e-6
+    if !horizontal && !vertical {
+      continue
+    }
+    let parallel_to_flow = match direction {
+      Down | Up => vertical
+      Right | Left => horizontal
+    }
+    if !parallel_to_flow {
+      continue
+    }
+    let midpoint = @graph.Point::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+    let duplicate = anchors.any(fn(existing) {
+      (existing.x - midpoint.x).abs() <= 1.0e-6 &&
+      (existing.y - midpoint.y).abs() <= 1.0e-6
+    })
+    if !duplicate {
+      anchors.push(midpoint)
+    }
+  }
+  anchors
 }
 
 ///|

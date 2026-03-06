@@ -1206,6 +1206,54 @@ test "railway routes edges around stable centered container title band" {
 }
 
 ///|
+test "railway routes aligned external edge around container title band" {
+  let system = @graph.ObjectInput::from_parts(
+    "system",
+    "E-Commerce System",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["app"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let user = @graph.ObjectInput::new("user")
+  let app = @graph.ObjectInput::new("app")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([system, user, app])
+  g.edges.push(@graph.EdgeInput::new(0, "user", "app", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let label_box = patch.node_labels.get("system").unwrap()
+  let route = patch.edges.get(0).unwrap_or([])
+
+  assert_true(
+    route.length() >= 4,
+    msg="aligned edge should detour instead of staying a straight vertical segment",
+  )
+  for i in 0..<(route.length() - 1) {
+    assert_true(
+      !segment_intersects_box(route[i], route[i + 1], label_box),
+      msg="aligned edge segment \{i} should avoid the container title band",
+    )
+  }
+}
+
+///|
 test "railway keeps external node outside container bounds" {
   let container = @graph.ObjectInput::from_parts(
     "container",
