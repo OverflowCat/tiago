@@ -106,6 +106,24 @@ fn object_size_with_objects(
       explicit_or_auto(explicit_h, auto_h),
     )
   }
+  if obj.shape_type == @graph.Class && !object_by_id.is_empty() {
+    let (estimated_w, estimated_h) = estimate_class_size(obj, object_by_id)
+    let auto_w = @cmp.maximum(config.default_width, estimated_w)
+    let auto_h = @cmp.maximum(config.default_height, estimated_h)
+    let (raw_explicit_w, raw_explicit_h) = match obj.box {
+      Some(b) => (b.width, b.height)
+      None => (0.0, 0.0)
+    }
+    let (explicit_w, explicit_h) = normalize_explicit_size(
+      obj.shape_type,
+      raw_explicit_w,
+      raw_explicit_h,
+    )
+    return (
+      explicit_or_auto(explicit_w, auto_w),
+      explicit_or_auto(explicit_h, auto_h),
+    )
+  }
   let font_size = match obj.style.font_size {
     Some(v) => v.as_int().unwrap_or(16)
     None => 16
@@ -165,6 +183,161 @@ fn default_object_bold_for_sizing(obj : @graph.ObjectInput) -> Bool {
   obj.shape_type != @graph.Text &&
   obj.shape_type != @graph.Class &&
   obj.shape_type != @graph.SqlTable
+}
+
+///|
+const D2_CLASS_PREFIX_PADDING : Double = 10.0
+
+///|
+const D2_CLASS_PREFIX_WIDTH : Double = 20.0
+
+///|
+const D2_CLASS_CENTER_PADDING : Double = 50.0
+
+///|
+const D2_CLASS_HEADER_FONT_ADD : Int = 4
+
+///|
+const D2_CLASS_TYPE_PADDING : Double = 20.0
+
+///|
+const D2_CLASS_VERTICAL_PADDING : Double = 20.0
+
+///|
+priv struct ClassMemberInfo {
+  name : String
+  type_name : String
+}
+
+///|
+fn trim_double_quotes_for_class_member(s : String) -> String {
+  if s.length() >= 2 && s[0] == '"' && s[s.length() - 1] == '"' {
+    let out = StringBuilder::new()
+    for i = 1; i < s.length() - 1; i = i + 1 {
+      match s[i].to_char() {
+        Some(ch) => out.write_char(ch)
+        None => ()
+      }
+    }
+    out.to_string()
+  } else {
+    s
+  }
+}
+
+///|
+fn class_member_info_from_object(child : @graph.ObjectInput) -> ClassMemberInfo {
+  let raw_name = trim_double_quotes_for_class_member(
+    short_name_from_id(child.id),
+  )
+  let mut name = raw_name
+  if raw_name.length() > 0 {
+    let first = raw_name[0]
+    if first == '+' || first == '-' || first == '#' {
+      let name_buf = StringBuilder::new()
+      for i = 1; i < raw_name.length(); i = i + 1 {
+        match raw_name[i].to_char() {
+          Some(ch) => name_buf.write_char(ch)
+          None => ()
+        }
+      }
+      name = name_buf.to_string()
+    }
+  }
+  let is_method = name.contains("(")
+  let raw_type = trim_double_quotes_for_class_member(child.label)
+  let type_name = if raw_type == "" || raw_type == raw_name || raw_type == name {
+    if is_method {
+      "void"
+    } else {
+      ""
+    }
+  } else {
+    raw_type
+  }
+  { name, type_name }
+}
+
+///|
+fn estimate_class_size(
+  obj : @graph.ObjectInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+) -> (Double, Double) {
+  let row_font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(20)
+    None => 20
+  }
+  let header_measured = @text_metrics.measure_text_mono_plain(
+    obj.label,
+    row_font_size + D2_CLASS_HEADER_FONT_ADD,
+  )
+  let header_dims = header_measured.dimensions
+
+  let mut max_width = if header_dims.width > 12.0 {
+    header_dims.width
+  } else {
+    12.0
+  }
+  let mut row_count = 0
+  let mut first_row_text : String? = None
+
+  for child_id in obj.child_ids {
+    let child = match object_by_id.get(child_id) {
+      Some(v) => v
+      None => continue
+    }
+    let info = class_member_info_from_object(child)
+    let row_text = info.name + info.type_name
+    if first_row_text is None {
+      first_row_text = Some(row_text)
+    }
+    let row_measured = @text_metrics.measure_text_mono_plain(
+      row_text, row_font_size,
+    )
+    let row_width = row_measured.dimensions.width
+    if row_width > max_width {
+      max_width = row_width
+    }
+    row_count = row_count + 1
+  }
+
+  let mut width = D2_CLASS_PREFIX_PADDING +
+    D2_CLASS_PREFIX_WIDTH +
+    max_width +
+    D2_CLASS_CENTER_PADDING +
+    D2_CLASS_TYPE_PADDING
+  let mut height = 0.0
+
+  match first_row_text {
+    Some(any_row_text) => {
+      let row_dims = @text_metrics.measure_text_mono_plain(
+          any_row_text, row_font_size,
+        ).dimensions
+      let row_height = row_dims.height + D2_CLASS_VERTICAL_PADDING
+      let header_height_min = if 2.0 * row_height > header_dims.height + 10.0 {
+        2.0 * row_height
+      } else {
+        header_dims.height + 10.0
+      }
+      height = row_height * row_count.to_double() + header_height_min
+    }
+    None => {
+      let header_floor = if header_dims.height > 12.0 {
+        header_dims.height
+      } else {
+        12.0
+      }
+      height = 2.0 * header_floor + D2_CLASS_VERTICAL_PADDING
+    }
+  }
+
+  if width < 12.0 {
+    width = 12.0
+  }
+  if height < 12.0 {
+    height = 12.0
+  }
+  (width.ceil(), height.ceil())
 }
 
 ///|

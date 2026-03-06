@@ -1,33 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="305" height="262" viewBox="-101 -101 305 262" data-d2-version="0.2.0" class="d2-771631346 d2-svg">
-<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="305" height="262"><rect x="-101" y="-101" width="305" height="262" fill="white"></rect></mask>
+<svg xmlns="http://www.w3.org/2000/svg" width="682" height="616" viewBox="-101 -101 682 616" data-d2-version="0.2.0" class="d2-771631346 d2-svg">
+<defs><mask id="edge-label-mask" maskUnits="userSpaceOnUse" x="-101" y="-101" width="682" height="616"><rect x="-101" y="-101" width="682" height="616" fill="white"></rect></mask>
 </defs>
-<rect x="-101" y="-101" width="305" height="262" rx="0" fill="#FFFFFF" stroke-width="0"/>
+<rect x="-101" y="-101" width="682" height="616" rx="0" fill="#FFFFFF" stroke-width="0"/>
 <g id="base-layer">
-<rect x="0" y="0" width="103" height="60" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
-<rect x="0" y="0" width="103" height="41" fill="#0A0F25"/>
-<text x="51.5" y="25" text-anchor="middle" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="24" fill="#FFFFFF">D2 Parser</text>
-<text x="10" y="49.333333333333336" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
-<text x="30" y="49.333333333333336" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">reader</text>
-<text x="83" y="49.333333333333336" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">io.RuneReader</text>
-<text x="10" y="56" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
-<text x="30" y="56" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">readerPos</text>
-<text x="83" y="56" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">d2ast.Position</text>
-<text x="10" y="62.666666666666664" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">-</text>
-<text x="30" y="62.666666666666664" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">lookahead</text>
-<text x="83" y="62.666666666666664" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">[]rune</text>
-<line x1="0" y1="60.99999999999999" x2="103" y2="60.99999999999999" stroke="#0A0F25" stroke-width="1"/>
-<text x="10" y="69.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">#</text>
-<text x="30" y="69.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">peekn(n int)</text>
-<text x="83" y="69.33333333333333" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">(s string, eof bool)</text>
-<text x="10" y="75.99999999999999" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
-<text x="30" y="75.99999999999999" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">peek()</text>
-<text x="83" y="75.99999999999999" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">(r rune, eof bool)</text>
-<text x="10" y="82.66666666666666" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
-<text x="30" y="82.66666666666666" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">rewind()</text>
-<text x="83" y="82.66666666666666" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">void</text>
-<text x="10" y="89.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
-<text x="30" y="89.33333333333333" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">commit()</text>
-<text x="83" y="89.33333333333333" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">void</text>
+<rect x="0" y="0" width="480" height="414" fill="#FFFFFF" stroke="#0A0F25" stroke-width="2"/>
+<rect x="0" y="0" width="480" height="92" fill="#0A0F25"/>
+<text x="240" y="50.5" text-anchor="middle" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="24" fill="#FFFFFF">D2 Parser</text>
+<text x="10" y="120" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
+<text x="30" y="120" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">reader</text>
+<text x="460" y="120" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">io.RuneReader</text>
+<text x="10" y="166" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
+<text x="30" y="166" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">readerPos</text>
+<text x="460" y="166" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">d2ast.Position</text>
+<text x="10" y="212" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">-</text>
+<text x="30" y="212" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">lookahead</text>
+<text x="460" y="212" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">[]rune</text>
+<line x1="0" y1="230" x2="480" y2="230" stroke="#0A0F25" stroke-width="1"/>
+<text x="10" y="258" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">#</text>
+<text x="30" y="258" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">peekn(n int)</text>
+<text x="460" y="258" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">(s string, eof bool)</text>
+<text x="10" y="304" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
+<text x="30" y="304" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">peek()</text>
+<text x="460" y="304" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">(r rune, eof bool)</text>
+<text x="10" y="350" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
+<text x="30" y="350" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">rewind()</text>
+<text x="460" y="350" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">void</text>
+<text x="10" y="396" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0D32B2">+</text>
+<text x="30" y="396" text-anchor="start" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#0A0F25" text-decoration="none">commit()</text>
+<text x="460" y="396" text-anchor="end" font-family="&#39;SF Mono&#39;, &#39;Fira Code&#39;, &#39;Consolas&#39;, monospace" font-size="20" fill="#4A6FF3">void</text>
 </g>
 </svg>
