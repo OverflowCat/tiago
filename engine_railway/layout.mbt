@@ -80,31 +80,6 @@ fn layout_graph(
       None => ()
     }
   }
-  route_edges_railway(
-    patch,
-    layout_input,
-    self_loop,
-    id_to_idx,
-    depths,
-    rail_tracks,
-    lane_plan.shift_by_edge,
-    src_ports,
-    dst_ports,
-    boxes,
-    object_by_id,
-    parent_id_by_child_id,
-    direction,
-    config,
-    level_heights,
-    [],
-  )
-  recompute_edge_label_boxes(
-    patch,
-    graph,
-    direction,
-    config,
-    lane_plan.lane_by_edge,
-  )
   fit_container_boxes_railway(
     patch, graph, object_by_id, parent_id_by_child_id, config,
   )
@@ -130,35 +105,6 @@ fn layout_graph(
     config,
     level_heights,
     reserved_label_boxes,
-  )
-  recompute_edge_label_boxes(
-    patch,
-    graph,
-    direction,
-    config,
-    lane_plan.lane_by_edge,
-  )
-  recompute_container_label_boxes_railway(patch, graph)
-  let final_reserved_label_boxes = collect_reserved_container_label_boxes_railway(
-    patch, graph,
-  )
-  route_edges_railway(
-    patch,
-    layout_input,
-    self_loop,
-    id_to_idx,
-    depths,
-    rail_tracks,
-    lane_plan.shift_by_edge,
-    src_ports,
-    dst_ports,
-    boxes,
-    object_by_id,
-    parent_id_by_child_id,
-    direction,
-    config,
-    level_heights,
-    final_reserved_label_boxes,
   )
   recompute_edge_label_boxes(
     patch,

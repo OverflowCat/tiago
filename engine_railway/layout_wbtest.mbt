@@ -1146,6 +1146,66 @@ test "railway container label avoids crossing central edge track" {
 }
 
 ///|
+test "railway routes edges around stable centered container title band" {
+  let web_tier = @graph.ObjectInput::from_parts(
+    "web_tier",
+    "Web Tier",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["web1", "web2", "web3"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let lb = @graph.ObjectInput::new("lb")
+  let web1 = @graph.ObjectInput::new("web1")
+  let web2 = @graph.ObjectInput::new("web2")
+  let web3 = @graph.ObjectInput::new("web3")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([web_tier, lb, web1, web2, web3])
+  g.edges.push(@graph.EdgeInput::new(0, "lb", "web1", false, true))
+  g.edges.push(@graph.EdgeInput::new(1, "lb", "web2", false, true))
+  g.edges.push(@graph.EdgeInput::new(2, "lb", "web3", false, true))
+
+  let patch = layout_graph(g, @engine_api.LayoutConfig::new(), @engine_api.Down)
+  let container_box = patch.nodes.get("web_tier").unwrap()
+  let label_box = patch.node_labels.get("web_tier").unwrap()
+  let label_center = label_box.x + label_box.width / 2.0
+  let container_center = container_box.x + container_box.width / 2.0
+
+  assert_true(
+    (label_center - container_center).abs() <= 12.0,
+    msg="container title should stay near the horizontal center of its title band",
+  )
+  for entry in patch.edges {
+    let route = entry.1
+    if route.length() <= 1 {
+      continue
+    }
+    for i in 0..<(route.length() - 1) {
+      assert_true(
+        !segment_intersects_box(route[i], route[i + 1], label_box),
+        msg="edge \{entry.0} should avoid the reserved title band",
+      )
+    }
+  }
+}
+
+///|
 test "railway keeps external node outside container bounds" {
   let container = @graph.ObjectInput::from_parts(
     "container",
