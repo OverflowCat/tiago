@@ -1066,13 +1066,7 @@ fn spread_sibling_boxes_railway(
         }
       })
       for i in 1..<sibling_ids.length() {
-        let prev_id = sibling_ids[i - 1]
         let curr_id = sibling_ids[i]
-        let prev_box = match
-          subtree_union_box_railway(prev_id, node_boxes, object_by_id) {
-          Some(v) => v
-          None => continue
-        }
         let curr_box = match
           subtree_union_box_railway(curr_id, node_boxes, object_by_id) {
           Some(v) => v
@@ -1080,12 +1074,24 @@ fn spread_sibling_boxes_railway(
         }
         match direction {
           Down | Up => {
-            let y_overlap = !(curr_box.y + curr_box.height <= prev_box.y ||
-              prev_box.y + prev_box.height <= curr_box.y)
-            if !y_overlap {
-              continue
+            let mut required_left = curr_box.x
+            for j in 0..<i {
+              let prev_id = sibling_ids[j]
+              let prev_box = match
+                subtree_union_box_railway(prev_id, node_boxes, object_by_id) {
+                Some(v) => v
+                None => continue
+              }
+              let y_overlap = !(curr_box.y + curr_box.height <= prev_box.y ||
+                prev_box.y + prev_box.height <= curr_box.y)
+              if !y_overlap {
+                continue
+              }
+              let candidate_left = prev_box.x + prev_box.width + gap
+              if candidate_left > required_left {
+                required_left = candidate_left
+              }
             }
-            let required_left = prev_box.x + prev_box.width + gap
             if curr_box.x < required_left {
               let dx = required_left - curr_box.x
               shift_subtree_railway(curr_id, dx, 0.0, node_boxes, object_by_id)
@@ -1093,12 +1099,24 @@ fn spread_sibling_boxes_railway(
             }
           }
           Right | Left => {
-            let x_overlap = !(curr_box.x + curr_box.width <= prev_box.x ||
-              prev_box.x + prev_box.width <= curr_box.x)
-            if !x_overlap {
-              continue
+            let mut required_top = curr_box.y
+            for j in 0..<i {
+              let prev_id = sibling_ids[j]
+              let prev_box = match
+                subtree_union_box_railway(prev_id, node_boxes, object_by_id) {
+                Some(v) => v
+                None => continue
+              }
+              let x_overlap = !(curr_box.x + curr_box.width <= prev_box.x ||
+                prev_box.x + prev_box.width <= curr_box.x)
+              if !x_overlap {
+                continue
+              }
+              let candidate_top = prev_box.y + prev_box.height + gap
+              if candidate_top > required_top {
+                required_top = candidate_top
+              }
             }
-            let required_top = prev_box.y + prev_box.height + gap
             if curr_box.y < required_top {
               let dy = required_top - curr_box.y
               shift_subtree_railway(curr_id, 0.0, dy, node_boxes, object_by_id)

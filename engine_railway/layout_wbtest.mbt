@@ -1318,6 +1318,110 @@ test "railway spreads overlapping top-level container subtrees" {
 }
 
 ///|
+test "railway spreads against non-adjacent overlapping sibling subtree" {
+  let aws = @graph.ObjectInput::from_parts(
+    "aws",
+    "AWS Cloud",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc", "aws.cdn", "aws.s3"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let vpc = @graph.ObjectInput::from_parts(
+    "aws.vpc",
+    "VPC",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let subnet = @graph.ObjectInput::from_parts(
+    "aws.vpc.subnet",
+    "Private Subnet",
+    @graph.Rectangle,
+    @graph.StyleInput::new(),
+    None,
+    None,
+    ["aws.vpc.subnet.server", "aws.vpc.subnet.database"],
+    0,
+    None,
+    None,
+    None,
+    [],
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+  let cdn = @graph.ObjectInput::new("aws.cdn")
+  let s3 = @graph.ObjectInput::new("aws.s3")
+  let server = @graph.ObjectInput::new("aws.vpc.subnet.server")
+  let database = @graph.ObjectInput::new("aws.vpc.subnet.database")
+  let g = @graph.GraphInput::new("testgraph")
+  g.objects.append([aws, vpc, subnet, cdn, s3, server, database])
+
+  let (object_by_id, parent_id_by_child_id) = build_object_maps_railway(g)
+  let boxes : Map[String, @graph.Box] = {}
+  boxes["aws.vpc"] = @graph.Box::new(0.0, 120.0, 320.0, 260.0)
+  boxes["aws.vpc.subnet"] = @graph.Box::new(30.0, 180.0, 240.0, 140.0)
+  boxes["aws.vpc.subnet.server"] = @graph.Box::new(60.0, 220.0, 120.0, 60.0)
+  boxes["aws.vpc.subnet.database"] = @graph.Box::new(60.0, 300.0, 120.0, 60.0)
+  boxes["aws.cdn"] = @graph.Box::new(90.0, 0.0, 120.0, 60.0)
+  boxes["aws.s3"] = @graph.Box::new(120.0, 300.0, 120.0, 60.0)
+
+  spread_sibling_boxes_railway(
+    boxes,
+    g,
+    object_by_id,
+    parent_id_by_child_id,
+    @engine_api.Down,
+    @engine_api.LayoutConfig::new(),
+  )
+
+  let vpc_box = boxes.get("aws.vpc").unwrap()
+  let s3_box = boxes.get("aws.s3").unwrap()
+  assert_true(s3_box.x >= vpc_box.x + vpc_box.width + 12.0)
+}
+
+///|
 test "railway keeps sibling root containers disjoint in container-only graph" {
   let good = @graph.ObjectInput::from_parts(
     "good chips",
