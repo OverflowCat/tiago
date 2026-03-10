@@ -397,7 +397,7 @@ server -> database: queries"></textarea>
     let svgScale = 1;
     let lastPointerClientX = null;
     let lastPointerClientY = null;
-    const SVG_MIN_SCALE = 0.1;
+    const SVG_MIN_SCALE = 0.02;
     const SVG_MAX_SCALE = 8.0;
 
     // DOM elements
@@ -544,6 +544,23 @@ server -> database: queries"></textarea>
       svgViewport.scrollTop = Math.max(0, (svgViewport.scrollHeight - svgViewport.clientHeight) / 2);
     }
 
+    function fitSvgToViewport() {
+      if (!svgViewport || !svgCanvas) return;
+      const baseWidth = Number(svgCanvas.dataset.baseWidth || '0');
+      const baseHeight = Number(svgCanvas.dataset.baseHeight || '0');
+      if (!(baseWidth > 0 && baseHeight > 0)) return;
+      const viewportWidth = svgViewport.clientWidth;
+      const viewportHeight = svgViewport.clientHeight;
+      if (!(viewportWidth > 0 && viewportHeight > 0)) return;
+      const containScale = Math.min(viewportWidth / baseWidth, viewportHeight / baseHeight, 1);
+      svgScale = clampSvgScale(containScale);
+      svgCanvas.style.width = `${baseWidth * svgScale}px`;
+      svgCanvas.style.height = `${baseHeight * svgScale}px`;
+      updateZoomLabel();
+      centerSvgInViewport();
+      updateExportButtons();
+    }
+
     function currentZoomAnchor() {
       if (!svgViewport) return { x: null, y: null };
       if (lastPointerClientX == null || lastPointerClientY == null) {
@@ -637,8 +654,7 @@ server -> database: queries"></textarea>
       }
 
       setupSvgInteractions();
-      updateZoomLabel();
-      requestAnimationFrame(() => centerSvgInViewport());
+      requestAnimationFrame(() => fitSvgToViewport());
     }
 
     function parseSvgSize(svgText) {
