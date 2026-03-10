@@ -187,7 +187,7 @@ test "dark-theme-id alone does not replace base light theme" {
     #|}
     #|a -> b
   let svg = compile(source)
-  assert_true(not(svg.contains("monospace")))
+  assert_true(not(svg.contains("text-mono")))
 }
 
 ///|
@@ -216,8 +216,7 @@ test "dark-theme-id enables css media theme variables" {
     #|}
     #|a -> b
   let svg = compile(source)
-  assert_true(svg.contains("@media screen and (prefers-color-scheme: dark)"))
-  assert_true(svg.contains("--d2-N1:"))
+  assert_true(svg.contains("@media screen and (prefers-color-scheme:dark)"))
   assert_true(svg.contains("var(--d2-N7)"))
 }
 

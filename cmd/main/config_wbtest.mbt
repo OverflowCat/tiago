@@ -30,7 +30,7 @@ test "vars d2-config theme-id applies when cli theme absent" {
     false,
     None,
   ).unwrap()
-  assert_true(svg.contains("monospace"))
+  assert_true(svg.contains("text-mono"))
 }
 
 ///|
@@ -51,7 +51,7 @@ test "cli theme overrides vars d2-config theme-id" {
     false,
     None,
   ).unwrap()
-  assert_true(not(svg.contains("monospace")))
+  assert_true(not(svg.contains("text-mono")))
 }
 
 ///|
@@ -299,7 +299,7 @@ test "dark-theme-id does not replace base light theme when theme-id is absent" {
     false,
     None,
   ).unwrap()
-  assert_true(not(svg.contains("monospace")))
+  assert_true(not(svg.contains("text-mono")))
 }
 
 ///|
@@ -340,7 +340,7 @@ test "vars d2-config dark-theme-id emits dark media css" {
     false,
     None,
   ).unwrap()
-  assert_true(svg.contains("@media screen and (prefers-color-scheme: dark)"))
+  assert_true(svg.contains("@media screen and (prefers-color-scheme:dark)"))
   assert_true(svg.contains("var(--d2-N7)"))
 }
 
@@ -362,9 +362,8 @@ test "salt namespaces SVG marker IDs" {
     false,
     None,
   ).unwrap()
-  assert_true(svg.contains("mk-"))
-  assert_true(not(svg.contains("id=\"mk-")))
-  assert_true(not(svg.contains("url(#mk-")))
+  assert_true(svg.contains("id=\"mk-d2-"))
+  assert_true(svg.contains("url(#mk-d2-"))
 }
 
 ///|

@@ -41,6 +41,15 @@ pub fn escape_attr(s : String) -> String {
 }
 
 ///|
+fn d2_number(value : Double) -> String {
+  if value.round() == value {
+    value.to_int().to_string()
+  } else {
+    value.to_string()
+  }
+}
+
+///|
 /// Wrap a string in a CDATA section.
 ///
 /// Note: the sequence `]]>` is not allowed inside CDATA. We split it safely by
@@ -108,7 +117,7 @@ pub fn Element::attr_num(
   name : String,
   value : Double,
 ) -> Element {
-  self.attrs.push((name, value.to_string()))
+  self.attrs.push((name, d2_number(value)))
   self
 }
 
@@ -128,7 +137,7 @@ pub fn Element::attr_num_if(
   cond : Bool,
 ) -> Element {
   if cond {
-    self.attrs.push((name, value.to_string()))
+    self.attrs.push((name, d2_number(value)))
   }
   self
 }

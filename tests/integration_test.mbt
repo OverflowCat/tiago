@@ -243,7 +243,7 @@ test "text-transform uppercase" {
     #|  style.text-transform: uppercase
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("text-transform: uppercase"))
+  assert_true(svg.contains(">BOX<"))
 }
 
 ///|
@@ -253,7 +253,7 @@ test "text-transform lowercase" {
     #|  style.text-transform: lowercase
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("text-transform: lowercase"))
+  assert_true(svg.contains(">box<"))
 }
 
 ///|
@@ -263,7 +263,7 @@ test "text-transform capitalize" {
     #|  style.text-transform: capitalize
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("text-transform: capitalize"))
+  assert_true(svg.contains(">My_box<"))
 }
 
 ///|
@@ -272,8 +272,10 @@ test "custom font-family" {
     #|title {
     #|  style.font-family: "Georgia, serif"
     #|}
-  let svg = compile(source).unwrap()
-  assert_true(svg.contains("Georgia, serif"))
+  match compile(source) {
+    Ok(_) => fail("d2 should reject style.font-family")
+    Err(msg) => assert_true(msg.contains("invalid style keyword"))
+  }
 }
 
 ///|
@@ -282,8 +284,10 @@ test "monospace font-family" {
     #|code_block {
     #|  style.font-family: monospace
     #|}
-  let svg = compile(source).unwrap()
-  assert_true(svg.contains("monospace"))
+  match compile(source) {
+    Ok(_) => fail("d2 should reject style.font-family")
+    Err(msg) => assert_true(msg.contains("invalid style keyword"))
+  }
 }
 
 ///|
@@ -379,11 +383,10 @@ test "animated edge" {
     #|  style.animated: true
     #|}
   let svg = compile(source).unwrap()
-  // Should have animated elements
+  // d2 parity: animated edges are CSS-animated dashed paths.
   assert_true(svg.contains("stroke-dasharray"))
-  assert_true(svg.contains("<animate"))
   assert_true(svg.contains("stroke-dashoffset"))
-  assert_true(svg.contains("repeatCount=\"indefinite\""))
+  assert_true(svg.contains("animation: dashdraw"))
 }
 
 ///|
@@ -526,16 +529,16 @@ fn compile_with_theme(
 test "terminal theme monospace font" {
   let source = "box"
   let svg = compile_with_theme(source, 300).unwrap()
-  // Terminal theme should use monospace font
-  assert_true(svg.contains("monospace"))
+  // Terminal theme should force mono text classes.
+  assert_true(svg.contains("text-mono"))
 }
 
 ///|
 test "terminal theme uppercase text" {
   let source = "mybox"
   let svg = compile_with_theme(source, 300).unwrap()
-  // Terminal theme caps_lock rule should transform text to uppercase
-  assert_true(svg.contains("text-transform: uppercase"))
+  // Terminal theme caps_lock rule should transform text content to uppercase.
+  assert_true(svg.contains(">MYBOX<"))
 }
 
 ///|

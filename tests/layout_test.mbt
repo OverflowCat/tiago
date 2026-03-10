@@ -317,27 +317,33 @@ test "sql_table edges connect to correct rows" {
   let mut found_users_posts = false
   let mut found_posts_comments = false
   let mut found_users_comments = false
+  let edge_debug : Array[String] = []
   for edge in graph.get_edges() {
-    let src = edge.src_id
-    let dst = edge.dst_id
     let route = edge.route
     guard route.length() >= 2 else { continue }
-    if src == "users.id" && dst == "posts.user_id" {
+    edge_debug.push(
+      "\{edge.src_id}[\{edge.src_column_index}] -> \{edge.dst_id}[\{edge.dst_column_index}]",
+    )
+    if edge.src_id == "users" && edge.dst_id == "posts" {
       found_users_posts = true
-    } else if src == "posts.id" && dst == "comments.post_id" {
+    } else if edge.src_id == "posts" && edge.dst_id == "comments" {
       found_posts_comments = true
-    } else if src == "users.id" && dst == "comments.user_id" {
+    } else if edge.src_id == "users" && edge.dst_id == "comments" {
       found_users_comments = true
     }
   }
-  assert_true(found_users_posts, msg="missing edge users.id <-> posts.user_id")
+  let edge_debug_text = edge_debug.join("; ")
+  assert_true(
+    found_users_posts,
+    msg="missing edge users <-> posts, got: \{edge_debug_text}",
+  )
   assert_true(
     found_posts_comments,
-    msg="missing edge posts.id <-> comments.post_id",
+    msg="missing edge posts <-> comments, got: \{edge_debug_text}",
   )
   assert_true(
     found_users_comments,
-    msg="missing edge users.id <-> comments.user_id",
+    msg="missing edge users <-> comments, got: \{edge_debug_text}",
   )
 }
 

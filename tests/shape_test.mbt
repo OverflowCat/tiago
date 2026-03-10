@@ -285,7 +285,7 @@ test "sql_table shape has header" {
     #|  shape: sql_table
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("font-size=\"24\"")) // header font size
+  assert_true(svg.contains("font-size:24px")) // header font size
 }
 
 ///|

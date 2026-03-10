@@ -237,8 +237,14 @@ fn assign_sql_column_indices(graph : @graph.GraphInput) -> @graph.GraphInput {
   }
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
-    let src_column_index = find_sql_column_index(object_by_id, e.src_id)
-    let dst_column_index = find_sql_column_index(object_by_id, e.dst_id)
+    let src_column_index = match e.src_column_index {
+      Some(i) => Some(i)
+      None => find_sql_column_index(object_by_id, e.src_id)
+    }
+    let dst_column_index = match e.dst_column_index {
+      Some(i) => Some(i)
+      None => find_sql_column_index(object_by_id, e.dst_id)
+    }
     edges.push(
       @graph.EdgeInput::from_parts(
         e.index,

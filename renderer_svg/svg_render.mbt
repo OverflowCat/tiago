@@ -824,194 +824,6 @@ fn darken_color_like_d2(color : String) -> String {
 }
 
 ///|
-fn theme_css_lines(theme : @themes.Theme, indent : String) -> Array[String] {
-  [
-    "\{indent}svg {",
-    "\{indent}  --d2-N1: \{theme.colors.n1};",
-    "\{indent}  --d2-N2: \{theme.colors.n2};",
-    "\{indent}  --d2-N3: \{theme.colors.n3};",
-    "\{indent}  --d2-N4: \{theme.colors.n4};",
-    "\{indent}  --d2-N5: \{theme.colors.n5};",
-    "\{indent}  --d2-N6: \{theme.colors.n6};",
-    "\{indent}  --d2-N7: \{theme.colors.n7};",
-    "\{indent}  --d2-B1: \{theme.colors.b1};",
-    "\{indent}  --d2-B2: \{theme.colors.b2};",
-    "\{indent}  --d2-B3: \{theme.colors.b3};",
-    "\{indent}  --d2-B4: \{theme.colors.b4};",
-    "\{indent}  --d2-B5: \{theme.colors.b5};",
-    "\{indent}  --d2-B6: \{theme.colors.b6};",
-    "\{indent}  --d2-AA2: \{theme.colors.aa2};",
-    "\{indent}  --d2-AA4: \{theme.colors.aa4};",
-    "\{indent}  --d2-AA5: \{theme.colors.aa5};",
-    "\{indent}  --d2-AB4: \{theme.colors.ab4};",
-    "\{indent}  --d2-AB5: \{theme.colors.ab5};",
-    "\{indent}}",
-  ]
-}
-
-///|
-fn add_theme_styles(
-  svg : @svg.Svg,
-  light_theme : @themes.Theme,
-  dark_theme : @themes.Theme?,
-) -> Unit {
-  let lines : Array[String] = []
-  for line in theme_css_lines(light_theme, "") {
-    lines.push(line)
-  }
-  lines.push("svg text { fill: var(--d2-N1); }")
-  match dark_theme {
-    Some(theme) => {
-      lines.push("@media screen and (prefers-color-scheme: dark) {")
-      for line in theme_css_lines(theme, "  ") {
-        lines.push(line)
-      }
-      lines.push("}")
-    }
-    None => ()
-  }
-  let css = lines.join("\n")
-  svg.add(
-    @xml_emit.Element::new("style")
-    .attr("type", "text/css")
-    .cdata(css + "\n")
-    .build(),
-  )
-}
-
-///|
-fn markdown_theme_vars_line(
-  theme : @themes.Theme,
-  scope_class : String,
-) -> String {
-  ".\{scope_class} .md{--color-fg-default:\{theme.colors.n1};--color-fg-muted:\{theme.colors.n2};--color-fg-subtle:\{theme.colors.n3};--color-canvas-default:\{theme.colors.n7};--color-canvas-subtle:\{theme.colors.n6};--color-border-default:\{theme.colors.b1};--color-border-muted:\{theme.colors.b2};--color-neutral-muted:\{theme.colors.n6};--color-accent-fg:\{theme.colors.b2};--color-accent-emphasis:\{theme.colors.b2};--color-attention-subtle:\{theme.colors.n2};--color-danger-fg:red;}"
-}
-
-///|
-fn replace_all(s : String, old : String, new : String) -> String {
-  if old == "" {
-    return s
-  }
-  s.split(old).collect().join(new)
-}
-
-///|
-fn markdown_css_for_svg(scope_class : String) -> String {
-  let mut css = markdown_css_template
-  css = replace_all(css, ".md", ".\{scope_class} .md")
-  css = replace_all(css, "font-italic", "\{scope_class}-font-italic")
-  css = replace_all(css, "font-bold", "\{scope_class}-font-bold")
-  css = replace_all(css, "font-mono", "\{scope_class}-font-mono")
-  css = replace_all(css, "font-regular", "\{scope_class}-font-regular")
-  css = replace_all(css, "font-semibold", "\{scope_class}-font-semibold")
-  css
-}
-
-///|
-fn add_base_styles(
-  svg : @svg.Svg,
-  light_theme : @themes.Theme,
-  dark_theme : @themes.Theme?,
-  scope_class : String,
-  has_code_shape : Bool,
-  has_markdown_shape : Bool,
-) -> Unit {
-  if !has_code_shape && !has_markdown_shape {
-    return
-  }
-  let lines : Array[String] = []
-  if has_markdown_shape {
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-regular;")
-    lines.push("  src: url(\"\{source_sans_pro_regular_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-semibold;")
-    lines.push("  src: url(\"\{source_sans_pro_semibold_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-bold;")
-    lines.push("  src: url(\"\{source_sans_pro_bold_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-italic;")
-    lines.push("  src: url(\"\{source_sans_pro_italic_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-mono;")
-    lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
-    lines.push("}")
-  }
-  if has_code_shape {
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-mono;")
-    lines.push("  src: url(\"\{source_code_pro_regular_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-mono-bold;")
-    lines.push("  src: url(\"\{source_code_pro_bold_data}\");")
-    lines.push("}")
-    lines.push("@font-face {")
-    lines.push("  font-family: \{scope_class}-font-mono-italic;")
-    lines.push("  src: url(\"\{source_code_pro_italic_data}\");")
-    lines.push("}")
-  }
-  if has_markdown_shape {
-    lines.push(markdown_theme_vars_line(light_theme, scope_class))
-    match dark_theme {
-      Some(theme) => {
-        lines.push("@media screen and (prefers-color-scheme: dark) {")
-        lines.push("  \{markdown_theme_vars_line(theme, scope_class)}")
-        lines.push("}")
-      }
-      None => ()
-    }
-    lines.push(markdown_css_for_svg(scope_class))
-  }
-  if has_code_shape {
-    lines.push(".\{scope_class} .text-mono {")
-    lines.push("  font-family: \"\{scope_class}-font-mono\";")
-    lines.push("}")
-    lines.push(".\{scope_class} .text-mono-bold {")
-    lines.push("  font-family: \"\{scope_class}-font-mono-bold\";")
-    lines.push("}")
-    lines.push(".\{scope_class} .text-mono-italic {")
-    lines.push("  font-family: \"\{scope_class}-font-mono-italic\";")
-    lines.push("}")
-    if light_theme.is_dark {
-      lines.push(".light-code{display: none}")
-      lines.push(".dark-code{display: block}")
-    } else {
-      lines.push(".light-code{display: block}")
-      lines.push(".dark-code{display: none}")
-    }
-    if dark_theme is Some(_) {
-      lines.push("@media screen and (prefers-color-scheme: dark) {")
-      lines.push("  .light-code{display: none}")
-      lines.push("  .dark-code{display: block}")
-      lines.push("}")
-    }
-  }
-  let css = lines.join("\n")
-  svg.add(
-    @xml_emit.Element::new("style")
-    .attr("type", "text/css")
-    .cdata(css + "\n")
-    .build(),
-  )
-}
-
-///|
-fn graph_has_code_shape(graph : Diagram) -> Bool {
-  for shape in graph.shapes {
-    if shape.shape_type == Code {
-      return true
-    }
-  }
-  false
-}
-
-///|
 fn graph_has_markdown_shape(graph : Diagram) -> Bool {
   for shape in graph.shapes {
     if has_class(shape, "lang:markdown") {
@@ -1023,45 +835,12 @@ fn graph_has_markdown_shape(graph : Diagram) -> Bool {
 
 ///|
 fn hash_u32(s : String) -> Int {
-  let mut h : Int = 216613626
-  for i in 0..<s.length() {
-    let b = s.code_unit_at(i).to_int()
-    h = h ^ b
-    h = (h * 16777619) & 0x7fffffff
-  }
-  h
+  d2_fnv32a(s)
 }
 
 ///|
 fn style_scope_class(graph : Diagram, config : SvgConfig) -> String {
-  let seed = StringBuilder::new()
-  seed.write_string(graph.root.id)
-  seed.write_string("|")
-  seed.write_string(graph.shapes.length().to_string())
-  seed.write_string("|")
-  seed.write_string(graph.connections.length().to_string())
-  for shape in graph.shapes {
-    seed.write_string("|s:")
-    seed.write_string(shape.id)
-    seed.write_string("=")
-    seed.write_string(shape.label)
-  }
-  for edge in graph.connections {
-    seed.write_string("|e:")
-    seed.write_string(edge.src_id)
-    seed.write_string("->")
-    seed.write_string(edge.dst_id)
-    seed.write_string("=")
-    seed.write_string(edge.label)
-  }
-  match config.salt {
-    Some(s) => {
-      seed.write_string("|salt:")
-      seed.write_string(s)
-    }
-    None => ()
-  }
-  "d2-\{hash_u32(seed.to_string()).to_string()}"
+  diagram_scope_class(graph, config)
 }
 
 ///|
@@ -1127,9 +906,34 @@ fn transform_label_text(text : String, text_transform : String) -> String {
   if text_transform == "" {
     return text
   }
+  fn is_whitespace(ch : Char) -> Bool {
+    ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
+  }
+  fn capitalize_words(input : String) -> String {
+    let out = StringBuilder::new()
+    let mut at_word_start = true
+    for ch in input {
+      if is_whitespace(ch) {
+        out.write_char(ch)
+        at_word_start = true
+      } else {
+        let piece = ch.to_string()
+        out.write_string(
+          if at_word_start {
+            piece.to_upper()
+          } else {
+            piece.to_lower()
+          },
+        )
+        at_word_start = false
+      }
+    }
+    out.to_string()
+  }
   match text_transform.to_lower() {
     "uppercase" => text.to_upper()
     "lowercase" => text.to_lower()
+    "capitalize" => capitalize_words(text)
     _ => text
   }
 }
@@ -1195,27 +999,6 @@ fn resolve_fill_with_pattern(
     Some(pattern) => defs_url(config, pattern_def_key(pattern))
     None => base_fill
   }
-}
-
-///|
-fn has_non_empty_link(link : String?) -> Bool {
-  match link {
-    Some(v) => v.trim() != ""
-    None => false
-  }
-}
-
-///|
-fn graph_has_links(graph : Diagram) -> Bool {
-  if has_non_empty_link(graph.root.link) {
-    return true
-  }
-  for obj in graph.shapes {
-    if has_non_empty_link(obj.link) {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -1531,27 +1314,26 @@ fn add_root_background_rect(
   stroke_width : Double,
   border_radius : Double,
   stroke_dash : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
   class_name? : String? = None,
 ) -> Unit {
-  let mut rect = @xml_emit.Element::new("rect")
-    .attr_num("x", x)
-    .attr_num("y", y)
-    .attr_num("width", width)
-    .attr_num("height", height)
-    .attr_num("rx", border_radius)
-    .attr("fill", fill)
-    .attr_num("stroke-width", stroke_width)
-  match class_name {
-    Some(class_name) => rect = rect.attr("class", class_name)
-    None => ()
-  }
-  if stroke != "" && stroke != "none" {
-    rect = rect.attr("stroke", stroke)
-  }
-  if stroke_dash > 0.0 {
-    rect = rect.attr("stroke-dasharray", stroke_dash.to_string())
-  }
-  svg.add(rect.self_close().build())
+  let _ = stroke_dash
+  svg.add(
+    d2_root_background_rect(
+      x,
+      y,
+      width,
+      height,
+      fill,
+      stroke,
+      stroke_width,
+      border_radius,
+      class_name,
+      theme,
+      !use_css_theme_vars,
+    ),
+  )
 }
 
 ///|
@@ -1584,7 +1366,12 @@ fn add_root_overlay_rect(
 }
 
 ///|
-fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
+fn render_root_background(
+  svg : @svg.Svg,
+  metrics : RootCanvasMetrics,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+) -> Unit {
   match
     (
       metrics.outer_x,
@@ -1604,6 +1391,8 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.stroke_width,
         metrics.border_radius,
         metrics.stroke_dash,
+        theme,
+        use_css_theme_vars,
       )
       add_root_overlay_rect(
         svg,
@@ -1626,6 +1415,8 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.stroke_width,
         metrics.border_radius,
         metrics.stroke_dash,
+        theme,
+        use_css_theme_vars,
       )
       add_root_overlay_rect(
         svg,
@@ -1650,6 +1441,8 @@ fn render_root_background(svg : @svg.Svg, metrics : RootCanvasMetrics) -> Unit {
         metrics.stroke_width,
         metrics.border_radius,
         metrics.stroke_dash,
+        theme,
+        use_css_theme_vars,
       )
       add_root_overlay_rect(
         svg,
@@ -1771,39 +1564,34 @@ pub fn render_svg(
   if config.no_xml_tag {
     svg.set_include_xml_declaration(false)
   }
-  if not(config.omit_version) {
-    svg.add_root_attr("data-d2-version", DIAGO_VERSION)
-  }
-  if graph_has_links(graph) {
-    svg.add_root_attr("xmlns:xlink", "http://www.w3.org/1999/xlink")
-  }
   let scope_class = style_scope_class(graph, config)
-  svg.add_root_attr("class", "\{scope_class} d2-svg")
-  let has_code_shape = graph_has_code_shape(graph)
   let has_markdown_shape = graph_has_markdown_shape(graph)
-  add_base_styles(
-    svg, light_theme, dark_theme, scope_class, has_code_shape, has_markdown_shape,
+  let emit_assets = SvgEmitAssets::new(
+    scope_class, light_theme, dark_theme, has_markdown_shape,
   )
-  if use_css_theme_vars {
-    add_theme_styles(svg, light_theme, dark_theme)
-  }
   // Add fill patterns
-  add_fill_patterns(svg, graph, config, light_theme, use_css_theme_vars)
+  add_fill_patterns(emit_assets, graph, config, light_theme, use_css_theme_vars)
   // Add sketch filter if needed
-  add_sketch_filter(svg, graph, config)
+  add_sketch_filter(emit_assets, graph, config)
+  // Add drop-shadow filter if any object uses `shadow: true`
+  add_shadow_filter(emit_assets, graph)
   // D2 parity: all connection labels are cut out via a shared mask.
-  let edge_label_mask_url = defs_url(config, "edge-label-mask")
-  svg.add_def(
+  let edge_label_mask_url = "url(#\{emit_assets.mask_id()})"
+  emit_assets.add_tail(
     edge_label_mask_def(
-      graph, config, viewbox_x, viewbox_y, viewbox_width, viewbox_height,
+      emit_assets.mask_id(),
+      graph,
+      viewbox_x,
+      viewbox_y,
+      viewbox_width,
+      viewbox_height,
     ),
   )
   let edge_marker_ids : Map[String, String] = {}
   // Background
-  render_root_background(svg, root_canvas)
+  render_root_background(svg, root_canvas, light_theme, use_css_theme_vars)
   // D2 parity: skip custom control bar rendering.
   // Main content group with offset to shift content into positive coordinate space
-  svg.open_group_with_id("base-layer", "")
   // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
   // Lifelines are rendered as dashed edges, activation boxes as regular objects
   let sorted_objects = sort_objects_by_depth(graph.shapes)
@@ -1842,13 +1630,18 @@ pub fn render_svg(
     render_sequence_lifelines(svg, graph, light_theme, use_css_theme_vars)
   }
   // Pass 2: Render edges (on top of backgrounds, behind text)
-  for edge in graph.connections {
+  let connection_repeat_indices = d2_connection_repeat_indices(
+    graph.connections,
+  )
+  for i, edge in graph.connections {
     render_svg_edge(
       svg,
       edge,
+      connection_repeat_indices[i],
       graph.shapes,
       edge_label_mask_url,
       edge_marker_ids,
+      scope_class,
       config,
       light_theme,
       use_css_theme_vars,
@@ -1874,7 +1667,6 @@ pub fn render_svg(
   }
   // Render sequence diagram fragments (combined fragments like alt, opt, loop)
   render_svg_sequence_fragments(svg, graph, config)
-  svg.close_group()
   // D2 parity: export only the active/base board in SVG output.
 
   // Render legend (always visible across layer/scenario/step switching)
@@ -1893,7 +1685,7 @@ pub fn render_svg(
   }
 
   // D2 parity: skip injecting custom control scripts.
-  svg.to_string()
+  emit_svg_document(svg, config, emit_assets)
 }
 
 ///|
@@ -1906,15 +1698,14 @@ fn estimate_text_width(text : String, font_size : Int) -> Double {
 ///|
 /// Build the shared connection label mask definition.
 fn edge_label_mask_def(
+  mask_id : String,
   graph : Diagram,
-  config : SvgConfig,
   mask_x : Double,
   mask_y : Double,
   mask_width : Double,
   mask_height : Double,
 ) -> String {
   let sb = StringBuilder::new()
-  let mask_id = defs_id(config, "edge-label-mask")
   sb.write_string(
     "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_width}\" height=\"\{mask_height}\">",
   )
@@ -1945,10 +1736,10 @@ fn edge_label_mask_def(
 fn marker_key(
   arrowhead : ArrowheadType,
   is_target : Bool,
-  stroke : String,
+  stroke_signature : String,
   stroke_width : Double,
 ) -> String {
-  "\{arrowhead.to_arrowhead_string()}|\{is_target}|\{stroke}|\{stroke_width}"
+  "\{d2_hash_arrowhead_value(arrowhead)}|\{is_target}|\{stroke_signature}|\{stroke_width.to_int()}"
 }
 
 ///|
@@ -1990,19 +1781,34 @@ fn marker_body(
   stroke_width : Double,
   width : Double,
   height : Double,
+  theme : @themes.Theme,
 ) -> String {
+  let stroke_width_css = if stroke_width.round() == stroke_width {
+    stroke_width.to_int().to_string()
+  } else {
+    d2_fixed6(stroke_width)
+  }
+  let connection_fill_class = match d2_theme_token(stroke, theme) {
+    Some(token) => "connection fill-\{token}"
+    None => "connection"
+  }
+  let connection_stroke_class = match d2_theme_token(stroke, theme) {
+    Some(token) => "connection stroke-\{token}"
+    None => "connection"
+  }
   match arrowhead {
     @graph.None => ""
     @graph.Triangle => {
       let points = if is_target {
-        "0,0 \{width},\{height / 2.0} 0,\{height}"
+        "\{d2_fixed6(0.0)},\{d2_fixed6(0.0)} \{d2_fixed6(width)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(0.0)},\{d2_fixed6(height)}"
       } else {
-        "\{width},0 0,\{height / 2.0} \{width},\{height}"
+        "\{d2_fixed6(width)},\{d2_fixed6(0.0)} \{d2_fixed6(0.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width)},\{d2_fixed6(height)}"
       }
       @xml_emit.Element::new("polygon")
       .attr("points", points)
       .attr("fill", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_fill_class)
+      .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
@@ -2017,7 +1823,8 @@ fn marker_body(
       .attr("points", points)
       .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_stroke_class)
+      .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
@@ -2031,7 +1838,8 @@ fn marker_body(
       .attr("points", points)
       .attr("fill", "none")
       .attr("stroke", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_stroke_class)
+      .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
@@ -2045,7 +1853,8 @@ fn marker_body(
       .attr("points", points)
       .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_stroke_class)
+      .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
@@ -2063,7 +1872,8 @@ fn marker_body(
       .attr_num("r", inner_radius)
       .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_stroke_class)
+      .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
@@ -2085,7 +1895,8 @@ fn marker_body(
         .attr("d", "M\{offset},0 \{offset},\{height}")
         .attr("fill", "#FFFFFF")
         .attr("stroke", stroke)
-        .attr_num("stroke-width", stroke_width)
+        .attr("class", connection_stroke_class)
+        .attr("stroke-width", stroke_width_css)
         .self_close()
         .build()
       } else {
@@ -2095,7 +1906,8 @@ fn marker_body(
         .attr_num("r", offset / 2.0)
         .attr("fill", "#FFFFFF")
         .attr("stroke", stroke)
-        .attr_num("stroke-width", stroke_width)
+        .attr("class", connection_stroke_class)
+        .attr("stroke-width", stroke_width_css)
         .self_close()
         .build()
       }
@@ -2118,7 +1930,8 @@ fn marker_body(
       .attr_if("transform", transform)
       .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr_num("stroke-width", stroke_width)
+      .attr("class", connection_stroke_class)
+      .attr("stroke-width", stroke_width_css)
       .child(modifier)
       .child(crow)
       .build()
@@ -2133,6 +1946,7 @@ fn marker_def(
   is_target : Bool,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
 ) -> String {
   let (width_raw, height_raw) = marker_dimensions(arrowhead, stroke_width)
   if width_raw <= 0.0 || height_raw <= 0.0 {
@@ -2156,16 +1970,19 @@ fn marker_def(
   }
   @xml_emit.Element::new("marker")
   .attr("id", id)
-  .attr_num("markerWidth", marker_width)
-  .attr_num("markerHeight", marker_height)
-  .attr_num("refX", ref_x)
-  .attr_num("refY", marker_height / 2.0)
-  .attr("viewBox", "0 0 \{marker_width} \{marker_height}")
+  .attr("markerWidth", d2_fixed6(marker_width))
+  .attr("markerHeight", d2_fixed6(marker_height))
+  .attr("refX", d2_fixed6(ref_x))
+  .attr("refY", d2_fixed6(marker_height / 2.0))
+  .attr(
+    "viewBox",
+    "\{d2_fixed6(0.0)} \{d2_fixed6(0.0)} \{d2_fixed6(marker_width)} \{d2_fixed6(marker_height)}",
+  )
   .attr("orient", "auto")
   .attr("markerUnits", "userSpaceOnUse")
   .child(
     marker_body(
-      arrowhead, is_target, stroke, stroke_width, width_raw, marker_height,
+      arrowhead, is_target, stroke, stroke_width, width_raw, marker_height, theme,
     ),
   )
   .build()
@@ -2174,24 +1991,30 @@ fn marker_def(
 ///|
 fn marker_url_for_edge(
   svg : @svg.Svg,
-  config : SvgConfig,
+  diagram_hash : String,
   marker_ids : Map[String, String],
   arrowhead : ArrowheadType,
   is_target : Bool,
-  stroke : String,
+  stroke_signature : String,
+  stroke_render : String,
   stroke_width : Double,
+  theme : @themes.Theme,
 ) -> String {
   if arrowhead == @graph.None {
     return ""
   }
-  let key = marker_key(arrowhead, is_target, stroke, stroke_width)
+  let key = marker_key(arrowhead, is_target, stroke_signature, stroke_width)
   match marker_ids.get(key) {
     Some(id) => "url(#\{id})"
     None => {
-      let id = defs_id(config, "mk-\{hash_u32(key)}")
-      let def = marker_def(id, arrowhead, is_target, stroke, stroke_width)
+      let id = marker_resource_id(
+        diagram_hash, arrowhead, is_target, stroke_signature, stroke_width,
+      )
+      let def = marker_def(
+        id, arrowhead, is_target, stroke_render, stroke_width, theme,
+      )
       if def != "" {
-        svg.add_def(def)
+        svg.add(def)
         marker_ids[key] = id
         "url(#\{id})"
       } else {
@@ -2204,7 +2027,7 @@ fn marker_url_for_edge(
 ///|
 /// Add fill pattern definitions based on patterns used in the graph
 fn add_fill_patterns(
-  svg : @svg.Svg,
+  assets : SvgEmitAssets,
   graph : Diagram,
   config : SvgConfig,
   theme : @themes.Theme,
@@ -2234,7 +2057,7 @@ fn add_fill_patterns(
   for pattern in pattern_list {
     match pattern {
       "dots" =>
-        svg.add_def(
+        assets.add_def(
           @svg.dots_pattern(
             defs_id(config, pattern_def_key(pattern)),
             stroke_color,
@@ -2242,7 +2065,7 @@ fn add_fill_patterns(
           ),
         )
       "lines" =>
-        svg.add_def(
+        assets.add_def(
           @svg.lines_pattern(
             defs_id(config, pattern_def_key(pattern)),
             stroke_color,
@@ -2250,7 +2073,7 @@ fn add_fill_patterns(
           ),
         )
       "crosshatch" =>
-        svg.add_def(
+        assets.add_def(
           @svg.crosshatch_pattern(
             defs_id(config, pattern_def_key(pattern)),
             stroke_color,
@@ -2258,7 +2081,7 @@ fn add_fill_patterns(
           ),
         )
       "grain" =>
-        svg.add_def(
+        assets.add_def(
           @svg.grain_pattern(
             defs_id(config, pattern_def_key(pattern)),
             stroke_color,
@@ -2273,19 +2096,14 @@ fn add_fill_patterns(
   }
   if !overlay_rules.is_empty() {
     let css = overlay_rules.join("\n")
-    svg.add(
-      @xml_emit.Element::new("style")
-      .attr("type", "text/css")
-      .cdata(css)
-      .build(),
-    )
+    assets.add_style(css)
   }
 }
 
 ///|
 /// Add sketch filter if any object uses sketch mode
 fn add_sketch_filter(
-  svg : @svg.Svg,
+  assets : SvgEmitAssets,
   graph : Diagram,
   config : SvgConfig,
 ) -> Unit {
@@ -2307,7 +2125,17 @@ fn add_sketch_filter(
     }
   }
   if needs_sketch {
-    svg.add_def(@svg.sketch_filter(defs_id(config, "sketch-filter")))
+    assets.add_def(@svg.sketch_filter(defs_id(config, "sketch-filter")))
+  }
+}
+
+///|
+fn add_shadow_filter(assets : SvgEmitAssets, graph : Diagram) -> Unit {
+  for obj in graph.shapes {
+    if style_bool(obj.style.shadow, false) {
+      assets.add_def(@svg.shadow_filter("shadow-filter"))
+      return
+    }
   }
 }
 
@@ -2318,37 +2146,19 @@ fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
   let mut max_x = 0.0
   let mut max_y = 0.0
   let mut first = true
-  for obj in graph.shapes {
-    match obj.box {
-      Some(b) => {
-        let left = b.x
-        let top = b.y
-        let right = b.x + b.width
-        let bottom = b.y + b.height
-        if first {
-          min_x = left
-          min_y = top
-          max_x = right
-          max_y = bottom
-          first = false
-        } else {
-          if left < min_x {
-            min_x = left
-          }
-          if top < min_y {
-            min_y = top
-          }
-          if right > max_x {
-            max_x = right
-          }
-          if bottom > max_y {
-            max_y = bottom
-          }
-        }
+  let inline_child_ids : @hashset.HashSet[String] = @hashset.new()
+  for parent in graph.shapes {
+    if parent.shape_type == Class || parent.shape_type == SqlTable {
+      for child_id in parent.child_ids {
+        inline_child_ids.add(child_id)
       }
-      None => ()
     }
-    match obj.label_box {
+  }
+  for obj in graph.shapes {
+    if inline_child_ids.contains(obj.id) {
+      continue
+    }
+    match obj.box {
       Some(b) => {
         let left = b.x
         let top = b.y
@@ -2406,60 +2216,8 @@ fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
       }
     }
   }
-  // Include edge routes
-  for edge in graph.connections {
-    match edge.label_box {
-      Some(b) => {
-        let left = b.x
-        let top = b.y
-        let right = b.x + b.width
-        let bottom = b.y + b.height
-        if first {
-          min_x = left
-          min_y = top
-          max_x = right
-          max_y = bottom
-          first = false
-        } else {
-          if left < min_x {
-            min_x = left
-          }
-          if top < min_y {
-            min_y = top
-          }
-          if right > max_x {
-            max_x = right
-          }
-          if bottom > max_y {
-            max_y = bottom
-          }
-        }
-      }
-      None => ()
-    }
-    for point in edge.route {
-      if first {
-        min_x = point.x
-        min_y = point.y
-        max_x = point.x
-        max_y = point.y
-        first = false
-      } else {
-        if point.x < min_x {
-          min_x = point.x
-        }
-        if point.y < min_y {
-          min_y = point.y
-        }
-        if point.x > max_x {
-          max_x = point.x
-        }
-        if point.y > max_y {
-          max_y = point.y
-        }
-      }
-    }
-  }
+  // D2 parity: bounds are shape-driven. Edge routes and detached label boxes
+  // are excluded from canvas extents.
   (min_x, min_y, max_x, max_y)
 }
 
@@ -2680,10 +2438,26 @@ fn render_svg_object(
   if is_inline_container_child(obj, all_objects) {
     return
   }
+  let shape_name = shape_type_name(obj.shape_type)
+  // D2 parity: most shapes are emitted in one pass (shape+label together).
+  // Keep two-pass behavior only for special rich shapes.
+  let use_single_pass_object = shape_name != "code" &&
+    shape_name != "class" &&
+    shape_name != "sql_table" &&
+    shape_name != "text" &&
+    shape_name != "image"
   // For background pass, only open groups in foreground pass
   let is_foreground = match pass {
     Foreground => true
     Background => false
+  }
+  if use_single_pass_object && is_foreground {
+    return
+  }
+  let object_pass_active = if use_single_pass_object {
+    !is_foreground
+  } else {
+    is_foreground
   }
   let link_href = match obj.link {
     Some(v) => if v.trim() == "" { None } else { Some(v) }
@@ -2696,6 +2470,24 @@ fn render_svg_object(
     } else {
       obj.shape_type != Text && obj.shape_type != Image
     })
+  let opacity_style = if style_double(obj.style.opacity, 1.0) != 1.0 {
+    "opacity:\{d2_fixed6(style_double(obj.style.opacity, 1.0))}"
+  } else {
+    ""
+  }
+  let use_shadow = style_bool(obj.style.shadow, false) && object_pass_active
+  if use_single_pass_object && !is_foreground {
+    let classes : Array[String] = [d2_wrapper_class(obj.id)]
+    if style_bool(obj.style.animated, false) {
+      classes.push("animated-shape")
+    }
+    for cls in obj.classes {
+      classes.push(cls)
+    }
+    svg.add(d2_group_open(classes.join(" "), style=opacity_style))
+    let shadow_filter = if use_shadow { "url(#shadow-filter)" } else { "" }
+    svg.add(d2_group_open("shape", filter=shadow_filter))
+  }
   if should_wrap_link {
     let href = link_href.unwrap()
     svg.add(
@@ -2706,14 +2498,18 @@ fn render_svg_object(
     )
   }
   // Apply tooltip if present (only in foreground pass to avoid double-wrapping)
-  let has_tooltip = obj.tooltip is Some(_) && is_foreground
+  let has_tooltip = obj.tooltip is Some(_) && object_pass_active
   if has_tooltip {
     svg.open_group_with_tooltip(obj.tooltip.unwrap())
   }
   // Apply sketch filter if enabled (only in foreground pass)
-  let use_sketch = style_bool(obj.style.sketch, false) && is_foreground
+  let use_sketch = style_bool(obj.style.sketch, false) && object_pass_active
   if use_sketch {
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
+  }
+  let use_shadow_group = use_shadow && !use_single_pass_object && !is_foreground
+  if use_shadow_group {
+    svg.open_group_with_filter("shadow-filter")
   }
   // Get style values
   let raw_fill = style_string(obj.style.fill, "N7")
@@ -2744,7 +2540,7 @@ fn render_svg_object(
     style_double(obj.style.border_radius, 0.0)
   }
   // Render shape based on type
-  match shape_type_name(obj.shape_type) {
+  match shape_name {
     "text" =>
       // Text shape - no border, just the label (foreground only)
       ()
@@ -2779,6 +2575,7 @@ fn render_svg_object(
         stroke,
         stroke_width,
         config,
+        theme,
         font_size,
         pass~,
       )
@@ -2825,7 +2622,23 @@ fn render_svg_object(
       return // Don't render the default label
     }
     "sql_table" => {
-      // SQL table shape with header and columns - render in appropriate pass
+      // D2 parity: SQL tables are emitted in one pass on the background layer.
+      if !is_foreground {
+        let classes : Array[String] = [d2_wrapper_class(obj.id)]
+        for cls in obj.classes {
+          classes.push(cls)
+        }
+        if style_bool(obj.style.animated, false) {
+          classes.push("animated-shape")
+        }
+        svg.add(d2_group_open(classes.join(" "), style=opacity_style))
+        let shadow_filter = if style_bool(obj.style.shadow, false) {
+          "url(#shadow-filter)"
+        } else {
+          ""
+        }
+        svg.add(d2_group_open("shape", filter=shadow_filter))
+      }
       render_svg_sql_table(
         svg,
         box,
@@ -2840,6 +2653,10 @@ fn render_svg_object(
         theme,
         use_css_theme_vars,
       )
+      if !is_foreground {
+        svg.add("</g>")
+        svg.add("</g>")
+      }
       if is_foreground {
         if use_sketch {
           svg.close_group()
@@ -3062,30 +2879,32 @@ fn render_svg_object(
           if is_multiple {
             let mbox = shifted_multiple_box(box)
             svg.add(
-              @svg.rect(
+              d2_shape_rect(
                 mbox.x,
                 mbox.y,
                 mbox.width,
                 mbox.height,
-                fill~,
-                stroke~,
-                stroke_width~,
-                rx=Some(border_radius),
-                ry=Some(border_radius),
+                fill,
+                stroke,
+                stroke_width,
+                border_radius,
+                theme,
+                !use_css_theme_vars,
               ),
             )
           }
           svg.add(
-            @svg.rect(
+            d2_shape_rect(
               box.x,
               box.y,
               box.width,
               box.height,
-              fill~,
-              stroke~,
-              stroke_width~,
-              rx=Some(border_radius),
-              ry=Some(border_radius),
+              fill,
+              stroke,
+              stroke_width,
+              border_radius,
+              theme,
+              !use_css_theme_vars,
             ),
           )
         }
@@ -3100,16 +2919,17 @@ fn render_svg_object(
     if needs_double_border {
       let inset = 4.0 // Gap between inner and outer border
       svg.add(
-        @svg.rect(
+        d2_shape_rect(
           box.x + inset,
           box.y + inset,
           box.width - inset * 2.0,
           box.height - inset * 2.0,
-          fill="none",
-          stroke~,
-          stroke_width~,
-          rx=Some(border_radius),
-          ry=Some(border_radius),
+          "none",
+          stroke,
+          stroke_width,
+          border_radius,
+          theme,
+          !use_css_theme_vars,
         ),
       )
     }
@@ -3155,9 +2975,15 @@ fn render_svg_object(
         ),
       )
     }
+    if use_shadow_group {
+      svg.close_group()
+    }
+  }
+  if use_single_pass_object && !is_foreground {
+    svg.close_group()
   }
   // Foreground pass: render icon and label
-  if is_foreground {
+  if object_pass_active {
     let cx = box.x + box.width / 2.0
     let cy = box.y + box.height / 2.0
     // Check if icon is present (non-image shapes)
@@ -3187,8 +3013,6 @@ fn render_svg_object(
     } else if obj.label != "" &&
       !has_class(obj, "lang:latex") &&
       !has_class(obj, "lang:markdown") {
-      // Use custom font-family if specified in style, otherwise use config
-      let font_family = style_string(obj.style.font_family, config.font_family)
       let text_color = style_color(
         obj.style.font_color,
         "N1",
@@ -3209,6 +3033,7 @@ fn render_svg_object(
       let is_bold = style_bool(obj.style.bold, default_object_bold(obj))
       let is_italic = style_bool(obj.style.italic, false)
       let is_mono = obj.shape_type == Code ||
+        theme.rules.mono ||
         style_is_mono(obj.style.font_family)
       let label_text = transform_label_text(obj.label, text_transform)
       let label_dims = @text_metrics.measure_label(
@@ -3265,23 +3090,23 @@ fn render_svg_object(
       }
       let label_x = label_tl_x + label_box_width / 2.0
       let label_baseline_y = label_tl_y + font_size.to_double()
-      let text_styles : Array[String] = ["fill: \{text_color}"]
-      if is_italic {
-        text_styles.push("font-style: italic")
-      }
-      if is_bold {
-        text_styles.push("font-weight: 700")
-      }
+      let font_class = d2_font_class_name(
+        is_mono,
+        is_bold,
+        is_italic,
+        style_bool(obj.style.underline, false),
+      )
       svg.add(
-        @svg.styled_text(
+        d2_text_element(
           label_x,
           label_baseline_y,
           label_text,
-          font_family~,
-          font_size~,
-          dominant_baseline="alphabetic",
-          text_transform~,
-          extra_style=text_styles.join("; "),
+          label_dims.height,
+          text_color,
+          font_class,
+          font_size,
+          theme,
+          !use_css_theme_vars,
         ),
       )
     }
@@ -3294,8 +3119,11 @@ fn render_svg_object(
       svg.close_group()
     }
   }
-  if is_foreground {
+  if object_pass_active {
     render_object_appendix_icons(svg, obj, box)
+  }
+  if use_single_pass_object && !is_foreground {
+    svg.close_group()
   }
   if should_wrap_link {
     svg.add(@xml_emit.Element::new("a").close_tag())
@@ -3369,7 +3197,7 @@ fn render_svg_sql_table(
   stroke : String,
   stroke_width : Double,
   pass? : RenderPass = Foreground,
-  config : SvgConfig,
+  _config : SvgConfig,
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
 ) -> Unit {
@@ -3408,101 +3236,144 @@ fn render_svg_sql_table(
   }
   match pass {
     Background => {
-      // Background pass: render shapes (rectangles, lines)
-      // Draw main rectangle
-      svg.add(
-        @svg.rect(
-          box.x,
-          box.y,
-          box.width,
-          box.height,
-          fill~,
-          stroke~,
-          stroke_width~,
-        ),
-      )
-      // Draw header background using the border color, matching D2 SQL table style.
+      let rect_classes : Array[String] = ["shape"]
+      match d2_theme_token(stroke, theme) {
+        Some(token) => rect_classes.push("stroke-\{token}")
+        None => ()
+      }
+      match d2_theme_token(fill, theme) {
+        Some(token) => rect_classes.push("fill-\{token}")
+        None => ()
+      }
+      let stroke_width_css = if stroke_width.round() == stroke_width {
+        stroke_width.to_int().to_string()
+      } else {
+        d2_fixed6(stroke_width)
+      }
       svg.add(
         @xml_emit.Element::new("rect")
-        .attr_num("x", box.x)
-        .attr_num("y", box.y)
-        .attr_num("width", box.width)
-        .attr_num("height", row_height)
-        .attr("fill", stroke)
+        .attr("x", d2_fixed6(box.x))
+        .attr("y", d2_fixed6(box.y))
+        .attr("width", d2_fixed6(box.width))
+        .attr("height", d2_fixed6(box.height))
+        .attr_if("stroke", stroke)
+        .attr_if("fill", fill)
+        .attr("class", rect_classes.join(" "))
+        .attr("style", "stroke-width:\{stroke_width_css};")
         .self_close()
         .build(),
       )
-      // Draw row separators
-      let mut y = box.y + row_height
-      for i in 0..<children.length() {
-        svg.add(
-          @svg.line(box.x, y, box.x + box.width, y, stroke~, stroke_width=2.0),
-        )
-        y = y + row_height
+      let header_classes : Array[String] = ["class_header"]
+      match d2_theme_token(stroke, theme) {
+        Some(token) => header_classes.push("fill-\{token}")
+        None => ()
       }
-    }
-    Foreground => {
-      // Foreground pass: render text (table name, column names)
+      svg.add(
+        @xml_emit.Element::new("rect")
+        .attr("x", d2_fixed6(box.x))
+        .attr("y", d2_fixed6(box.y))
+        .attr("width", d2_fixed6(box.width))
+        .attr("height", d2_fixed6(row_height))
+        .attr_if("fill", stroke)
+        .attr("class", header_classes.join(" "))
+        .self_close()
+        .build(),
+      )
+
+      // Header text
       let header_center_y = box.y + row_height / 2.0
       let header_text_y = header_center_y + header_dims.height / 4.0
       svg.add(
-        @xml_emit.Element::new("text")
-        .attr_num("x", box.x + SQL_TABLE_HEADER_PADDING)
-        .attr_num("y", header_text_y)
-        .attr("text-anchor", "start")
-        .attr("font-family", config.font_family)
-        .attr_int("font-size", header_font_size)
-        .attr("fill", header_text_color)
-        .text(label)
-        .build(),
+        d2_text_element(
+          box.x + SQL_TABLE_HEADER_PADDING,
+          header_text_y,
+          label,
+          header_dims.height,
+          header_text_color,
+          "text",
+          header_font_size,
+          theme,
+          !use_css_theme_vars,
+          text_anchor="start",
+          fill_class_token=Some("N7"),
+        ),
       )
+
+      // Rows (separators + text)
       let name_x = box.x + SQL_TABLE_NAME_PADDING
       let type_x = name_x + longest_name_width + SQL_TABLE_TYPE_PADDING
       let constraint_x = box.x + box.width - SQL_TABLE_NAME_PADDING
-      for i, child in children {
-        let row_center_y = box.y +
-          row_height * (i.to_double() + 1.0) +
-          row_height / 2.0
+      let mut row_top = box.y + row_height
+      for child in children {
+        let row_center_y = row_top + row_height / 2.0
         let text_y = row_center_y + base_font_size.to_double() / 4.0
         let col_name = get_short_name(child.id)
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", name_x)
-          .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", config.font_family)
-          .attr_int("font-size", base_font_size)
-          .attr("fill", name_text_color)
-          .text(col_name)
-          .build(),
+          d2_text_element(
+            name_x,
+            text_y,
+            col_name,
+            base_font_size.to_double(),
+            name_text_color,
+            "text",
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=Some("B2"),
+          ),
         )
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", type_x)
-          .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", config.font_family)
-          .attr_int("font-size", base_font_size)
-          .attr("fill", type_text_color)
-          .text(child.label)
-          .build(),
+          d2_text_element(
+            type_x,
+            text_y,
+            child.label,
+            base_font_size.to_double(),
+            type_text_color,
+            "text",
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=Some("N2"),
+          ),
         )
         let constraint = sql_table_constraint_abbr(child)
-        if constraint.length() > 0 {
-          svg.add(
-            @xml_emit.Element::new("text")
-            .attr_num("x", constraint_x)
-            .attr_num("y", text_y)
-            .attr("text-anchor", "end")
-            .attr("font-family", config.font_family)
-            .attr_int("font-size", base_font_size)
-            .attr("fill", constraint_text_color)
-            .text(constraint)
-            .build(),
-          )
+        svg.add(
+          d2_text_element(
+            constraint_x,
+            text_y,
+            constraint,
+            base_font_size.to_double(),
+            constraint_text_color,
+            "text",
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="end",
+            fill_class_token=Some("AA2"),
+          ),
+        )
+        row_top = row_top + row_height
+        let line_class = match d2_theme_token(stroke, theme) {
+          Some(token) => " stroke-\{token}"
+          None => ""
         }
+        svg.add(
+          @xml_emit.Element::new("line")
+          .attr("x1", d2_fixed6(box.x))
+          .attr("x2", d2_fixed6(box.x + box.width))
+          .attr("y1", d2_fixed6(row_top))
+          .attr("y2", d2_fixed6(row_top))
+          .attr_if("stroke", stroke)
+          .attr_if("class", line_class)
+          .attr("style", "stroke-width:2")
+          .self_close()
+          .build(),
+        )
       }
     }
+    Foreground => ()
   }
 }
 
@@ -3668,6 +3539,11 @@ fn render_svg_class(
           stroke_width~,
         ),
       )
+      let header_fill_token = d2_theme_token(stroke, theme)
+      let header_class = match header_fill_token {
+        Some(token) => "class_header fill-\{token}"
+        None => "class_header"
+      }
       svg.add(
         @xml_emit.Element::new("rect")
         .attr_num("x", box.x)
@@ -3675,6 +3551,7 @@ fn render_svg_class(
         .attr_num("width", box.width)
         .attr_num("height", header_height)
         .attr("fill", stroke)
+        .attr("class", header_class)
         .self_close()
         .build(),
       )
@@ -3686,9 +3563,8 @@ fn render_svg_class(
         @xml_emit.Element::new("text")
         .attr_num("x", box.x + box.width / 2.0)
         .attr_num("y", name_y)
-        .attr("text-anchor", "middle")
-        .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-        .attr_int("font-size", header_font_size)
+        .attr("class", "text-mono")
+        .attr("style", "text-anchor:middle;font-size:\{header_font_size}px;")
         .attr("fill", style_color(None, "N7", theme, use_css_theme_vars))
         .text(label)
         .build(),
@@ -3702,29 +3578,24 @@ fn render_svg_class(
           @xml_emit.Element::new("text")
           .attr_num("x", visibility_x)
           .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-          .attr_int("font-size", base_font_size)
+          .attr("class", "text-mono")
+          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
           .attr("fill", visibility_color)
           .text(m.visibility)
           .build(),
         )
+        let name_class = if m.underline {
+          "text-mono text-underline"
+        } else {
+          "text-mono"
+        }
         svg.add(
           @xml_emit.Element::new("text")
           .attr_num("x", name_x)
           .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-          .attr_int("font-size", base_font_size)
+          .attr("class", name_class)
+          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
           .attr("fill", name_color)
-          .attr(
-            "text-decoration",
-            if m.underline {
-              "underline"
-            } else {
-              "none"
-            },
-          )
           .text(m.name)
           .build(),
         )
@@ -3733,11 +3604,8 @@ fn render_svg_class(
             @xml_emit.Element::new("text")
             .attr_num("x", type_x)
             .attr_num("y", text_y)
-            .attr("text-anchor", "end")
-            .attr(
-              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
-            )
-            .attr_int("font-size", base_font_size)
+            .attr("class", "text-mono")
+            .attr("style", "text-anchor:end;font-size:\{base_font_size}px")
             .attr("fill", type_color)
             .text(m.type_name)
             .build(),
@@ -3751,8 +3619,22 @@ fn render_svg_class(
       } else {
         (box.x, box.x + box.width)
       }
+      let line_token = d2_theme_token(name_color, theme)
+      let line_class = match line_token {
+        Some(token) => " stroke-\{token}"
+        None => ""
+      }
       svg.add(
-        @svg.line(sep_x1, row_top, sep_x2, row_top, stroke~, stroke_width=1.0),
+        @xml_emit.Element::new("line")
+        .attr_num("x1", sep_x1)
+        .attr_num("y1", row_top)
+        .attr_num("x2", sep_x2)
+        .attr_num("y2", row_top)
+        .attr("stroke", name_color)
+        .attr_if("class", line_class)
+        .attr("style", "stroke-width:1")
+        .self_close()
+        .build(),
       )
       for m in methods {
         let text_y = row_top +
@@ -3762,29 +3644,24 @@ fn render_svg_class(
           @xml_emit.Element::new("text")
           .attr_num("x", visibility_x)
           .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-          .attr_int("font-size", base_font_size)
+          .attr("class", "text-mono")
+          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
           .attr("fill", visibility_color)
           .text(m.visibility)
           .build(),
         )
+        let name_class = if m.underline {
+          "text-mono text-underline"
+        } else {
+          "text-mono"
+        }
         svg.add(
           @xml_emit.Element::new("text")
           .attr_num("x", name_x)
           .attr_num("y", text_y)
-          .attr("text-anchor", "start")
-          .attr("font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace")
-          .attr_int("font-size", base_font_size)
+          .attr("class", name_class)
+          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
           .attr("fill", name_color)
-          .attr(
-            "text-decoration",
-            if m.underline {
-              "underline"
-            } else {
-              "none"
-            },
-          )
           .text(m.name)
           .build(),
         )
@@ -3793,11 +3670,8 @@ fn render_svg_class(
             @xml_emit.Element::new("text")
             .attr_num("x", type_x)
             .attr_num("y", text_y)
-            .attr("text-anchor", "end")
-            .attr(
-              "font-family", "'SF Mono', 'Fira Code', 'Consolas', monospace",
-            )
-            .attr_int("font-size", base_font_size)
+            .attr("class", "text-mono")
+            .attr("style", "text-anchor:end;font-size:\{base_font_size}px")
             .attr("fill", type_color)
             .text(m.type_name)
             .build(),
@@ -3819,6 +3693,7 @@ fn render_svg_code(
   stroke : String,
   stroke_width : Double,
   _config : SvgConfig,
+  theme : @themes.Theme,
   font_size : Int,
   pass? : RenderPass = Foreground,
 ) -> Unit {
@@ -3844,7 +3719,13 @@ fn render_svg_code(
           .attr_num("width", box.width)
           .attr_num("height", box.height)
           .attr("stroke", stroke)
-          .attr("class", "shape")
+          .attr(
+            "class",
+            match d2_theme_token(stroke, theme) {
+              Some(token) => "shape stroke-\{token}"
+              None => "shape"
+            },
+          )
           .attr("style", "fill:\{code_bg.1};stroke-width:\{stroke_width};")
           .self_close()
           .build(),
@@ -4256,16 +4137,16 @@ fn code_ident_kind(
   if code_is_builtin(ident, language) {
     return NameBuiltin
   }
+  if next_non_space == Some('(') && !code_is_call_control_word(ident, language) {
+    return NameFunction
+  }
   if language == Html || language == Xml {
     if prev_non_space == Some('<') || prev_non_space == Some('/') {
       return NameTag
     }
   }
-  if code_is_probable_class_name(ident, language) {
+  if language != Go && code_is_probable_class_name(ident, language) {
     return NameClass
-  }
-  if next_non_space == Some('(') && !code_is_call_control_word(ident, language) {
-    return NameFunction
   }
   Text
 }
@@ -6465,7 +6346,7 @@ fn render_edge_arrowhead_label(
     return
   }
   let font_size = style_int(edge.style.font_size, config.font_size)
-  let is_mono = style_is_mono(edge.style.font_family)
+  let is_mono = theme.rules.mono || style_is_mono(edge.style.font_family)
   let is_bold = style_bool(edge.style.bold, false)
   let dims = @text_metrics.measure_label(
     text, font_size, is_mono, is_bold, true,
@@ -6487,14 +6368,16 @@ fn render_edge_arrowhead_label(
         None => resolve_theme_color("N1", theme, use_css_theme_vars)
       }
       svg.add(
-        @svg.styled_text(
+        d2_text_element(
           x,
           y,
           text,
-          font_family=config.font_family,
-          font_size~,
-          dominant_baseline="alphabetic",
-          extra_style="fill: \{fill}; font-style: italic",
+          dims.height,
+          fill,
+          "text-italic",
+          font_size,
+          theme,
+          !use_css_theme_vars,
         ),
       )
     }
@@ -6506,9 +6389,11 @@ fn render_edge_arrowhead_label(
 fn render_svg_edge(
   svg : @svg.Svg,
   edge : Connection,
+  repeat_index : Int,
   shapes : Array[Shape],
   edge_label_mask_url : String,
   edge_marker_ids : Map[String, String],
+  diagram_hash : String,
   config : SvgConfig,
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
@@ -6519,12 +6404,24 @@ fn render_svg_edge(
   if edge.route.length() < 2 {
     return
   }
+  let wrapper_style = if style_double(edge.style.opacity, 1.0) != 1.0 {
+    "opacity:\{d2_fixed6(style_double(edge.style.opacity, 1.0))}"
+  } else {
+    ""
+  }
+  svg.add(
+    d2_group_open(
+      d2_wrapper_class(d2_connection_abs_id(edge, repeat_index)),
+      style=wrapper_style,
+    ),
+  )
   // Apply sketch filter if enabled
   let use_sketch = style_bool(edge.style.sketch, false)
   if use_sketch {
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
+  let stroke_signature = style_string(edge.style.stroke, "B1")
   let stroke = style_color(edge.style.stroke, "B1", theme, use_css_theme_vars)
   let stroke_width = style_double(
     edge.style.stroke_width,
@@ -6550,47 +6447,40 @@ fn render_svg_edge(
   // Determine markers based on arrowhead types
   let marker_start = marker_url_for_edge(
     svg,
-    config,
+    diagram_hash,
     edge_marker_ids,
     edge.src_arrowhead,
     false,
+    stroke_signature,
     stroke,
     stroke_width,
+    theme,
   )
   let marker_end = marker_url_for_edge(
     svg,
-    config,
+    diagram_hash,
     edge_marker_ids,
     edge.dst_arrowhead,
     true,
+    stroke_signature,
     stroke,
     stroke_width,
+    theme,
   )
-  // Use animated path if animated style is enabled
-  if style_bool(edge.style.animated, false) {
-    svg.add(
-      @svg.animated_path(
-        pb.build(),
-        stroke~,
-        stroke_width~,
-        marker_start~,
-        marker_end~,
-        mask=edge_label_mask_url,
-      ),
-    )
-  } else {
-    svg.add(
-      @svg.path(
-        pb.build(),
-        stroke~,
-        stroke_width~,
-        stroke_dash~,
-        marker_start~,
-        marker_end~,
-        mask=edge_label_mask_url,
-      ),
-    )
-  }
+  svg.add(
+    d2_connection_path_element(
+      pb.build(),
+      stroke,
+      stroke_width,
+      stroke_dash,
+      marker_start,
+      marker_end,
+      edge_label_mask_url,
+      style_bool(edge.style.animated, false),
+      theme,
+      !use_css_theme_vars,
+    ),
+  )
   // Render edge label
   if edge.label != "" {
     // Use precomputed label_box from the layout pipeline.
@@ -6609,22 +6499,23 @@ fn render_svg_edge(
           theme,
           use_css_theme_vars,
         )
-        let text_styles : Array[String] = ["fill: \{text_color}"]
-        if style_bool(edge.style.italic, true) {
-          text_styles.push("font-style: italic")
-        }
-        if style_bool(edge.style.bold, false) {
-          text_styles.push("font-weight: 700")
-        }
+        let font_class = d2_font_class_name(
+          theme.rules.mono || style_is_mono(edge.style.font_family),
+          style_bool(edge.style.bold, false),
+          style_bool(edge.style.italic, true),
+          style_bool(edge.style.underline, false),
+        )
         svg.add(
-          @svg.styled_text(
+          d2_text_element(
             cx,
             baseline_y,
             edge.label,
-            font_family=config.font_family,
-            font_size=label_font_size,
-            dominant_baseline="alphabetic",
-            extra_style=text_styles.join("; "),
+            label_box.height,
+            text_color,
+            font_class,
+            label_font_size,
+            theme,
+            !use_css_theme_vars,
           ),
         )
       }
@@ -6668,6 +6559,7 @@ fn render_svg_edge(
   if use_sketch {
     svg.close_group()
   }
+  svg.close_group()
 }
 
 ///|

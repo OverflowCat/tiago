@@ -159,6 +159,61 @@ pub fn Svg::add_root_attr(self : Svg, name : String, value : String) -> Unit {
 }
 
 ///|
+pub fn Svg::width(self : Svg) -> Double {
+  self.width
+}
+
+///|
+pub fn Svg::height(self : Svg) -> Double {
+  self.height
+}
+
+///|
+pub fn Svg::viewbox_x(self : Svg) -> Double {
+  self.viewbox_x
+}
+
+///|
+pub fn Svg::viewbox_y(self : Svg) -> Double {
+  self.viewbox_y
+}
+
+///|
+pub fn Svg::viewbox_width(self : Svg) -> Double {
+  self.viewbox_width
+}
+
+///|
+pub fn Svg::viewbox_height(self : Svg) -> Double {
+  self.viewbox_height
+}
+
+///|
+pub fn Svg::include_xml_declaration(self : Svg) -> Bool {
+  self.include_xml_declaration
+}
+
+///|
+pub fn Svg::elements(self : Svg) -> Array[String] {
+  self.elements
+}
+
+///|
+pub fn Svg::defs(self : Svg) -> Array[String] {
+  self.defs
+}
+
+///|
+pub fn Svg::scripts(self : Svg) -> Array[String] {
+  self.scripts
+}
+
+///|
+pub fn Svg::root_attrs(self : Svg) -> Array[(String, String)] {
+  self.root_attrs
+}
+
+///|
 /// Render to string
 pub fn Svg::to_string(self : Svg) -> String {
   let view_box = "\{self.viewbox_x} \{self.viewbox_y} \{self.viewbox_width} \{self.viewbox_height}"
@@ -242,7 +297,7 @@ pub fn rect(
     .attr_num("height", height)
     .attr("fill", fill)
     .attr("stroke", stroke)
-    .attr_num("stroke-width", stroke_width)
+    .attr("stroke-width", d2_stroke_width_value(stroke_width))
   let elem = match rx {
     Some(v) => elem.attr_num("rx", v)
     None => elem
@@ -284,7 +339,7 @@ pub fn ellipse(
   .attr_num("ry", ry)
   .attr("fill", fill)
   .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
+  .attr("stroke-width", d2_stroke_width_value(stroke_width))
   .self_close()
   .build()
 }
@@ -305,7 +360,7 @@ pub fn circle(
   .attr_num("r", r)
   .attr("fill", fill)
   .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
+  .attr("stroke-width", d2_stroke_width_value(stroke_width))
   .self_close()
   .build()
 }
@@ -326,7 +381,7 @@ pub fn line(
   .attr_num("x2", x2)
   .attr_num("y2", y2)
   .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
+  .attr("stroke-width", d2_stroke_width_value(stroke_width))
   .self_close()
   .build()
 }
@@ -344,7 +399,7 @@ pub fn polyline(
   .attr("points", points_str)
   .attr("fill", fill)
   .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
+  .attr("stroke-width", d2_stroke_width_value(stroke_width))
   .self_close()
   .build()
 }
@@ -362,7 +417,7 @@ pub fn polygon(
   .attr("points", points_str)
   .attr("fill", fill)
   .attr("stroke", stroke)
-  .attr_num("stroke-width", stroke_width)
+  .attr("stroke-width", d2_stroke_width_value(stroke_width))
   .self_close()
   .build()
 }
@@ -394,11 +449,16 @@ fn stroke_dash_attributes(
 
 ///|
 fn fixed6(value : Double) -> String {
-  let scaled = (value * 1000000.0).round().to_int()
-  let sign = if scaled < 0 { "-" } else { "" }
-  let abs_scaled = if scaled < 0 { -scaled } else { scaled }
-  let int_part = abs_scaled / 1000000
-  let frac_part = abs_scaled % 1000000
+  let sign = if value < 0.0 { "-" } else { "" }
+  let abs_value = if value < 0.0 { -value } else { value }
+  let mut int_part = @math.floor(abs_value).to_int()
+  let mut frac_part = ((abs_value - int_part.to_double()) * 1000000.0)
+    .round()
+    .to_int()
+  if frac_part >= 1000000 {
+    int_part = int_part + 1
+    frac_part = frac_part - 1000000
+  }
   let frac_raw = frac_part.to_string()
   let pad = 6 - frac_raw.length()
   let frac = StringBuilder::new()
@@ -409,6 +469,20 @@ fn fixed6(value : Double) -> String {
   }
   frac.write_string(frac_raw)
   "\{sign}\{int_part}.\{frac.to_string()}"
+}
+
+///|
+fn path_number(value : Double) -> String {
+  fixed6(value)
+}
+
+///|
+fn d2_stroke_width_value(value : Double) -> String {
+  if value.round() == value {
+    value.to_int().to_string()
+  } else {
+    fixed6(value)
+  }
 }
 
 ///|
@@ -427,7 +501,7 @@ pub fn path(
     .attr("d", d)
     .attr("fill", fill)
     .attr("stroke", stroke)
-    .attr_num("stroke-width", stroke_width)
+    .attr("stroke-width", d2_stroke_width_value(stroke_width))
     .attr_if("marker-start", marker_start)
     .attr_if("marker-end", marker_end)
     .attr_if("mask", mask)
@@ -461,7 +535,7 @@ pub fn animated_path(
     .attr("d", d)
     .attr("fill", fill)
     .attr("stroke", stroke)
-    .attr_num("stroke-width", stroke_width)
+    .attr("stroke-width", d2_stroke_width_value(stroke_width))
     .attr("stroke-dasharray", "5,5")
     .attr_if("marker-start", marker_start)
     .attr_if("marker-end", marker_end)
@@ -1127,7 +1201,7 @@ pub fn PathBuilder::move_to(
   x : Double,
   y : Double,
 ) -> PathBuilder {
-  self.commands.push("M \{x} \{y}")
+  self.commands.push("M \{path_number(x)} \{path_number(y)}")
   self
 }
 
@@ -1138,7 +1212,7 @@ pub fn PathBuilder::line_to(
   x : Double,
   y : Double,
 ) -> PathBuilder {
-  self.commands.push("L \{x} \{y}")
+  self.commands.push("L \{path_number(x)} \{path_number(y)}")
   self
 }
 
@@ -1155,7 +1229,9 @@ pub fn PathBuilder::arc_to(
 ) -> PathBuilder {
   let large = if large_arc { 1 } else { 0 }
   let sw = if sweep { 1 } else { 0 }
-  self.commands.push("A \{rx} \{ry} 0 \{large} \{sw} \{x} \{y}")
+  self.commands.push(
+    "A \{path_number(rx)} \{path_number(ry)} 0 \{large} \{sw} \{path_number(x)} \{path_number(y)}",
+  )
   self
 }
 
@@ -1170,7 +1246,9 @@ pub fn PathBuilder::cubic_to(
   x : Double,
   y : Double,
 ) -> PathBuilder {
-  self.commands.push("C \{cx1} \{cy1} \{cx2} \{cy2} \{x} \{y}")
+  self.commands.push(
+    "C \{path_number(cx1)} \{path_number(cy1)} \{path_number(cx2)} \{path_number(cy2)} \{path_number(x)} \{path_number(y)}",
+  )
   self
 }
 
@@ -1183,7 +1261,9 @@ pub fn PathBuilder::smooth_cubic_to(
   x : Double,
   y : Double,
 ) -> PathBuilder {
-  self.commands.push("S \{cx2} \{cy2} \{x} \{y}")
+  self.commands.push(
+    "S \{path_number(cx2)} \{path_number(cy2)} \{path_number(x)} \{path_number(y)}",
+  )
   self
 }
 
@@ -1198,7 +1278,9 @@ pub fn PathBuilder::cubic_rel(
   dx : Double,
   dy : Double,
 ) -> PathBuilder {
-  self.commands.push("c \{dx1} \{dy1} \{dx2} \{dy2} \{dx} \{dy}")
+  self.commands.push(
+    "c \{path_number(dx1)} \{path_number(dy1)} \{path_number(dx2)} \{path_number(dy2)} \{path_number(dx)} \{path_number(dy)}",
+  )
   self
 }
 
@@ -1211,28 +1293,30 @@ pub fn PathBuilder::quad_to(
   x : Double,
   y : Double,
 ) -> PathBuilder {
-  self.commands.push("Q \{cx} \{cy} \{x} \{y}")
+  self.commands.push(
+    "Q \{path_number(cx)} \{path_number(cy)} \{path_number(x)} \{path_number(y)}",
+  )
   self
 }
 
 ///|
 /// Horizontal line to (absolute)
 pub fn PathBuilder::h_to(self : PathBuilder, x : Double) -> PathBuilder {
-  self.commands.push("H \{x}")
+  self.commands.push("H \{path_number(x)}")
   self
 }
 
 ///|
 /// Vertical line to (absolute)
 pub fn PathBuilder::v_to(self : PathBuilder, y : Double) -> PathBuilder {
-  self.commands.push("V \{y}")
+  self.commands.push("V \{path_number(y)}")
   self
 }
 
 ///|
 /// Vertical line (relative)
 pub fn PathBuilder::v_rel(self : PathBuilder, dy : Double) -> PathBuilder {
-  self.commands.push("v \{dy}")
+  self.commands.push("v \{path_number(dy)}")
   self
 }
 
@@ -1281,6 +1365,47 @@ pub fn sketch_filter(id : String) -> String {
   .attr("width", "110%")
   .attr("height", "110%")
   .children([turbulence, displacement])
+  .build()
+}
+
+///|
+/// Build a drop-shadow filter used by D2's `shadow: true` style.
+pub fn shadow_filter(id : String) -> String {
+  let blur = @xml_emit.Element::new("feGaussianBlur")
+    .attr("stdDeviation", "1.7 ")
+    .attr("in", "SourceGraphic")
+    .build()
+  let flood = @xml_emit.Element::new("feFlood")
+    .attr("flood-color", "#3d4574")
+    .attr("flood-opacity", "0.4")
+    .attr("result", "ShadowFeFlood")
+    .attr("in", "SourceGraphic")
+    .build()
+  let composite = @xml_emit.Element::new("feComposite")
+    .attr("in", "ShadowFeFlood")
+    .attr("in2", "SourceAlpha")
+    .attr("operator", "in")
+    .attr("result", "ShadowFeComposite")
+    .build()
+  let offset = @xml_emit.Element::new("feOffset")
+    .attr("dx", "3")
+    .attr("dy", "5")
+    .attr("result", "ShadowFeOffset")
+    .attr("in", "ShadowFeComposite")
+    .build()
+  let blend = @xml_emit.Element::new("feBlend")
+    .attr("in", "SourceGraphic")
+    .attr("in2", "ShadowFeOffset")
+    .attr("mode", "normal")
+    .attr("result", "ShadowFeBlend")
+    .build()
+  @xml_emit.Element::new("filter")
+  .attr("id", id)
+  .attr("width", "200%")
+  .attr("height", "200%")
+  .attr("x", "-50%")
+  .attr("y", "-50%")
+  .children([blur, flood, composite, offset, blend])
   .build()
 }
 

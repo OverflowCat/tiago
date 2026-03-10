@@ -92,7 +92,7 @@ test "class applies multiple style properties" {
   let svg = compile(source).unwrap()
   assert_true(svg.contains("fill=\"#e3f2fd\""))
   assert_true(svg.contains("stroke=\"#1976diago\""))
-  assert_true(svg.contains("stroke-width=\"3\""))
+  assert_true(svg.contains("stroke-width:3;"))
 }
 
 ///|
@@ -203,7 +203,7 @@ test "class applies border-radius" {
     #|}
     #|box: Rounded Box { class: rounded }
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("rx=\"10\""))
+  assert_true(svg.contains("rx=\"10.000000\"") || svg.contains("rx=\"10\""))
 }
 
 ///|

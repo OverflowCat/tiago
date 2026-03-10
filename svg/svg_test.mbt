@@ -182,9 +182,9 @@ test "path builder fluent api" {
     .line_to(100.0, 100.0)
     .close()
     .build()
-  assert_true(d.contains("M 0 0"))
-  assert_true(d.contains("L 100 0"))
-  assert_true(d.contains("L 100 100"))
+  assert_true(d.contains("M 0.000000 0.000000"))
+  assert_true(d.contains("L 100.000000 0.000000"))
+  assert_true(d.contains("L 100.000000 100.000000"))
   assert_true(d.contains("Z"))
 }
 
@@ -194,7 +194,7 @@ test "path builder arc" {
     .move_to(0.0, 50.0)
     .arc_to(50.0, 50.0, 100.0, 50.0)
     .build()
-  assert_true(d.contains("A 50 50 0 0 1 100 50"))
+  assert_true(d.contains("A 50.000000 50.000000 0 0 1 100.000000 50.000000"))
 }
 
 ///|

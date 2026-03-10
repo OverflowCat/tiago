@@ -52,6 +52,8 @@ pub fn polyline(Array[(Double, Double)], fill? : String, stroke? : String, strok
 
 pub fn rect(Double, Double, Double, Double, fill? : String, stroke? : String, stroke_width? : Double, rx? : Double?, ry? : Double?, id? : String?, class? : String?, onclick? : String?) -> String
 
+pub fn shadow_filter(String) -> String
+
 pub fn sketch_filter(String) -> String
 
 pub fn styled_text(Double, Double, String, font_family? : String, font_size? : Int, text_anchor? : String, dominant_baseline? : String, text_transform? : String, extra_style? : String) -> String
@@ -96,15 +98,26 @@ pub fn Svg::add_def(Self, String) -> Unit
 pub fn Svg::add_root_attr(Self, String, String) -> Unit
 pub fn Svg::add_script(Self, String) -> Unit
 pub fn Svg::close_group(Self) -> Unit
+pub fn Svg::defs(Self) -> Array[String]
+pub fn Svg::elements(Self) -> Array[String]
+pub fn Svg::height(Self) -> Double
+pub fn Svg::include_xml_declaration(Self) -> Bool
 pub fn Svg::new(Double, Double) -> Self
 pub fn Svg::open_group(Self, String) -> Unit
 pub fn Svg::open_group_with_filter(Self, String) -> Unit
 pub fn Svg::open_group_with_id(Self, String, String) -> Unit
 pub fn Svg::open_group_with_id_style(Self, String, String, String) -> Unit
 pub fn Svg::open_group_with_tooltip(Self, String) -> Unit
+pub fn Svg::root_attrs(Self) -> Array[(String, String)]
+pub fn Svg::scripts(Self) -> Array[String]
 pub fn Svg::set_include_xml_declaration(Self, Bool) -> Unit
 pub fn Svg::set_viewbox(Self, Double, Double, Double, Double) -> Unit
 pub fn Svg::to_string(Self) -> String
+pub fn Svg::viewbox_height(Self) -> Double
+pub fn Svg::viewbox_width(Self) -> Double
+pub fn Svg::viewbox_x(Self) -> Double
+pub fn Svg::viewbox_y(Self) -> Double
+pub fn Svg::width(Self) -> Double
 pub impl Show for Svg
 
 // Type aliases

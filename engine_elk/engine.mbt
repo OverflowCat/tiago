@@ -686,8 +686,13 @@ fn build_elk_graph(
   let edge_id_by_index : Map[Int, String] = {}
   let edge_endpoints_by_index : Map[Int, (String, String)] = {}
   let edges_json : Array[Json] = []
+  let edge_repeat_indices = d2_edge_repeat_indices(graph.edges)
+  let (default_sql_src_side, default_sql_dst_side) = sql_root_port_sides(
+    direction,
+  )
+  let sql_root_port_ids_by_group : Map[String, Array[String]] = {}
 
-  for edge in graph.edges {
+  for i, edge in graph.edges {
     let src_id = match
       resolve_edge_endpoint_id(
         edge.src_id,
@@ -709,7 +714,7 @@ fn build_elk_graph(
       None => continue
     }
 
-    let edge_id = elk_edge_id(edge.index)
+    let edge_id = elk_edge_id(edge, edge_repeat_indices[i])
     edge_id_by_index[edge.index] = edge_id
     edge_endpoints_by_index[edge.index] = (src_id, dst_id)
 
@@ -717,13 +722,21 @@ fn build_elk_graph(
       edge.src_column_index,
       src_id,
       true,
+      i,
+      default_sql_src_side,
       object_by_id,
+      node_json_by_id,
+      sql_root_port_ids_by_group,
     )
     let target_endpoint = edge_endpoint_with_sql_port(
       edge.dst_column_index,
       dst_id,
       false,
+      i,
+      default_sql_dst_side,
       object_by_id,
+      node_json_by_id,
+      sql_root_port_ids_by_group,
     )
 
     let edge_json : Map[String, Json] = {
@@ -750,14 +763,15 @@ fn build_elk_graph(
     edges_json.push(Json::object(edge_json))
   }
 
-  let root_id = if graph.name.is_empty() { graph.root.id } else { graph.name }
+  assign_sql_root_port_x_positions(node_json_by_id, sql_root_port_ids_by_group)
+
   let root_self_loop_spacing = self_loop_spacing_for_parent(
     graph,
     graph.root.child_ids,
     direction,
   )
   let root_json : Map[String, Json] = {
-    "id": Json::string(root_id),
+    "id": Json::string(""),
     "layoutOptions": Json::object(
       make_root_layout_options(config, direction, root_self_loop_spacing),
     ),
@@ -1483,7 +1497,11 @@ fn edge_endpoint_with_sql_port(
   column_index : Int?,
   resolved_id : String,
   is_source : Bool,
+  edge_order_index : Int,
+  default_side : String,
   object_by_id : Map[String, @graph.ObjectInput],
+  node_json_by_id : Map[String, Map[String, Json]],
+  sql_root_port_ids_by_group : Map[String, Array[String]],
 ) -> String {
   let endpoint_obj = match object_by_id.get(resolved_id) {
     Some(v) => v
@@ -1501,7 +1519,114 @@ fn edge_endpoint_with_sql_port(
         sql_column_dst_port_id(resolved_id, column_name)
       }
     }
-    None => resolved_id
+    None => {
+      let root_column = "__root__"
+      let root_prefix = if is_source {
+        sql_column_src_port_id(resolved_id, root_column)
+      } else {
+        sql_column_dst_port_id(resolved_id, root_column)
+      }
+      let root_port_id = if is_source {
+        "\{root_prefix}.\{edge_order_index}"
+      } else {
+        "\{root_prefix}.\{edge_order_index}"
+      }
+      match node_json_by_id.get(resolved_id) {
+        Some(node_json) => {
+          let ports = json_array_field(node_json, "ports")
+          ports.push(sql_port_json(root_port_id, 0.0, default_side))
+          node_json["ports"] = Json::array(ports)
+          node_json_by_id[resolved_id] = node_json
+        }
+        None => ()
+      }
+      let group_key = sql_root_port_group_key(resolved_id, default_side)
+      let group = match sql_root_port_ids_by_group.get(group_key) {
+        Some(v) => v
+        None => []
+      }
+      group.push(root_port_id)
+      sql_root_port_ids_by_group[group_key] = group
+      root_port_id
+    }
+  }
+}
+
+///|
+fn sql_root_port_sides(direction : @engine_api.Direction) -> (String, String) {
+  match direction {
+    @engine_api.Up => ("NORTH", "SOUTH")
+    _ => ("SOUTH", "NORTH")
+  }
+}
+
+///|
+fn sql_root_port_group_key(obj_id : String, side : String) -> String {
+  "\{obj_id}\u0000\{side}"
+}
+
+///|
+fn sql_root_port_group_obj_id(group_key : String) -> String {
+  let parts = group_key.split("\u0000").collect()
+  if parts.is_empty() {
+    group_key
+  } else {
+    parts[0].to_string()
+  }
+}
+
+///|
+fn assign_sql_root_port_x_positions(
+  node_json_by_id : Map[String, Map[String, Json]],
+  sql_root_port_ids_by_group : Map[String, Array[String]],
+) -> Unit {
+  let port_x_by_id : Map[String, Double] = {}
+  for group_key, port_ids in sql_root_port_ids_by_group {
+    if port_ids.is_empty() {
+      continue
+    }
+    let obj_id = sql_root_port_group_obj_id(group_key)
+    let node_json = match node_json_by_id.get(obj_id) {
+      Some(v) => v
+      None => continue
+    }
+    let width = json_double_field(node_json, "width", 0.0)
+    if width <= 0.0 {
+      continue
+    }
+    let spacing = width / (port_ids.length().to_double() + 1.0)
+    for i, port_id in port_ids {
+      port_x_by_id[port_id] = (i + 1).to_double() * spacing
+    }
+  }
+
+  for obj_id, node_json in node_json_by_id {
+    let ports = json_array_field(node_json, "ports")
+    if ports.is_empty() {
+      continue
+    }
+    let rewritten_ports : Array[Json] = []
+    for port_json in ports {
+      let mut out_port = port_json
+      match port_json {
+        Object(port_obj) =>
+          match json_id_field(port_obj) {
+            Some(port_id) =>
+              match port_x_by_id.get(port_id) {
+                Some(x) => {
+                  port_obj["x"] = Json::number(x)
+                  out_port = Json::object(port_obj)
+                }
+                None => ()
+              }
+            None => ()
+          }
+        _ => ()
+      }
+      rewritten_ports.push(out_port)
+    }
+    node_json["ports"] = Json::array(rewritten_ports)
+    node_json_by_id[obj_id] = node_json
   }
 }
 
@@ -2087,11 +2212,7 @@ fn make_root_layout_options(
   {
     "elk.algorithm": Json::string("layered"),
     "elk.direction": Json::string(elk_direction(direction)),
-    "elk.edgeRouting": Json::string("ORTHOGONAL"),
-    "org.eclipse.elk.edgeRouting": Json::string("ORTHOGONAL"),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
-    "elk.layered.mergeEdges": Json::boolean(false),
-    "org.eclipse.elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
@@ -2118,11 +2239,7 @@ fn make_container_layout_options(
   let padding = layout_padding_value(config)
   {
     "elk.layered.crossingMinimization.forceNodeModelOrder": Json::boolean(true),
-    "elk.edgeRouting": Json::string("ORTHOGONAL"),
-    "org.eclipse.elk.edgeRouting": Json::string("ORTHOGONAL"),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
-    "elk.layered.mergeEdges": Json::boolean(false),
-    "org.eclipse.elk.layered.mergeEdges": Json::boolean(false),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
     "elk.layered.considerModelOrder.strategy": Json::string("NODES_AND_EDGES"),
     "elk.layered.cycleBreaking.strategy": Json::string("GREEDY_MODEL_ORDER"),
@@ -4948,8 +5065,80 @@ fn point_distance(a : @graph.Point, b : @graph.Point) -> Double {
 }
 
 ///|
-fn elk_edge_id(index : Int) -> String {
-  "e:\{index}"
+fn elk_edge_id(edge : @graph.EdgeInput, repeat_index : Int) -> String {
+  d2_edge_abs_id(edge, repeat_index)
+}
+
+///|
+fn d2_edge_repeat_indices(edges : Array[@graph.EdgeInput]) -> Array[Int] {
+  let counts : Map[String, Int] = {}
+  let out : Array[Int] = []
+  for edge in edges {
+    let key = d2_edge_repeat_key(edge)
+    let index = counts.get(key).unwrap_or(0)
+    out.push(index)
+    counts[key] = index + 1
+  }
+  out
+}
+
+///|
+fn d2_edge_repeat_key(edge : @graph.EdgeInput) -> String {
+  "\{edge.src_id}\u0000\{edge.src_arrow.to_string()}\u0000\{edge.dst_id}\u0000\{edge.dst_arrow.to_string()}"
+}
+
+///|
+fn d2_edge_abs_id(edge : @graph.EdgeInput, repeat_index : Int) -> String {
+  let src_parts = d2_split_abs_id_parts(edge.src_id)
+  let dst_parts = d2_split_abs_id_parts(edge.dst_id)
+  let common : Array[String] = []
+  let mut src_start = 0
+  let mut dst_start = 0
+  while src_parts.length() - src_start > 1 && dst_parts.length() - dst_start > 1 {
+    if src_parts[src_start].to_lower() != dst_parts[dst_start].to_lower() {
+      break
+    }
+    common.push(src_parts[src_start])
+    src_start = src_start + 1
+    dst_start = dst_start + 1
+  }
+  let common_key = if common.is_empty() { "" } else { common.join(".") + "." }
+  let src_tail : Array[String] = []
+  let dst_tail : Array[String] = []
+  for i in src_start..<src_parts.length() {
+    src_tail.push(src_parts[i])
+  }
+  for i in dst_start..<dst_parts.length() {
+    dst_tail.push(dst_parts[i])
+  }
+  let src_join = src_tail.join(".")
+  let dst_join = dst_tail.join(".")
+  "\{common_key}(\{src_join} \{d2_edge_arrow_string(edge)} \{dst_join})[\{repeat_index}]"
+}
+
+///|
+fn d2_split_abs_id_parts(id : String) -> Array[String] {
+  let out : Array[String] = []
+  if id == "" {
+    return out
+  }
+  for part in id.split(".") {
+    out.push(part.to_string())
+  }
+  out
+}
+
+///|
+fn d2_edge_arrow_string(edge : @graph.EdgeInput) -> String {
+  if edge.src_arrow && edge.dst_arrow {
+    "<->"
+  } else if edge.src_arrow {
+    "<-"
+  } else if edge.dst_arrow {
+    "->"
+  } else {
+    "--"
+  }
 }
 
 ///|

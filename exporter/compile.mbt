@@ -679,6 +679,9 @@ pub fn compile(
   compile_layers(graph, ir, classes)
   compile_scenarios(graph, ir, classes)
   compile_steps(graph, ir, classes)
+  // D2 parity: SQL table column endpoints are represented as table endpoints
+  // with source/target column indices.
+  normalize_sql_table_edge_endpoints_recursive(graph)
   // Handle root-level shape (e.g., shape: sequence_diagram)
   handle_root_shape(graph, ir)
   apply_d2_text_defaults(graph)
@@ -1687,7 +1690,7 @@ fn is_style_keyword(name : String) -> Bool {
     "opacity", "stroke", "fill", "stroke-width", "stroke-dash", "border-radius",
     "shadow", "3d", "3", "d", "multiple", "font", "font-size", "font-color", "bold",
     "italic", "underline", "animated", "filled", "double-border", "text-transform",
-    "font-family", "fill-pattern", "sketch", "curved",
+    "fill-pattern", "sketch", "curved",
   ]
   keywords.contains(name.to_lower())
 }
@@ -2573,6 +2576,112 @@ fn parse_int(s : String) -> Int? {
     _ => None
   } noraise {
     v => Some(v)
+  }
+}
+
+///|
+fn normalize_sql_table_edge_endpoints_recursive(graph : Graph) -> Unit {
+  normalize_sql_table_edge_endpoints(graph)
+  for layer in graph.layers {
+    normalize_sql_table_edge_endpoints_recursive(layer.graph)
+  }
+  for scenario in graph.scenarios {
+    normalize_sql_table_edge_endpoints_recursive(scenario.graph)
+  }
+  for step in graph.steps {
+    normalize_sql_table_edge_endpoints_recursive(step.graph)
+  }
+}
+
+///|
+fn normalize_sql_table_edge_endpoints(graph : Graph) -> Unit {
+  let object_by_id : Map[String, Object] = {}
+  for obj in graph.objects {
+    object_by_id[obj.id] = obj
+  }
+  for i, edge in graph.edges {
+    let mut normalized_src_id = edge.src_id
+    let mut normalized_dst_id = edge.dst_id
+    let mut normalized_src_column_index = edge.src_column_index
+    let mut normalized_dst_column_index = edge.dst_column_index
+
+    match sql_table_endpoint_info(object_by_id, normalized_src_id) {
+      Some((table_id, column_index)) => {
+        let dst_table_id = sql_table_id_for_endpoint(
+          object_by_id, normalized_dst_id,
+        )
+        normalized_src_id = table_id
+        match dst_table_id {
+          Some(dst_table) =>
+            if dst_table != table_id {
+              normalized_src_column_index = Some(column_index)
+            }
+          None => normalized_src_column_index = Some(column_index)
+        }
+      }
+      None => ()
+    }
+    match sql_table_endpoint_info(object_by_id, normalized_dst_id) {
+      Some((table_id, column_index)) => {
+        normalized_dst_id = table_id
+        normalized_dst_column_index = Some(column_index)
+      }
+      None => ()
+    }
+    graph.edges[i] = {
+      ..edge,
+      src_id: normalized_src_id,
+      dst_id: normalized_dst_id,
+      src_column_index: normalized_src_column_index,
+      dst_column_index: normalized_dst_column_index,
+    }
+  }
+}
+
+///|
+fn sql_table_endpoint_info(
+  object_by_id : Map[String, Object],
+  endpoint_id : String,
+) -> (String, Int)? {
+  let parent_id = match parent_id_of(endpoint_id) {
+    Some(v) => v
+    None => return None
+  }
+  let parent = match object_by_id.get(parent_id) {
+    Some(v) => v
+    None => return None
+  }
+  if parent.shape_type != ShapeType::SqlTable {
+    return None
+  }
+  for i, child in parent.children {
+    if child.id == endpoint_id {
+      return Some((parent.id, i))
+    }
+  }
+  None
+}
+
+///|
+fn sql_table_id_for_endpoint(
+  object_by_id : Map[String, Object],
+  endpoint_id : String,
+) -> String? {
+  match object_by_id.get(endpoint_id) {
+    Some(obj) =>
+      if obj.shape_type == ShapeType::SqlTable {
+        Some(obj.id)
+      } else {
+        match sql_table_endpoint_info(object_by_id, endpoint_id) {
+          Some((table_id, _)) => Some(table_id)
+          None => None
+        }
+      }
+    None =>
+      match sql_table_endpoint_info(object_by_id, endpoint_id) {
+        Some((table_id, _)) => Some(table_id)
+        None => None
+      }
   }
 }
 
