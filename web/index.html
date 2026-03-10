@@ -395,6 +395,8 @@ server -> database: queries"></textarea>
     let svgViewport = null;
     let svgCanvas = null;
     let svgScale = 1;
+    let lastPointerClientX = null;
+    let lastPointerClientY = null;
     const SVG_MIN_SCALE = 0.1;
     const SVG_MAX_SCALE = 8.0;
 
@@ -542,6 +544,21 @@ server -> database: queries"></textarea>
       svgViewport.scrollTop = Math.max(0, (svgViewport.scrollHeight - svgViewport.clientHeight) / 2);
     }
 
+    function currentZoomAnchor() {
+      if (!svgViewport) return { x: null, y: null };
+      if (lastPointerClientX == null || lastPointerClientY == null) {
+        return { x: null, y: null };
+      }
+      const rect = svgViewport.getBoundingClientRect();
+      const inside =
+        lastPointerClientX >= rect.left &&
+        lastPointerClientX <= rect.right &&
+        lastPointerClientY >= rect.top &&
+        lastPointerClientY <= rect.bottom;
+      if (!inside) return { x: null, y: null };
+      return { x: lastPointerClientX, y: lastPointerClientY };
+    }
+
     function setupSvgInteractions() {
       if (!svgViewport || !svgCanvas) return;
       let panning = false;
@@ -550,7 +567,13 @@ server -> database: queries"></textarea>
       let startScrollLeft = 0;
       let startScrollTop = 0;
 
+      function rememberPointer(e) {
+        lastPointerClientX = e.clientX;
+        lastPointerClientY = e.clientY;
+      }
+
       svgViewport.addEventListener('wheel', (e) => {
+        rememberPointer(e);
         e.preventDefault();
         const zoomFactor = Math.exp(-e.deltaY * 0.0015);
         applySvgScale(svgScale * zoomFactor, e.clientX, e.clientY);
@@ -558,6 +581,7 @@ server -> database: queries"></textarea>
 
       svgViewport.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return;
+        rememberPointer(e);
         panning = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -569,12 +593,15 @@ server -> database: queries"></textarea>
       });
 
       svgViewport.addEventListener('pointermove', (e) => {
+        rememberPointer(e);
         if (!panning) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
         svgViewport.scrollLeft = startScrollLeft - dx;
         svgViewport.scrollTop = startScrollTop - dy;
       });
+
+      svgViewport.addEventListener('pointerenter', rememberPointer);
 
       function stopPanning() {
         panning = false;
@@ -731,11 +758,13 @@ server -> database: queries"></textarea>
     });
 
     zoomInBtn.addEventListener('click', () => {
-      applySvgScale(svgScale * 1.2);
+      const anchor = currentZoomAnchor();
+      applySvgScale(svgScale * 1.2, anchor.x, anchor.y);
     });
 
     zoomOutBtn.addEventListener('click', () => {
-      applySvgScale(svgScale / 1.2);
+      const anchor = currentZoomAnchor();
+      applySvgScale(svgScale / 1.2, anchor.x, anchor.y);
     });
 
     zoomResetBtn.addEventListener('click', () => {
@@ -922,6 +951,8 @@ server -> database: queries"></textarea>
         svgViewport = null;
         svgCanvas = null;
         svgScale = 1;
+        lastPointerClientX = null;
+        lastPointerClientY = null;
 
         if (currentView === 'ascii' || currentView === 'unicode') {
           preview.className = 'preview-content ascii-mode';
