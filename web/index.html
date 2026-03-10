@@ -106,6 +106,12 @@
       overflow: auto;
       background: #fff;
     }
+    .preview-content.svg-mode {
+      display: block;
+      padding: 0;
+      overflow: hidden;
+      background: #fff;
+    }
     .preview-content.dark {
       background: #0f0f23;
     }
@@ -116,6 +122,34 @@
     .preview-content.ascii-mode {
       display: block;
       padding: 0;
+    }
+    .svg-viewport {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      cursor: grab;
+      touch-action: none;
+    }
+    .svg-viewport.panning {
+      cursor: grabbing;
+    }
+    .svg-canvas {
+      min-width: 1px;
+      min-height: 1px;
+    }
+    .svg-controls {
+      display: none;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .svg-controls button {
+      min-width: 2rem;
+      padding: 0.35rem 0.55rem;
+      line-height: 1;
+    }
+    #zoom-reset-btn {
+      min-width: 3.5rem;
+      font-variant-numeric: tabular-nums;
     }
     .ascii-output {
       background: #0f0f23;
@@ -311,6 +345,11 @@ server -> database: queries"></textarea>
               <button class="engine-tab" data-engine="railway">Railway</button>
             </div>
             <div class="spacer"></div>
+            <div id="svg-controls" class="svg-controls">
+              <button id="zoom-out-btn" class="secondary" title="Zoom out">−</button>
+              <button id="zoom-reset-btn" class="secondary" title="Reset zoom">100%</button>
+              <button id="zoom-in-btn" class="secondary" title="Zoom in">+</button>
+            </div>
             <button id="copy-btn" class="secondary">Copy Output</button>
             <button id="download-png-btn" class="secondary" disabled>Download PNG</button>
             <button id="download-pdf-btn" class="secondary" disabled>Export PDF</button>
@@ -353,6 +392,11 @@ server -> database: queries"></textarea>
     let renderTimeout = null;
     let lastSvgOutput = null;
     let lastRenderOk = false;
+    let svgViewport = null;
+    let svgCanvas = null;
+    let svgScale = 1;
+    const SVG_MIN_SCALE = 0.1;
+    const SVG_MAX_SCALE = 8.0;
 
     // DOM elements
     const editor = document.getElementById('editor');
@@ -367,6 +411,10 @@ server -> database: queries"></textarea>
     const engineTabs = document.querySelectorAll('.engine-tab');
     const editorPane = document.getElementById('editor-pane');
     const resizeHandle = document.getElementById('resize-handle');
+    const svgControls = document.getElementById('svg-controls');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomResetBtn = document.getElementById('zoom-reset-btn');
 
     // Engine selection
     const ENGINE_STORAGE_KEY = 'diago.layout_engine';
@@ -427,7 +475,7 @@ server -> database: queries"></textarea>
         const pre = preview.querySelector('pre');
         content = pre ? pre.textContent : preview.textContent;
       } else {
-        content = preview.innerHTML;
+        content = lastSvgOutput ?? preview.innerHTML;
       }
       navigator.clipboard.writeText(content).then(() => {
         copyBtn.textContent = 'Copied!';
@@ -439,6 +487,131 @@ server -> database: queries"></textarea>
       const enabled = !!(wasmModule && lastRenderOk && currentView === 'svg' && lastSvgOutput);
       downloadPngBtn.disabled = !enabled;
       downloadPdfBtn.disabled = !enabled;
+      const showSvgControls = currentView === 'svg' && lastRenderOk;
+      svgControls.style.display = showSvgControls ? 'flex' : 'none';
+      if (showSvgControls) {
+        zoomOutBtn.disabled = svgScale <= SVG_MIN_SCALE + 1e-6;
+        zoomInBtn.disabled = svgScale >= SVG_MAX_SCALE - 1e-6;
+      }
+    }
+
+    function clampSvgScale(scale) {
+      return Math.min(SVG_MAX_SCALE, Math.max(SVG_MIN_SCALE, scale));
+    }
+
+    function updateZoomLabel() {
+      zoomResetBtn.textContent = `${Math.round(svgScale * 100)}%`;
+    }
+
+    function applySvgScale(nextScale, anchorClientX = null, anchorClientY = null) {
+      if (!svgViewport || !svgCanvas) return;
+      const clamped = clampSvgScale(nextScale);
+      if (!Number.isFinite(clamped)) return;
+      const oldScale = svgScale;
+      if (Math.abs(clamped - oldScale) < 1e-6) {
+        updateZoomLabel();
+        updateExportButtons();
+        return;
+      }
+
+      const rect = svgViewport.getBoundingClientRect();
+      const anchorX = anchorClientX == null ? rect.left + rect.width / 2 : anchorClientX;
+      const anchorY = anchorClientY == null ? rect.top + rect.height / 2 : anchorClientY;
+      const viewportX = anchorX - rect.left;
+      const viewportY = anchorY - rect.top;
+      const baseX = (svgViewport.scrollLeft + viewportX) / oldScale;
+      const baseY = (svgViewport.scrollTop + viewportY) / oldScale;
+
+      svgScale = clamped;
+      const baseWidth = Number(svgCanvas.dataset.baseWidth || '0');
+      const baseHeight = Number(svgCanvas.dataset.baseHeight || '0');
+      if (baseWidth > 0 && baseHeight > 0) {
+        svgCanvas.style.width = `${baseWidth * svgScale}px`;
+        svgCanvas.style.height = `${baseHeight * svgScale}px`;
+      }
+
+      svgViewport.scrollLeft = baseX * svgScale - viewportX;
+      svgViewport.scrollTop = baseY * svgScale - viewportY;
+      updateZoomLabel();
+      updateExportButtons();
+    }
+
+    function centerSvgInViewport() {
+      if (!svgViewport) return;
+      svgViewport.scrollLeft = Math.max(0, (svgViewport.scrollWidth - svgViewport.clientWidth) / 2);
+      svgViewport.scrollTop = Math.max(0, (svgViewport.scrollHeight - svgViewport.clientHeight) / 2);
+    }
+
+    function setupSvgInteractions() {
+      if (!svgViewport || !svgCanvas) return;
+      let panning = false;
+      let startX = 0;
+      let startY = 0;
+      let startScrollLeft = 0;
+      let startScrollTop = 0;
+
+      svgViewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+        applySvgScale(svgScale * zoomFactor, e.clientX, e.clientY);
+      }, { passive: false });
+
+      svgViewport.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        panning = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startScrollLeft = svgViewport.scrollLeft;
+        startScrollTop = svgViewport.scrollTop;
+        svgViewport.classList.add('panning');
+        svgViewport.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+
+      svgViewport.addEventListener('pointermove', (e) => {
+        if (!panning) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        svgViewport.scrollLeft = startScrollLeft - dx;
+        svgViewport.scrollTop = startScrollTop - dy;
+      });
+
+      function stopPanning() {
+        panning = false;
+        if (svgViewport) svgViewport.classList.remove('panning');
+      }
+
+      svgViewport.addEventListener('pointerup', stopPanning);
+      svgViewport.addEventListener('pointercancel', stopPanning);
+      svgViewport.addEventListener('pointerleave', (e) => {
+        if (e.buttons === 0) stopPanning();
+      });
+    }
+
+    function setupSvgView(svgOutput) {
+      preview.className = 'preview-content svg-mode';
+      preview.innerHTML = '<div class="svg-viewport"><div class="svg-canvas"></div></div>';
+      svgViewport = preview.querySelector('.svg-viewport');
+      svgCanvas = preview.querySelector('.svg-canvas');
+      svgCanvas.innerHTML = svgOutput;
+
+      const size = parseSvgSize(svgOutput);
+      svgCanvas.dataset.baseWidth = String(size.width);
+      svgCanvas.dataset.baseHeight = String(size.height);
+      svgScale = 1;
+      svgCanvas.style.width = `${size.width}px`;
+      svgCanvas.style.height = `${size.height}px`;
+
+      const rootSvg = svgCanvas.querySelector('svg');
+      if (rootSvg) {
+        rootSvg.style.width = '100%';
+        rootSvg.style.height = '100%';
+        rootSvg.style.display = 'block';
+      }
+
+      setupSvgInteractions();
+      updateZoomLabel();
+      requestAnimationFrame(() => centerSvgInViewport());
     }
 
     function parseSvgSize(svgText) {
@@ -555,6 +728,28 @@ server -> database: queries"></textarea>
         errorBanner.textContent = 'Failed to export PDF.';
         errorBanner.style.display = 'block';
       }
+    });
+
+    zoomInBtn.addEventListener('click', () => {
+      applySvgScale(svgScale * 1.2);
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+      applySvgScale(svgScale / 1.2);
+    });
+
+    zoomResetBtn.addEventListener('click', () => {
+      if (!svgCanvas) return;
+      svgScale = 1;
+      const baseWidth = Number(svgCanvas.dataset.baseWidth || '0');
+      const baseHeight = Number(svgCanvas.dataset.baseHeight || '0');
+      if (baseWidth > 0 && baseHeight > 0) {
+        svgCanvas.style.width = `${baseWidth}px`;
+        svgCanvas.style.height = `${baseHeight}px`;
+      }
+      updateZoomLabel();
+      requestAnimationFrame(() => centerSvgInViewport());
+      updateExportButtons();
     });
 
     // Auto-render on input (debounced)
@@ -724,6 +919,9 @@ server -> database: queries"></textarea>
 
         // Clear previous content first to avoid flash of old content with new styles
         preview.innerHTML = '';
+        svgViewport = null;
+        svgCanvas = null;
+        svgScale = 1;
 
         if (currentView === 'ascii' || currentView === 'unicode') {
           preview.className = 'preview-content ascii-mode';
@@ -732,8 +930,7 @@ server -> database: queries"></textarea>
           pre.textContent = output;
           preview.appendChild(pre);
         } else {
-          preview.className = 'preview-content';
-          preview.innerHTML = output;
+          setupSvgView(output);
           lastSvgOutput = output;
         }
         lastRenderOk = true;
