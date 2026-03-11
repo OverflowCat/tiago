@@ -1,6 +1,6 @@
 {
   "name": "Milky2018/diago",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "deps": {
     "moonbitlang/x": "0.4.38",
     "Milky2018/xml": "0.2.0",
