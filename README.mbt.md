@@ -1,25 +1,59 @@
 # Diago
 
-A diagoago diagram language compiler written in MoonBit.
+Diago is a MoonBit implementation of the [D2](https://d2lang.com) diagram language.
+It compiles `.d2` files into SVG (and optionally ASCII/Unicode text) using multiple
+layout engines.
 
 ## Overview
 
-Diago compiles [diagoago](https://d2lang.com) diagram source files to SVG. It implements the codiago diago language features including objects, edges, labels, shapes, and styling.
+This repository contains:
+
+- A CLI (`cmd/main`) to render, format, validate, and watch `.d2` files
+- A WASM-based playground (`web/`) deployed via GitHub Pages
+- Multiple layout engines: `dagre`, `elk`, and `railway`
 
 ## Installation
 
 ```bash
+moon update
 moon build
 ```
 
-## Usage
+## Quick Start
 
 ```bash
-# Compile diagoago to SVG (output to stdout)
-moon run cmd/main -- diagram.d2
+moon run cmd/main -- diagram.d2 > diagram.svg
+```
 
-# Compile diagoago to SVG file
-moon run cmd/main -- diagram.d2 output.svg
+## CLI
+
+Show help:
+
+```bash
+moon run cmd/main -- --help
+```
+
+Common usage:
+
+```bash
+# Render SVG (default)
+moon run cmd/main -- diagram.d2 > diagram.svg
+moon run cmd/main -- diagram.d2 diagram.svg
+
+# Choose layout engine
+moon run cmd/main -- --layout elk diagram.d2 diagram.svg
+moon run cmd/main -- -l dagre diagram.d2 diagram.svg
+
+# ASCII / Unicode text
+moon run cmd/main -- --ascii diagram.d2 > diagram.ascii.txt
+moon run cmd/main -- --unicode diagram.d2 > diagram.unicode.txt
+
+# Format / validate
+moon run cmd/main -- fmt -w diagram.d2
+moon run cmd/main -- validate diagram.d2
+
+# Dump layout engine input JSON (for debugging)
+moon run cmd/main -- dump-input --engine elk --out-dir /tmp/diag-elk-input diagram.d2
 ```
 
 ## Example
@@ -46,32 +80,13 @@ Compile it:
 moon run cmd/main -- example.d2 example.svg
 ```
 
-## Architecture
+## Pipeline
 
-The compiler pipeline:
+At a high level:
 
 ```
-diagoago Source → Lexer → Parser → AST → IR → Graph → Layout → SVG
+D2 Source → Lexer → Parser → AST → IR → Graph → Layout (dagre/elk/railway) → Render (SVG/ASCII/Unicode)
 ```
-
-| Module | Description |
-|--------|-------------|
-| `lexer` | Tokenizes diagoago source into tokens |
-| `parser` | Parses tokens into AST |
-| `ast` | Abstract syntax tree definitions |
-| `ir` | Intermediate representation |
-| `graph` | Graph data structures (objects, edges) |
-| `layout` | Positions objects and routes edges |
-| `svg` | Renders graph to SVG |
-
-## Supported Features
-
-- Objects with labels
-- Nested objects (containers)
-- Edges with labels and arrows (`->`, `<-`, `<->`, `--`)
-- Shapes: rectangle, circle, oval, cylinder, diamond, hexagon
-- Style properties: fill, stroke, stroke-width, border-radius
-- Edge chains: `a -> b -> c`
 
 ## Tests
 
@@ -82,4 +97,4 @@ moon test -v     # Verbose output
 
 ## License
 
-MIT
+Apache-2.0 (see `LICENSE`).
