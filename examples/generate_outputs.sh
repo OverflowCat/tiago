@@ -75,17 +75,17 @@ for src in "$examples_dir"/*.d2; do
 
   if $need_diago; then
     echo "diago: $name (dagre svg, elk svg/ascii/unicode)"
-    moon run --target native cmd/main -- --layout dagre --target '' "$src" "$examples_dir/diago-dagre-output/$name.svg"
-    moon run --target native cmd/main -- --layout elk --target '' "$src" "$examples_dir/diago-elk-svg-output/$name.svg"
-    moon run --target native cmd/main -- --layout elk --ascii --target '' "$src" "$examples_dir/diago-elk-ascii-output/$name.txt"
-    moon run --target native cmd/main -- --layout elk --unicode --target '' "$src" "$examples_dir/diago-elk-unicode-output/$name.txt"
+    moon run --target native cmd/diago -- --layout dagre --target '' "$src" "$examples_dir/diago-dagre-output/$name.svg"
+    moon run --target native cmd/diago -- --layout elk --target '' "$src" "$examples_dir/diago-elk-svg-output/$name.svg"
+    moon run --target native cmd/diago -- --layout elk --ascii --target '' "$src" "$examples_dir/diago-elk-ascii-output/$name.txt"
+    moon run --target native cmd/diago -- --layout elk --unicode --target '' "$src" "$examples_dir/diago-elk-unicode-output/$name.txt"
   fi
 
   if $need_railway; then
     echo "diago: $name (railway svg/ascii/unicode)"
-    moon run --target native cmd/main -- --layout railway --target '' "$src" "$examples_dir/diago-railway-svg-output/$name.svg"
-    moon run --target native cmd/main -- --layout railway --ascii --target '' "$src" "$examples_dir/diago-railway-ascii-output/$name.txt"
-    moon run --target native cmd/main -- --layout railway --unicode --target '' "$src" "$examples_dir/diago-railway-unicode-output/$name.txt"
+    moon run --target native cmd/diago -- --layout railway --target '' "$src" "$examples_dir/diago-railway-svg-output/$name.svg"
+    moon run --target native cmd/diago -- --layout railway --ascii --target '' "$src" "$examples_dir/diago-railway-ascii-output/$name.txt"
+    moon run --target native cmd/diago -- --layout railway --unicode --target '' "$src" "$examples_dir/diago-railway-unicode-output/$name.txt"
   fi
 done
 

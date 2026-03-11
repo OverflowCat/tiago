@@ -8,7 +8,7 @@ layout engines.
 
 This repository contains:
 
-- A CLI (`cmd/main`) to render, format, validate, and watch `.d2` files
+- A CLI (`cmd/diago`) to render, format, validate, and watch `.d2` files
 - A WASM-based playground (`web/`) deployed via GitHub Pages
 - Multiple layout engines: `dagre`, `elk`, and `railway`
 
@@ -22,7 +22,7 @@ moon build
 ## Quick Start
 
 ```bash
-moon run cmd/main -- diagram.d2 > diagram.svg
+moon run cmd/diago -- diagram.d2 > diagram.svg
 ```
 
 ## CLI
@@ -30,30 +30,30 @@ moon run cmd/main -- diagram.d2 > diagram.svg
 Show help:
 
 ```bash
-moon run cmd/main -- --help
+moon run cmd/diago -- --help
 ```
 
 Common usage:
 
 ```bash
 # Render SVG (default)
-moon run cmd/main -- diagram.d2 > diagram.svg
-moon run cmd/main -- diagram.d2 diagram.svg
+moon run cmd/diago -- diagram.d2 > diagram.svg
+moon run cmd/diago -- diagram.d2 diagram.svg
 
 # Choose layout engine
-moon run cmd/main -- --layout elk diagram.d2 diagram.svg
-moon run cmd/main -- -l dagre diagram.d2 diagram.svg
+moon run cmd/diago -- --layout elk diagram.d2 diagram.svg
+moon run cmd/diago -- -l dagre diagram.d2 diagram.svg
 
 # ASCII / Unicode text
-moon run cmd/main -- --ascii diagram.d2 > diagram.ascii.txt
-moon run cmd/main -- --unicode diagram.d2 > diagram.unicode.txt
+moon run cmd/diago -- --ascii diagram.d2 > diagram.ascii.txt
+moon run cmd/diago -- --unicode diagram.d2 > diagram.unicode.txt
 
 # Format / validate
-moon run cmd/main -- fmt -w diagram.d2
-moon run cmd/main -- validate diagram.d2
+moon run cmd/diago -- fmt -w diagram.d2
+moon run cmd/diago -- validate diagram.d2
 
 # Dump layout engine input JSON (for debugging)
-moon run cmd/main -- dump-input --engine elk --out-dir /tmp/diag-elk-input diagram.d2
+moon run cmd/diago -- dump-input --engine elk --out-dir /tmp/diag-elk-input diagram.d2
 ```
 
 ## Example
@@ -77,7 +77,7 @@ cache -> database: fallback
 Compile it:
 
 ```bash
-moon run cmd/main -- example.d2 example.svg
+moon run cmd/diago -- example.d2 example.svg
 ```
 
 ## Pipeline
