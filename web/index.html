@@ -598,14 +598,34 @@ server -> database: queries"></textarea>
       return bytes;
     }
 
+    function withTimeout(promise, timeoutMs, label = 'operation') {
+      return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error(`${label} timed out`));
+        }, timeoutMs);
+        promise.then(
+          (value) => {
+            clearTimeout(timeoutId);
+            resolve(value);
+          },
+          (error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          },
+        );
+      });
+    }
+
     async function tryCompressDeflateRaw(input) {
       if (typeof CompressionStream !== 'function') return null;
       try {
-        const stream = new CompressionStream('deflate-raw');
-        const writer = stream.writable.getWriter();
-        await writer.write(input);
-        await writer.close();
-        return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+        return await withTimeout((async () => {
+          const stream = new CompressionStream('deflate-raw');
+          const writer = stream.writable.getWriter();
+          await writer.write(input);
+          await writer.close();
+          return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+        })(), 1200, 'deflate-raw compress');
       } catch (e) {
         return null;
       }
@@ -614,12 +634,14 @@ server -> database: queries"></textarea>
     async function tryDecompressDeflateRaw(bytes) {
       if (typeof DecompressionStream !== 'function') return null;
       try {
-        const stream = new DecompressionStream('deflate-raw');
-        const writer = stream.writable.getWriter();
-        await writer.write(bytes);
-        await writer.close();
-        const decompressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
-        return new TextDecoder('utf-8').decode(decompressed);
+        return await withTimeout((async () => {
+          const stream = new DecompressionStream('deflate-raw');
+          const writer = stream.writable.getWriter();
+          await writer.write(bytes);
+          await writer.close();
+          const decompressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+          return new TextDecoder('utf-8').decode(decompressed);
+        })(), 1200, 'deflate-raw decompress');
       } catch (e) {
         return null;
       }
@@ -1128,16 +1150,21 @@ server -> database: queries"></textarea>
 
     // Initialize
     async function init() {
-      const scriptFromUrl = await loadScriptFromUrl();
-      if (scriptFromUrl !== null) {
+      editor.value = await loadExample('hello');
+      exampleSelect.value = 'hello';
+      scheduleScriptUrlSync();
+      loadWasm();
+
+      // URL decoding must never block page bootstrap (WASM loading/editor interactivity).
+      loadScriptFromUrl().then((scriptFromUrl) => {
+        if (scriptFromUrl === null) return;
         editor.value = scriptFromUrl;
         exampleSelect.value = '';
-      } else {
-        editor.value = await loadExample('hello');
-        exampleSelect.value = 'hello';
         scheduleScriptUrlSync();
-      }
-      loadWasm();
+        if (wasmModule) {
+          render();
+        }
+      });
     }
     init();
   </script>
