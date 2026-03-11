@@ -598,30 +598,67 @@ server -> database: queries"></textarea>
       return bytes;
     }
 
+    async function tryCompressDeflateRaw(input) {
+      if (typeof CompressionStream !== 'function') return null;
+      try {
+        const stream = new CompressionStream('deflate-raw');
+        const writer = stream.writable.getWriter();
+        await writer.write(input);
+        await writer.close();
+        return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function tryDecompressDeflateRaw(bytes) {
+      if (typeof DecompressionStream !== 'function') return null;
+      try {
+        const stream = new DecompressionStream('deflate-raw');
+        const writer = stream.writable.getWriter();
+        await writer.write(bytes);
+        await writer.close();
+        const decompressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+        return new TextDecoder('utf-8').decode(decompressed);
+      } catch (e) {
+        return null;
+      }
+    }
+
     async function compressScriptToParam(raw) {
       const input = new TextEncoder().encode(raw);
-      if (typeof CompressionStream !== 'function') {
-        return bytesToBase64Url(input);
+      const compressed = await tryCompressDeflateRaw(input);
+      if (compressed !== null) {
+        return bytesToBase64Url(compressed);
       }
-      const stream = new CompressionStream('deflate-raw');
-      const writer = stream.writable.getWriter();
-      await writer.write(input);
-      await writer.close();
-      const compressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
-      return bytesToBase64Url(compressed);
+      // Fallback for browsers that do not support deflate-raw in CompressionStream.
+      return `u:${bytesToBase64Url(input)}`;
     }
 
     async function decompressScriptParam(encoded) {
-      const bytes = base64UrlToBytes(encoded);
-      if (typeof DecompressionStream !== 'function') {
+      let mode = '';
+      let payload = encoded;
+      if (encoded.startsWith('z:') || encoded.startsWith('u:')) {
+        mode = encoded.slice(0, 1);
+        payload = encoded.slice(2);
+      }
+
+      const bytes = base64UrlToBytes(payload);
+      if (mode === 'u') {
         return new TextDecoder('utf-8').decode(bytes);
       }
-      const stream = new DecompressionStream('deflate-raw');
-      const writer = stream.writable.getWriter();
-      await writer.write(bytes);
-      await writer.close();
-      const decompressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
-      return new TextDecoder('utf-8').decode(decompressed);
+      if (mode === 'z') {
+        const decoded = await tryDecompressDeflateRaw(bytes);
+        if (decoded === null) {
+          throw new Error('deflate-raw decompression is not supported in this browser');
+        }
+        return decoded;
+      }
+
+      // Legacy format (no prefix): try deflate-raw first, then plain UTF-8 fallback.
+      const legacyDecoded = await tryDecompressDeflateRaw(bytes);
+      if (legacyDecoded !== null) return legacyDecoded;
+      return new TextDecoder('utf-8').decode(bytes);
     }
 
     async function loadScriptFromUrl() {
