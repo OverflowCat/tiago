@@ -397,6 +397,8 @@ server -> database: queries"></textarea>
     let svgScale = 1;
     let lastPointerClientX = null;
     let lastPointerClientY = null;
+    let urlSyncTimeout = null;
+    let urlSyncSeq = 0;
     const SVG_MIN_SCALE = 0.02;
     const SVG_MAX_SCALE = 8.0;
 
@@ -466,6 +468,7 @@ server -> database: queries"></textarea>
       if (key) {
         const content = await loadExample(key);
         editor.value = content;
+        scheduleScriptUrlSync();
         render();
       }
     });
@@ -574,6 +577,91 @@ server -> database: queries"></textarea>
         lastPointerClientY <= rect.bottom;
       if (!inside) return { x: null, y: null };
       return { x: lastPointerClientX, y: lastPointerClientY };
+    }
+
+    function bytesToBase64Url(bytes) {
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function base64UrlToBytes(encoded) {
+      const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    async function compressScriptToParam(raw) {
+      const input = new TextEncoder().encode(raw);
+      if (typeof CompressionStream !== 'function') {
+        return bytesToBase64Url(input);
+      }
+      const stream = new CompressionStream('deflate-raw');
+      const writer = stream.writable.getWriter();
+      await writer.write(input);
+      await writer.close();
+      const compressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+      return bytesToBase64Url(compressed);
+    }
+
+    async function decompressScriptParam(encoded) {
+      const bytes = base64UrlToBytes(encoded);
+      if (typeof DecompressionStream !== 'function') {
+        return new TextDecoder('utf-8').decode(bytes);
+      }
+      const stream = new DecompressionStream('deflate-raw');
+      const writer = stream.writable.getWriter();
+      await writer.write(bytes);
+      await writer.close();
+      const decompressed = new Uint8Array(await new Response(stream.readable).arrayBuffer());
+      return new TextDecoder('utf-8').decode(decompressed);
+    }
+
+    async function loadScriptFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get('script');
+      if (!encoded) return null;
+      try {
+        return await decompressScriptParam(encoded);
+      } catch (e) {
+        console.warn('Failed to decode script query param:', e);
+        return null;
+      }
+    }
+
+    async function syncScriptToUrl(source) {
+      const seq = ++urlSyncSeq;
+      try {
+        const url = new URL(window.location.href);
+        if (!source.trim()) {
+          url.searchParams.delete('script');
+        } else {
+          const encoded = await compressScriptToParam(source);
+          if (seq !== urlSyncSeq) return;
+          url.searchParams.set('script', encoded);
+        }
+        if (seq !== urlSyncSeq) return;
+        const query = url.searchParams.toString();
+        const nextUrl = query ? `${url.pathname}?${query}${url.hash}` : `${url.pathname}${url.hash}`;
+        history.replaceState(null, '', nextUrl);
+      } catch (e) {
+        console.warn('Failed to sync script query param:', e);
+      }
+    }
+
+    function scheduleScriptUrlSync() {
+      clearTimeout(urlSyncTimeout);
+      const source = editor.value;
+      urlSyncTimeout = setTimeout(() => {
+        syncScriptToUrl(source);
+      }, 300);
     }
 
     function setupSvgInteractions() {
@@ -800,6 +888,7 @@ server -> database: queries"></textarea>
     // Auto-render on input (debounced)
     editor.addEventListener('input', () => {
       clearTimeout(renderTimeout);
+      scheduleScriptUrlSync();
       renderTimeout = setTimeout(render, 300);
     });
 
@@ -1002,8 +1091,15 @@ server -> database: queries"></textarea>
 
     // Initialize
     async function init() {
-      editor.value = await loadExample('hello');
-      exampleSelect.value = 'hello';
+      const scriptFromUrl = await loadScriptFromUrl();
+      if (scriptFromUrl !== null) {
+        editor.value = scriptFromUrl;
+        exampleSelect.value = '';
+      } else {
+        editor.value = await loadExample('hello');
+        exampleSelect.value = 'hello';
+        scheduleScriptUrlSync();
+      }
       loadWasm();
     }
     init();

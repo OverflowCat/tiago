@@ -49,21 +49,6 @@ fn compile_to_diagram(
     return Err("Parse errors: \{errors}")
   }
   let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let effective_direction = match ir.get_field("direction") {
-    Some(field) =>
-      match field.primary {
-        Some(value) =>
-          match value.to_string().to_lower() {
-            "right" | "horizontal" => @engine_api.Direction::Right
-            "left" => @engine_api.Direction::Left
-            "up" => @engine_api.Direction::Up
-            "down" | "vertical" => @engine_api.Direction::Down
-            _ => direction
-          }
-        None => direction
-      }
-    None => direction
-  }
   let graph_input = @exporter.compile("test", ir) catch {
     e => return Err("Graph error: \{e}")
   }
@@ -72,7 +57,7 @@ fn compile_to_diagram(
     @engine_dagre.DagreEngine::new(),
     graph_input,
     config,
-    effective_direction,
+    direction,
   ) catch {
     e => return Err("Layout error: \{e}")
   }

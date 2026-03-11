@@ -159,6 +159,7 @@ pub struct ObjectModel {
   near : String?
   top : Int?
   left : Int?
+  direction : String?
 } derive(Show)
 
 ///|
@@ -186,6 +187,7 @@ pub fn ObjectModel::new(id : String) -> ObjectModel {
     near: None,
     top: None,
     left: None,
+    direction: None,
   }
 }
 

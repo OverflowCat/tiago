@@ -323,12 +323,14 @@ pub struct ObjectInput {
   near : String?
   top : Int?
   left : Int?
+  direction : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
 pub fn ObjectInput::new(String) -> Self
+pub fn ObjectInput::with_direction(Self, String?) -> Self
 pub impl Show for ObjectInput
 
 pub struct ObjectModel {
@@ -354,6 +356,7 @@ pub struct ObjectModel {
   near : String?
   top : Int?
   left : Int?
+  direction : String?
 }
 pub fn ObjectModel::add_child(Self, Self) -> Self
 pub fn ObjectModel::new(String) -> Self

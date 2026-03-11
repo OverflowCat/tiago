@@ -99,6 +99,7 @@ priv struct Object {
   mut near : String?
   mut top : Int?
   mut left : Int?
+  mut direction : String?
 } derive(Show)
 
 ///|
@@ -127,6 +128,7 @@ fn Object::new(id : String) -> Object {
     near: None,
     top: None,
     left: None,
+    direction: None,
   }
 }
 
@@ -511,6 +513,7 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     obj.near,
     obj.top,
     obj.left,
+    direction=obj.direction,
   )
 }
 
@@ -614,6 +617,7 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
     graph.root.near,
     graph.root.top,
     graph.root.left,
+    direction=graph.root.direction,
   )
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
@@ -669,26 +673,11 @@ pub fn compile(
   ir : @ir.Map,
 ) -> @graph.GraphInput raise GraphCompileError {
   let graph = Graph::new(name)
-  // Extract class definitions
   let classes = extract_classes(ir)
-  // First pass: create all objects
-  compile_objects(graph, ir, "", classes)
-  // Second pass: create all edges
-  compile_edges(graph, ir)
-  // Third pass: compile layers, scenarios, and steps
-  compile_layers(graph, ir, classes)
-  compile_scenarios(graph, ir, classes)
-  compile_steps(graph, ir, classes)
+  compile_board_graph(graph, ir, classes)
   // D2 parity: SQL table column endpoints are represented as table endpoints
   // with source/target column indices.
   normalize_sql_table_edge_endpoints_recursive(graph)
-  // Handle root-level shape (e.g., shape: sequence_diagram)
-  handle_root_shape(graph, ir)
-  apply_d2_text_defaults(graph)
-  apply_sequence_defaults(graph)
-  apply_d2_color_defaults(graph)
-  // Compile D2 legend (vars.d2-legend)
-  compile_legend(graph, ir, classes)
   // Semantic validation pass aligned with D2 compiler behavior.
   validate_semantics(graph)
   graph_to_input(graph)
@@ -714,6 +703,25 @@ fn extract_classes(ir : @ir.Map) -> Map[String, @ir.Map] {
     None => ()
   }
   classes
+}
+
+///|
+/// Compile a board graph and all nested boards.
+fn compile_board_graph(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  compile_objects(graph, ir, "", classes)
+  compile_edges(graph, ir)
+  compile_layers(graph, ir, classes)
+  compile_scenarios(graph, ir, classes)
+  compile_steps(graph, ir, classes)
+  handle_root_shape(graph, ir)
+  apply_d2_text_defaults(graph)
+  apply_sequence_defaults(graph)
+  apply_d2_color_defaults(graph)
+  compile_legend(graph, ir, classes)
 }
 
 ///|
@@ -926,6 +934,24 @@ fn process_special_fields(
     Some(f) =>
       match f.primary {
         Some(s) => set_object_label_from_scalar(obj, s)
+        None => ()
+      }
+    None => ()
+  }
+  // Process direction
+  match ir.get_field("direction") {
+    Some(f) =>
+      match f.primary {
+        Some(s) => {
+          let raw = s.to_string()
+          match parse_direction_keyword(raw) {
+            Some(v) => obj.direction = Some(v)
+            None =>
+              raise Semantic(
+                "direction must be one of up, down, right, left, got \"\{raw}\"",
+              )
+          }
+        }
         None => ()
       }
     None => ()
@@ -1750,6 +1776,13 @@ fn validate_reserved_fields(ir : @ir.Map) -> Unit raise GraphCompileError {
         )
       }
     }
+    if keyword == "direction" {
+      if field.composite is Some(_) {
+        raise Semantic(
+          "reserved field \"\{field.name}\" does not accept composite",
+        )
+      }
+    }
   }
 }
 
@@ -2405,14 +2438,8 @@ fn compile_layers(
           for field in layers_map.fields {
             match field.composite {
               Some(@ir.Composite::Map(layer_ir)) => {
-                // Compile this layer as a separate graph
                 let layer_graph = Graph::new(field.name)
-                compile_objects(layer_graph, layer_ir, "", classes)
-                compile_edges(layer_graph, layer_ir)
-                // Recursively compile nested layers/scenarios/steps
-                compile_layers(layer_graph, layer_ir, classes)
-                compile_scenarios(layer_graph, layer_ir, classes)
-                compile_steps(layer_graph, layer_ir, classes)
+                compile_board_graph(layer_graph, layer_ir, classes)
                 graph.add_layer(Layer::new(field.name, layer_graph))
               }
               _ => ()
@@ -2438,11 +2465,8 @@ fn compile_scenarios(
           for field in scenarios_map.fields {
             match field.composite {
               Some(@ir.Composite::Map(scenario_ir)) => {
-                // Compile this scenario as a graph
-                // Note: scenarios inherit from base graph + apply modifications
                 let scenario_graph = Graph::new(field.name)
-                compile_objects(scenario_graph, scenario_ir, "", classes)
-                compile_edges(scenario_graph, scenario_ir)
+                compile_board_graph(scenario_graph, scenario_ir, classes)
                 graph.add_scenario(Scenario::new(field.name, scenario_graph))
               }
               _ => ()
@@ -2468,10 +2492,8 @@ fn compile_steps(
           for field in steps_map.fields {
             match field.composite {
               Some(@ir.Composite::Map(step_ir)) => {
-                // Compile this step as a graph
                 let step_graph = Graph::new(field.name)
-                compile_objects(step_graph, step_ir, "", classes)
-                compile_edges(step_graph, step_ir)
+                compile_board_graph(step_graph, step_ir, classes)
                 graph.add_step(Step::new(field.name, step_graph))
               }
               _ => ()
@@ -2489,6 +2511,17 @@ fn parse_double(s : String) -> Double? {
     _ => None
   } noraise {
     v => Some(v)
+  }
+}
+
+///|
+fn parse_direction_keyword(raw : String) -> String? {
+  match raw.to_lower() {
+    "up" => Some("up")
+    "down" => Some("down")
+    "right" => Some("right")
+    "left" => Some("left")
+    _ => None
   }
 }
 

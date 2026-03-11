@@ -144,6 +144,32 @@ fn get_parent_id(id : String) -> String? {
 }
 
 ///|
+fn direction_from_keyword(raw : String) -> Direction? {
+  match raw.to_lower() {
+    "down" => Some(Direction::Down)
+    "up" => Some(Direction::Up)
+    "left" => Some(Direction::Left)
+    "right" => Some(Direction::Right)
+    _ => None
+  }
+}
+
+///|
+fn graph_layout_direction(
+  graph : @graph.GraphInput,
+  fallback : Direction,
+) -> Direction {
+  match graph.root.direction {
+    Some(raw) =>
+      match direction_from_keyword(raw) {
+        Some(direction) => direction
+        None => fallback
+      }
+    None => fallback
+  }
+}
+
+///|
 fn normalize_sequence_root(graph : @graph.GraphInput) -> @graph.GraphInput {
   if graph.root.shape_type != @graph.SequenceDiagram {
     return graph
@@ -184,6 +210,7 @@ fn normalize_sequence_root(graph : @graph.GraphInput) -> @graph.GraphInput {
     r.near,
     r.top,
     r.left,
+    direction=r.direction,
   )
   @graph.GraphInput::from_parts(
     graph.name,
@@ -1629,6 +1656,7 @@ fn clone_object_with_parts_and_label(
     obj.near,
     obj.top,
     obj.left,
+    direction=obj.direction,
   )
 }
 
@@ -2142,12 +2170,13 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
   config : LayoutConfig,
   direction : Direction,
 ) -> @graph.GraphInput raise LayoutError {
+  let effective_direction = graph_layout_direction(graph, direction)
   let prepared = prepare_graph_for_layout(graph)
   let (engine_graph, semantic_ctx) = prepare_layout_semantics(prepared, config)
   let laid_out_core = if engine_graph.objects.is_empty() {
     engine_graph
   } else {
-    let patch = engine.layout(engine_graph, config, direction)
+    let patch = engine.layout(engine_graph, config, effective_direction)
     @graph.apply_layout(engine_graph, patch)
   }
   let laid_out = restore_layout_semantics(

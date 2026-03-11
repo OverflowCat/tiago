@@ -213,6 +213,7 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 /// * `near` : Optional identifier of object to position near.
 /// * `top` : Optional fixed top coordinate in pixels.
 /// * `left` : Optional fixed left coordinate in pixels.
+/// * `direction` : Optional layout direction override (`up|down|left|right`).
 ///
 pub struct ObjectInput {
   id : String
@@ -237,6 +238,7 @@ pub struct ObjectInput {
   near : String?
   top : Int?
   left : Int?
+  direction : String?
 } derive(Show)
 
 ///|
@@ -264,6 +266,7 @@ pub fn ObjectInput::new(id : String) -> ObjectInput {
     near: None,
     top: None,
     left: None,
+    direction: None,
   }
 }
 
@@ -291,6 +294,7 @@ pub fn ObjectInput::from_parts(
   near : String?,
   top : Int?,
   left : Int?,
+  direction? : String? = None,
 ) -> ObjectInput {
   {
     id,
@@ -315,7 +319,16 @@ pub fn ObjectInput::from_parts(
     near,
     top,
     left,
+    direction,
   }
+}
+
+///|
+pub fn ObjectInput::with_direction(
+  self : ObjectInput,
+  direction : String?,
+) -> ObjectInput {
+  { ..self, direction, }
 }
 
 ///|
@@ -852,6 +865,7 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     obj.near,
     obj.top,
     obj.left,
+    direction=obj.direction,
   )
 }
 
