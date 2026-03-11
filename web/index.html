@@ -399,8 +399,17 @@ server -> database: queries"></textarea>
     let lastPointerClientY = null;
     let urlSyncTimeout = null;
     let urlSyncSeq = 0;
+    let urlSyncIdleHandle = null;
+    let urlSyncPendingSource = null;
+    let lastUrlSyncedSource = '';
     const SVG_MIN_SCALE = 0.02;
     const SVG_MAX_SCALE = 8.0;
+    const RENDER_DEBOUNCE_MS = 300;
+    const RENDER_DEBOUNCE_LARGE_MS = 700;
+    const RENDER_LARGE_SOURCE_CHARS = 18000;
+    const URL_SYNC_DEBOUNCE_MS = 500;
+    const URL_SYNC_DEBOUNCE_LARGE_MS = 1800;
+    const URL_SYNC_LARGE_SOURCE_CHARS = 12000;
 
     // DOM elements
     const editor = document.getElementById('editor');
@@ -715,12 +724,53 @@ server -> database: queries"></textarea>
       }
     }
 
-    function scheduleScriptUrlSync() {
-      clearTimeout(urlSyncTimeout);
-      const source = editor.value;
-      urlSyncTimeout = setTimeout(() => {
+    function cancelPendingUrlSyncWork() {
+      if (urlSyncIdleHandle === null) return;
+      if (typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(urlSyncIdleHandle);
+      } else {
+        clearTimeout(urlSyncIdleHandle);
+      }
+      urlSyncIdleHandle = null;
+    }
+
+    function scheduleIdle(task) {
+      if (typeof window.requestIdleCallback === 'function') {
+        return window.requestIdleCallback(task, { timeout: 1500 });
+      }
+      return setTimeout(() => task({ didTimeout: true, timeRemaining: () => 0 }), 0);
+    }
+
+    function flushScriptUrlSync() {
+      const source = urlSyncPendingSource;
+      if (source === null || source === lastUrlSyncedSource) return;
+      cancelPendingUrlSyncWork();
+      urlSyncIdleHandle = scheduleIdle(() => {
+        urlSyncIdleHandle = null;
         syncScriptToUrl(source);
-      }, 300);
+        lastUrlSyncedSource = source;
+      });
+    }
+
+    function scheduleScriptUrlSync(force = false) {
+      clearTimeout(urlSyncTimeout);
+      urlSyncPendingSource = editor.value;
+      const sourceLength = urlSyncPendingSource.length;
+      const delay = force
+        ? 0
+        : sourceLength >= URL_SYNC_LARGE_SOURCE_CHARS
+          ? URL_SYNC_DEBOUNCE_LARGE_MS
+          : URL_SYNC_DEBOUNCE_MS;
+      urlSyncTimeout = setTimeout(flushScriptUrlSync, delay);
+    }
+
+    function scheduleRender() {
+      clearTimeout(renderTimeout);
+      const sourceLength = editor.value.length;
+      const delay = sourceLength >= RENDER_LARGE_SOURCE_CHARS
+        ? RENDER_DEBOUNCE_LARGE_MS
+        : RENDER_DEBOUNCE_MS;
+      renderTimeout = setTimeout(render, delay);
     }
 
     function setupSvgInteractions() {
@@ -946,9 +996,18 @@ server -> database: queries"></textarea>
 
     // Auto-render on input (debounced)
     editor.addEventListener('input', () => {
-      clearTimeout(renderTimeout);
       scheduleScriptUrlSync();
-      renderTimeout = setTimeout(render, 300);
+      scheduleRender();
+    });
+
+    // Ensure URL stays shareable after long edits without penalizing typing latency.
+    editor.addEventListener('blur', () => {
+      scheduleScriptUrlSync(true);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        scheduleScriptUrlSync(true);
+      }
     });
 
     // Resize handle
@@ -1160,6 +1219,7 @@ server -> database: queries"></textarea>
         if (scriptFromUrl === null) return;
         editor.value = scriptFromUrl;
         exampleSelect.value = '';
+        lastUrlSyncedSource = scriptFromUrl;
         scheduleScriptUrlSync();
         if (wasmModule) {
           render();
