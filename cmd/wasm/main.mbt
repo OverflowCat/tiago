@@ -201,12 +201,13 @@ fn compile_to_diagram(
     e => return Err("Graph error: \{e}")
   }
   let config = @engine_api.LayoutConfig::new()
+  let layout_direction = extract_layout_direction(ir)
   let laid_out_graph = if engine == 1 {
     @engine_api.layout_with_engine(
       @engine_elk.ElkEngine::new(),
       graph_input,
       config,
-      @engine_api.Down,
+      layout_direction,
     ) catch {
       e => return Err("Layout error: \{e}")
     }
@@ -215,7 +216,7 @@ fn compile_to_diagram(
       @engine_railway.RailwayEngine::new(),
       graph_input,
       config,
-      @engine_api.Down,
+      layout_direction,
     ) catch {
       e => return Err("Layout error: \{e}")
     }
@@ -224,10 +225,29 @@ fn compile_to_diagram(
       @engine_dagre.DagreEngine::new(),
       graph_input,
       config,
-      @engine_api.Down,
+      layout_direction,
     ) catch {
       e => return Err("Layout error: \{e}")
     }
   }
   Ok(@diagram.from_graph(laid_out_graph, None))
+}
+
+///|
+fn extract_layout_direction(ir_map : @ir.Map) -> @engine_api.Direction {
+  let field = match ir_map.get_field("direction") {
+    Some(v) => v
+    None => return @engine_api.Down
+  }
+  let scalar = match field.primary {
+    Some(v) => v.to_string().to_lower()
+    None => return @engine_api.Down
+  }
+  match scalar {
+    "right" | "horizontal" => @engine_api.Right
+    "left" => @engine_api.Left
+    "up" => @engine_api.Up
+    "down" | "vertical" => @engine_api.Down
+    _ => @engine_api.Down
+  }
 }
