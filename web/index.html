@@ -271,6 +271,15 @@
     .status.error {
       color: #ff6b6b;
     }
+    .perf-hint {
+      font-size: 0.75rem;
+      color: #ffaa00;
+      display: none;
+      white-space: nowrap;
+    }
+    .perf-hint.visible {
+      display: inline;
+    }
     .resize-handle {
       width: 4px;
       background: #0f3460;
@@ -287,6 +296,7 @@
     <h1><span>Diago</span> Playground</h1>
     <div class="header-right">
       <span id="status" class="status loading">Loading renderer...</span>
+      <span id="perf-hint" class="perf-hint">Large file mode: live updates are throttled for smoother editing.</span>
       <a href="https://github.com/moonbit-community/diago" target="_blank">GitHub</a>
     </div>
   </header>
@@ -411,6 +421,17 @@ server -> database: queries"></textarea>
     const URL_SYNC_DEBOUNCE_LARGE_MS = 1800;
     const URL_SYNC_LARGE_SOURCE_CHARS = 12000;
 
+    function updatePerfHint(sourceLength) {
+      const largeForRender = sourceLength >= RENDER_LARGE_SOURCE_CHARS;
+      const largeForUrlSync = sourceLength >= URL_SYNC_LARGE_SOURCE_CHARS;
+      const showHint = largeForRender || largeForUrlSync;
+      if (showHint) {
+        perfHintEl.classList.add('visible');
+      } else {
+        perfHintEl.classList.remove('visible');
+      }
+    }
+
     // DOM elements
     const editor = document.getElementById('editor');
     const preview = document.getElementById('preview');
@@ -420,6 +441,7 @@ server -> database: queries"></textarea>
     const downloadPdfBtn = document.getElementById('download-pdf-btn');
     const exampleSelect = document.getElementById('example-select');
     const statusEl = document.getElementById('status');
+    const perfHintEl = document.getElementById('perf-hint');
     const tabs = document.querySelectorAll('.tab');
     const engineTabs = document.querySelectorAll('.engine-tab');
     const editorPane = document.getElementById('editor-pane');
@@ -767,6 +789,7 @@ server -> database: queries"></textarea>
     function scheduleRender() {
       clearTimeout(renderTimeout);
       const sourceLength = editor.value.length;
+      updatePerfHint(sourceLength);
       const delay = sourceLength >= RENDER_LARGE_SOURCE_CHARS
         ? RENDER_DEBOUNCE_LARGE_MS
         : RENDER_DEBOUNCE_MS;
@@ -1123,6 +1146,7 @@ server -> database: queries"></textarea>
 
     function render() {
       const source = editor.value;
+      updatePerfHint(source.length);
       errorBanner.style.display = 'none';
       lastRenderOk = false;
       if (currentView === 'svg') {
