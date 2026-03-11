@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-const CLI_VERSION : String = "0.2.0"
+const CLI_VERSION : String = "0.2.1"
 
 ///|
 fn run_cli(raw_args : Array[String], env : Map[String, String]) -> Unit {
