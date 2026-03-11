@@ -15,6 +15,7 @@ import {
   "moonbitlang/x/fs",
   "moonbitlang/x/sys",
   "moonbitlang/x/path",
+  "moonbitlang/core/argparse",
 }
 
 options(

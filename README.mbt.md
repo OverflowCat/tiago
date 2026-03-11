@@ -8,7 +8,7 @@ layout engines.
 
 This repository contains:
 
-- A CLI (`cmd/diago`) to render, format, validate, and watch `.d2` files
+- A CLI (`cmd/diago`) with explicit subcommands (`render`, `fmt`, `validate`, `layout`, `themes`, `version`)
 - A WASM-based playground (`web/`) deployed via GitHub Pages
 - Multiple layout engines: `dagre`, `elk`, and `railway`
 
@@ -22,7 +22,7 @@ moon build
 ## Quick Start
 
 ```bash
-moon run cmd/diago -- diagram.d2 > diagram.svg
+moon run cmd/diago -- render diagram.d2
 ```
 
 ## CLI
@@ -36,24 +36,32 @@ moon run cmd/diago -- --help
 Common usage:
 
 ```bash
-# Render SVG (default)
-moon run cmd/diago -- diagram.d2 > diagram.svg
-moon run cmd/diago -- diagram.d2 diagram.svg
+# Render SVG (default output: input.svg)
+moon run cmd/diago -- render diagram.d2
+moon run cmd/diago -- render diagram.d2 diagram.svg
+moon run cmd/diago -- render diagram.d2 --output diagram.svg
 
 # Choose layout engine
-moon run cmd/diago -- --layout elk diagram.d2 diagram.svg
-moon run cmd/diago -- -l dagre diagram.d2 diagram.svg
+moon run cmd/diago -- render --layout elk diagram.d2 diagram.svg
+moon run cmd/diago -- render -l dagre diagram.d2 diagram.svg
 
 # ASCII / Unicode text
-moon run cmd/diago -- --ascii diagram.d2 > diagram.ascii.txt
-moon run cmd/diago -- --unicode diagram.d2 > diagram.unicode.txt
+moon run cmd/diago -- render --format ascii diagram.d2 --output diagram.ascii.txt
+moon run cmd/diago -- render --format unicode diagram.d2 --output diagram.unicode.txt
 
 # Format / validate
-moon run cmd/diago -- fmt -w diagram.d2
+moon run cmd/diago -- fmt diagram.d2
+moon run cmd/diago -- fmt --check diagram.d2
 moon run cmd/diago -- validate diagram.d2
 
-# Dump layout engine input JSON (for debugging)
-moon run cmd/diago -- dump-input --engine elk --out-dir /tmp/diag-elk-input diagram.d2
+# Watch mode
+moon run cmd/diago -- render --watch diagram.d2
+
+# Introspection
+moon run cmd/diago -- layout
+moon run cmd/diago -- layout elk
+moon run cmd/diago -- themes
+moon run cmd/diago -- version
 ```
 
 ## Example
@@ -77,7 +85,7 @@ cache -> database: fallback
 Compile it:
 
 ```bash
-moon run cmd/diago -- example.d2 example.svg
+moon run cmd/diago -- render example.d2 example.svg
 ```
 
 ## Pipeline

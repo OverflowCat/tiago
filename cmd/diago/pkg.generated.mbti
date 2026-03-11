@@ -14,12 +14,20 @@ pub fn sleep_ms(Int) -> Unit
 
 // Types and methods
 type AsciiMode
+pub impl Eq for AsciiMode
+pub impl Show for AsciiMode
 
 type DumpInputEngine
+pub impl Eq for DumpInputEngine
+pub impl Show for DumpInputEngine
 
 type LayoutEngineChoice
+pub impl Eq for LayoutEngineChoice
+pub impl Show for LayoutEngineChoice
 
 type OutputMode
+pub impl Eq for OutputMode
+pub impl Show for OutputMode
 
 // Type aliases
 
