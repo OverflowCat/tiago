@@ -9,7 +9,10 @@
     "moonbit-community/cmark": "0.4.3",
     "Milky2018/moon_swash": "0.1.3",
     "Milky2018/moon_cosmic": "0.1.6",
-    "Milky2018/moon_yazi": "0.1.0"
+    "Milky2018/moon_yazi": "0.1.0",
+    "gmlewis/flate": "0.36.2",
+    "gmlewis/io": "0.23.3",
+    "gmlewis/zlib": "0.21.3"
   },
   "readme": "README.mbt.md",
   "repository": "https://github.com/moonbit-community/diago",

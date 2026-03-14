@@ -45,7 +45,7 @@ test "svg add def" {
   )
   let s = svg.to_string()
   assert_true(s.contains("<defs>"))
-  assert_true(s.contains("<marker id=\"test\"/>"))
+  assert_true(s.contains("<marker id=\"test\" />"))
 }
 
 ///|

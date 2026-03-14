@@ -282,8 +282,8 @@ test "fill-pattern dots" {
     #|  style.fill-pattern: dots
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("pattern-dots"))
-  assert_true(svg.contains("url(#pattern-dots)"))
+  assert_true(svg.contains("id=\"dots-d2-"))
+  assert_true(svg.contains("url(#dots-d2-"))
 }
 
 ///|
@@ -293,8 +293,8 @@ test "fill-pattern lines" {
     #|  style.fill-pattern: lines
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("pattern-lines"))
-  assert_true(svg.contains("url(#pattern-lines)"))
+  assert_true(svg.contains("id=\"lines-d2-"))
+  assert_true(svg.contains("url(#lines-d2-"))
 }
 
 ///|
@@ -304,8 +304,8 @@ test "fill-pattern cross-hatch" {
     #|  style.fill-pattern: cross-hatch
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("pattern-crosshatch"))
-  assert_true(svg.contains("url(#pattern-crosshatch)"))
+  assert_true(svg.contains("id=\"crosshatch-d2-"))
+  assert_true(svg.contains("url(#crosshatch-d2-"))
 }
 
 ///|
@@ -315,8 +315,8 @@ test "fill-pattern grain" {
     #|  style.fill-pattern: grain
     #|}
   let svg = compile(source).unwrap()
-  assert_true(svg.contains("pattern-grain"))
-  assert_true(svg.contains("url(#pattern-grain)"))
+  assert_true(svg.contains("id=\"grain-d2-"))
+  assert_true(svg.contains("url(#grain-d2-"))
 }
 
 ///|

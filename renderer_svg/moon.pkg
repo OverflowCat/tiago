@@ -1,5 +1,6 @@
 import {
   "Milky2018/diago/diagram",
+  "Milky2018/diago/font_subset",
   "Milky2018/diago/graph",
   "Milky2018/diago/layout_svg",
   "Milky2018/diago/svg",

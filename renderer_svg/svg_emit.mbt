@@ -158,8 +158,12 @@ fn d2_sketch_color_pairs(theme : @themes.Theme) -> Array[(String, String)] {
 
 ///|
 fn d2_theme_token(value : String, theme : @themes.Theme) -> String? {
+  let token_candidate = value.trim().to_upper().to_string()
   let normalized = d2_normalized_color(value)
   for entry in d2_theme_color_pairs(theme) {
+    if token_candidate == entry.0 {
+      return Some(entry.0)
+    }
     if normalized == d2_normalized_color(entry.1) {
       return Some(entry.0)
     }
@@ -268,36 +272,139 @@ fn append_on_trigger(
   triggers : Array[String],
   content : String,
 ) -> Unit {
+  if !d2_has_any_trigger(source, triggers) {
+    return
+  }
+  out.write_string(content)
+}
+
+///|
+fn d2_has_any_trigger(source : String, triggers : Array[String]) -> Bool {
   for trigger in triggers {
     if source.contains(trigger) {
-      out.write_string(content)
-      return
+      return true
     }
+  }
+  false
+}
+
+///|
+fn d2_subset_font_data_url(
+  ttf_bytes : Bytes,
+  corpus : String,
+  fallback_data_url : String,
+) -> String {
+  let unique_corpus = d2_unique_chars(corpus)
+  match @font_subset.utf8_cut_font(ttf_bytes, unique_corpus) {
+    Some(subset_sfnt) =>
+      if subset_sfnt.length() == 0 {
+        fallback_data_url
+      } else {
+        match @font_subset.sfnt_to_woff(subset_sfnt) {
+          Some(subset_woff) =>
+            if subset_woff.length() == 0 {
+              fallback_data_url
+            } else {
+              "data:application/font-woff;base64,\{@base64.encode(subset_woff)}"
+            }
+          None => fallback_data_url
+        }
+      }
+    None => fallback_data_url
   }
 }
 
 ///|
-fn d2_embed_fonts_styles(diagram_hash : String, source : String) -> String? {
-  let sans_regular_data = source_sans_pro_regular_data
-  let sans_semibold_data = source_sans_pro_semibold_data
-  let sans_bold_data = source_sans_pro_bold_data
-  let sans_italic_data = source_sans_pro_italic_data
-  let mono_regular_data = source_code_pro_regular_data
-  let mono_bold_data = source_code_pro_bold_data
-  let mono_italic_data = source_code_pro_italic_data
-
+fn d2_unique_chars(text : String) -> String {
+  let seen : Map[Char, Bool] = {}
   let out = StringBuilder::new()
+  for ch in text.to_array() {
+    if !seen.contains(ch) {
+      seen[ch] = true
+      out.write_char(ch)
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn d2_embed_fonts_styles(
+  diagram_hash : String,
+  source : String,
+  corpus : String,
+) -> String {
+  let out = StringBuilder::new()
+  let regular_text_triggers = [
+    "class=\"text\"", "class=\"text ", "class=\"md\"", "class=\"md ",
+  ]
+  let markdown_triggers = ["class=\"md\"", "class=\"md "]
+  let bold_triggers = ["class=\"text-bold", "<b>", "<strong>"]
+  let italic_triggers = ["class=\"text-italic", "<em>", "<dfn>"]
+  let mono_triggers = [
+    "class=\"text-mono", "<pre>", "<code>", "<kbd>", "<samp>",
+  ]
+  let mono_bold_triggers = ["class=\"text-mono-bold"]
+  let mono_italic_triggers = ["class=\"text-mono-italic"]
+  let regular_data = if d2_has_any_trigger(source, regular_text_triggers) {
+    d2_subset_font_data_url(
+      source_sans_pro_regular_ttf_bytes, corpus, source_sans_pro_regular_data,
+    )
+  } else {
+    source_sans_pro_regular_data
+  }
+  let semibold_data = if d2_has_any_trigger(source, markdown_triggers) {
+    d2_subset_font_data_url(
+      source_sans_pro_semibold_ttf_bytes, corpus, source_sans_pro_semibold_data,
+    )
+  } else {
+    source_sans_pro_semibold_data
+  }
+  let bold_data = if d2_has_any_trigger(source, bold_triggers) {
+    d2_subset_font_data_url(
+      source_sans_pro_bold_ttf_bytes, corpus, source_sans_pro_bold_data,
+    )
+  } else {
+    source_sans_pro_bold_data
+  }
+  let italic_data = if d2_has_any_trigger(source, italic_triggers) {
+    d2_subset_font_data_url(
+      source_sans_pro_italic_ttf_bytes, corpus, source_sans_pro_italic_data,
+    )
+  } else {
+    source_sans_pro_italic_data
+  }
+  let mono_regular_data = if d2_has_any_trigger(source, mono_triggers) {
+    d2_subset_font_data_url(
+      source_code_pro_regular_ttf_bytes, corpus, source_code_pro_regular_data,
+    )
+  } else {
+    source_code_pro_regular_data
+  }
+  let mono_bold_data = if d2_has_any_trigger(source, mono_bold_triggers) {
+    d2_subset_font_data_url(
+      source_code_pro_bold_ttf_bytes, corpus, source_code_pro_bold_data,
+    )
+  } else {
+    source_code_pro_bold_data
+  }
+  let mono_italic_data = if d2_has_any_trigger(source, mono_italic_triggers) {
+    d2_subset_font_data_url(
+      source_code_pro_italic_ttf_bytes, corpus, source_code_pro_italic_data,
+    )
+  } else {
+    source_code_pro_italic_data
+  }
   append_on_trigger(
     out,
     source,
-    ["class=\"text\"", "class=\"text ", "class=\"md\"", "class=\"md "],
-    "\n.\{diagram_hash} .text {\n\tfont-family: \"\{diagram_hash}-font-regular\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-regular;\n\tsrc: url(\"\{sans_regular_data}\");\n}",
+    regular_text_triggers,
+    "\n.\{diagram_hash} .text {\n\tfont-family: \"\{diagram_hash}-font-regular\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-regular;\n\tsrc: url(\"\{regular_data}\");\n}",
   )
   append_on_trigger(
     out,
     source,
-    ["class=\"md\"", "class=\"md "],
-    "\n@font-face {\n\tfont-family: \{diagram_hash}-font-semibold;\n\tsrc: url(\"\{sans_semibold_data}\");\n}",
+    markdown_triggers,
+    "\n@font-face {\n\tfont-family: \{diagram_hash}-font-semibold;\n\tsrc: url(\"\{semibold_data}\");\n}",
   )
   append_on_trigger(
     out,
@@ -332,43 +439,146 @@ fn d2_embed_fonts_styles(diagram_hash : String, source : String) -> String? {
   append_on_trigger(
     out,
     source,
-    ["class=\"text-bold", "<b>", "<strong>"],
-    "\n.\{diagram_hash} .text-bold {\n\tfont-family: \"\{diagram_hash}-font-bold\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-bold;\n\tsrc: url(\"\{sans_bold_data}\");\n}",
+    bold_triggers,
+    "\n.\{diagram_hash} .text-bold {\n\tfont-family: \"\{diagram_hash}-font-bold\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-bold;\n\tsrc: url(\"\{bold_data}\");\n}",
   )
   append_on_trigger(
     out,
     source,
-    ["class=\"text-italic", "<em>", "<dfn>"],
-    "\n.\{diagram_hash} .text-italic {\n\tfont-family: \"\{diagram_hash}-font-italic\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-italic;\n\tsrc: url(\"\{sans_italic_data}\");\n}",
+    italic_triggers,
+    "\n.\{diagram_hash} .text-italic {\n\tfont-family: \"\{diagram_hash}-font-italic\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-italic;\n\tsrc: url(\"\{italic_data}\");\n}",
   )
   append_on_trigger(
     out,
     source,
-    ["class=\"text-mono", "<pre>", "<code>", "<kbd>", "<samp>"],
+    mono_triggers,
     "\n.\{diagram_hash} .text-mono {\n\tfont-family: \"\{diagram_hash}-font-mono\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono;\n\tsrc: url(\"\{mono_regular_data}\");\n}",
   )
   append_on_trigger(
     out,
     source,
-    ["class=\"text-mono-bold"],
+    mono_bold_triggers,
     "\n.\{diagram_hash} .text-mono-bold {\n\tfont-family: \"\{diagram_hash}-font-mono-bold\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono-bold;\n\tsrc: url(\"\{mono_bold_data}\");\n}",
   )
   append_on_trigger(
     out,
     source,
-    ["class=\"text-mono-italic"],
+    mono_italic_triggers,
     "\n.\{diagram_hash} .text-mono-italic {\n\tfont-family: \"\{diagram_hash}-font-mono-italic\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono-italic;\n\tsrc: url(\"\{mono_italic_data}\");\n}",
   )
-  if out.to_string() == "" {
-    None
-  } else {
-    Some(
-      @xml_emit.Element::new("style")
-      .attr("type", "text/css")
-      .cdata(out.to_string())
-      .build(),
-    )
+  @xml_emit.Element::new("style")
+  .attr("type", "text/css")
+  .cdata(out.to_string())
+  .build()
+}
+
+///|
+fn d2_legend_corpus(legend : @graph.LegendInput) -> String {
+  let sb = StringBuilder::new()
+  match legend.title {
+    Some(title) =>
+      if title == "" {
+        sb.write_string("Legend")
+      } else {
+        sb.write_string(title)
+      }
+    None => sb.write_string("Legend")
   }
+  for entry in legend.entries {
+    match entry {
+      @graph.ShapeEntry(label~, ..) => sb.write_string(label)
+      @graph.ConnectionEntry(label~, ..) => sb.write_string(label)
+      @graph.CustomEntry(label~, ..) => sb.write_string(label)
+      @graph.Separator => ()
+    }
+  }
+  sb.to_string()
+}
+
+///|
+fn d2_shape_structured_corpus(
+  shape : Shape,
+  all_shapes : Array[Shape],
+) -> String {
+  let sb = StringBuilder::new()
+  match shape.shape_type {
+    Class =>
+      for child in object_children(shape, all_shapes) {
+        let class_member = class_member_from_shape(child)
+        sb.write_string(class_member.name)
+        sb.write_string(class_member.type_name)
+        sb.write_string(class_member.visibility)
+      }
+    SqlTable =>
+      for child in object_children(shape, all_shapes) {
+        sb.write_string(get_short_name(child.id))
+        sb.write_string(child.label)
+        sb.write_string(sql_table_constraint_abbr(child))
+      }
+    _ => ()
+  }
+  sb.to_string()
+}
+
+///|
+fn d2_append_graph_corpus(sb : StringBuilder, graph : Diagram) -> Unit {
+  let mut appendix_count = 0
+  for shape in graph.shapes {
+    sb.write_string(shape.label)
+    match shape.tooltip {
+      Some(tooltip) =>
+        if tooltip != "" {
+          sb.write_string(tooltip)
+          appendix_count = appendix_count + 1
+          sb.write_string(appendix_count.to_string())
+        }
+      None => ()
+    }
+    match shape.link {
+      Some(link) =>
+        if link != "" {
+          sb.write_string(link)
+          appendix_count = appendix_count + 1
+          sb.write_string(appendix_count.to_string())
+        }
+      None => ()
+    }
+    sb.write_string(d2_shape_structured_corpus(shape, graph.shapes))
+  }
+  for edge in graph.connections {
+    sb.write_string(edge.label)
+    match edge.src_arrowhead_label {
+      Some(label) => sb.write_string(label)
+      None => ()
+    }
+    match edge.dst_arrowhead_label {
+      Some(label) => sb.write_string(label)
+      None => ()
+    }
+  }
+  match graph.legend {
+    Some(legend) =>
+      if !legend.is_empty() {
+        sb.write_string(d2_legend_corpus(legend))
+      }
+    None => ()
+  }
+  for child in graph.layers {
+    d2_append_graph_corpus(sb, child)
+  }
+  for child in graph.scenarios {
+    d2_append_graph_corpus(sb, child)
+  }
+  for child in graph.steps {
+    d2_append_graph_corpus(sb, child)
+  }
+}
+
+///|
+fn d2_diagram_corpus(graph : Diagram) -> String {
+  let sb = StringBuilder::new()
+  d2_append_graph_corpus(sb, graph)
+  sb.to_string()
 }
 
 ///|
@@ -388,6 +598,9 @@ fn d2_markdown_styles(diagram_hash : String) -> String {
   css = replace_all(css, "font-mono", "\{diagram_hash}-font-mono")
   css = replace_all(css, "font-regular", "\{diagram_hash}-font-regular")
   css = replace_all(css, "font-semibold", "\{diagram_hash}-font-semibold")
+  if !css.has_suffix("\n") {
+    css = css + "\n"
+  }
   // Keep CSS bytes unescaped to match d2's markdown style emission.
   @xml_emit.Element::new("style").attr("type", "text/css").raw(css).build()
 }
@@ -594,6 +807,13 @@ fn d2_hash_shape_label_dims(shape : Shape, config : SvgConfig) -> (Int, Int) {
   if shape.label == "" {
     return (0, 0)
   }
+  match (shape.label_width, shape.label_height) {
+    (Some(width), Some(height)) =>
+      if width > 0.0 && height > 0.0 {
+        return (width.to_int(), height.to_int())
+      }
+    _ => ()
+  }
   match shape.label_box {
     Some(label_box) =>
       if label_box.width > 0.0 && label_box.height > 0.0 {
@@ -724,7 +944,7 @@ fn d2_hash_shape_json(
   let is_underline = style_bool(shape.style.underline, false)
   let (label_width, label_height) = d2_hash_shape_label_dims(shape, config)
 
-  fields.push(d2_json_field("id", d2_json_string(shape.id)))
+  fields.push(d2_json_field("id", d2_json_string(d2_output_abs_id(shape.id))))
   fields.push(
     d2_json_field("type", d2_json_string(d2_hash_shape_type(shape.shape_type))),
   )
@@ -921,6 +1141,7 @@ fn d2_hash_connection_json_with_repeat_index(
   repeat_index : Int,
 ) -> String {
   let fields : Array[D2JsonField] = []
+  let stroke_default = d2_default_edge_stroke_token(edge)
   let font_size = style_int(edge.style.font_size, config.font_size)
   let font_family = d2_hash_edge_font_family(edge, config)
   let color = style_string(edge.style.font_color, "N2")
@@ -941,14 +1162,18 @@ fn d2_hash_connection_json_with_repeat_index(
       d2_json_string(d2_connection_abs_id(edge, repeat_index)),
     ),
   )
-  fields.push(d2_json_field("src", d2_json_string(edge.src_id)))
+  fields.push(
+    d2_json_field("src", d2_json_string(d2_output_abs_id(edge.src_id))),
+  )
   fields.push(
     d2_json_field(
       "srcArrow",
       d2_json_string(d2_hash_arrowhead_value(edge.src_arrowhead)),
     ),
   )
-  fields.push(d2_json_field("dst", d2_json_string(edge.dst_id)))
+  fields.push(
+    d2_json_field("dst", d2_json_string(d2_output_abs_id(edge.dst_id))),
+  )
   fields.push(
     d2_json_field(
       "dstArrow",
@@ -978,7 +1203,7 @@ fn d2_hash_connection_json_with_repeat_index(
   fields.push(
     d2_json_field(
       "stroke",
-      d2_json_string(style_string(edge.style.stroke, "B1")),
+      d2_json_string(style_string(edge.style.stroke, stroke_default)),
     ),
   )
   match style_string_opt(edge.style.fill) {
@@ -1039,6 +1264,15 @@ fn d2_hash_connection_json_with_repeat_index(
   fields.push(d2_json_field("icon", "null"))
   fields.push(d2_json_field("zIndex", d2_json_int(edge.z_index)))
   d2_json_object(fields)
+}
+
+///|
+fn d2_default_edge_stroke_token(edge : Connection) -> String {
+  if style_double(edge.style.stroke_dash, 0.0) != 0.0 {
+    "B2"
+  } else {
+    "B1"
+  }
 }
 
 ///|
@@ -1225,7 +1459,24 @@ fn diagram_scope_class(graph : Diagram, config : SvgConfig) -> String {
 
 ///|
 fn d2_wrapper_class(id : String) -> String {
-  @base64.encode(@utf8.encode(@svg.escape_xml(id)[:]), url_safe=true)
+  d2_shape_wrapper_class(id)
+}
+
+///|
+fn d2_shape_wrapper_class(id : String) -> String {
+  let normalized_id = d2_output_abs_id(id)
+  d2_wrapper_class_base64(normalized_id)
+}
+
+///|
+fn d2_connection_wrapper_class(id : String) -> String {
+  d2_wrapper_class_base64(id)
+}
+
+///|
+fn d2_wrapper_class_base64(id : String) -> String {
+  let escaped = replace_all(@svg.escape_xml(id), "&quot;", "&#34;")
+  @base64.encode(@utf8.encode(escaped[:]), url_safe=true)
 }
 
 ///|
@@ -1253,6 +1504,178 @@ fn d2_split_abs_id(id : String) -> Array[String] {
 }
 
 ///|
+fn d2_output_abs_id_parts(id : String) -> Array[String] {
+  let parts : Array[String] = []
+  for raw_part in d2_split_abs_id(id) {
+    parts.push(d2_format_key_segment(raw_part))
+  }
+  parts
+}
+
+///|
+fn d2_output_abs_id(id : String) -> String {
+  d2_output_abs_id_parts(id).join(".")
+}
+
+///|
+fn d2_has_surrounding_whitespace(s : String) -> Bool {
+  if s.length() == 0 {
+    false
+  } else {
+    s.trim().length() != s.length()
+  }
+}
+
+///|
+fn d2_contains_char(s : String, target : Char) -> Bool {
+  for c in s {
+    if c == target {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn d2_escape_single_quoted_value(s : String) -> String {
+  let b = StringBuilder::new()
+  for r in s {
+    match r {
+      '\'' => b.write_char('\'')
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ => ()
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_escape_double_quoted_value(s : String) -> String {
+  let b = StringBuilder::new()
+  for r in s {
+    match r {
+      '"' | '\\' => b.write_char('\\')
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ => ()
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_escape_unquoted_key_value(s : String) -> String {
+  if s.length() == 0 {
+    return "\"\""
+  }
+  if s.to_lower() == "null" {
+    return "'null'"
+  }
+  let key_specials = "#;\n\\{}[]'\"|:.-<>*&()@&"
+  let chars = s.to_array()
+  let b = StringBuilder::new()
+  for i, r in chars {
+    match r {
+      '\'' | '"' | '|' => if i == 0 { b.write_char('\\') } else { () }
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ =>
+        if r == '-' {
+          if i + 1 < chars.length() && chars[i + 1] == '-' {
+            b.write_char('\\')
+          }
+        } else if r == '&' {
+          if i == 0 {
+            b.write_char('\\')
+          }
+        } else if d2_contains_char(key_specials, r) {
+          b.write_char('\\')
+        }
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_is_reserved_for_unquoted_key(s : String) -> Bool {
+  let lower = s.to_lower()
+  lower == "null" ||
+  lower == "suspend" ||
+  lower == "unsuspend" ||
+  lower == "style" ||
+  lower == "shape" ||
+  lower == "icon" ||
+  lower == "tooltip" ||
+  lower == "link" ||
+  lower == "near" ||
+  lower == "width" ||
+  lower == "height" ||
+  lower == "top" ||
+  lower == "left" ||
+  lower == "direction" ||
+  lower == "constraint" ||
+  lower == "class" ||
+  lower == "classes" ||
+  lower == "vars" ||
+  lower == "grid-rows" ||
+  lower == "grid-columns" ||
+  lower == "grid-gap" ||
+  lower == "horizontal-gap" ||
+  lower == "vertical-gap" ||
+  lower == "grid-column-span" ||
+  lower == "grid-row-span" ||
+  lower == "layers" ||
+  lower == "scenarios" ||
+  lower == "steps"
+}
+
+///|
+fn d2_format_key_segment(s : String) -> String {
+  if s.length() == 0 {
+    return "\"\""
+  }
+  let key_specials = "#;\n\\{}[]'\"|:.-<>*&()@&"
+  let chars = s.to_array()
+  for i, r in chars {
+    if r == '-' {
+      if i + 1 < chars.length() && chars[i + 1] != '-' {
+        continue
+      }
+    }
+    if d2_contains_char(key_specials, r) {
+      if !d2_contains_char(s, '"') {
+        return "\"\{d2_escape_double_quoted_value(s)}\""
+      }
+      if d2_contains_char(s, '\n') {
+        return "\"\{d2_escape_double_quoted_value(s)}\""
+      }
+      return "'\{d2_escape_single_quoted_value(s)}'"
+    }
+  }
+  if d2_has_surrounding_whitespace(s) {
+    return "\"\{d2_escape_double_quoted_value(s)}\""
+  }
+  let mut out = d2_escape_unquoted_key_value(s)
+  if d2_is_reserved_for_unquoted_key(out) {
+    out = out.to_lower()
+  }
+  out
+}
+
+///|
 fn d2_edge_repeat_key(edge : Connection) -> String {
   "\{edge.src_id}\u0000\{edge.src_arrow.to_string()}\u0000\{edge.dst_id}\u0000\{edge.dst_arrow.to_string()}"
 }
@@ -1272,8 +1695,8 @@ fn d2_connection_repeat_indices(connections : Array[Connection]) -> Array[Int] {
 
 ///|
 fn d2_connection_abs_id(edge : Connection, repeat_index : Int) -> String {
-  let src_parts = d2_split_abs_id(edge.src_id)
-  let dst_parts = d2_split_abs_id(edge.dst_id)
+  let src_parts = d2_output_abs_id_parts(edge.src_id)
+  let dst_parts = d2_output_abs_id_parts(edge.dst_id)
   let common : Array[String] = []
   let mut src_start = 0
   let mut dst_start = 0
@@ -1391,9 +1814,13 @@ fn d2_text_element(
   sb.write_string(
     " style=\"text-anchor:\{text_anchor};font-size:\{font_size}px\"",
   )
-  sb.write_string(">")
-  sb.write_string(d2_render_text_spans(text, x, line_height))
-  sb.write_string("</text>")
+  if text == "" {
+    sb.write_string(" />")
+  } else {
+    sb.write_string(">")
+    sb.write_string(d2_render_text_spans(text, x, line_height))
+    sb.write_string("</text>")
+  }
   sb.to_string()
 }
 
@@ -1402,6 +1829,7 @@ fn d2_group_open(
   class_name : String,
   style? : String = "",
   filter? : String = "",
+  trailing_space_before_gt? : Bool = false,
 ) -> String {
   let sb = StringBuilder::new()
   sb.write_string("<g")
@@ -1413,6 +1841,9 @@ fn d2_group_open(
   }
   if filter != "" {
     sb.write_string(" filter=\"\{@svg.escape_xml(filter)}\"")
+  }
+  if trailing_space_before_gt {
+    sb.write_string(" ")
   }
   sb.write_string(">")
   sb.to_string()
@@ -1454,6 +1885,7 @@ fn d2_stroke_dash_attributes(
 fn d2_connection_path_element(
   d : String,
   stroke : String,
+  stroke_signature : String,
   stroke_width : Double,
   stroke_dash : Double,
   marker_start : String,
@@ -1468,7 +1900,11 @@ fn d2_connection_path_element(
   if animated {
     classes.push("animated-connection")
   }
-  match d2_theme_token(stroke, theme) {
+  let stroke_class_token = match theme_token(stroke_signature) {
+    Some(token) => Some(token)
+    None => d2_theme_token(stroke, theme)
+  }
+  match stroke_class_token {
     Some(token) => classes.push("stroke-\{token}")
     None => ()
   }
@@ -1512,7 +1948,7 @@ fn d2_connection_path_element(
   let sb = StringBuilder::new()
   sb.write_string("<path")
   sb.write_string(" d=\"\{@svg.escape_xml(d)}\"")
-  if inline_theme || d2_theme_token(stroke, theme) is None {
+  if inline_theme || stroke_class_token is None {
     sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
   }
   sb.write_string(" fill=\"none\"")
@@ -1562,6 +1998,9 @@ fn d2_root_background_rect(
   sb.write_string(" width=\"\{d2_fixed6(width)}\"")
   sb.write_string(" height=\"\{d2_fixed6(height)}\"")
   sb.write_string(" rx=\"\{d2_fixed6(border_radius)}\"")
+  if stroke != "" && stroke != "none" {
+    sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
+  }
   if inline_theme || d2_theme_token(fill, theme) is None {
     sb.write_string(" fill=\"\{@svg.escape_xml(fill)}\"")
   } else {
@@ -1569,9 +2008,6 @@ fn d2_root_background_rect(
   }
   if class_value != "" {
     sb.write_string(" class=\"\{@svg.escape_xml(class_value)}\"")
-  }
-  if stroke != "" && stroke != "none" {
-    sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
   }
   if stroke_width.round() == stroke_width {
     sb.write_string(" stroke-width=\"\{stroke_width.to_int().to_string()}\"")
@@ -1594,13 +2030,23 @@ fn d2_shape_rect(
   border_radius : Double,
   theme : @themes.Theme,
   inline_theme : Bool,
+  fill_class_token? : String? = None,
+  stroke_class_token? : String? = None,
 ) -> String {
   let classes = StringBuilder::new()
-  match d2_theme_token(stroke, theme) {
+  let stroke_token = match stroke_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(stroke, theme)
+  }
+  let fill_token = match fill_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(fill, theme)
+  }
+  match stroke_token {
     Some(token) => classes.write_string(" stroke-\{token}")
     None => ()
   }
-  match d2_theme_token(fill, theme) {
+  match fill_token {
     Some(token) => classes.write_string(" fill-\{token}")
     None => ()
   }
@@ -1618,10 +2064,82 @@ fn d2_shape_rect(
   if border_radius > 0.0 {
     sb.write_string(" rx=\"\{d2_fixed6(border_radius)}\"")
   }
-  if inline_theme || d2_theme_token(stroke, theme) is None {
+  if inline_theme || stroke_token is None {
     sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
   }
-  if inline_theme || d2_theme_token(fill, theme) is None {
+  if inline_theme || fill_token is None {
+    sb.write_string(" fill=\"\{@svg.escape_xml(fill)}\"")
+  }
+  let class_value = classes.to_string()
+  if class_value != "" {
+    sb.write_string(" class=\"\{@svg.escape_xml(class_value)}\"")
+  }
+  sb.write_string(
+    " style=\"stroke-width:\{@svg.escape_xml(stroke_width_css)};\"",
+  )
+  sb.write_string(" />")
+  sb.to_string()
+}
+
+///|
+fn d2_ceil_to_int(x : Double) -> Int {
+  let i = x.to_int()
+  if i.to_double() == x {
+    i
+  } else if x > 0.0 {
+    i + 1
+  } else {
+    i
+  }
+}
+
+///|
+fn d2_shape_ellipse(
+  cx : Double,
+  cy : Double,
+  rx : Double,
+  ry : Double,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  theme : @themes.Theme,
+  inline_theme : Bool,
+  fill_class_token? : String? = None,
+  stroke_class_token? : String? = None,
+) -> String {
+  let classes = StringBuilder::new()
+  classes.write_string("shape")
+  let stroke_token = match stroke_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(stroke, theme)
+  }
+  let fill_token = match fill_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(fill, theme)
+  }
+  match stroke_token {
+    Some(token) => classes.write_string(" stroke-\{token}")
+    None => ()
+  }
+  match fill_token {
+    Some(token) => classes.write_string(" fill-\{token}")
+    None => ()
+  }
+  let stroke_width_css = if stroke_width.round() == stroke_width {
+    stroke_width.to_int().to_string()
+  } else {
+    d2_fixed6(stroke_width)
+  }
+  let sb = StringBuilder::new()
+  sb.write_string("<ellipse")
+  sb.write_string(" rx=\"\{d2_fixed6(rx)}\"")
+  sb.write_string(" ry=\"\{d2_fixed6(ry)}\"")
+  sb.write_string(" cx=\"\{d2_fixed6(cx)}\"")
+  sb.write_string(" cy=\"\{d2_fixed6(cy)}\"")
+  if inline_theme || stroke_token is None {
+    sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
+  }
+  if inline_theme || fill_token is None {
     sb.write_string(" fill=\"\{@svg.escape_xml(fill)}\"")
   }
   let class_value = classes.to_string()
@@ -1637,19 +2155,24 @@ fn d2_shape_rect(
 
 ///|
 fn emit_svg_document(
+  graph : Diagram,
   svg : @svg.Svg,
   config : SvgConfig,
   assets : SvgEmitAssets,
 ) -> String {
-  let outer_viewbox = "0 0 \{svg.width().to_int()} \{svg.height().to_int()}"
-  let inner_viewbox = "\{svg.viewbox_x().to_int()} \{svg.viewbox_y().to_int()} \{svg.viewbox_width().to_int()} \{svg.viewbox_height().to_int()}"
+  let outer_width = d2_ceil_to_int(svg.width())
+  let outer_height = d2_ceil_to_int(svg.height())
+  let inner_width = outer_width
+  let inner_height = outer_height
+  let outer_viewbox = "0 0 \{outer_width} \{outer_height}"
+  let inner_viewbox = "\{svg.viewbox_x().to_int()} \{svg.viewbox_y().to_int()} \{inner_width} \{inner_height}"
   let body_elements = svg.elements()
   let body_source = body_elements.join("") + assets.tail_elements.join("")
+  let corpus = d2_diagram_corpus(graph)
   let upper_blocks : Array[String] = []
-  match d2_embed_fonts_styles(assets.diagram_hash, body_source) {
-    Some(style) => upper_blocks.push(style)
-    None => ()
-  }
+  upper_blocks.push(
+    d2_embed_fonts_styles(assets.diagram_hash, body_source, corpus),
+  )
   upper_blocks.push(
     @xml_emit.Element::new("style")
     .attr("type", "text/css")
@@ -1685,8 +2208,8 @@ fn emit_svg_document(
     .attr_num_if("height", svg.height(), config.scale is Some(_))
   let inner = @xml_emit.Element::new("svg")
     .attr("class", "\{assets.diagram_hash} d2-svg")
-    .attr_int("width", svg.width().to_int())
-    .attr_int("height", svg.height().to_int())
+    .attr_int("width", inner_width)
+    .attr_int("height", inner_height)
     .attr("viewBox", inner_viewbox)
   let sb = StringBuilder::new()
   if svg.include_xml_declaration() {
@@ -1694,8 +2217,11 @@ fn emit_svg_document(
   }
   sb.write_string(outer.open_tag())
   sb.write_string(inner.open_tag())
-  if !body_elements.is_empty() {
-    sb.write_string(body_elements[0])
+  let mut body_index = 0
+  while body_index < body_elements.length() &&
+        body_elements[body_index].has_prefix("<rect") {
+    sb.write_string(body_elements[body_index])
+    body_index = body_index + 1
   }
   for block in upper_blocks {
     sb.write_string(block)
@@ -1711,7 +2237,7 @@ fn emit_svg_document(
   if defs_block != "" {
     sb.write_string(defs_block)
   }
-  let mut index = if body_elements.is_empty() { 0 } else { 1 }
+  let mut index = body_index
   while index < body_elements.length() {
     sb.write_string(body_elements[index])
     index = index + 1
@@ -1729,5 +2255,6 @@ fn emit_svg_document(
   }
   sb.write_string(inner.close_tag())
   sb.write_string(outer.close_tag())
+  sb.write_string("\n")
   sb.to_string()
 }

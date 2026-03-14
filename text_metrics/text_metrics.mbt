@@ -220,7 +220,45 @@ fn lookup_sized_glyph_metrics(
         } else {
           base
         }
-      _ => base
+      SansBold =>
+        if font_size == 29 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_bold_sz29[codepoint],
+              x_max: glyph_x_maxs_sans_bold_sz29[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_bold_sz29[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 32 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_bold_sz32[codepoint],
+              x_max: glyph_x_maxs_sans_bold_sz32[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_bold_sz32[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else {
+          base
+        }
+      MonoRegular =>
+        if font_size == 20 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_mono_regular_sz20[codepoint],
+              x_max: glyph_x_maxs_mono_regular_sz20[codepoint],
+              advance_fixed: glyph_advances_fixed_mono_regular_sz20[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else {
+          base
+        }
+      SansItalic => base
     }
   }
 }
@@ -417,6 +455,76 @@ pub fn measure_text(
 ) -> MeasuredText {
   let kind = select_font_kind(is_mono, is_bold, is_italic)
   measure_text_with_mode(text, font_size, kind, is_mono, false)
+}
+
+///|
+fn trailing_dot_delta_for_line(
+  line : String,
+  font_size : Int,
+  kind : FontKind,
+) -> Double {
+  let scale = font_size.to_double() / BASE_FONT_SIZE.to_double()
+  let fixed_scale = scale / 64.0
+  let mut last_cp = -1
+  let len = line.length()
+  let mut i = 0
+  while i < len {
+    match line[i].to_char() {
+      Some('\n') | Some('\r') | Some('\t') => ()
+      Some(c) => last_cp = c.to_int()
+      None => ()
+    }
+    i = i + 1
+  }
+  if last_cp < 0 {
+    return 0.0
+  }
+  let glyph = lookup_sized_glyph_metrics(
+    kind, last_cp, font_size, scale, fixed_scale,
+  )
+  let advance = glyph.metrics.advance_fixed.to_double() * glyph.fixed_scale
+  let right = glyph.metrics.x_max.to_double() * glyph.scale
+  let delta = advance - right
+  if delta > 0.0 {
+    delta
+  } else {
+    0.0
+  }
+}
+
+///|
+/// Measure text using precise bounds that include the pen position ("dot").
+///
+/// D2's Markdown measuring path sets `ruler.boundsWithDot = true`. In the
+/// MoonBit metrics pipeline we apply the equivalent trailing-dot correction per
+/// line without changing the base line-height behavior.
+pub fn measure_text_with_dot_bounds(
+  text : String,
+  font_size : Int,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> MeasuredText {
+  let kind = select_font_kind(is_mono, is_bold, is_italic)
+  let base = measure_text_with_mode(text, font_size, kind, is_mono, false)
+  let mut max_line_width = 0.0
+  for line in text.split("\n") {
+    let line_text = line.to_string()
+    let line_measured = measure_text_with_mode(
+      line_text, font_size, kind, is_mono, false,
+    )
+    let line_width = line_measured.max_line_width +
+      trailing_dot_delta_for_line(line_text, font_size, kind)
+    if line_width > max_line_width {
+      max_line_width = line_width
+    }
+  }
+  let width = @math.ceil(max_line_width)
+  {
+    dimensions: { width, height: base.dimensions.height },
+    line_count: base.line_count,
+    max_line_width,
+  }
 }
 
 ///|

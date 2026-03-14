@@ -45,7 +45,7 @@ test "element with attributes" {
     .attr("y", "20")
     .attr("width", "100")
     .self_close()
-  assert_eq(elem.build(), "<rect x=\"10\" y=\"20\" width=\"100\"/>")
+  assert_eq(elem.build(), "<rect x=\"10\" y=\"20\" width=\"100\" />")
 }
 
 ///|
@@ -55,7 +55,7 @@ test "element with numeric attributes" {
     .attr_num("cy", 50.0)
     .attr_num("r", 25.5)
     .self_close()
-  assert_eq(elem.build(), "<circle cx=\"50\" cy=\"50\" r=\"25.5\"/>")
+  assert_eq(elem.build(), "<circle cx=\"50\" cy=\"50\" r=\"25.5\" />")
 }
 
 ///|
@@ -85,13 +85,13 @@ test "attr_if only adds non-empty" {
     .attr_if("class", "active")
     .attr_if("id", "")
     .self_close()
-  assert_eq(elem.build(), "<div class=\"active\"/>")
+  assert_eq(elem.build(), "<div class=\"active\" />")
 }
 
 ///|
 test "empty_element convenience function" {
   let result = empty_element("br", [])
-  assert_eq(result, "<br/>")
+  assert_eq(result, "<br />")
 }
 
 ///|

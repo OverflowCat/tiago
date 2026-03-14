@@ -88,6 +88,8 @@ pub struct Shape {
   style : @graph.StyleInput
   box : @graph.Box?
   label_box : @graph.Box?
+  label_width : Double?
+  label_height : Double?
   child_ids : Array[String]
   z_index : Int
   icon : String?

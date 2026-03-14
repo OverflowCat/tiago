@@ -101,6 +101,8 @@ pub struct Shape {
   style : @graph.StyleInput
   box : @graph.Box?
   label_box : @graph.Box?
+  label_width : Double?
+  label_height : Double?
   child_ids : Array[String]
   z_index : Int
   icon : String?
@@ -350,6 +352,40 @@ fn project_box_for_target(box : @graph.Box?) -> @graph.Box? {
 }
 
 ///|
+const D2_ROUTE_TRUNCATE_SCALE : Double = 1000.0
+
+///|
+fn truncate_decimals_like_d2(v : Double) -> Double {
+  (v * D2_ROUTE_TRUNCATE_SCALE).to_int().to_double() / D2_ROUTE_TRUNCATE_SCALE
+}
+
+///|
+fn truncate_float32_like_d2(v : Double) -> Double {
+  Float::from_double(v).to_double()
+}
+
+///|
+fn normalize_route_like_d2(route : Array[@graph.Point]) -> Array[@graph.Point] {
+  let out : Array[@graph.Point] = []
+  for p in route {
+    let x = truncate_float32_like_d2(truncate_decimals_like_d2(p.x))
+    let y = truncate_float32_like_d2(truncate_decimals_like_d2(p.y))
+    out.push(@graph.Point::new(x, y))
+  }
+  out
+}
+
+///|
+fn normalize_bend_points_like_d2(
+  bend_points : Array[@graph.Point]?,
+) -> Array[@graph.Point]? {
+  match bend_points {
+    Some(points) => Some(normalize_route_like_d2(points))
+    None => None
+  }
+}
+
+///|
 fn object_uses_grid_layout(obj : @graph.ObjectInput) -> Bool {
   obj.grid_rows is Some(_) || obj.grid_columns is Some(_)
 }
@@ -392,10 +428,17 @@ fn shape_from_object(
   parent_id_by_child_id : Map[String, String],
   object_by_id : Map[String, @graph.ObjectInput],
 ) -> Shape {
-  let keep_label_box = obj.child_ids.length() > 0 ||
-    object_uses_grid_layout(obj) ||
+  let keep_label_box = object_uses_grid_layout(obj) ||
     object_has_grid_ancestor(obj.id, parent_id_by_child_id, object_by_id)
   let projected_label_box = if keep_label_box { obj.label_box } else { None }
+  let label_width = match obj.label_box {
+    Some(label_box) => Some(label_box.width)
+    None => None
+  }
+  let label_height = match obj.label_box {
+    Some(label_box) => Some(label_box.height)
+    None => None
+  }
   {
     id: obj.id,
     label: obj.label,
@@ -403,6 +446,8 @@ fn shape_from_object(
     style: obj.style,
     box: project_box_for_target(obj.box),
     label_box: projected_label_box,
+    label_width,
+    label_height,
     child_ids: obj.child_ids,
     z_index: obj.z_index,
     icon: obj.icon,
@@ -438,8 +483,8 @@ fn connection_from_edge(edge : @graph.EdgeInput) -> Connection {
     dst_anchor: edge.dst_anchor,
     label: edge.label,
     style: edge.style,
-    route: edge.route,
-    bend_points: edge.bend_points,
+    route: normalize_route_like_d2(edge.route),
+    bend_points: normalize_bend_points_like_d2(edge.bend_points),
     is_curve: edge.is_curve,
     z_index: edge.z_index,
     reference_count: edge.reference_count,
@@ -482,6 +527,77 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
 }
 
 ///|
+const D2_SEQUENCE_LIFELINE_STROKE_WIDTH : Int = 2
+
+///|
+const D2_SEQUENCE_LIFELINE_STROKE_DASH : Int = 6
+
+///|
+const D2_SEQUENCE_MESSAGE_Z_INDEX : Int = 4
+
+///|
+const D2_SEQUENCE_MIN_MESSAGE_DISTANCE : Double = 30.0
+
+///|
+const D2_SEQUENCE_VERTICAL_PAD : Double = 40.0
+
+///|
+const D2_SEQUENCE_LIFELINE_LABEL_PAD : Double = 5.0
+
+///|
+fn sequence_lifeline_start_y(shape : Shape, box : @graph.Box) -> Double {
+  let mut actor_bottom = box.y + box.height
+  if shape.label == "" {
+    return actor_bottom
+  }
+  match shape.label_box {
+    Some(label_box) =>
+      if label_box.y >= box.y + box.height {
+        actor_bottom = actor_bottom +
+          label_box.height +
+          D2_SEQUENCE_LIFELINE_LABEL_PAD
+      }
+    None => ()
+  }
+  actor_bottom
+}
+
+///|
+fn sequence_lifeline_style(
+  actor_style : @graph.StyleInput,
+) -> @graph.StyleInput {
+  let stroke_dash = match actor_style.stroke_dash {
+    Some(v) => Some(v)
+    None => Some(@graph.StyleValue::from_int(D2_SEQUENCE_LIFELINE_STROKE_DASH))
+  }
+  @graph.StyleInput::from_parts(
+    None,
+    Some(@graph.StyleValue::from_string("B2")),
+    None,
+    Some(@graph.StyleValue::from_int(D2_SEQUENCE_LIFELINE_STROKE_WIDTH)),
+    stroke_dash,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+  )
+}
+
+///|
 fn append_sequence_lifeline_connections(
   graph : @graph.GraphInput,
   shapes : Array[Shape],
@@ -491,49 +607,60 @@ fn append_sequence_lifeline_connections(
     return
   }
 
-  let box_by_id : Map[String, @graph.Box] = {}
+  let shape_by_id : Map[String, Shape] = {}
   for shape in shapes {
-    match shape.box {
-      Some(box) => box_by_id[shape.id] = box
-      None => ()
-    }
+    shape_by_id[shape.id] = shape
   }
 
   let participant_ids = sequence_participant_ids(graph)
   if participant_ids.is_empty() {
     return
   }
-
-  let mut max_route_y = 0.0
-  for conn in connections {
-    for point in conn.route {
-      if point.y > max_route_y {
-        max_route_y = point.y
-      }
+  for i = 0; i < connections.length(); i = i + 1 {
+    let conn = connections[i]
+    if conn.z_index < D2_SEQUENCE_MESSAGE_Z_INDEX {
+      connections[i] = { ..conn, z_index: D2_SEQUENCE_MESSAGE_Z_INDEX }
     }
   }
 
-  let mut max_start_y = 0.0
-  for id in participant_ids {
-    match box_by_id.get(id) {
-      Some(box) => {
-        let start_y = box.y + box.height
-        if start_y > max_start_y {
-          max_start_y = start_y
-        }
+  let mut end_y = 0.0
+  for conn in connections {
+    for point in conn.route {
+      if point.y > end_y {
+        end_y = point.y
       }
+    }
+  }
+  for note in graph.sequence_notes {
+    let note_box = note.2
+    let note_bottom = note_box.y + note_box.height
+    if note_bottom > end_y {
+      end_y = note_bottom
+    }
+  }
+
+  for id in participant_ids {
+    match shape_by_id.get(id) {
+      Some(shape) =>
+        match shape.box {
+          Some(box) => {
+            let actor_bottom = box.y + box.height
+            if actor_bottom > end_y {
+              end_y = actor_bottom
+            }
+          }
+          None => ()
+        }
       None => ()
     }
   }
-  if max_start_y <= 0.0 {
+
+  if end_y <= 0.0 {
     return
   }
-
-  let lifeline_end_y = if max_route_y > 0.0 {
-    max_route_y + 70.0
-  } else {
-    max_start_y + 120.0
-  }
+  let lifeline_end_y = end_y +
+    D2_SEQUENCE_MIN_MESSAGE_DISTANCE +
+    D2_SEQUENCE_VERTICAL_PAD
 
   let mut next_index = 0
   for conn in connections {
@@ -543,41 +670,45 @@ fn append_sequence_lifeline_connections(
   }
 
   for id in participant_ids {
-    match box_by_id.get(id) {
-      Some(box) => {
-        let x = box.x + box.width / 2.0
-        let start_y = box.y + box.height
-        let dst_id = "\{id}-lifeline-end-\{next_index}"
-        connections.push({
-          index: next_index,
-          src_id: id,
-          dst_id,
-          src_arrow: false,
-          dst_arrow: false,
-          src_arrowhead: @graph.None,
-          dst_arrowhead: @graph.None,
-          src_arrowhead_label: None,
-          dst_arrowhead_label: None,
-          src_arrowhead_label_color: None,
-          dst_arrowhead_label_color: None,
-          src_anchor: None,
-          dst_anchor: None,
-          label: "",
-          style: @graph.StyleInput::new(),
-          route: [
-            @graph.Point::new(x, start_y),
-            @graph.Point::new(x, lifeline_end_y),
-          ],
-          bend_points: None,
-          is_curve: false,
-          z_index: 0,
-          reference_count: 1,
-          label_box: None,
-          src_column_index: None,
-          dst_column_index: None,
-        })
-        next_index += 1
-      }
+    match shape_by_id.get(id) {
+      Some(shape) =>
+        match shape.box {
+          Some(box) => {
+            let start_y = sequence_lifeline_start_y(shape, box)
+            let x = box.x + box.width / 2.0
+            let style = sequence_lifeline_style(shape.style)
+            connections.push({
+              index: next_index,
+              src_id: id,
+              dst_id: "",
+              src_arrow: false,
+              dst_arrow: false,
+              src_arrowhead: @graph.None,
+              dst_arrowhead: @graph.None,
+              src_arrowhead_label: None,
+              dst_arrowhead_label: None,
+              src_arrowhead_label_color: None,
+              dst_arrowhead_label_color: None,
+              src_anchor: None,
+              dst_anchor: None,
+              label: "",
+              style,
+              route: [
+                @graph.Point::new(x, start_y),
+                @graph.Point::new(x, lifeline_end_y),
+              ],
+              bend_points: None,
+              is_curve: false,
+              z_index: 1,
+              reference_count: 1,
+              label_box: None,
+              src_column_index: None,
+              dst_column_index: None,
+            })
+            next_index += 1
+          }
+          None => ()
+        }
       None => ()
     }
   }

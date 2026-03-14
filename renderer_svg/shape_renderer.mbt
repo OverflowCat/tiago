@@ -114,40 +114,33 @@ fn render_ellipse_svg(ctx : SvgShapeContext) -> Unit {
 
 ///|
 fn render_diamond_svg(ctx : SvgShapeContext) -> Unit {
-  let cx = ctx.box_.x + ctx.box_.width / 2.0
-  let cy = ctx.box_.y + ctx.box_.height / 2.0
-  ctx.svg.add(
-    @svg.polygon(
-      [
-        (cx, ctx.box_.y),
-        (ctx.box_.x + ctx.box_.width, cy),
-        (cx, ctx.box_.y + ctx.box_.height),
-        (ctx.box_.x, cy),
-      ],
-      fill=ctx.fill,
-      stroke=ctx.stroke,
-      stroke_width=ctx.stroke_width,
-    ),
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_diamond(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
   )
 }
 
 ///|
 fn render_hexagon_svg(ctx : SvgShapeContext) -> Unit {
-  let inset = ctx.box_.width * 0.25
-  ctx.svg.add(
-    @svg.polygon(
-      [
-        (ctx.box_.x + inset, ctx.box_.y),
-        (ctx.box_.x + ctx.box_.width - inset, ctx.box_.y),
-        (ctx.box_.x + ctx.box_.width, ctx.box_.y + ctx.box_.height / 2.0),
-        (ctx.box_.x + ctx.box_.width - inset, ctx.box_.y + ctx.box_.height),
-        (ctx.box_.x + inset, ctx.box_.y + ctx.box_.height),
-        (ctx.box_.x, ctx.box_.y + ctx.box_.height / 2.0),
-      ],
-      fill=ctx.fill,
-      stroke=ctx.stroke,
-      stroke_width=ctx.stroke_width,
-    ),
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_hexagon(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
   )
 }
 
@@ -158,69 +151,178 @@ fn render_octagon_svg(ctx : SvgShapeContext) -> Unit {
 
 ///|
 fn render_parallelogram_svg(ctx : SvgShapeContext) -> Unit {
+  let theme = @themes.get_theme(ctx.config.theme_id)
   render_svg_parallelogram(
     ctx.svg,
     ctx.box_,
     ctx.fill,
     ctx.stroke,
     ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
   )
 }
 
 ///|
 fn render_cylinder_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_cylinder(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_cylinder(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_person_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_person(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_person(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_cloud_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_cloud(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_cloud(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_document_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_document(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_document(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_queue_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_queue(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_queue(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_stored_data_svg(ctx : SvgShapeContext) -> Unit {
+  let theme = @themes.get_theme(ctx.config.theme_id)
   render_svg_stored_data(
     ctx.svg,
     ctx.box_,
     ctx.fill,
     ctx.stroke,
     ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
   )
 }
 
 ///|
 fn render_page_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_page(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_page(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_package_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_package(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_package(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_step_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_step(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_step(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|
 fn render_callout_svg(ctx : SvgShapeContext) -> Unit {
-  render_svg_callout(ctx.svg, ctx.box_, ctx.fill, ctx.stroke, ctx.stroke_width)
+  let theme = @themes.get_theme(ctx.config.theme_id)
+  render_svg_callout(
+    ctx.svg,
+    ctx.box_,
+    ctx.fill,
+    ctx.stroke,
+    ctx.stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
 }
 
 ///|

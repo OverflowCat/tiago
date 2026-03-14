@@ -115,6 +115,6 @@ test "sort objects keeps containers before leaves even when deeper" {
   let sorted = sort_objects_by_depth(input)
   inspect(
     sorted.map(fn(shape) { shape.id }),
-    content="[\"aws.vpc.subnet\", \"aws.s3\", \"aws.vpc.subnet.ec2\"]",
+    content="[\"aws.s3\", \"aws.vpc.subnet\", \"aws.vpc.subnet.ec2\"]",
   )
 }

@@ -104,6 +104,9 @@ const D2_CLASS_VERTICAL_PADDING : Double = 20.0
 const D2_DEFAULT_ARC_DEPTH : Double = 24.0
 
 ///|
+const D2_MIN_SEGMENT_LEN : Double = 10.0
+
+///|
 const D2_PARALLELOGRAM_WEDGE_WIDTH : Double = 26.0
 
 ///|
@@ -114,6 +117,15 @@ const D2_STEP_WEDGE_WIDTH : Double = 35.0
 
 ///|
 const D2_PACKAGE_TOP_MAX_HEIGHT : Double = 55.0
+
+///|
+const D2_PACKAGE_TOP_MIN_WIDTH : Double = 50.0
+
+///|
+const D2_PACKAGE_TOP_MAX_WIDTH : Double = 150.0
+
+///|
+const D2_PACKAGE_HORIZONTAL_SCALAR : Double = 0.5
 
 ///|
 const D2_PACKAGE_VERTICAL_SCALAR : Double = 0.2
@@ -210,6 +222,18 @@ const CLOUD_SQUARE_INNER_WIDTH : Double = 0.663
 
 ///|
 const CLOUD_SQUARE_INNER_HEIGHT : Double = 0.663
+
+///|
+const D2_HEXAGON_HALF_Y_FACTOR : Double = 43.6 / 87.3
+
+///|
+const D2_CYLINDER_BEZIER_MULTIPLIER : Double = 0.45
+
+///|
+const D2_CUBIC_TRACE_SAMPLES : Int = 160
+
+///|
+const D2_GEO_PRECISION : Double = 0.0001
 
 ///|
 priv struct LayoutSpacing {
@@ -423,17 +447,12 @@ fn layout_sequence_diagram(
 
 ///|
 fn sequence_edge_width_for_spacing(edge : @graph.EdgeInput) -> Double {
-  let width_with_padding = match edge.label_box {
+  let width = match edge.label_box {
     Some(box) if box.width > 0.0 => box.width
     _ => fallback_sequence_edge_label_size(edge).0
   }
-  // D2 sequence spacing uses LabelDimensions.Width, while label boxes carry
-  // an extra ~2px side padding on each side.
-  if width_with_padding > 4.0 {
-    width_with_padding - 4.0
-  } else {
-    width_with_padding
-  }
+  // D2 sequence spacing uses LabelDimensions.Width directly.
+  width
 }
 
 ///|
@@ -503,9 +522,9 @@ fn fallback_sequence_edge_label_size(
     is_italic,
   )
   let width = if dims.width > 0.0 {
-    dims.width + 4.0
+    dims.width
   } else {
-    edge.label.length().to_double() * 7.0 + 12.0
+    edge.label.length().to_double() * 7.0
   }
   let text_height = if dims.height > 0.0 {
     dims.height
@@ -831,10 +850,10 @@ fn apply_margin_adjustments_like_d2(
           continue
         }
         let last = route.length() - 1
-        if edge.src_id == obj.id && approx_eq(route[0].x, box.x) {
+        if edge.src_id == obj.id && route[0].x == box.x {
           route[0] = @graph.Point::new(route[0].x + margin.left, route[0].y)
         }
-        if edge.dst_id == obj.id && approx_eq(route[last].x, box.x) {
+        if edge.dst_id == obj.id && route[last].x == box.x {
           route[last] = @graph.Point::new(
             route[last].x + margin.left,
             route[last].y,
@@ -849,12 +868,7 @@ fn apply_margin_adjustments_like_d2(
         margin.left / 2.0,
         0.0,
       )
-      box = @graph.Box::new(
-        box.x,
-        box.y,
-        max_double(1.0, box.width - margin.left),
-        box.height,
-      )
+      box = @graph.Box::new(box.x, box.y, box.width - margin.left, box.height)
     }
 
     if margin.right > 0.0 {
@@ -872,10 +886,10 @@ fn apply_margin_adjustments_like_d2(
         }
         let last = route.length() - 1
         let right_x = box.x + box.width
-        if edge.src_id == obj.id && approx_eq(route[0].x, right_x) {
+        if edge.src_id == obj.id && route[0].x == right_x {
           route[0] = @graph.Point::new(route[0].x - margin.right, route[0].y)
         }
-        if edge.dst_id == obj.id && approx_eq(route[last].x, right_x) {
+        if edge.dst_id == obj.id && route[last].x == right_x {
           route[last] = @graph.Point::new(
             route[last].x - margin.right,
             route[last].y,
@@ -889,12 +903,7 @@ fn apply_margin_adjustments_like_d2(
         -margin.right / 2.0,
         0.0,
       )
-      box = @graph.Box::new(
-        box.x,
-        box.y,
-        max_double(1.0, box.width - margin.right),
-        box.height,
-      )
+      box = @graph.Box::new(box.x, box.y, box.width - margin.right, box.height)
     }
 
     if margin.top > 0.0 {
@@ -911,10 +920,10 @@ fn apply_margin_adjustments_like_d2(
           continue
         }
         let last = route.length() - 1
-        if edge.src_id == obj.id && approx_eq(route[0].y, box.y) {
+        if edge.src_id == obj.id && route[0].y == box.y {
           route[0] = @graph.Point::new(route[0].x, route[0].y + margin.top)
         }
-        if edge.dst_id == obj.id && approx_eq(route[last].y, box.y) {
+        if edge.dst_id == obj.id && route[last].y == box.y {
           route[last] = @graph.Point::new(
             route[last].x,
             route[last].y + margin.top,
@@ -929,12 +938,7 @@ fn apply_margin_adjustments_like_d2(
         0.0,
         margin.top / 2.0,
       )
-      box = @graph.Box::new(
-        box.x,
-        box.y,
-        box.width,
-        max_double(1.0, box.height - margin.top),
-      )
+      box = @graph.Box::new(box.x, box.y, box.width, box.height - margin.top)
     }
 
     if margin.bottom > 0.0 {
@@ -952,10 +956,10 @@ fn apply_margin_adjustments_like_d2(
         }
         let last = route.length() - 1
         let bottom_y = box.y + box.height
-        if edge.src_id == obj.id && approx_eq(route[0].y, bottom_y) {
+        if edge.src_id == obj.id && route[0].y == bottom_y {
           route[0] = @graph.Point::new(route[0].x, route[0].y - margin.bottom)
         }
-        if edge.dst_id == obj.id && approx_eq(route[last].y, bottom_y) {
+        if edge.dst_id == obj.id && route[last].y == bottom_y {
           route[last] = @graph.Point::new(
             route[last].x,
             route[last].y - margin.bottom,
@@ -969,12 +973,7 @@ fn apply_margin_adjustments_like_d2(
         0.0,
         -margin.bottom / 2.0,
       )
-      box = @graph.Box::new(
-        box.x,
-        box.y,
-        box.width,
-        max_double(1.0, box.height - margin.bottom),
-      )
+      box = @graph.Box::new(box.x, box.y, box.width, box.height - margin.bottom)
     }
 
     node_box_by_id[obj.id] = box
@@ -1725,9 +1724,6 @@ fn fill_patch_edges(
     routes_by_index[edge.index] = route
   }
 
-  adjust_route_endpoints_for_outside_labels(
-    routes_by_index, graph, node_box_by_id,
-  )
   trace_route_endpoints_like_d2(
     routes_by_index, graph, edge_endpoints_by_index, node_box_by_id,
   )
@@ -1753,91 +1749,6 @@ fn fill_patch_edges(
         )
       }
       None => ()
-    }
-  }
-}
-
-///|
-fn adjust_route_endpoints_for_outside_labels(
-  routes_by_index : Map[Int, Array[@graph.Point]],
-  graph : @graph.GraphInput,
-  node_box_by_id : Map[String, @graph.Box],
-) -> Unit {
-  let object_by_id : Map[String, @graph.ObjectInput] = {}
-  for obj in graph.objects {
-    object_by_id[obj.id] = obj
-  }
-  let parent_id_by_child_id : Map[String, String] = {}
-  for parent in graph.objects {
-    for child_id in parent.child_ids {
-      parent_id_by_child_id[child_id] = parent.id
-    }
-  }
-
-  for edge in graph.edges {
-    let route = match routes_by_index.get(edge.index) {
-      Some(v) => v
-      None => continue
-    }
-    if route.length() < 2 {
-      continue
-    }
-
-    let src_id = collapse_sql_or_class_endpoint_id(
-      edge.src_id,
-      object_by_id,
-      parent_id_by_child_id,
-    )
-    let dst_id = collapse_sql_or_class_endpoint_id(
-      edge.dst_id,
-      object_by_id,
-      parent_id_by_child_id,
-    )
-
-    let src_obj = match object_by_id.get(src_id) {
-      Some(v) => v
-      None => continue
-    }
-    let dst_obj = match object_by_id.get(dst_id) {
-      Some(v) => v
-      None => continue
-    }
-    let src_box = match node_box_by_id.get(src_id) {
-      Some(v) => v
-      None => continue
-    }
-    let dst_box = match node_box_by_id.get(dst_id) {
-      Some(v) => v
-      None => continue
-    }
-
-    if route.length() >= 2 {
-      match outside_label_box(src_obj, src_box) {
-        Some((label_box, pos)) => {
-          let intersections = box_intersections(label_box, route[1], route[0])
-          if !intersections.is_empty() {
-            route[0] = pick_outside_intersection(pos, intersections)
-          }
-        }
-        None => ()
-      }
-    }
-
-    if route.length() >= 2 {
-      let last = route.length() - 1
-      match outside_label_box(dst_obj, dst_box) {
-        Some((label_box, pos)) => {
-          let intersections = box_intersections(
-            label_box,
-            route[last - 1],
-            route[last],
-          )
-          if !intersections.is_empty() {
-            route[last] = pick_outside_intersection(pos, intersections)
-          }
-        }
-        None => ()
-      }
     }
   }
 }
@@ -1876,148 +1787,225 @@ fn trace_route_endpoints_like_d2(
       None => continue
     }
 
-    let src_obj = object_by_id.get(src_id)
-    let src_shape_type = match src_obj {
-      Some(obj) => obj.shape_type
-      None => @graph.Rectangle
+    let src_obj = match object_by_id.get(src_id) {
+      Some(v) => v
+      None => continue
     }
-    let dst_obj = object_by_id.get(dst_id)
-    let dst_shape_type = match dst_obj {
-      Some(obj) => obj.shape_type
-      None => @graph.Rectangle
-    }
-    let mut src_on_box = false
-    let src_trace_box = shape_trace_intersection_box(
-      src_obj, src_shape_type, src_box,
-    )
-    match first_box_intersection_like_d2(src_trace_box, route[0], route[1]) {
-      Some(hit) => {
-        route[0] = hit
-        src_on_box = true
-      }
-      None => ()
-    }
-    if src_on_box {
-      route[0] = trace_shape_border_like_d2(
-        src_shape_type,
-        src_box,
-        route[0],
-        route[1],
-      )
-    } else if src_shape_type == @graph.Callout {
-      let tip_h = if src_box.height < 90.0 {
-        src_box.height / 2.0
-      } else {
-        45.0
-      }
-      route[0] = @graph.Point::new(
-        route[0].x,
-        src_box.y + src_box.height - tip_h,
-      )
+    let dst_obj = match object_by_id.get(dst_id) {
+      Some(v) => v
+      None => continue
     }
 
-    let last = route.length() - 1
-    let mut dst_on_box = false
-    match
-      first_box_intersection_like_d2(
-        shape_trace_intersection_box(dst_obj, dst_shape_type, dst_box),
-        route[last - 1],
-        route[last],
-      ) {
-      Some(hit) => {
-        route[last] = hit
-        dst_on_box = true
-      }
-      None => ()
+    let points : Array[@graph.Point] = []
+    for p in route {
+      points.push(p)
     }
-    if dst_on_box {
-      route[last] = trace_shape_border_like_d2(
-        dst_shape_type,
-        dst_box,
-        route[last],
-        route[last - 1],
-      )
-    } else if dst_shape_type == @graph.Callout {
-      let tip_h = if dst_box.height < 90.0 {
-        dst_box.height / 2.0
-      } else {
-        45.0
-      }
-      route[last] = @graph.Point::new(
-        route[last].x,
-        dst_box.y + dst_box.height - tip_h,
-      )
-    }
-  }
-}
+    let mut start_index = 0
+    let mut end_index = points.length() - 1
 
-///|
-fn shape_trace_intersection_box(
-  obj : @graph.ObjectInput?,
-  shape_type : @graph.ShapeType,
-  box : @graph.Box,
-) -> @graph.Box {
-  let mut adjusted = box
-  match obj {
-    Some(v) =>
-      if style_bool(v.style.three_d, false) {
-        let offset_y = if shape_type == @graph.Hexagon {
-          D2_THREE_DEE_OFFSET / 2.0
-        } else {
-          D2_THREE_DEE_OFFSET
-        }
-        adjusted = @graph.Box::new(
-          adjusted.x,
-          adjusted.y - offset_y,
-          adjusted.width + D2_THREE_DEE_OFFSET,
-          adjusted.height + offset_y,
+    let mut trace_src_box = src_box
+    let mut trace_dst_box = dst_box
+    let (src_dx, src_dy) = modifier_element_adjustments(src_obj)
+    if (src_dx != 0.0 || src_dy != 0.0) && start_index <= end_index {
+      let start = points[start_index]
+      if start.x > src_box.x + src_dx &&
+        start.y < src_box.y + src_box.height - src_dy {
+        trace_src_box = @graph.Box::new(
+          src_box.x + src_dx,
+          src_box.y - src_dy,
+          src_box.width,
+          src_box.height,
         )
       }
-    None => ()
-  }
-  match shape_type {
-    @graph.Callout => {
-      let tip_h = if adjusted.height < 90.0 {
-        adjusted.height / 2.0
-      } else {
-        45.0
-      }
-      @graph.Box::new(
-        adjusted.x,
-        adjusted.y,
-        adjusted.width,
-        adjusted.height - tip_h,
-      )
     }
-    _ => adjusted
+    let (dst_dx, dst_dy) = modifier_element_adjustments(dst_obj)
+    if (dst_dx != 0.0 || dst_dy != 0.0) && start_index <= end_index {
+      let end = points[end_index]
+      if end.x > dst_box.x + dst_dx &&
+        end.y < dst_box.y + dst_box.height - dst_dy {
+        trace_dst_box = @graph.Box::new(
+          dst_box.x + dst_dx,
+          dst_box.y - dst_dy,
+          dst_box.width,
+          dst_box.height,
+        )
+      }
+    }
+
+    let mut overlaps_src_outside_label = false
+    if start_index + 1 <= end_index {
+      match outside_label_box(src_obj, src_box) {
+        Some((label_box, pos)) => {
+          let intersections = box_intersections(
+            label_box,
+            points[start_index + 1],
+            points[start_index],
+          )
+          if !intersections.is_empty() {
+            overlaps_src_outside_label = true
+            points[start_index] = pick_outside_intersection(pos, intersections)
+            if start_index + 1 < end_index &&
+              point_distance(points[start_index], points[start_index + 1]) <
+              D2_MIN_SEGMENT_LEN {
+              points[start_index + 1] = points[start_index]
+              start_index = start_index + 1
+            }
+          }
+        }
+        None => ()
+      }
+    }
+
+    if !overlaps_src_outside_label && start_index + 1 <= end_index {
+      match
+        first_box_intersection(
+          trace_src_box,
+          points[start_index + 1],
+          points[start_index],
+        ) {
+        Some(hit) => {
+          points[start_index] = hit
+          if start_index + 1 < end_index &&
+            point_distance(points[start_index], points[start_index + 1]) <
+            D2_MIN_SEGMENT_LEN {
+            points[start_index + 1] = points[start_index]
+            start_index = start_index + 1
+          }
+        }
+        None => ()
+      }
+      if start_index + 1 <= end_index {
+        points[start_index] = trace_to_shape_border(
+          src_obj.shape_type,
+          trace_src_box,
+          points[start_index],
+          points[start_index + 1],
+        )
+      }
+    }
+
+    let mut overlaps_dst_outside_label = false
+    if end_index >= 1 && end_index - 1 >= start_index {
+      match outside_label_box(dst_obj, dst_box) {
+        Some((label_box, pos)) => {
+          let intersections = box_intersections(
+            label_box,
+            points[end_index - 1],
+            points[end_index],
+          )
+          if !intersections.is_empty() {
+            overlaps_dst_outside_label = true
+            points[end_index] = pick_outside_intersection(pos, intersections)
+            if end_index - 1 > start_index &&
+              point_distance(points[end_index - 1], points[end_index]) <
+              D2_MIN_SEGMENT_LEN {
+              points[end_index - 1] = points[end_index]
+              end_index = end_index - 1
+            }
+          }
+        }
+        None => ()
+      }
+    }
+
+    if !overlaps_dst_outside_label &&
+      end_index >= 1 &&
+      end_index - 1 >= start_index {
+      match
+        first_box_intersection(
+          trace_dst_box,
+          points[end_index - 1],
+          points[end_index],
+        ) {
+        Some(hit) => {
+          points[end_index] = hit
+          if end_index - 1 > start_index &&
+            point_distance(points[end_index - 1], points[end_index]) <
+            D2_MIN_SEGMENT_LEN {
+            points[end_index - 1] = points[end_index]
+            end_index = end_index - 1
+          }
+        }
+        None => ()
+      }
+      if end_index >= 1 && end_index - 1 >= start_index {
+        points[end_index] = trace_to_shape_border(
+          dst_obj.shape_type,
+          trace_dst_box,
+          points[end_index],
+          points[end_index - 1],
+        )
+      }
+    }
+
+    if end_index < start_index {
+      continue
+    }
+    let traced : Array[@graph.Point] = []
+    let mut i = start_index
+    while i <= end_index {
+      traced.push(points[i])
+      i = i + 1
+    }
+    if traced.length() >= 2 {
+      routes_by_index[edge.index] = traced
+    }
   }
 }
 
 ///|
-fn first_box_intersection_like_d2(
+fn is_rectangular_shape_like_d2(shape_type : @graph.ShapeType) -> Bool {
+  shape_type == @graph.Rectangle ||
+  shape_type == @graph.Square ||
+  shape_type == @graph.SqlTable ||
+  shape_type == @graph.Class ||
+  shape_type == @graph.Text ||
+  shape_type == @graph.Code ||
+  shape_type == @graph.Image
+}
+
+///|
+fn modifier_element_adjustments(obj : @graph.ObjectInput) -> (Double, Double) {
+  if style_bool(obj.style.three_d, false) {
+    (
+      D2_THREE_DEE_OFFSET,
+      if obj.shape_type == @graph.Hexagon {
+        D2_THREE_DEE_OFFSET / 2.0
+      } else {
+        D2_THREE_DEE_OFFSET
+      },
+    )
+  } else if style_bool(obj.style.multiple, false) {
+    (D2_MULTIPLE_OFFSET, D2_MULTIPLE_OFFSET)
+  } else {
+    (0.0, 0.0)
+  }
+}
+
+///|
+fn first_box_intersection(
   box : @graph.Box,
   p0 : @graph.Point,
   p1 : @graph.Point,
 ) -> @graph.Point? {
-  let x0 = box.x
-  let x1 = box.x + box.width
-  let y0 = box.y
-  let y1 = box.y + box.height
-
-  match segment_intersection_at_y_for_box(p0, p1, y0, x0, x1) {
-    Some(hit) => return Some(hit.1)
+  let tl = @graph.Point::new(box.x, box.y)
+  let tr = @graph.Point::new(box.x + box.width, box.y)
+  let br = @graph.Point::new(box.x + box.width, box.y + box.height)
+  let bl = @graph.Point::new(box.x, box.y + box.height)
+  match segment_segment_intersection(p0, p1, tl, tr) {
+    Some(hit) => return Some(hit)
     None => ()
   }
-  match segment_intersection_at_x_for_box(p0, p1, x1, y0, y1) {
-    Some(hit) => return Some(hit.1)
+  match segment_segment_intersection(p0, p1, tr, br) {
+    Some(hit) => return Some(hit)
     None => ()
   }
-  match segment_intersection_at_y_for_box(p0, p1, y1, x0, x1) {
-    Some(hit) => return Some(hit.1)
+  match segment_segment_intersection(p0, p1, br, bl) {
+    Some(hit) => return Some(hit)
     None => ()
   }
-  match segment_intersection_at_x_for_box(p0, p1, x0, y0, y1) {
-    Some(hit) => return Some(hit.1)
+  match segment_segment_intersection(p0, p1, bl, tl) {
+    Some(hit) => return Some(hit)
     None => ()
   }
   None
@@ -2038,7 +2026,12 @@ fn outside_label_box(
     Some(v) => v
     None => return None
   }
-  let pos = default_label_position(obj, box, label_width, label_height)
+  let pos = default_label_position(
+    obj,
+    box,
+    label_width + D2_LABEL_PADDING * 2.0,
+    label_height + D2_LABEL_PADDING * 2.0,
+  )
   let (x, y) = match pos {
     OutsideTop =>
       (
@@ -2072,36 +2065,24 @@ fn box_intersections(
   p1 : @graph.Point,
 ) -> Array[@graph.Point] {
   let hits : Array[@graph.Point] = []
-
-  let add_hit = fn(hit : @graph.Point) {
-    for existing in hits {
-      if abs_double(existing.x - hit.x) < 0.000001 &&
-        abs_double(existing.y - hit.y) < 0.000001 {
-        return
-      }
-    }
-    hits.push(hit)
-  }
-
-  let x0 = box.x
-  let x1 = box.x + box.width
-  let y0 = box.y
-  let y1 = box.y + box.height
-
-  match segment_intersection_at_y_for_box(p0, p1, y0, x0, x1) {
-    Some(hit) => add_hit(hit.1)
+  let tl = @graph.Point::new(box.x, box.y)
+  let tr = @graph.Point::new(box.x + box.width, box.y)
+  let br = @graph.Point::new(box.x + box.width, box.y + box.height)
+  let bl = @graph.Point::new(box.x, box.y + box.height)
+  match segment_segment_intersection(p0, p1, tl, tr) {
+    Some(hit) => hits.push(hit)
     None => ()
   }
-  match segment_intersection_at_x_for_box(p0, p1, x1, y0, y1) {
-    Some(hit) => add_hit(hit.1)
+  match segment_segment_intersection(p0, p1, tr, br) {
+    Some(hit) => hits.push(hit)
     None => ()
   }
-  match segment_intersection_at_y_for_box(p0, p1, y1, x0, x1) {
-    Some(hit) => add_hit(hit.1)
+  match segment_segment_intersection(p0, p1, br, bl) {
+    Some(hit) => hits.push(hit)
     None => ()
   }
-  match segment_intersection_at_x_for_box(p0, p1, x0, y0, y1) {
-    Some(hit) => add_hit(hit.1)
+  match segment_segment_intersection(p0, p1, bl, tl) {
+    Some(hit) => hits.push(hit)
     None => ()
   }
   hits
@@ -2125,65 +2106,6 @@ fn pick_outside_intersection(
     }
   }
   best
-}
-
-///|
-fn segment_intersection_at_x_for_box(
-  p0 : @graph.Point,
-  p1 : @graph.Point,
-  x : Double,
-  min_y : Double,
-  max_y : Double,
-) -> (Double, @graph.Point)? {
-  let dx = p1.x - p0.x
-  if abs_double(dx) < 0.000001 {
-    return None
-  }
-  let t = (x - p0.x) / dx
-  if t < 0.0 || t > 1.0 {
-    return None
-  }
-  let y = p0.y + (p1.y - p0.y) * t
-  if y < min_y - 0.000001 || y > max_y + 0.000001 {
-    return None
-  }
-  let rx = p0.x + round_nearest_int_double_for_box(t * (p1.x - p0.x))
-  let ry = p0.y + round_nearest_int_double_for_box(t * (p1.y - p0.y))
-  Some((t, @graph.Point::new(rx, ry)))
-}
-
-///|
-fn segment_intersection_at_y_for_box(
-  p0 : @graph.Point,
-  p1 : @graph.Point,
-  y : Double,
-  min_x : Double,
-  max_x : Double,
-) -> (Double, @graph.Point)? {
-  let dy = p1.y - p0.y
-  if abs_double(dy) < 0.000001 {
-    return None
-  }
-  let t = (y - p0.y) / dy
-  if t < 0.0 || t > 1.0 {
-    return None
-  }
-  let x = p0.x + (p1.x - p0.x) * t
-  if x < min_x - 0.000001 || x > max_x + 0.000001 {
-    return None
-  }
-  let rx = p0.x + round_nearest_int_double_for_box(t * (p1.x - p0.x))
-  let ry = p0.y + round_nearest_int_double_for_box(t * (p1.y - p0.y))
-  Some((t, @graph.Point::new(rx, ry)))
-}
-
-///|
-fn round_nearest_int_double_for_box(v : Double) -> Double {
-  if v >= 0.0 {
-    (v + 0.5).to_int().to_double()
-  } else {
-    (v - 0.5).to_int().to_double()
-  }
 }
 
 ///|
@@ -2451,8 +2373,8 @@ fn collect_node_boxes(
     }
     let child_x = json_double_field(child_obj, "x", 0.0)
     let child_y = json_double_field(child_obj, "y", 0.0)
-    let child_w = positive_or(json_double_field(child_obj, "width", 0.0), 1.0)
-    let child_h = positive_or(json_double_field(child_obj, "height", 0.0), 1.0)
+    let child_w = positive_or(json_double_field(child_obj, "width", 0.0), 1.0).ceil()
+    let child_h = positive_or(json_double_field(child_obj, "height", 0.0), 1.0).ceil()
     let abs_x = parent_x + child_x
     let abs_y = parent_y + child_y
 
@@ -3186,17 +3108,14 @@ fn segment_intersects_expanded_box(
     box.width + padding * 2.0,
     box.height + padding * 2.0,
   )
-  if point_in_box(a, expanded) || point_in_box(b, expanded) {
-    return true
-  }
   let tl = expanded.top_left()
   let tr = expanded.top_right()
   let bl = expanded.bottom_left()
   let br = expanded.bottom_right()
-  segment_intersects(a, b, tl, tr) ||
-  segment_intersects(a, b, tr, br) ||
-  segment_intersects(a, b, br, bl) ||
-  segment_intersects(a, b, bl, tl)
+  segment_intersection_point_like_d2(a, b, tl, tr) is Some(_) ||
+  segment_intersection_point_like_d2(a, b, tr, br) is Some(_) ||
+  segment_intersection_point_like_d2(a, b, br, bl) is Some(_) ||
+  segment_intersection_point_like_d2(a, b, bl, tl) is Some(_)
 }
 
 ///|
@@ -3226,61 +3145,44 @@ fn range_overlap(a1 : Double, a2 : Double, b1 : Double, b2 : Double) -> Bool {
 }
 
 ///|
-fn point_in_box(p : @graph.Point, box : @graph.Box) -> Bool {
-  p.x >= box.x &&
-  p.x <= box.x + box.width &&
-  p.y >= box.y &&
-  p.y <= box.y + box.height
-}
-
-///|
 fn segment_intersects(
   a : @graph.Point,
   b : @graph.Point,
   c : @graph.Point,
   d : @graph.Point,
 ) -> Bool {
-  let o1 = orientation(a, b, c)
-  let o2 = orientation(a, b, d)
-  let o3 = orientation(c, d, a)
-  let o4 = orientation(c, d, b)
-
-  if o1 != o2 && o3 != o4 {
-    return true
-  }
-  if o1 == 0 && on_segment(a, c, b) {
-    return true
-  }
-  if o2 == 0 && on_segment(a, d, b) {
-    return true
-  }
-  if o3 == 0 && on_segment(c, a, d) {
-    return true
-  }
-  if o4 == 0 && on_segment(c, b, d) {
-    return true
-  }
-  false
+  segment_intersection_point_like_d2(a, b, c, d) is Some(_)
 }
 
 ///|
-fn orientation(p : @graph.Point, q : @graph.Point, r : @graph.Point) -> Int {
-  let value = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
-  if approx_zero(value) {
-    0
-  } else if value > 0.0 {
-    1
-  } else {
-    2
-  }
-}
+fn segment_intersection_point_like_d2(
+  u0 : @graph.Point,
+  u1 : @graph.Point,
+  v0 : @graph.Point,
+  v1 : @graph.Point,
+) -> @graph.Point? {
+  let udx = u1.x - u0.x
+  let vdx = v1.x - v0.x
+  let uvdx = v0.x - u0.x
+  let udy = u1.y - u0.y
+  let vdy = v1.y - v0.y
+  let uvdy = v0.y - u0.y
 
-///|
-fn on_segment(p : @graph.Point, q : @graph.Point, r : @graph.Point) -> Bool {
-  q.x <= max_double(p.x, r.x) &&
-  q.x >= min_double(p.x, r.x) &&
-  q.y <= max_double(p.y, r.y) &&
-  q.y >= min_double(p.y, r.y)
+  let denom = udy * vdx - udx * vdy
+  if denom == 0.0 {
+    return None
+  }
+  let s = (vdx * uvdy - vdy * uvdx) / denom
+  let t = (udx * uvdy - udy * uvdx) / denom
+  if s < 0.0 || s > 1.0 || t < 0.0 || t > 1.0 {
+    return None
+  }
+  Some(
+    @graph.Point::new(
+      u0.x + round_double(s * udx),
+      u0.y + round_double(s * udy),
+    ),
+  )
 }
 
 ///|
@@ -3300,267 +3202,1184 @@ fn trace_shape_border_like_d2(
   rect_border_point : @graph.Point,
   prev_point : @graph.Point,
 ) -> @graph.Point {
-  let perimeter_segments = shape_perimeter_segments_like_d2(shape_type, box)
-  if perimeter_segments.is_empty() {
+  trace_to_shape_border(shape_type, box, rect_border_point, prev_point)
+}
+
+///|
+fn trace_to_shape_border(
+  shape_type : @graph.ShapeType,
+  box : @graph.Box,
+  rect_border_point : @graph.Point,
+  prev_point : @graph.Point,
+) -> @graph.Point {
+  if is_rectangular_shape_like_d2(shape_type) {
     return rect_border_point
+  }
+  if shape_type == @graph.Cylinder {
+    return trace_cylinder_border(box, rect_border_point, prev_point)
+  }
+  let extended_end = extended_trace_segment_end(
+    box, rect_border_point, prev_point,
+  )
+  let intersections = shape_border_intersections(
+    shape_type, box, prev_point, extended_end,
+  )
+  if intersections.is_empty() {
+    return rect_border_point
+  }
+  let mut closest = intersections[0]
+  let mut closest_dist = point_distance(rect_border_point, closest)
+  for p in intersections {
+    let d = point_distance(rect_border_point, p)
+    if d < closest_dist {
+      closest_dist = d
+      closest = p
+    }
+  }
+  @graph.Point::new(
+    round_double(truncate_float32(closest.x)),
+    round_double(truncate_float32(closest.y)),
+  )
+}
+
+///|
+fn trace_cylinder_border(
+  box : @graph.Box,
+  rect_border_point : @graph.Point,
+  prev_point : @graph.Point,
+) -> @graph.Point {
+  let segment_end = extended_trace_segment_end(
+    box, rect_border_point, prev_point,
+  )
+  let arc = if box.height < D2_DEFAULT_ARC_DEPTH * 2.0 {
+    box.height / 2.0
+  } else {
+    D2_DEFAULT_ARC_DEPTH
+  }
+  if arc <= 0.0 {
+    return rect_border_point
+  }
+  let x0 = box.x
+  let x1 = box.x + box.width
+  let xmid = box.x + box.width / 2.0
+  let top_y = box.y + arc
+  let bottom_y = box.y + box.height - arc
+  let m = D2_CYLINDER_BEZIER_MULTIPLIER
+  let bottom = box.y + box.height
+
+  let arc_hits : Array[@graph.Point] = []
+  for
+    hit in cubic_polyline_intersections(
+      prev_point,
+      segment_end,
+      @graph.Point::new(x0, top_y),
+      @graph.Point::new(x0, box.y),
+      @graph.Point::new(x0 + box.width * m, box.y),
+      @graph.Point::new(xmid, box.y),
+      D2_CUBIC_TRACE_SAMPLES,
+    ) {
+    push_unique_point(arc_hits, hit)
+  }
+  for
+    hit in cubic_polyline_intersections(
+      prev_point,
+      segment_end,
+      @graph.Point::new(xmid, box.y),
+      @graph.Point::new(x1 - box.width * m, box.y),
+      @graph.Point::new(x1, box.y),
+      @graph.Point::new(x1, top_y),
+      D2_CUBIC_TRACE_SAMPLES,
+    ) {
+    push_unique_point(arc_hits, hit)
+  }
+  for
+    hit in cubic_polyline_intersections(
+      prev_point,
+      segment_end,
+      @graph.Point::new(x1, bottom_y),
+      @graph.Point::new(x1, bottom),
+      @graph.Point::new(x1 - box.width * m, bottom),
+      @graph.Point::new(xmid, bottom),
+      D2_CUBIC_TRACE_SAMPLES,
+    ) {
+    push_unique_point(arc_hits, hit)
+  }
+  for
+    hit in cubic_polyline_intersections(
+      prev_point,
+      segment_end,
+      @graph.Point::new(xmid, bottom),
+      @graph.Point::new(x0 + box.width * m, bottom),
+      @graph.Point::new(x0, bottom),
+      @graph.Point::new(x0, bottom_y),
+      D2_CUBIC_TRACE_SAMPLES,
+    ) {
+    push_unique_point(arc_hits, hit)
   }
 
+  let side_hits : Array[@graph.Point] = []
+  match
+    segment_segment_intersection(
+      @graph.Point::new(x0, top_y),
+      @graph.Point::new(x0, bottom_y),
+      prev_point,
+      segment_end,
+    ) {
+    Some(hit) => push_unique_point(side_hits, hit)
+    None => ()
+  }
+  match
+    segment_segment_intersection(
+      @graph.Point::new(x1, top_y),
+      @graph.Point::new(x1, bottom_y),
+      prev_point,
+      segment_end,
+    ) {
+    Some(hit) => push_unique_point(side_hits, hit)
+    None => ()
+  }
+
+  let candidates : Array[@graph.Point] = []
+  for hit in arc_hits {
+    candidates.push(hit)
+  }
+  for hit in side_hits {
+    candidates.push(hit)
+  }
+  if candidates.is_empty() {
+    return rect_border_point
+  }
+  let mut closest = candidates[0]
+  let mut closest_dist = point_distance(rect_border_point, closest)
+  for p in candidates {
+    let d = point_distance(rect_border_point, p)
+    if d < closest_dist {
+      closest_dist = d
+      closest = p
+    }
+  }
+  @graph.Point::new(
+    round_double(truncate_float32(closest.x)),
+    round_double(truncate_float32(closest.y)),
+  )
+}
+
+///|
+fn extended_trace_segment_end(
+  box : @graph.Box,
+  rect_border_point : @graph.Point,
+  prev_point : @graph.Point,
+) -> @graph.Point {
   let vx = rect_border_point.x - prev_point.x
   let vy = rect_border_point.y - prev_point.y
-  if approx_zero(vx) && approx_zero(vy) {
-    return rect_border_point
-  }
   let length = (vx * vx + vy * vy).sqrt()
-  if approx_zero(length) {
-    return rect_border_point
+  if length <= 0.000001 {
+    return prev_point
   }
-  let scale_size = if approx_zero(rect_border_point.x - prev_point.x) {
+  let scale_size = if prev_point.x == rect_border_point.x {
     box.height
   } else {
     box.width
   }
-  let scale = (length + scale_size) / length
-  let extended_end = @graph.Point::new(
-    prev_point.x + vx * scale,
-    prev_point.y + vy * scale,
+  let ux = vx / length
+  let uy = vy / length
+  @graph.Point::new(
+    prev_point.x + ux * (length + scale_size),
+    prev_point.y + uy * (length + scale_size),
   )
+}
 
-  let mut closest : @graph.Point? = None
-  let mut closest_dist = 1000000000000000000.0
-  for segment in perimeter_segments {
-    match
-      segment_intersection_point(prev_point, extended_end, segment.0, segment.1) {
-      Some((hit, _)) => {
-        let dx = rect_border_point.x - hit.x
-        let dy = rect_border_point.y - hit.y
-        let d = dx * dx + dy * dy
-        if d < closest_dist {
-          closest_dist = d
-          closest = Some(hit)
-        }
-      }
-      None => ()
-    }
-  }
-
-  match closest {
-    Some(hit) => @graph.Point::new(round_double(hit.x), round_double(hit.y))
-    None => rect_border_point
+///|
+fn d2_path_chop_precision_for_trace(value : Double) -> Double {
+  // Match ../d2/lib/svg/path.go::chopPrecision used by shape perimeters.
+  let rounded = (Float::from_double(value * 10000.0).to_double() / 10000.0).round()
+  if rounded == 0.0 {
+    0.0
+  } else {
+    rounded
   }
 }
 
 ///|
-fn shape_perimeter_segments_like_d2(
+fn d2_perimeter_point(x : Double, y : Double) -> @graph.Point {
+  @graph.Point::new(
+    d2_path_chop_precision_for_trace(x),
+    d2_path_chop_precision_for_trace(y),
+  )
+}
+
+///|
+fn package_top_dimensions(box : @graph.Box) -> (Double, Double) {
+  let mut top_width = box.width * D2_PACKAGE_HORIZONTAL_SCALAR
+  if box.width >= 2.0 * D2_PACKAGE_TOP_MIN_WIDTH {
+    if top_width < D2_PACKAGE_TOP_MIN_WIDTH {
+      top_width = D2_PACKAGE_TOP_MIN_WIDTH
+    }
+    if top_width > D2_PACKAGE_TOP_MAX_WIDTH {
+      top_width = D2_PACKAGE_TOP_MAX_WIDTH
+    }
+  }
+  let top_height = if box.height * D2_PACKAGE_VERTICAL_SCALAR <
+    D2_PACKAGE_TOP_MAX_HEIGHT {
+    box.height * D2_PACKAGE_VERTICAL_SCALAR
+  } else {
+    D2_PACKAGE_TOP_MAX_HEIGHT
+  }
+  (top_width, top_height)
+}
+
+///|
+fn shape_border_intersections(
   shape_type : @graph.ShapeType,
   box : @graph.Box,
-) -> Array[(@graph.Point, @graph.Point)] {
+  segment_start : @graph.Point,
+  segment_end : @graph.Point,
+) -> Array[@graph.Point] {
   match shape_type {
-    @graph.Cylinder => cylinder_perimeter_segments_like_d2(box)
-    @graph.Callout => callout_perimeter_segments_like_d2(box)
-    @graph.Document => document_perimeter_segments_like_d2(box)
+    @graph.Hexagon => {
+      let points = [
+        d2_perimeter_point(box.x + box.width * 0.25, box.y),
+        d2_perimeter_point(box.x, box.y + box.height * D2_HEXAGON_HALF_Y_FACTOR),
+        d2_perimeter_point(box.x + box.width * 0.25, box.y + box.height),
+        d2_perimeter_point(box.x + box.width * 0.75, box.y + box.height),
+        d2_perimeter_point(
+          box.x + box.width,
+          box.y + box.height * D2_HEXAGON_HALF_Y_FACTOR,
+        ),
+        d2_perimeter_point(box.x + box.width * 0.75, box.y),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Diamond => {
+      let points = [
+        d2_perimeter_point(box.x + box.width / 2.0, box.y),
+        d2_perimeter_point(box.x + box.width, box.y + box.height / 2.0),
+        d2_perimeter_point(box.x + box.width / 2.0, box.y + box.height),
+        d2_perimeter_point(box.x, box.y + box.height / 2.0),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Callout => {
+      let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
+      let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
+      let main_h = box.height - tip_h
+      let mid_x = round_double(box.x + box.width / 2.0)
+      let points = [
+        d2_perimeter_point(box.x, box.y),
+        d2_perimeter_point(box.x, box.y + main_h),
+        d2_perimeter_point(mid_x, box.y + main_h),
+        d2_perimeter_point(mid_x, box.y + box.height),
+        d2_perimeter_point(mid_x + tip_w, box.y + main_h),
+        d2_perimeter_point(box.x + box.width, box.y + main_h),
+        d2_perimeter_point(box.x + box.width, box.y),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Package => {
+      let (top_width, top_height) = package_top_dimensions(box)
+      let points = [
+        d2_perimeter_point(box.x, box.y),
+        d2_perimeter_point(box.x + top_width, box.y),
+        d2_perimeter_point(box.x + top_width, box.y + top_height),
+        d2_perimeter_point(box.x + box.width, box.y + top_height),
+        d2_perimeter_point(box.x + box.width, box.y + box.height),
+        d2_perimeter_point(box.x, box.y + box.height),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Parallelogram => {
+      let wedge = if box.width <= D2_PARALLELOGRAM_WEDGE_WIDTH {
+        box.width / 2.0
+      } else {
+        D2_PARALLELOGRAM_WEDGE_WIDTH
+      }
+      let points = [
+        d2_perimeter_point(box.x + wedge, box.y),
+        d2_perimeter_point(box.x + box.width, box.y),
+        d2_perimeter_point(box.x + box.width - wedge, box.y + box.height),
+        d2_perimeter_point(box.x, box.y + box.height),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Step => {
+      let wedge = if box.width <= D2_STEP_WEDGE_WIDTH {
+        box.width / 2.0
+      } else {
+        D2_STEP_WEDGE_WIDTH
+      }
+      let points = [
+        d2_perimeter_point(box.x, box.y),
+        d2_perimeter_point(box.x + box.width - wedge, box.y),
+        d2_perimeter_point(box.x + box.width, box.y + box.height / 2.0),
+        d2_perimeter_point(box.x + box.width - wedge, box.y + box.height),
+        d2_perimeter_point(box.x, box.y + box.height),
+        d2_perimeter_point(box.x + wedge, box.y + box.height / 2.0),
+      ]
+      polygon_intersections(points, segment_start, segment_end)
+    }
+    @graph.Document => {
+      let out : Array[@graph.Point] = []
+      let x0 = box.x
+      let y0 = box.y
+      let x1 = box.x + box.width
+      let base_y = box.y + box.height * (16.3 / 18.925)
+      let cp1_y = box.y + box.height * (12.8 / 18.925)
+      let cp2_y = box.y + box.height * (19.8 / 18.925)
+      let mid_x = box.x + box.width * 0.5
+
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(x0, y0),
+          d2_perimeter_point(x1, y0),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(x0, y0),
+          d2_perimeter_point(x0, base_y),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(x1, y0),
+          d2_perimeter_point(x1, base_y),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(x1, base_y),
+          d2_perimeter_point(box.x + box.width * (5.0 / 6.0), cp1_y),
+          d2_perimeter_point(box.x + box.width * (2.0 / 3.0), cp1_y),
+          d2_perimeter_point(mid_x, base_y),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(mid_x, base_y),
+          d2_perimeter_point(box.x + box.width * (1.0 / 3.0), cp2_y),
+          d2_perimeter_point(box.x + box.width * (1.0 / 6.0), cp2_y),
+          d2_perimeter_point(x0, base_y),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      out
+    }
+    @graph.Page => {
+      let out : Array[@graph.Point] = []
+      let x0 = box.x
+      let y0 = box.y
+      let p0 = d2_perimeter_point(x0 + 0.5, y0 + 0.0)
+      let p1 = d2_perimeter_point(x0 + (box.width - 20.8164), y0 + 0.0)
+      let p2 = d2_perimeter_point(x0 + (box.width - 19.6456), y0 + 0.0)
+      let p3 = d2_perimeter_point(x0 + (box.width - 18.5210), y0 + 0.456297)
+      let p4 = d2_perimeter_point(x0 + (box.width - 17.6811), y0 + 1.27202)
+      let p5 = d2_perimeter_point(x0 + (box.width - 1.3647), y0 + 17.12)
+      let p6 = d2_perimeter_point(x0 + (box.width - 0.4923), y0 + 17.9674)
+      let p7 = d2_perimeter_point(x0 + box.width, y0 + 19.1318)
+      let p8 = d2_perimeter_point(x0 + box.width, y0 + 20.348)
+      let p9 = d2_perimeter_point(x0 + box.width, y0 + (box.height - 0.5))
+      let p10 = d2_perimeter_point(x0 + box.width, y0 + (box.height - 0.2239))
+      let p11 = d2_perimeter_point(x0 + (box.width - 0.2239), y0 + box.height)
+      let p12 = d2_perimeter_point(x0 + (box.width - 0.5), y0 + box.height)
+      let p13 = d2_perimeter_point(x0 + 0.499999, y0 + box.height)
+      let p14 = d2_perimeter_point(x0 + 0.223857, y0 + box.height)
+      let p15 = d2_perimeter_point(x0 + 0.0, y0 + (box.height - 0.2239))
+      let p16 = d2_perimeter_point(x0 + 0.0, y0 + (box.height - 0.5))
+      let p17 = d2_perimeter_point(x0 + 0.0, y0 + 0.499999)
+      let p18 = d2_perimeter_point(x0 + 0.0, y0 + 0.223857)
+      let p19 = d2_perimeter_point(x0 + 0.223857, y0 + 0.0)
+
+      match segment_segment_intersection(p0, p1, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p1,
+          p2,
+          p3,
+          p4,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match segment_segment_intersection(p4, p5, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p5,
+          p6,
+          p7,
+          p8,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match segment_segment_intersection(p8, p9, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p9,
+          p10,
+          p11,
+          p12,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match segment_segment_intersection(p12, p13, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p13,
+          p14,
+          p15,
+          p16,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match segment_segment_intersection(p16, p17, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p17,
+          p18,
+          p19,
+          p0,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      out
+    }
+    @graph.Queue => {
+      let out : Array[@graph.Point] = []
+      let arc = if box.width < D2_DEFAULT_ARC_DEPTH * 2.0 {
+        box.width / 2.0
+      } else {
+        D2_DEFAULT_ARC_DEPTH
+      }
+      let m = D2_CYLINDER_BEZIER_MULTIPLIER
+      let x0 = box.x
+      let x1 = box.x + box.width
+      let y0 = box.y
+      let y1 = box.y + box.height
+      let start_x = x0 + arc
+      let end_x = x1 - arc
+
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(start_x, y0),
+          d2_perimeter_point(end_x, y0),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(end_x, y0),
+          d2_perimeter_point(x1, y0),
+          d2_perimeter_point(x1, y0 + box.height * m),
+          d2_perimeter_point(x1, y0 + box.height / 2.0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(x1, y0 + box.height / 2.0),
+          d2_perimeter_point(x1, y1 - box.height * m),
+          d2_perimeter_point(x1, y1),
+          d2_perimeter_point(end_x, y1),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(end_x, y1),
+          d2_perimeter_point(start_x, y1),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(start_x, y1),
+          d2_perimeter_point(x0, y1),
+          d2_perimeter_point(x0, y1 - box.height * m),
+          d2_perimeter_point(x0, y0 + box.height / 2.0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(x0, y0 + box.height / 2.0),
+          d2_perimeter_point(x0, y0 + box.height * m),
+          d2_perimeter_point(x0, y0),
+          d2_perimeter_point(start_x, y0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      out
+    }
+    @graph.StoredData => {
+      let out : Array[@graph.Point] = []
+      let wedge = if box.width < D2_STORED_DATA_WEDGE_WIDTH * 2.0 {
+        box.width / 2.0
+      } else {
+        D2_STORED_DATA_WEDGE_WIDTH
+      }
+      let m = 0.27
+      let x0 = box.x
+      let x1 = box.x + box.width
+      let y0 = box.y
+      let y1 = box.y + box.height
+      let left_x = x0 + wedge
+      let right_x = x1 - wedge
+
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(left_x, y0),
+          d2_perimeter_point(x1, y0),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(x1, y0),
+          d2_perimeter_point(x1 - wedge * m, y0),
+          d2_perimeter_point(right_x, y0 + box.height * m),
+          d2_perimeter_point(right_x, y0 + box.height / 2.0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(right_x, y0 + box.height / 2.0),
+          d2_perimeter_point(right_x, y1 - box.height * m),
+          d2_perimeter_point(x1 - wedge * m, y1),
+          d2_perimeter_point(x1, y1),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match
+        segment_segment_intersection(
+          d2_perimeter_point(x1, y1),
+          d2_perimeter_point(left_x, y1),
+          segment_start,
+          segment_end,
+        ) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(left_x, y1),
+          d2_perimeter_point(left_x - wedge * m, y1),
+          d2_perimeter_point(x0, y1 - box.height * m),
+          d2_perimeter_point(x0, y0 + box.height / 2.0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          d2_perimeter_point(x0, y0 + box.height / 2.0),
+          d2_perimeter_point(x0, y0 + box.height * m),
+          d2_perimeter_point(left_x - wedge * m, y0),
+          d2_perimeter_point(left_x, y0),
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      out
+    }
+    @graph.Cloud => {
+      let out : Array[@graph.Point] = []
+      let sx = box.width / 834.0
+      let sy = box.height / 523.0
+      let abs_pt = fn(x : Double, y : Double) {
+        d2_perimeter_point(box.x + sx * x, box.y + sy * y)
+      }
+      let rel_pt = fn(base : @graph.Point, dx : Double, dy : Double) {
+        d2_perimeter_point(base.x + sx * dx, base.y + sy * dy)
+      }
+
+      let p0 = abs_pt(137.833, 182.833)
+      let c1 = rel_pt(p0, 0.0, 5.556)
+      let c2 = rel_pt(p0, -5.556, 11.111)
+      let p1 = rel_pt(p0, -11.111, 11.111)
+
+      let c3 = rel_pt(p1, -70.833, 6.944)
+      let c4 = rel_pt(p1, -126.389, 77.778)
+      let p2 = rel_pt(p1, -126.389, 163.889)
+
+      let c5 = rel_pt(p2, 0.0, 91.667)
+      let c6 = rel_pt(p2, 62.5, 165.278)
+      let p3 = rel_pt(p2, 141.667, 165.278)
+
+      let p4 = d2_perimeter_point(p3.x + sx * 537.5, p3.y)
+
+      let c7 = rel_pt(p4, 84.723, 0.0)
+      let c8 = rel_pt(p4, 154.167, -79.167)
+      let p5 = rel_pt(p4, 154.167, -175.0)
+
+      let c9 = rel_pt(p5, 0.0, -91.667)
+      let c10 = rel_pt(p5, -63.89, -168.056)
+      let p6 = rel_pt(p5, -144.444, -173.611)
+
+      let c11 = rel_pt(p6, -5.556, 0.0)
+      let c12 = rel_pt(p6, -11.111, -4.167)
+      let p7 = rel_pt(p6, -12.5, -11.111)
+
+      let c13 = rel_pt(p7, -18.056, -93.055)
+      let c14 = rel_pt(p7, -101.39, -162.5)
+      let p8 = rel_pt(p7, -198.611, -162.5)
+
+      let c15 = rel_pt(p8, -63.889, 0.0)
+      let c16 = rel_pt(p8, -120.834, 29.167)
+      let p9 = rel_pt(p8, -156.944, 75.0)
+
+      let c17 = rel_pt(p9, -4.167, 5.556)
+      let c18 = rel_pt(p9, -11.111, 6.945)
+      let p10 = rel_pt(p9, -15.278, 5.556)
+
+      let c19 = rel_pt(p10, -13.889, -5.556)
+      let c20 = rel_pt(p10, -29.166, -8.333)
+      let p11 = rel_pt(p10, -45.833, -8.333)
+
+      let c21 = abs_pt(196.167, 71.722)
+      let c22 = abs_pt(143.389, 120.333)
+      let p12 = abs_pt(137.833, 182.833)
+
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p0,
+          c1,
+          c2,
+          p1,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p1,
+          c3,
+          c4,
+          p2,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p2,
+          c5,
+          c6,
+          p3,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      match segment_segment_intersection(p3, p4, segment_start, segment_end) {
+        Some(hit) => push_unique_point(out, hit)
+        None => ()
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p4,
+          c7,
+          c8,
+          p5,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p5,
+          c9,
+          c10,
+          p6,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p6,
+          c11,
+          c12,
+          p7,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p7,
+          c13,
+          c14,
+          p8,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p8,
+          c15,
+          c16,
+          p9,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p9,
+          c17,
+          c18,
+          p10,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p10,
+          c19,
+          c20,
+          p11,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      for
+        hit in cubic_polyline_intersections(
+          segment_start,
+          segment_end,
+          p11,
+          c21,
+          c22,
+          p12,
+          D2_CUBIC_TRACE_SAMPLES,
+        ) {
+        push_unique_point(out, hit)
+      }
+      out
+    }
+    @graph.Circle | @graph.Oval =>
+      segment_ellipse_intersections(
+        segment_start,
+        segment_end,
+        box.x + box.width / 2.0,
+        box.y + box.height / 2.0,
+        box.width / 2.0,
+        box.height / 2.0,
+      )
     _ => []
   }
 }
 
 ///|
-fn cylinder_perimeter_segments_like_d2(
-  box : @graph.Box,
-) -> Array[(@graph.Point, @graph.Point)] {
-  let arc_h = if box.height < D2_DEFAULT_ARC_DEPTH * 2.0 {
-    box.height / 2.0
+fn polygon_intersections(
+  points : Array[@graph.Point],
+  segment_start : @graph.Point,
+  segment_end : @graph.Point,
+) -> Array[@graph.Point] {
+  let out : Array[@graph.Point] = []
+  if points.length() < 2 {
+    return out
+  }
+  for i in 0..<points.length() {
+    let p0 = points[i]
+    let p1 = points[(i + 1) % points.length()]
+    match segment_segment_intersection(p0, p1, segment_start, segment_end) {
+      Some(hit) => push_unique_point(out, hit)
+      None => ()
+    }
+  }
+  out
+}
+
+///|
+fn push_unique_point(points : Array[@graph.Point], p : @graph.Point) -> Unit {
+  for existing in points {
+    if abs_double(existing.x - p.x) < 0.000001 &&
+      abs_double(existing.y - p.y) < 0.000001 {
+      return
+    }
+  }
+  points.push(p)
+}
+
+///|
+fn segment_segment_intersection(
+  u0 : @graph.Point,
+  u1 : @graph.Point,
+  v0 : @graph.Point,
+  v1 : @graph.Point,
+) -> @graph.Point? {
+  let udx = u1.x - u0.x
+  let vdx = v1.x - v0.x
+  let uvdx = v0.x - u0.x
+  let udy = u1.y - u0.y
+  let vdy = v1.y - v0.y
+  let uvdy = v0.y - u0.y
+
+  let denom = udy * vdx - udx * vdy
+  if denom == 0.0 {
+    return None
+  }
+  let s = (vdx * uvdy - vdy * uvdx) / denom
+  let t = (udx * uvdy - udy * uvdx) / denom
+  if s < 0.0 || s > 1.0 || t < 0.0 || t > 1.0 {
+    return None
+  }
+  Some(
+    @graph.Point::new(
+      u0.x + round_double(s * udx),
+      u0.y + round_double(s * udy),
+    ),
+  )
+}
+
+///|
+fn cubic_polyline_intersections(
+  segment_start : @graph.Point,
+  segment_end : @graph.Point,
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  p3 : @graph.Point,
+  samples : Int,
+) -> Array[@graph.Point] {
+  let _ = samples
+  compute_cubic_line_intersections(segment_start, segment_end, p0, p1, p2, p3)
+}
+
+///|
+fn compute_cubic_line_intersections(
+  line_start : @graph.Point,
+  line_end : @graph.Point,
+  p0 : @graph.Point,
+  p1 : @graph.Point,
+  p2 : @graph.Point,
+  p3 : @graph.Point,
+) -> Array[@graph.Point] {
+  let out : Array[@graph.Point] = []
+  let a = line_end.y - line_start.y
+  let b = line_start.x - line_end.x
+  let c = line_start.x * (line_start.y - line_end.y) +
+    line_start.y * (line_end.x - line_start.x)
+  let bx = bezier_coeffs(p0.x, p1.x, p2.x, p3.x)
+  let by = bezier_coeffs(p0.y, p1.y, p2.y, p3.y)
+  let poly = [
+    a * bx[0] + b * by[0],
+    a * bx[1] + b * by[1],
+    a * bx[2] + b * by[2],
+    a * bx[3] + b * by[3] + c,
+  ]
+  let roots = cubic_roots(poly)
+  for i in 0..<3 {
+    let t = roots[i]
+    let point = @graph.Point::new(
+      bx[0] * t * t * t + bx[1] * t * t + bx[2] * t + bx[3],
+      by[0] * t * t * t + by[1] * t * t + by[2] * t + by[3],
+    )
+    let s = if line_end.x - line_start.x != 0.0 {
+      (point.x - line_start.x) / (line_end.x - line_start.x)
+    } else {
+      (point.y - line_start.y) / (line_end.y - line_start.y)
+    }
+    let t_lt0 = precision_compare(t, 0.0, D2_GEO_PRECISION) < 0
+    let t_gt1 = precision_compare(t, 1.0, D2_GEO_PRECISION) > 0
+    let s_lt0 = precision_compare(s, 0.0, D2_GEO_PRECISION) < 0
+    let s_gt1 = precision_compare(s, 1.0, D2_GEO_PRECISION) > 0
+    if !(t_lt0 || t_gt1 || s_lt0 || s_gt1) {
+      out.push(point)
+    }
+  }
+  out
+}
+
+///|
+fn precision_compare(a : Double, b : Double, e : Double) -> Int {
+  if abs_double(a - b) < e {
+    0
+  } else if a < b {
+    -1
   } else {
-    D2_DEFAULT_ARC_DEPTH
+    1
   }
-  let m = 0.45
-  let x0 = box.x
-  let x1 = box.x + box.width
-  let y0 = box.y
-  let y1 = box.y + box.height
-  let top_left = @graph.Point::new(x0, y0 + arc_h)
-  let top_mid = @graph.Point::new(x0 + box.width / 2.0, y0)
-  let top_right = @graph.Point::new(x1, y0 + arc_h)
-  let bottom_right = @graph.Point::new(x1, y1 - arc_h)
-  let bottom_mid = @graph.Point::new(x0 + box.width / 2.0, y1)
-  let bottom_left = @graph.Point::new(x0, y1 - arc_h)
-  let segments : Array[(@graph.Point, @graph.Point)] = []
-
-  let top_curve_left = sample_cubic_curve_segments(
-    top_left,
-    @graph.Point::new(x0, y0),
-    @graph.Point::new(x0 + box.width * m, y0),
-    top_mid,
-    24,
-  )
-  for s in top_curve_left {
-    segments.push(s)
-  }
-  let top_curve_right = sample_cubic_curve_segments(
-    top_mid,
-    @graph.Point::new(x1 - box.width * m, y0),
-    @graph.Point::new(x1, y0),
-    top_right,
-    24,
-  )
-  for s in top_curve_right {
-    segments.push(s)
-  }
-
-  segments.push((top_right, bottom_right))
-
-  let bottom_curve_right = sample_cubic_curve_segments(
-    bottom_right,
-    @graph.Point::new(x1, y1),
-    @graph.Point::new(x1 - box.width * m, y1),
-    bottom_mid,
-    24,
-  )
-  for s in bottom_curve_right {
-    segments.push(s)
-  }
-  let bottom_curve_left = sample_cubic_curve_segments(
-    bottom_mid,
-    @graph.Point::new(x0 + box.width * m, y1),
-    @graph.Point::new(x0, y1),
-    bottom_left,
-    24,
-  )
-  for s in bottom_curve_left {
-    segments.push(s)
-  }
-
-  segments.push((bottom_left, top_left))
-  segments
 }
 
 ///|
-fn callout_perimeter_segments_like_d2(
-  box : @graph.Box,
-) -> Array[(@graph.Point, @graph.Point)] {
-  let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
-  let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
-  let main_h = box.height - tip_h
-  let mid_x = box.x + box.width / 2.0
-  let points : Array[@graph.Point] = [
-    @graph.Point::new(box.x, box.y),
-    @graph.Point::new(box.x, box.y + main_h),
-    @graph.Point::new(mid_x, box.y + main_h),
-    @graph.Point::new(mid_x, box.y + box.height),
-    @graph.Point::new(mid_x + tip_w, box.y + main_h),
-    @graph.Point::new(box.x + box.width, box.y + main_h),
-    @graph.Point::new(box.x + box.width, box.y),
-    @graph.Point::new(box.x, box.y),
+fn cubic_roots(poly : Array[Double]) -> Array[Double] {
+  if precision_compare(poly[0], 0.0, D2_GEO_PRECISION) == 0 {
+    if precision_compare(poly[1], 0.0, D2_GEO_PRECISION) == 0 {
+      let out = [-1.0 * (poly[3] / poly[2]), -1.0, -1.0]
+      for i in 0..<1 {
+        let t_lt0 = precision_compare(out[i], 0.0, D2_GEO_PRECISION) < 0
+        let t_gt1 = precision_compare(out[i], 1.0, D2_GEO_PRECISION) > 0
+        if t_lt0 || t_gt1 {
+          out[i] = -1.0
+        }
+      }
+      return sort_special(out)
+    }
+
+    let mut dq = poly[2] * poly[2] - 4.0 * poly[1] * poly[3]
+    if precision_compare(dq, 0.0, D2_GEO_PRECISION) >= 0 {
+      dq = dq.sqrt()
+      let out = [
+        -1.0 * ((dq + poly[2]) / (2.0 * poly[1])),
+        (dq - poly[2]) / (2.0 * poly[1]),
+        -1.0,
+      ]
+      for i in 0..<2 {
+        let t_lt0 = precision_compare(out[i], 0.0, D2_GEO_PRECISION) < 0
+        let t_gt1 = precision_compare(out[i], 1.0, D2_GEO_PRECISION) > 0
+        if t_lt0 || t_gt1 {
+          out[i] = -1.0
+        }
+        return sort_special(out)
+      }
+    }
+  }
+
+  let a = poly[0]
+  let b = poly[1]
+  let c = poly[2]
+  let d = poly[3]
+  let aa = b / a
+  let bb = c / a
+  let cc = d / a
+  let q = (3.0 * bb - aa * aa) / 9.0
+  let r = (9.0 * aa * bb - 27.0 * cc - 2.0 * aa * aa * aa) / 54.0
+  let disc = q * q * q + r * r
+
+  let out = [-1.0, -1.0, -1.0]
+  if precision_compare(disc, 0.0, D2_GEO_PRECISION) >= 0 {
+    let s = signum(r + disc.sqrt()) * cube_root(abs_double(r + disc.sqrt()))
+    let t = signum(r - disc.sqrt()) * cube_root(abs_double(r - disc.sqrt()))
+    out[0] = -aa / 3.0 + (s + t)
+    out[1] = -aa / 3.0 - (s + t) / 2.0
+    out[2] = -aa / 3.0 - (s + t) / 2.0
+    let imag = abs_double(3.0.sqrt() * (s - t) / 2.0)
+    if precision_compare(imag, 0.0, D2_GEO_PRECISION) != 0 {
+      out[1] = -1.0
+      out[2] = -1.0
+    }
+  } else {
+    let theta = @math.acos(r / (-q * q * q).sqrt())
+    let pi = 3.141592653589793
+    out[0] = 2.0 * (-q).sqrt() * @math.cos(theta / 3.0) - aa / 3.0
+    out[1] = 2.0 * (-q).sqrt() * @math.cos((theta + 2.0 * pi) / 3.0) - aa / 3.0
+    out[2] = 2.0 * (-q).sqrt() * @math.cos((theta + 4.0 * pi) / 3.0) - aa / 3.0
+  }
+
+  for i in 0..<3 {
+    let t_lt0 = precision_compare(out[i], 0.0, D2_GEO_PRECISION) < 0
+    let t_gt1 = precision_compare(out[i], 1.0, D2_GEO_PRECISION) > 0
+    if t_lt0 || t_gt1 {
+      out[i] = -1.0
+    }
+  }
+  sort_special(out)
+}
+
+///|
+fn sort_special(values : Array[Double]) -> Array[Double] {
+  let out : Array[Double] = []
+  for v in values {
+    out.push(v)
+  }
+  while true {
+    let mut flipped = false
+    for i in 0..<(out.length() - 1) {
+      let right_non_neg = precision_compare(out[i + 1], 0.0, D2_GEO_PRECISION) >=
+        0
+      let left_gt_right = precision_compare(
+          out[i],
+          out[i + 1],
+          D2_GEO_PRECISION,
+        ) >
+        0
+      let left_neg = precision_compare(out[i], 0.0, D2_GEO_PRECISION) < 0
+      if (right_non_neg && left_gt_right) || (left_neg && right_non_neg) {
+        flipped = true
+        let tmp = out[i]
+        out[i] = out[i + 1]
+        out[i + 1] = tmp
+      }
+    }
+    if !flipped {
+      break
+    }
+  }
+  out
+}
+
+///|
+fn signum(v : Double) -> Double {
+  if v < 0.0 {
+    -1.0
+  } else {
+    1.0
+  }
+}
+
+///|
+fn cube_root(v : Double) -> Double {
+  @math.pow(v, 1.0 / 3.0)
+}
+
+///|
+fn bezier_coeffs(
+  p0 : Double,
+  p1 : Double,
+  p2 : Double,
+  p3 : Double,
+) -> Array[Double] {
+  [
+    -p0 + 3.0 * p1 - 3.0 * p2 + p3,
+    3.0 * p0 - 6.0 * p1 + 3.0 * p2,
+    -3.0 * p0 + 3.0 * p1,
+    p0,
   ]
-  let segments : Array[(@graph.Point, @graph.Point)] = []
-  for i in 0..<(points.length() - 1) {
-    segments.push((points[i], points[i + 1]))
-  }
-  segments
 }
 
 ///|
-fn document_perimeter_segments_like_d2(
-  box : @graph.Box,
-) -> Array[(@graph.Point, @graph.Point)] {
-  let base_y = box.y + box.height * (16.3 / 18.925)
-  let cp1_y = box.y + box.height * (12.8 / 18.925)
-  let cp2_y = box.y + box.height * (19.8 / 18.925)
-  let x0 = box.x
-  let x1 = box.x + box.width
-  let p0 = @graph.Point::new(x1, base_y)
-  let p1 = @graph.Point::new(box.x + box.width * (5.0 / 6.0), cp1_y)
-  let p2 = @graph.Point::new(box.x + box.width * (2.0 / 3.0), cp1_y)
-  let p3 = @graph.Point::new(box.x + box.width * 0.5, base_y)
-  let p4 = @graph.Point::new(box.x + box.width * (1.0 / 3.0), cp2_y)
-  let p5 = @graph.Point::new(box.x + box.width * (1.0 / 6.0), cp2_y)
-  let p6 = @graph.Point::new(x0, base_y)
-
-  let segments : Array[(@graph.Point, @graph.Point)] = [
-    (@graph.Point::new(x0, box.y), @graph.Point::new(x1, box.y)),
-    (@graph.Point::new(x1, box.y), @graph.Point::new(x1, base_y)),
-    (@graph.Point::new(x0, box.y), @graph.Point::new(x0, base_y)),
-  ]
-
-  let wave1 = sample_cubic_curve_segments(p0, p1, p2, p3, 24)
-  for s in wave1 {
-    segments.push(s)
-  }
-  let wave2 = sample_cubic_curve_segments(p3, p4, p5, p6, 24)
-  for s in wave2 {
-    segments.push(s)
-  }
-  segments
-}
-
-///|
-fn sample_cubic_curve_segments(
+fn segment_ellipse_intersections(
   p0 : @graph.Point,
   p1 : @graph.Point,
-  p2 : @graph.Point,
-  p3 : @graph.Point,
-  n : Int,
-) -> Array[(@graph.Point, @graph.Point)] {
-  let segments : Array[(@graph.Point, @graph.Point)] = []
-  if n <= 1 {
-    segments.push((p0, p3))
-    return segments
+  cx : Double,
+  cy : Double,
+  rx : Double,
+  ry : Double,
+) -> Array[@graph.Point] {
+  let out : Array[@graph.Point] = []
+  if rx <= 0.0 || ry <= 0.0 {
+    return out
   }
-  let mut prev = p0
-  for i in 1..<=n {
-    let t = i.to_double() / n.to_double()
-    let point = cubic_point(p0, p1, p2, p3, t)
-    segments.push((prev, point))
-    prev = point
-  }
-  segments
-}
 
-///|
-fn cubic_point(
-  p0 : @graph.Point,
-  p1 : @graph.Point,
-  p2 : @graph.Point,
-  p3 : @graph.Point,
-  t : Double,
-) -> @graph.Point {
-  let omt = 1.0 - t
-  let omt2 = omt * omt
-  let t2 = t * t
-  let x = omt2 * omt * p0.x +
-    3.0 * omt2 * t * p1.x +
-    3.0 * omt * t2 * p2.x +
-    t2 * t * p3.x
-  let y = omt2 * omt * p0.y +
-    3.0 * omt2 * t * p1.y +
-    3.0 * omt * t2 * p2.y +
-    t2 * t * p3.y
-  @graph.Point::new(x, y)
-}
+  let dx = p1.x - p0.x
+  let dy = p1.y - p0.y
+  let ax = dx / rx
+  let ay = dy / ry
+  let bx = (p0.x - cx) / rx
+  let by = (p0.y - cy) / ry
 
-///|
-fn segment_intersection_point(
-  a : @graph.Point,
-  b : @graph.Point,
-  c : @graph.Point,
-  d : @graph.Point,
-) -> (@graph.Point, Double)? {
-  let r_x = b.x - a.x
-  let r_y = b.y - a.y
-  let s_x = d.x - c.x
-  let s_y = d.y - c.y
-  let denom = r_x * s_y - r_y * s_x
-  if approx_zero(denom) {
-    return None
+  let a = ax * ax + ay * ay
+  if abs_double(a) < 0.000001 {
+    return out
   }
-  let cax = c.x - a.x
-  let cay = c.y - a.y
-  let t = (cax * s_y - cay * s_x) / denom
-  let u = (cax * r_y - cay * r_x) / denom
-  if t < 0.0 || t > 1.0 || u < 0.0 || u > 1.0 {
-    return None
+  let b = 2.0 * (ax * bx + ay * by)
+  let c = bx * bx + by * by - 1.0
+  let disc = b * b - 4.0 * a * c
+  if disc < -0.000001 {
+    return out
   }
-  let ix = a.x + round_double(t * r_x)
-  let iy = a.y + round_double(t * r_y)
-  Some((@graph.Point::new(ix, iy), t))
+  let sqrt_disc = if disc > 0.0 { disc.sqrt() } else { 0.0 }
+  let t1 = (-b - sqrt_disc) / (2.0 * a)
+  let t2 = (-b + sqrt_disc) / (2.0 * a)
+
+  if t1 >= -0.000001 && t1 <= 1.000001 {
+    out.push(@graph.Point::new(p0.x + dx * t1, p0.y + dy * t1))
+  }
+  if abs_double(t2 - t1) > 0.000001 && t2 >= -0.000001 && t2 <= 1.000001 {
+    out.push(@graph.Point::new(p0.x + dx * t2, p0.y + dy * t2))
+  }
+  out
 }
 
 ///|
@@ -3665,13 +4484,10 @@ fn estimate_object_size(
     Some(value) => value.as_int().unwrap_or(16)
     None => 16
   }
-  let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, false)
-  let is_mono = obj.shape_type == @graph.Code ||
-    style_is_mono(obj.style.font_family)
-  let (label_width, label_height) = measure_object_label_dims(
-    obj, font_size, is_mono, is_bold, is_italic,
-  )
+  let (label_width, label_height) = match object_label_dimensions(obj) {
+    Some((w, h)) => (w, h)
+    None => (0.0, 0.0)
+  }
   let mut content_width = label_width
   let mut content_height = label_height
 
@@ -4099,6 +4915,11 @@ fn round_double(v : Double) -> Double {
 }
 
 ///|
+fn truncate_float32(v : Double) -> Double {
+  Float::from_double(v).to_double()
+}
+
+///|
 fn has_outside_bottom_label(shape_type : @graph.ShapeType) -> Bool {
   shape_type == @graph.Person || shape_type == @graph.Image
 }
@@ -4373,6 +5194,13 @@ fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
   if obj.label == "" {
     return None
   }
+  match obj.label_box {
+    Some(box) =>
+      if box.width > 0.0 && box.height > 0.0 {
+        return Some((round_double(box.width), round_double(box.height)))
+      }
+    None => ()
+  }
   let font_size = match obj.style.font_size {
     Some(v) => v.as_int().unwrap_or(16)
     None => 16
@@ -4551,17 +5379,10 @@ fn label_width(
   obj : @graph.ObjectInput,
   config : @engine_api.LayoutConfig,
 ) -> Double {
-  let font_size = match obj.style.font_size {
-    Some(value) => value.as_int().unwrap_or(16)
-    None => 16
+  let width = match object_label_dimensions(obj) {
+    Some((w, _)) => w
+    None => 0.0
   }
-  let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, false)
-  let is_mono = obj.shape_type == @graph.Code ||
-    style_is_mono(obj.style.font_family)
-  let (width, _) = measure_object_label_dims(
-    obj, font_size, is_mono, is_bold, is_italic,
-  )
   positive_or(width, config.default_width / 2.0)
 }
 
@@ -4570,17 +5391,10 @@ fn label_height(
   obj : @graph.ObjectInput,
   config : @engine_api.LayoutConfig,
 ) -> Double {
-  let font_size = match obj.style.font_size {
-    Some(value) => value.as_int().unwrap_or(16)
-    None => 16
+  let height = match object_label_dimensions(obj) {
+    Some((_, h)) => h
+    None => 0.0
   }
-  let is_bold = style_bool(obj.style.bold, false)
-  let is_italic = style_bool(obj.style.italic, false)
-  let is_mono = obj.shape_type == @graph.Code ||
-    style_is_mono(obj.style.font_family)
-  let (_, height) = measure_object_label_dims(
-    obj, font_size, is_mono, is_bold, is_italic,
-  )
   positive_or(height, config.default_height / 3.0)
 }
 
@@ -4641,11 +5455,11 @@ fn markdown_inline_dimensions(
   let mut line_count = 0
   for line in lines {
     let text = line.to_array().join("")
-    let dims = @text_metrics.measure_label(
+    let measured = @text_metrics.measure_text_with_dot_bounds(
       text, font_size, is_mono, is_bold, is_italic,
     )
-    if dims.width > max_width {
-      max_width = dims.width
+    if measured.max_line_width > max_width {
+      max_width = measured.max_line_width
     }
     line_count = line_count + 1
   }
@@ -4799,15 +5613,15 @@ fn markdown_measure_block(
         (base_font_size.to_double() * 0.85).to_int(),
       )
       for line in node.v.code.to_array() {
-        let dims = @text_metrics.measure_label(
+        let measured = @text_metrics.measure_text(
           line.v,
           code_font_size,
           true,
           false,
           false,
         )
-        if dims.width > max_line_width {
-          max_line_width = dims.width
+        if measured.max_line_width > max_line_width {
+          max_line_width = measured.max_line_width
         }
         line_count = line_count + 1
       }
@@ -5144,15 +5958,6 @@ fn d2_edge_arrow_string(edge : @graph.EdgeInput) -> String {
 ///|
 fn max_double(a : Double, b : Double) -> Double {
   if a > b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn min_double(a : Double, b : Double) -> Double {
-  if a < b {
     a
   } else {
     b

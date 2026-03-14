@@ -761,6 +761,26 @@ fn compile_objects(
 }
 
 ///|
+fn class_names_from_field(class_field : @ir.Field) -> Array[String] {
+  let class_names : Array[String] = []
+  match class_field.primary {
+    Some(s) => class_names.push(s.to_string())
+    None => ()
+  }
+  match class_field.composite {
+    Some(@ir.Composite::Array(arr)) =>
+      for value in arr.values {
+        match value {
+          @ir.Value::Scalar(s) => class_names.push(s.to_string())
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  class_names
+}
+
+///|
 /// Apply class properties to an object
 fn apply_class(
   obj : Object,
@@ -768,14 +788,13 @@ fn apply_class(
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   match ir.get_field("class") {
-    Some(f) =>
-      match f.primary {
-        Some(s) =>
-          match classes.get(s.to_string()) {
-            Some(class_def) => process_special_fields(obj, class_def)
-            None => ()
-          }
-        None => ()
+    Some(class_field) =>
+      for class_name in class_names_from_field(class_field) {
+        obj.classes.push(class_name)
+        match classes.get(class_name) {
+          Some(class_def) => process_special_fields(obj, class_def)
+          None => ()
+        }
       }
     None => ()
   }

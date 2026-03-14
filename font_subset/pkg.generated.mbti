@@ -1,0 +1,16 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/font_subset"
+
+// Values
+pub fn sfnt_to_woff(Bytes) -> Bytes?
+
+pub fn utf8_cut_font(Bytes, String) -> Bytes?
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

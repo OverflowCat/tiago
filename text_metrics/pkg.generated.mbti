@@ -14,6 +14,8 @@ pub fn measure_text_code(String, Int, Bool, Bool) -> MeasuredText
 
 pub fn measure_text_mono_plain(String, Int) -> MeasuredText
 
+pub fn measure_text_with_dot_bounds(String, Int, Bool, Bool, Bool) -> MeasuredText
+
 // Errors
 
 // Types and methods

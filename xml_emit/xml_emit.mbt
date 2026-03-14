@@ -196,7 +196,7 @@ pub fn Element::build(self : Element) -> String {
     sb.write_char('"')
   }
   if self.self_closing && self.content == "" && self.children.length() == 0 {
-    sb.write_string("/>")
+    sb.write_string(" />")
   } else {
     sb.write_char('>')
     sb.write_string(self.content)

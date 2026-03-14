@@ -224,26 +224,48 @@ fn build_image_data_uri(
   base_path : String?,
 ) -> Result[String, String] {
   let normalized = normalize_source_reference(source)
-  let (bytes, mime_hint) = if is_http_source(normalized) {
-    let fetched = match fetch_remote_image_bytes(normalized) {
+  let (bytes, mime_type) = if is_http_source(normalized) {
+    let (remote_bytes, remote_content_type) = match
+      fetch_remote_image_bytes(normalized) {
       Ok(v) => v
       Err(e) => return Err(e)
     }
-    (fetched, normalized)
+    (
+      remote_bytes,
+      resolve_bundle_mime_type(normalized, remote_bytes, remote_content_type),
+    )
   } else {
     let path = resolve_local_image_path(normalized, base_path)
     let bytes = @fs.read_file_to_bytes(path) catch {
       e => return Err("failed to read image file '\{path}': \{e}")
     }
-    (bytes, path)
+    (bytes, resolve_bundle_mime_type(path, bytes, ""))
   }
   let encoded = @base64.encode(bytes)
-  let mime_type = detect_mime_type(mime_hint)
   Ok("data:\{mime_type};base64,\{encoded}")
 }
 
 ///|
-fn fetch_remote_image_bytes(url : String) -> Result[Bytes, String] {
+fn resolve_bundle_mime_type(
+  source_hint : String,
+  bytes : Bytes,
+  provided_content_type : String,
+) -> String {
+  let mime_type = if provided_content_type.trim() != "" {
+    provided_content_type.trim().to_string()
+  } else {
+    detect_mime_type(source_hint, bytes)
+  }
+  let adjusted = mime_type.replace(old="text/xml", new="image/svg+xml")
+  if adjusted == "application/octet-stream" && bytes_contains_svg(bytes) {
+    "image/svg+xml"
+  } else {
+    adjusted
+  }
+}
+
+///|
+fn fetch_remote_image_bytes(url : String) -> Result[(Bytes, String), String] {
   if !command_exec_is_supported() {
     return Err(
       "remote image bundling requires native command execution support",
@@ -255,24 +277,58 @@ fn fetch_remote_image_bytes(url : String) -> Result[Bytes, String] {
   let tmp_path = "/tmp/diago_bundle_" +
     stable_string_hash(url).to_string() +
     ".bin"
+  let header_path = "/tmp/diago_bundle_" +
+    stable_string_hash(url).to_string() +
+    ".headers"
   bundle_remove_file_quiet(tmp_path)
-  let cmd = "curl -L --fail --silent --show-error --max-time 20 --output " +
+  bundle_remove_file_quiet(header_path)
+  let cmd = "curl -L --fail --silent --show-error --max-time 20 " +
+    "-H " +
+    bundle_shell_quote(
+      "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    ) +
+    " -H " +
+    bundle_shell_quote(
+      "Accept: image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    ) +
+    " -H " +
+    bundle_shell_quote("Accept-Language: en-US,en;q=0.9") +
+    " -H " +
+    bundle_shell_quote("Accept-Encoding: gzip, deflate, br") +
+    " -H " +
+    bundle_shell_quote("DNT: 1") +
+    " -H " +
+    bundle_shell_quote("Upgrade-Insecure-Requests: 1") +
+    " -H " +
+    bundle_shell_quote("Sec-Fetch-Dest: image") +
+    " -H " +
+    bundle_shell_quote("Sec-Fetch-Mode: no-cors") +
+    " -H " +
+    bundle_shell_quote("Sec-Fetch-Site: cross-site") +
+    " -D " +
+    bundle_shell_quote(header_path) +
+    " --output " +
     bundle_shell_quote(tmp_path) +
     " " +
     bundle_shell_quote(url)
   let exit_code = command_exec(cmd)
   if exit_code != 0 {
     bundle_remove_file_quiet(tmp_path)
+    bundle_remove_file_quiet(header_path)
     return Err("failed to fetch image '\{url}' (curl exit code \{exit_code})")
   }
   let bytes = @fs.read_file_to_bytes(tmp_path) catch {
     e => {
       bundle_remove_file_quiet(tmp_path)
+      bundle_remove_file_quiet(header_path)
       return Err("failed to read fetched image '\{tmp_path}': \{e}")
     }
   }
+  let header_text = @fs.read_file_to_string(header_path) catch { _ => "" }
+  let content_type = parse_last_content_type_header(header_text).unwrap_or("")
   bundle_remove_file_quiet(tmp_path)
-  Ok(bytes)
+  bundle_remove_file_quiet(header_path)
+  Ok((bytes, content_type))
 }
 
 ///|
@@ -300,7 +356,7 @@ fn normalize_source_reference(source : String) -> String {
 }
 
 ///|
-fn detect_mime_type(source_hint : String) -> String {
+fn detect_mime_type(source_hint : String, bytes : Bytes) -> String {
   let lower = strip_query_and_fragment(source_hint).to_lower()
   if lower.has_suffix(".svg") || lower.has_suffix(".svgz") {
     "image/svg+xml"
@@ -316,9 +372,103 @@ fn detect_mime_type(source_hint : String) -> String {
     "image/bmp"
   } else if lower.has_suffix(".ico") {
     "image/x-icon"
+  } else if bytes_contains_svg(bytes) {
+    "image/svg+xml"
+  } else if bytes_has_prefix(bytes, [0x89, 0x50, 0x4e, 0x47]) {
+    "image/png"
+  } else if bytes_has_prefix(bytes, [0xff, 0xd8, 0xff]) {
+    "image/jpeg"
+  } else if bytes_has_prefix_ascii(bytes, "GIF87a") ||
+    bytes_has_prefix_ascii(bytes, "GIF89a") {
+    "image/gif"
+  } else if bytes_has_prefix_ascii(bytes, "RIFF") &&
+    bytes_window_equals_ascii(bytes, 8, "WEBP") {
+    "image/webp"
+  } else if bytes_has_prefix_ascii(bytes, "BM") {
+    "image/bmp"
+  } else if bytes_has_prefix(bytes, [0x00, 0x00, 0x01, 0x00]) {
+    "image/x-icon"
   } else {
     "application/octet-stream"
   }
+}
+
+///|
+fn parse_last_content_type_header(header_text : String) -> String? {
+  if header_text == "" {
+    return None
+  }
+  let lines = header_text.split("\n").collect()
+  if lines.length() == 0 {
+    return None
+  }
+  let mut i = lines.length() - 1
+  while true {
+    let line = lines[i].trim().to_string()
+    if line.to_lower().has_prefix("content-type:") {
+      return Some(slice_string(line, 13, line.length()).trim().to_string())
+    }
+    if i == 0 {
+      break
+    }
+    i = i - 1
+  }
+  None
+}
+
+///|
+fn bytes_has_prefix(bytes : Bytes, prefix : Array[Int]) -> Bool {
+  if bytes.length() < prefix.length() {
+    return false
+  }
+  for i in 0..<prefix.length() {
+    if bytes[i].to_int() != prefix[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn bytes_has_prefix_ascii(bytes : Bytes, text : String) -> Bool {
+  if bytes.length() < text.length() {
+    return false
+  }
+  for i in 0..<text.length() {
+    if bytes[i].to_int() != text.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn bytes_window_equals_ascii(bytes : Bytes, start : Int, text : String) -> Bool {
+  if start < 0 || bytes.length() < start + text.length() {
+    return false
+  }
+  for i in 0..<text.length() {
+    if bytes[start + i].to_int() != text.code_unit_at(i).to_int() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn bytes_contains_svg(bytes : Bytes) -> Bool {
+  if bytes.length() < 4 {
+    return false
+  }
+  for i in 0..<(bytes.length() - 3) {
+    if bytes[i].to_int() == '<'.to_int() &&
+      bytes[i + 1].to_int() == 's'.to_int() &&
+      bytes[i + 2].to_int() == 'v'.to_int() &&
+      bytes[i + 3].to_int() == 'g'.to_int() {
+      return true
+    }
+  }
+  false
 }
 
 ///|

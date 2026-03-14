@@ -255,10 +255,34 @@ fn has_outside_bottom_label(obj : Shape) -> Bool {
 }
 
 ///|
+fn label_outside_anchor_box(obj : Shape, box : Box) -> Box {
+  let x = box.x
+  let mut y = box.y
+  let mut width = box.width
+  let mut height = box.height
+  if style_bool(obj.style.three_d, false) {
+    let offset_y = if obj.shape_type == Hexagon {
+      THREE_DEE_OFFSET / 2.0
+    } else {
+      THREE_DEE_OFFSET
+    }
+    y = y - offset_y
+    height = height + offset_y
+    width = width + THREE_DEE_OFFSET
+  } else if style_bool(obj.style.multiple, false) {
+    y = y - MULTIPLE_OFFSET
+    height = height + MULTIPLE_OFFSET
+    width = width + MULTIPLE_OFFSET
+  }
+  Box::new(x, y, width, height)
+}
+
+///|
 fn shape_inner_box_for_label(
   obj : Shape,
   box : Box,
-  label_dims : @text_metrics.TextDimensions,
+  label_width : Double,
+  label_height : Double,
 ) -> Box {
   let mut x = box.x
   let mut y = box.y
@@ -272,8 +296,8 @@ fn shape_inner_box_for_label(
       height = height / 1.5
     }
     Cloud => {
-      let aspect = if label_dims.height > 0.0 {
-        label_dims.width / label_dims.height
+      let aspect = if label_height > 0.0 {
+        label_width / label_height
       } else {
         1.0
       }
@@ -348,6 +372,387 @@ fn shape_inner_box_for_label(
   } else {
     Box::new(x, y, width, height)
   }
+}
+
+///|
+fn shape_inner_box_for_icon(obj : Shape, box : Box) -> Box {
+  let mut x = box.x
+  let mut y = box.y
+  let mut width = box.width
+  let mut height = box.height
+  match obj.shape_type {
+    Hexagon => {
+      x = x + width / 6.0
+      y = y + height / 6.0
+      width = width / 1.5
+      height = height / 1.5
+    }
+    Cloud => {
+      x = x + (width * 0.167).ceil()
+      y = y + (height * 0.335).ceil()
+      width = width * 0.663
+      height = height * 0.663
+    }
+    Cylinder => {
+      let mut arc = 24.0
+      if height < arc * 2.0 {
+        arc = height / 2.0
+      }
+      y = y + 2.0 * arc
+      height = height - 3.0 * arc
+    }
+    Queue => {
+      let mut arc = 24.0
+      if width < arc * 2.0 {
+        arc = width / 2.0
+      }
+      x = x + arc
+      width = width - 3.0 * arc
+    }
+    StoredData => {
+      x = x + 15.0
+      width = width - 30.0
+    }
+    Document => height = height * 14.0 / 18.925
+    Package => {
+      let top_h = if 55.0 < height * 0.2 { 55.0 } else { height * 0.2 }
+      y = y + top_h
+      height = height - top_h
+    }
+    Callout => {
+      let tip_h = if height < 90.0 { height / 2.0 } else { 45.0 }
+      height = height - tip_h
+    }
+    Person => {
+      let shoulder = 20.2 / 68.3 * width
+      x = x + shoulder
+      width = width - shoulder * 2.0
+    }
+    C4Person => {
+      let head_radius = width * 0.22
+      let body_top = head_radius + head_radius * 0.8
+      let h_padding = width * 0.05
+      let v_padding = height * 0.03
+      x = x + h_padding
+      y = y + body_top + v_padding
+      width = width - h_padding * 2.0
+      height = height - body_top - v_padding * 2.0
+    }
+    _ => ()
+  }
+  if width <= 0.0 || height <= 0.0 {
+    box
+  } else {
+    Box::new(x, y, width, height)
+  }
+}
+
+///|
+fn object_precomputed_label_dims(obj : Shape) -> (Double, Double)? {
+  match (obj.label_width, obj.label_height) {
+    (Some(width), Some(height)) =>
+      if width > 0.0 && height > 0.0 {
+        Some((width, height))
+      } else {
+        None
+      }
+    _ => None
+  }
+}
+
+///|
+fn object_label_dims(
+  obj : Shape,
+  text : String,
+  font_size : Int,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> (Double, Double) {
+  match object_precomputed_label_dims(obj) {
+    Some(dims) => dims
+    None => {
+      let dims = @text_metrics.measure_label(
+        text, font_size, is_mono, is_bold, is_italic,
+      )
+      (dims.width, dims.height)
+    }
+  }
+}
+
+///|
+fn plain_object_label_layout(
+  obj : Shape,
+  box : Box,
+  label_width : Double,
+  label_height : Double,
+) -> (Double, Double, Double) {
+  let inner_box = shape_inner_box_for_label(obj, box, label_width, label_height)
+  let label_overflows = label_width > box.width || label_height > box.height
+  let is_grid_container = is_container(obj) &&
+    (obj.grid_rows is Some(_) || obj.grid_columns is Some(_))
+  match obj.label_box {
+    Some(label_box) =>
+      (
+        label_box.x,
+        label_box.y,
+        if label_box.width > 0.0 {
+          label_box.width
+        } else {
+          label_width
+        },
+      )
+    None =>
+      if is_container(obj) && !is_grid_container {
+        if label_overflows {
+          let anchor_box = label_outside_anchor_box(obj, box)
+          (
+            anchor_box.x + (anchor_box.width - label_width) / 2.0,
+            anchor_box.y - LABEL_PADDING - label_height,
+            label_width,
+          )
+        } else {
+          (
+            inner_box.x + (inner_box.width - label_width) / 2.0,
+            inner_box.y + LABEL_PADDING,
+            label_width,
+          )
+        }
+      } else if is_grid_container {
+        (
+          inner_box.x + (inner_box.width - label_width) / 2.0,
+          inner_box.y + LABEL_PADDING,
+          label_width,
+        )
+      } else if has_outside_bottom_label(obj) || label_overflows {
+        let anchor_box = label_outside_anchor_box(obj, box)
+        (
+          anchor_box.x + (anchor_box.width - label_width) / 2.0,
+          anchor_box.y + anchor_box.height + LABEL_PADDING,
+          label_width,
+        )
+      } else if obj.icon is Some(_) && obj.shape_type != Image {
+        (
+          inner_box.x + (inner_box.width - label_width) / 2.0,
+          inner_box.y + LABEL_PADDING,
+          label_width,
+        )
+      } else {
+        (
+          inner_box.x + (inner_box.width - label_width) / 2.0,
+          inner_box.y + (inner_box.height - label_height) / 2.0,
+          label_width,
+        )
+      }
+  }
+}
+
+///|
+fn markdown_label_layout(obj : Shape, box : Box) -> (Double, Double, Int, Int) {
+  let (x, y) = match obj.label_box {
+    Some(label_box) => (label_box.x, label_box.y)
+    None => (box.x, box.y)
+  }
+  let width_px = match object_precomputed_label_dims(obj) {
+    Some((width, _)) => width.ceil().to_int()
+    None => ceil_double(box.width).to_int()
+  }
+  let height_px = match object_precomputed_label_dims(obj) {
+    Some((_, height)) => height.ceil().to_int()
+    None => ceil_double(box.height).to_int()
+  }
+  (x, y, width_px, height_px)
+}
+
+///|
+fn min_int(a : Int, b : Int) -> Int {
+  if a < b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
+fn max_int(a : Int, b : Int) -> Int {
+  if a > b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
+fn d2_icon_position_is_outside(position : String) -> Bool {
+  position.has_prefix("OUTSIDE_")
+}
+
+///|
+fn d2_get_icon_size(box : Box, position : String) -> Int {
+  let min_dimension = min_int(box.width.to_int(), box.height.to_int())
+  let half_min_dimension = (min_dimension + 1) / 2
+  let mut size = if position == D2_DEFAULT_ICON_POSITION {
+    half_min_dimension
+  } else {
+    min_int(min_dimension, max_int(D2_DEFAULT_ICON_SIZE, half_min_dimension))
+  }
+  size = min_int(size, D2_MAX_ICON_SIZE)
+  if !d2_icon_position_is_outside(position) {
+    let padding = LABEL_PADDING.to_int()
+    let max_width = max_int(box.width.to_int() - padding * 2, 0)
+    let max_height = max_int(box.height.to_int() - padding * 2, 0)
+    size = min_int(size, min_int(max_width, max_height))
+  }
+  size
+}
+
+///|
+fn d2_point_on_box(
+  position : String,
+  box : Box,
+  padding : Double,
+  width : Double,
+  height : Double,
+) -> @graph.Point {
+  let box_center = box.center()
+  let mut x = box.x
+  let mut y = box.y
+  match position {
+    "OUTSIDE_TOP_LEFT" => {
+      x = x + padding
+      y = y - padding - height
+    }
+    "OUTSIDE_TOP_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y - padding - height
+    }
+    "OUTSIDE_TOP_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y - padding - height
+    }
+    "OUTSIDE_LEFT_TOP" => {
+      x = x - padding - width
+      y = y + padding
+    }
+    "OUTSIDE_LEFT_MIDDLE" => {
+      x = x - padding - width
+      y = box_center.y - height / 2.0
+    }
+    "OUTSIDE_LEFT_BOTTOM" => {
+      x = x - padding - width
+      y = y + box.height - height - padding
+    }
+    "OUTSIDE_RIGHT_TOP" => {
+      x = x + box.width + padding
+      y = y + padding
+    }
+    "OUTSIDE_RIGHT_MIDDLE" => {
+      x = x + box.width + padding
+      y = box_center.y - height / 2.0
+    }
+    "OUTSIDE_RIGHT_BOTTOM" => {
+      x = x + box.width + padding
+      y = y + box.height - height - padding
+    }
+    "OUTSIDE_BOTTOM_LEFT" => {
+      x = x + padding
+      y = y + box.height + padding
+    }
+    "OUTSIDE_BOTTOM_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y + box.height + padding
+    }
+    "OUTSIDE_BOTTOM_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y + box.height + padding
+    }
+    "INSIDE_TOP_LEFT" => {
+      x = x + padding
+      y = y + padding
+    }
+    "INSIDE_TOP_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y + padding
+    }
+    "INSIDE_TOP_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y + padding
+    }
+    "INSIDE_MIDDLE_LEFT" => {
+      x = x + padding
+      y = box_center.y - height / 2.0
+    }
+    "INSIDE_MIDDLE_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = box_center.y - height / 2.0
+    }
+    "INSIDE_MIDDLE_RIGHT" => {
+      x = x + box.width - width - padding
+      y = box_center.y - height / 2.0
+    }
+    "INSIDE_BOTTOM_LEFT" => {
+      x = x + padding
+      y = y + box.height - height - padding
+    }
+    "INSIDE_BOTTOM_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y + box.height - height - padding
+    }
+    "INSIDE_BOTTOM_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y + box.height - height - padding
+    }
+    "BORDER_TOP_LEFT" => {
+      x = x + padding
+      y = y - height / 2.0
+    }
+    "BORDER_TOP_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y - height / 2.0
+    }
+    "BORDER_TOP_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y - height / 2.0
+    }
+    "BORDER_LEFT_TOP" => {
+      x = x - width / 2.0
+      y = y + padding
+    }
+    "BORDER_LEFT_MIDDLE" => {
+      x = x - width / 2.0
+      y = box_center.y - height / 2.0
+    }
+    "BORDER_LEFT_BOTTOM" => {
+      x = x - width / 2.0
+      y = y + box.height - height - padding
+    }
+    "BORDER_RIGHT_TOP" => {
+      x = x + box.width - width / 2.0
+      y = y + padding
+    }
+    "BORDER_RIGHT_MIDDLE" => {
+      x = x + box.width - width / 2.0
+      y = box_center.y - height / 2.0
+    }
+    "BORDER_RIGHT_BOTTOM" => {
+      x = x + box.width - width / 2.0
+      y = y + box.height - height - padding
+    }
+    "BORDER_BOTTOM_LEFT" => {
+      x = x + padding
+      y = y + box.height - height / 2.0
+    }
+    "BORDER_BOTTOM_CENTER" => {
+      x = box_center.x - width / 2.0
+      y = y + box.height - height / 2.0
+    }
+    "BORDER_BOTTOM_RIGHT" => {
+      x = x + box.width - width - padding
+      y = y + box.height - height / 2.0
+    }
+    _ => ()
+  }
+  @graph.Point::new(x, y)
 }
 
 ///|
@@ -857,11 +1262,6 @@ fn defs_id(config : SvgConfig, base : String) -> String {
 }
 
 ///|
-fn defs_url(config : SvgConfig, base : String) -> String {
-  "url(#\{defs_id(config, base)})"
-}
-
-///|
 fn ceil_double(x : Double) -> Double {
   let n = x.to_int()
   let n_double = n.to_double()
@@ -887,6 +1287,15 @@ fn round_double(x : Double) -> Double {
 const LABEL_PADDING : Double = 5.0
 
 ///|
+const D2_DEFAULT_ICON_SIZE : Int = 32
+
+///|
+const D2_MAX_ICON_SIZE : Int = 64
+
+///|
+const D2_DEFAULT_ICON_POSITION : String = "INSIDE_MIDDLE_CENTER"
+
+///|
 const ARROWHEAD_PADDING : Double = 2.0
 
 ///|
@@ -900,6 +1309,12 @@ const MULTIPLE_OFFSET : Double = 10.0
 
 ///|
 const THREE_DEE_OFFSET : Double = 15.0
+
+///|
+const SHADOW_SIZE_X : Double = 3.0
+
+///|
+const SHADOW_SIZE_Y : Double = 5.0
 
 ///|
 fn transform_label_text(text : String, text_transform : String) -> String {
@@ -942,6 +1357,31 @@ fn transform_label_text(text : String, text_transform : String) -> String {
 const ROOT_INNER_BORDER_OFFSET : Double = 5.0
 
 ///|
+fn floor_to_int(v : Double) -> Int {
+  @math.floor(v).to_int()
+}
+
+///|
+fn ceil_to_int(v : Double) -> Int {
+  ceil_double(v).to_int()
+}
+
+///|
+fn d2_base_dimensions(
+  min_x : Double,
+  min_y : Double,
+  max_x : Double,
+  max_y : Double,
+  padding : Double,
+) -> (Int, Int, Int, Int) {
+  let left = floor_to_int(min_x - padding)
+  let top = floor_to_int(min_y - padding)
+  let right = ceil_to_int(max_x + padding)
+  let bottom = ceil_to_int(max_y + padding)
+  (left, top, right - left, bottom - top)
+}
+
+///|
 priv struct RootCanvasMetrics {
   viewbox_x : Double
   viewbox_y : Double
@@ -980,8 +1420,8 @@ fn style_fill_pattern_key(fill_pattern : @graph.StyleValue?) -> String? {
 }
 
 ///|
-fn pattern_def_key(pattern : String) -> String {
-  "pattern-\{pattern}"
+fn pattern_def_id(pattern : String, diagram_hash : String) -> String {
+  "\{pattern}-\{diagram_hash}"
 }
 
 ///|
@@ -994,9 +1434,11 @@ fn resolve_fill_with_pattern(
   base_fill : String,
   fill_pattern : @graph.StyleValue?,
   config : SvgConfig,
+  diagram_hash : String,
 ) -> String {
+  let _ = config
   match style_fill_pattern_key(fill_pattern) {
-    Some(pattern) => defs_url(config, pattern_def_key(pattern))
+    Some(pattern) => "url(#\{pattern_def_id(pattern, diagram_hash)})"
     None => base_fill
   }
 }
@@ -1016,138 +1458,98 @@ fn non_empty_string(value : String?) -> String? {
 }
 
 ///|
+fn d2_svg_base32(bytes : Bytes) -> String {
+  let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+  let out = StringBuilder::new()
+  let mut acc = 0
+  let mut bits = 0
+  for b in bytes {
+    acc = (acc << 8) | b.to_int()
+    bits = bits + 8
+    while bits >= 5 {
+      let idx = (acc >> (bits - 5)) & 31
+      out.write_char(alphabet[idx].to_char().unwrap())
+      bits = bits - 5
+    }
+  }
+  if bits > 0 {
+    let idx = (acc << (5 - bits)) & 31
+    out.write_char(alphabet[idx].to_char().unwrap())
+  }
+  out.to_string()
+}
+
+///|
+fn d2_svg_id(id : String) -> String {
+  d2_svg_base32(@utf8.encode(id[:]))
+}
+
+///|
 fn tooltip_icon_svg(clip_id : String) -> String {
-  let outline = @xml_emit.Element::new("path")
-    .attr(
-      "d", "M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z",
-    )
-    .attr("fill", "white")
-    .attr("stroke", "#DEE1EB")
-    .self_close()
-    .build()
-  let circle = @xml_emit.Element::new("path")
-    .attr(
-      "d", "M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z",
-    )
-    .attr("stroke", "#2E3346")
-    .attr_num("stroke-width", 2)
-    .attr("stroke-linecap", "round")
-    .attr("stroke-linejoin", "round")
-    .self_close()
-    .build()
-  let stem = @xml_emit.Element::new("path")
-    .attr("d", "M16 19.998V15.998")
-    .attr("stroke", "#2E3346")
-    .attr_num("stroke-width", 2)
-    .attr("stroke-linecap", "round")
-    .attr("stroke-linejoin", "round")
-    .self_close()
-    .build()
-  let dot = @xml_emit.Element::new("path")
-    .attr("d", "M16 12H16.0098")
-    .attr("stroke", "#2E3346")
-    .attr_num("stroke-width", 2)
-    .attr("stroke-linecap", "round")
-    .attr("stroke-linejoin", "round")
-    .self_close()
-    .build()
-  let g = @xml_emit.Element::new("g")
-    .attr("clip-path", "url(#\{clip_id})")
-    .child(outline)
-    .child(circle)
-    .child(stem)
-    .child(dot)
-    .build()
-  let clip_rect = @xml_emit.Element::new("rect")
-    .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
-    .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
-    .attr("fill", "white")
-    .self_close()
-    .build()
-  let clip_path = @xml_emit.Element::new("clipPath")
-    .attr("id", clip_id)
-    .child(clip_rect)
-    .build()
-  let defs = @xml_emit.Element::new("defs").child(clip_path).build()
-  @xml_emit.Element::new("svg")
-  .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
-  .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
-  .attr("viewBox", "0 0 32 32")
-  .attr("fill", "none")
-  .attr("xmlns", "http://www.w3.org/2000/svg")
-  .child(g)
-  .child(defs)
-  .build()
+  let sb = StringBuilder::new()
+  sb.write_string(
+    "<svg width=\"32\" height=\"32\" viewBox=\"0 0 32 32\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n",
+  )
+  sb.write_string("<g clip-path=\"url(#\{clip_id})\">\n")
+  sb.write_string(
+    "<path d=\"M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z\" fill=\"white\" stroke=\"#DEE1EB\"/>\n",
+  )
+  sb.write_string(
+    "<path d=\"M16 26C21.5228 26 26 21.5228 26 16C26 10.4772 21.5228 6 16 6C10.4772 6 6 10.4772 6 16C6 21.5228 10.4772 26 16 26Z\" stroke=\"#2E3346\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n",
+  )
+  sb.write_string(
+    "<path d=\"M16 19.998V15.998\" stroke=\"#2E3346\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n",
+  )
+  sb.write_string(
+    "<path d=\"M16 12H16.0098\" stroke=\"#2E3346\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n",
+  )
+  sb.write_string("</g>\n")
+  sb.write_string("<defs>\n")
+  sb.write_string("<clipPath id=\"\{clip_id}\">\n")
+  sb.write_string("<rect width=\"32\" height=\"32\" fill=\"white\"/>\n")
+  sb.write_string("</clipPath>\n")
+  sb.write_string("</defs>\n")
+  sb.write_string("</svg>")
+  sb.to_string()
 }
 
 ///|
 fn link_icon_svg(clip_id : String) -> String {
-  let outline = @xml_emit.Element::new("path")
-    .attr(
-      "d", "M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z",
-    )
-    .attr("fill", "white")
-    .attr("stroke", "#DEE1EB")
-    .self_close()
-    .build()
-  let chain_a = @xml_emit.Element::new("path")
-    .attr(
-      "d", "M14.3909 16.7965C14.7364 17.2584 15.1772 17.6406 15.6834 17.9171C16.1896 18.1938 16.7494 18.3582 17.3248 18.3993C17.9001 18.4405 18.4777 18.3575 19.0181 18.1559C19.5586 17.9543 20.0492 17.6389 20.4571 17.2309L22.8708 14.8173C23.6036 14.0586 24.0089 13.0425 23.9998 11.9877C23.9906 10.933 23.5676 9.92404 22.8217 9.17821C22.0759 8.43237 21.067 8.00931 20.0123 8.00015C18.9575 7.99098 17.9413 8.39644 17.1827 9.1292L15.7988 10.505",
-    )
-    .attr("stroke", "#2E3346")
-    .attr_num("stroke-width", 2)
-    .attr("stroke-linecap", "round")
-    .attr("stroke-linejoin", "round")
-    .self_close()
-    .build()
-  let chain_b = @xml_emit.Element::new("path")
-    .attr(
-      "d", "M17.609 15.1874C17.2635 14.7255 16.8227 14.3433 16.3165 14.0667C15.8103 13.7902 15.2505 13.6257 14.6752 13.5845C14.0998 13.5433 13.5223 13.6263 12.9819 13.8279C12.4414 14.0295 11.9506 14.345 11.5428 14.753L9.1292 17.1666C8.39644 17.9252 7.99098 18.9414 8.00015 19.9962C8.00931 21.0509 8.43237 22.0598 9.17821 22.8056C9.92405 23.5515 10.933 23.9745 11.9877 23.9837C13.0425 23.9928 14.0586 23.5875 14.8173 22.8547L16.193 21.4788",
-    )
-    .attr("stroke", "#2E3346")
-    .attr_num("stroke-width", 2)
-    .attr("stroke-linecap", "round")
-    .attr("stroke-linejoin", "round")
-    .self_close()
-    .build()
-  let g = @xml_emit.Element::new("g")
-    .attr("clip-path", "url(#\{clip_id})")
-    .child(outline)
-    .child(chain_a)
-    .child(chain_b)
-    .build()
-  let clip_rect = @xml_emit.Element::new("rect")
-    .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
-    .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
-    .attr("fill", "white")
-    .self_close()
-    .build()
-  let clip_path = @xml_emit.Element::new("clipPath")
-    .attr("id", clip_id)
-    .child(clip_rect)
-    .build()
-  let defs = @xml_emit.Element::new("defs").child(clip_path).build()
-  @xml_emit.Element::new("svg")
-  .attr_num("width", APPENDIX_ICON_DIAMETER.to_double())
-  .attr_num("height", APPENDIX_ICON_DIAMETER.to_double())
-  .attr("viewBox", "0 0 32 32")
-  .attr("fill", "none")
-  .attr("xmlns", "http://www.w3.org/2000/svg")
-  .child(g)
-  .child(defs)
-  .build()
+  let sb = StringBuilder::new()
+  sb.write_string(
+    "<svg width=\"32\" height=\"32\" viewBox=\"0 0 32 32\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n",
+  )
+  sb.write_string("<g clip-path=\"url(#\{clip_id})\">\n")
+  sb.write_string(
+    "<path d=\"M16 31.1109C24.3456 31.1109 31.1111 24.3454 31.1111 15.9998C31.1111 7.65415 24.3456 0.888672 16 0.888672C7.65436 0.888672 0.888885 7.65415 0.888885 15.9998C0.888885 24.3454 7.65436 31.1109 16 31.1109Z\" fill=\"white\" stroke=\"#DEE1EB\"/>\n",
+  )
+  sb.write_string(
+    "<path d=\"M14.3909 16.7965C14.7364 17.2584 15.1772 17.6406 15.6834 17.9171C16.1896 18.1938 16.7494 18.3582 17.3248 18.3993C17.9001 18.4405 18.4777 18.3575 19.0181 18.1559C19.5586 17.9543 20.0492 17.6389 20.4571 17.2309L22.8708 14.8173C23.6036 14.0586 24.0089 13.0425 23.9998 11.9877C23.9906 10.933 23.5676 9.92404 22.8217 9.17821C22.0759 8.43237 21.067 8.00931 20.0123 8.00015C18.9575 7.99098 17.9413 8.39644 17.1827 9.1292L15.7988 10.505\" stroke=\"#2E3346\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n",
+  )
+  sb.write_string(
+    "<path d=\"M17.609 15.1874C17.2635 14.7255 16.8227 14.3433 16.3165 14.0667C15.8103 13.7902 15.2505 13.6257 14.6752 13.5845C14.0998 13.5433 13.5223 13.6263 12.9819 13.8279C12.4414 14.0295 11.9506 14.345 11.5428 14.753L9.1292 17.1666C8.39644 17.9252 7.99098 18.9414 8.00015 19.9962C8.00931 21.0509 8.43237 22.0598 9.17821 22.8056C9.92405 23.5515 10.933 23.9745 11.9877 23.9837C13.0425 23.9928 14.0586 23.5875 14.8173 22.8547L16.193 21.4788\" stroke=\"#2E3346\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n",
+  )
+  sb.write_string("</g>\n")
+  sb.write_string("<defs>\n")
+  sb.write_string("<clipPath id=\"\{clip_id}\">\n")
+  sb.write_string("<rect width=\"32\" height=\"32\" fill=\"white\"/>\n")
+  sb.write_string("</clipPath>\n")
+  sb.write_string("</defs>\n")
+  sb.write_string("</svg>")
+  sb.to_string()
 }
 
 ///|
 fn render_object_appendix_icons(
-  svg : @svg.Svg,
+  diagram_hash : String,
   obj : Shape,
   box : @graph.Box,
-) -> Unit {
+) -> Array[String] {
+  let elements : Array[String] = []
   let tooltip_text = non_empty_string(obj.tooltip)
   let link_href = non_empty_string(obj.link)
   if tooltip_text is None && link_href is None {
-    return
+    return elements
   }
   let anchor_x = (box.x + box.width).ceil().to_int()
   let anchor_y = box.y.ceil().to_int()
@@ -1162,16 +1564,10 @@ fn render_object_appendix_icons(
     Some(text) => {
       let x = anchor_x - APPENDIX_ICON_RADIUS - tooltip_slot_offset
       let y = anchor_y - APPENDIX_ICON_RADIUS
-      let tooltip_clip_seed = "tt|\{obj.id}"
-      let clip_id = "clip0_3427_35082111-\{hash_u32(tooltip_clip_seed)}-\{hash_u32(obj.id)}"
+      let clip_id = "clip0_3427_35082111-\{diagram_hash}-\{d2_svg_id(d2_output_abs_id(obj.id))}"
       let icon_svg = tooltip_icon_svg(clip_id)
-      svg.add(
-        @xml_emit.Element::new("g")
-        .attr("transform", "translate(\{x} \{y})")
-        .attr("class", "appendix-icon")
-        .child(@xml_emit.Element::new("title").text(text).build())
-        .raw(icon_svg)
-        .build(),
+      elements.push(
+        "<g transform=\"translate(\{x} \{y})\" class=\"appendix-icon\"><title>\{@svg.escape_xml(text)}</title>\{icon_svg}\n</g>",
       )
     }
     None => ()
@@ -1181,17 +1577,40 @@ fn render_object_appendix_icons(
     Some(_) => {
       let x = anchor_x - APPENDIX_ICON_RADIUS - link_slot_offset
       let y = anchor_y - APPENDIX_ICON_RADIUS
-      let link_clip_seed = "ln|\{obj.id}"
-      let clip_id = "clip0_3440_35088111-\{hash_u32(link_clip_seed)}-\{hash_u32(obj.id)}"
+      let clip_id = "clip0_3440_35088111-\{diagram_hash}-\{d2_svg_id(d2_output_abs_id(obj.id))}"
       let icon_svg = link_icon_svg(clip_id)
-      svg.add(
-        @xml_emit.Element::new("g")
-        .attr("transform", "translate(\{x} \{y})")
-        .attr("class", "appendix-icon")
-        .raw(icon_svg)
-        .build(),
+      elements.push(
+        "<g transform=\"translate(\{x} \{y})\" class=\"appendix-icon\">\{icon_svg}\n</g>",
       )
     }
+    None => ()
+  }
+  elements
+}
+
+///|
+fn append_object_appendix_icons(
+  diagram_hash : String,
+  appendix_items : Array[String],
+  obj : Shape,
+  box : @graph.Box,
+) -> Unit {
+  for item in render_object_appendix_icons(diagram_hash, obj, box) {
+    appendix_items.push(item)
+  }
+}
+
+///|
+fn append_object_title(
+  svg : @svg.Svg,
+  obj : Shape,
+  object_pass_active : Bool,
+) -> Unit {
+  if !object_pass_active {
+    return
+  }
+  match non_empty_string(obj.tooltip) {
+    Some(text) => svg.add(@xml_emit.Element::new("title").text(text).build())
     None => ()
   }
 }
@@ -1226,10 +1645,10 @@ fn compute_root_canvas_metrics(
   config : SvgConfig,
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
-  base_viewbox_x : Double,
-  base_viewbox_y : Double,
-  base_viewbox_width : Double,
-  base_viewbox_height : Double,
+  base_left : Int,
+  base_top : Int,
+  base_width : Int,
+  base_height : Int,
 ) -> RootCanvasMetrics {
   let fill = style_color(graph.root.style.fill, "N7", theme, use_css_theme_vars)
   let fill_pattern_class = match
@@ -1249,46 +1668,43 @@ fn compute_root_canvas_metrics(
     style_double(graph.root.style.border_radius, 0.0)
   }
   let stroke_dash = style_double(graph.root.style.stroke_dash, 0.0)
-  let half_stroke = ceil_double(stroke_width / 2.0)
-  let inner_x = base_viewbox_x - half_stroke
-  let inner_y = base_viewbox_y - half_stroke
-  let inner_width = base_viewbox_width + half_stroke * 2.0
-  let inner_height = base_viewbox_height + half_stroke * 2.0
-  let mut viewbox_x = inner_x - half_stroke
-  let mut viewbox_y = inner_y - half_stroke
-  let mut viewbox_width = inner_width + half_stroke * 2.0
-  let mut viewbox_height = inner_height + half_stroke * 2.0
+  let half_stroke = ceil_to_int(stroke_width / 2.0)
+  let inner_left = base_left - half_stroke
+  let inner_top = base_top - half_stroke
+  let inner_width_int = base_width + half_stroke * 2
+  let inner_height_int = base_height + half_stroke * 2
+  let mut viewbox_left = inner_left - half_stroke
+  let mut viewbox_top = inner_top - half_stroke
+  let mut viewbox_width_int = inner_width_int + half_stroke * 2
+  let mut viewbox_height_int = inner_height_int + half_stroke * 2
   let mut outer_x : Double? = None
   let mut outer_y : Double? = None
   let mut outer_width : Double? = None
   let mut outer_height : Double? = None
   if style_bool(graph.root.style.double_border, false) {
-    let outer_left = viewbox_x - half_stroke - ROOT_INNER_BORDER_OFFSET
-    let outer_top = viewbox_y - half_stroke - ROOT_INNER_BORDER_OFFSET
-    let outer_w = viewbox_width +
-      half_stroke * 2.0 +
-      ROOT_INNER_BORDER_OFFSET * 2.0
-    let outer_h = viewbox_height +
-      half_stroke * 2.0 +
-      ROOT_INNER_BORDER_OFFSET * 2.0
-    outer_x = Some(outer_left)
-    outer_y = Some(outer_top)
-    outer_width = Some(outer_w)
-    outer_height = Some(outer_h)
-    viewbox_x = outer_left - half_stroke
-    viewbox_y = outer_top - half_stroke
-    viewbox_width = outer_w + half_stroke * 2.0
-    viewbox_height = outer_h + half_stroke * 2.0
+    let inner_border_offset = ROOT_INNER_BORDER_OFFSET.to_int()
+    let outer_left = viewbox_left - half_stroke - inner_border_offset
+    let outer_top = viewbox_top - half_stroke - inner_border_offset
+    let outer_w = viewbox_width_int + half_stroke * 2 + inner_border_offset * 2
+    let outer_h = viewbox_height_int + half_stroke * 2 + inner_border_offset * 2
+    outer_x = Some(outer_left.to_double())
+    outer_y = Some(outer_top.to_double())
+    outer_width = Some(outer_w.to_double())
+    outer_height = Some(outer_h.to_double())
+    viewbox_left = outer_left - half_stroke
+    viewbox_top = outer_top - half_stroke
+    viewbox_width_int = outer_w + half_stroke * 2
+    viewbox_height_int = outer_h + half_stroke * 2
   }
   {
-    viewbox_x,
-    viewbox_y,
-    viewbox_width,
-    viewbox_height,
-    inner_x,
-    inner_y,
-    inner_width,
-    inner_height,
+    viewbox_x: viewbox_left.to_double(),
+    viewbox_y: viewbox_top.to_double(),
+    viewbox_width: viewbox_width_int.to_double(),
+    viewbox_height: viewbox_height_int.to_double(),
+    inner_x: inner_left.to_double(),
+    inner_y: inner_top.to_double(),
+    inner_width: inner_width_int.to_double(),
+    inner_height: inner_height_int.to_double(),
     outer_x,
     outer_y,
     outer_width,
@@ -1348,19 +1764,16 @@ fn add_root_overlay_rect(
   class_name : String?,
 ) -> Unit {
   match class_name {
-    Some(class_name) =>
+    Some(class_name) => {
+      let stroke_width_css = if stroke_width.round() == stroke_width {
+        stroke_width.to_int().to_string()
+      } else {
+        d2_fixed6(stroke_width)
+      }
       svg.add(
-        @xml_emit.Element::new("rect")
-        .attr_num("x", x)
-        .attr_num("y", y)
-        .attr_num("width", width)
-        .attr_num("height", height)
-        .attr_num("rx", border_radius)
-        .attr_num("stroke-width", stroke_width)
-        .attr("class", class_name)
-        .self_close()
-        .build(),
+        "<rect x=\"\{d2_fixed6(x)}\" y=\"\{d2_fixed6(y)}\" width=\"\{d2_fixed6(width)}\" height=\"\{d2_fixed6(height)}\" rx=\"\{d2_fixed6(border_radius)}\" class=\"\{@svg.escape_xml(class_name)}\" stroke-width=\"\{stroke_width_css}\" />",
       )
+    }
     None => ()
   }
 }
@@ -1464,74 +1877,6 @@ pub fn render_svg(
   graph : Diagram,
   config : SvgConfig,
 ) -> String raise @render_api.RenderError {
-  // D2 parity: do not reserve extra height for custom interactive controls.
-  let control_height = 0.0
-  // Calculate bounds (include all layers/scenarios/steps for max size)
-  let (base_min_x, base_min_y, base_max_x, base_max_y) = compute_graph_bounds(
-    graph,
-  )
-  let mut min_x = base_min_x
-  let mut min_y = base_min_y
-  let mut max_x = base_max_x
-  let mut max_y = base_max_y
-  for layer in graph.layers {
-    let (lmin_x, lmin_y, lmax_x, lmax_y) = compute_graph_bounds(layer)
-    if lmin_x < min_x {
-      min_x = lmin_x
-    }
-    if lmin_y < min_y {
-      min_y = lmin_y
-    }
-    if lmax_x > max_x {
-      max_x = lmax_x
-    }
-    if lmax_y > max_y {
-      max_y = lmax_y
-    }
-  }
-  for scenario in graph.scenarios {
-    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(scenario)
-    if smin_x < min_x {
-      min_x = smin_x
-    }
-    if smin_y < min_y {
-      min_y = smin_y
-    }
-    if smax_x > max_x {
-      max_x = smax_x
-    }
-    if smax_y > max_y {
-      max_y = smax_y
-    }
-  }
-  for step in graph.steps {
-    let (smin_x, smin_y, smax_x, smax_y) = compute_graph_bounds(step)
-    if smin_x < min_x {
-      min_x = smin_x
-    }
-    if smin_y < min_y {
-      min_y = smin_y
-    }
-    if smax_x > max_x {
-      max_x = smax_x
-    }
-    if smax_y > max_y {
-      max_y = smax_y
-    }
-  }
-  let bounds = (min_x, min_y, max_x, max_y)
-  // Calculate dimensions accounting for negative coordinates
-  let content_width = max_x - min_x
-  let content_height = max_y - min_y
-  // Match d2's dimensions behavior: keep an extra 1px envelope on each side.
-  let envelope = 1.0
-  let base_viewbox_width = content_width + config.padding * 2.0 + envelope * 2.0
-  let base_viewbox_height = content_height +
-    config.padding * 2.0 +
-    control_height +
-    envelope * 2.0
-  let base_viewbox_x = min_x - config.padding - envelope
-  let base_viewbox_y = min_y - config.padding - control_height - envelope
   // The base render always uses the light theme. Dark theme is applied through
   // CSS media rules when configured.
   let light_theme = @themes.get_theme(config.theme_id).with_overrides(
@@ -1545,9 +1890,28 @@ pub fn render_svg(
     None => None
   }
   let use_css_theme_vars = dark_theme is Some(_)
+  // D2 parity: do not reserve extra height for custom interactive controls.
+  let control_height = 0.0
+  // D2 parity: SVG export renders the current board only.
+  let (base_min_x, base_min_y, base_max_x, base_max_y) = compute_graph_bounds(
+    graph, config, light_theme,
+  )
+  let min_x = base_min_x
+  let min_y = base_min_y
+  let max_x = base_max_x
+  let max_y = base_max_y
+  let bounds = (min_x, min_y, max_x, max_y)
+  // D2 parity: dimensions are based on BoundingBox + pad.
+  let (base_left, base_top, base_width, base_height) = d2_base_dimensions(
+    min_x,
+    min_y,
+    max_x,
+    max_y,
+    config.padding + control_height,
+  )
   let root_canvas = compute_root_canvas_metrics(
-    graph, config, light_theme, use_css_theme_vars, base_viewbox_x, base_viewbox_y,
-    base_viewbox_width, base_viewbox_height,
+    graph, config, light_theme, use_css_theme_vars, base_left, base_top, base_width,
+    base_height,
   )
   let viewbox_x = root_canvas.viewbox_x
   let viewbox_y = root_canvas.viewbox_y
@@ -1581,83 +1945,68 @@ pub fn render_svg(
     edge_label_mask_def(
       emit_assets.mask_id(),
       graph,
-      viewbox_x,
-      viewbox_y,
-      viewbox_width,
-      viewbox_height,
+      base_left,
+      base_top,
+      base_width,
+      base_height,
     ),
   )
   let edge_marker_ids : Map[String, String] = {}
+  let appendix_items : Array[String] = []
   // Background
   render_root_background(svg, root_canvas, light_theme, use_css_theme_vars)
   // D2 parity: skip custom control bar rendering.
-  // Main content group with offset to shift content into positive coordinate space
-  // Three-pass rendering for all diagrams (sequence diagrams are now format-agnostic)
-  // Lifelines are rendered as dashed edges, activation boxes as regular objects
-  let sorted_objects = sort_objects_by_depth(graph.shapes)
-  // Pass 1a: render container backgrounds first so nested fills do not
-  // occlude sibling leaf nodes (e.g. container examples with side resources).
-  for obj in sorted_objects {
-    if !is_container(obj) {
-      continue
-    }
-    render_svg_object(
-      svg,
-      obj,
-      graph.shapes,
-      config,
-      light_theme,
-      use_css_theme_vars,
-      pass=Background,
-    )
-  }
-  // Pass 1b: render non-container backgrounds on top of container fills.
-  for obj in sorted_objects {
-    if is_container(obj) {
-      continue
-    }
-    render_svg_object(
-      svg,
-      obj,
-      graph.shapes,
-      config,
-      light_theme,
-      use_css_theme_vars,
-      pass=Background,
-    )
-  }
-  if graph.root.shape_type == @graph.SequenceDiagram {
-    render_sequence_lifelines(svg, graph, light_theme, use_css_theme_vars)
-  }
-  // Pass 2: Render edges (on top of backgrounds, behind text)
+  // D2 parity: render in one combined z-ordered stream of shapes+connections.
+  // Shapes still use internal background/foreground passes when needed, but are
+  // emitted at their sorted position in the global object order.
+  let sorted_objects = sort_render_objects(graph.shapes, graph.connections)
   let connection_repeat_indices = d2_connection_repeat_indices(
     graph.connections,
   )
+  let repeat_index_by_edge_index : Map[Int, Int] = {}
   for i, edge in graph.connections {
-    render_svg_edge(
-      svg,
-      edge,
-      connection_repeat_indices[i],
-      graph.shapes,
-      edge_label_mask_url,
-      edge_marker_ids,
-      scope_class,
-      config,
-      light_theme,
-      use_css_theme_vars,
-    )
+    repeat_index_by_edge_index[edge.index] = connection_repeat_indices[i]
   }
-  // Pass 3: Render object foregrounds (text, labels, content)
   for obj in sorted_objects {
-    render_svg_object(
-      svg,
-      obj,
-      graph.shapes,
-      config,
-      light_theme,
-      use_css_theme_vars,
-      pass=Foreground,
-    )
+    match obj {
+      ShapeObj(shape) => {
+        render_svg_object(
+          svg,
+          scope_class,
+          appendix_items,
+          shape,
+          graph.shapes,
+          config,
+          light_theme,
+          use_css_theme_vars,
+          pass=Background,
+        )
+        render_svg_object(
+          svg,
+          scope_class,
+          appendix_items,
+          shape,
+          graph.shapes,
+          config,
+          light_theme,
+          use_css_theme_vars,
+          pass=Foreground,
+        )
+      }
+      EdgeObj(edge) =>
+        render_svg_edge(
+          svg,
+          edge,
+          repeat_index_by_edge_index.get(edge.index).unwrap_or(0),
+          graph.shapes,
+          edge_label_mask_url,
+          edge_marker_ids,
+          scope_class,
+          config,
+          light_theme,
+          use_css_theme_vars,
+        )
+    }
   }
   // Render sequence diagram notes (using page shape)
   for note in graph.sequence_notes {
@@ -1667,6 +2016,9 @@ pub fn render_svg(
   }
   // Render sequence diagram fragments (combined fragments like alt, opt, loop)
   render_svg_sequence_fragments(svg, graph, config)
+  for item in appendix_items {
+    svg.add(item)
+  }
   // D2 parity: export only the active/base board in SVG output.
 
   // Render legend (always visible across layer/scenario/step switching)
@@ -1685,7 +2037,7 @@ pub fn render_svg(
   }
 
   // D2 parity: skip injecting custom control scripts.
-  emit_svg_document(svg, config, emit_assets)
+  emit_svg_document(graph, svg, config, emit_assets)
 }
 
 ///|
@@ -1700,17 +2052,22 @@ fn estimate_text_width(text : String, font_size : Int) -> Double {
 fn edge_label_mask_def(
   mask_id : String,
   graph : Diagram,
-  mask_x : Double,
-  mask_y : Double,
-  mask_width : Double,
-  mask_height : Double,
+  mask_x : Int,
+  mask_y : Int,
+  mask_width : Int,
+  mask_height : Int,
 ) -> String {
   let sb = StringBuilder::new()
+  let mx = mask_x
+  let my = mask_y
+  let mw = mask_width
+  let mh = mask_height
+  let mut label_count = 0
   sb.write_string(
-    "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_width}\" height=\"\{mask_height}\">",
+    "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mx}\" y=\"\{my}\" width=\"\{mw}\" height=\"\{mh}\">\n",
   )
   sb.write_string(
-    "<rect x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_width}\" height=\"\{mask_height}\" fill=\"white\"></rect>",
+    "<rect x=\"\{mx}\" y=\"\{my}\" width=\"\{mw}\" height=\"\{mh}\" fill=\"white\"></rect>\n",
   )
   for edge in graph.connections {
     if edge.label == "" {
@@ -1720,13 +2077,18 @@ fn edge_label_mask_def(
       Some(label_box) => {
         let label_x = round_double(label_box.x) - 2.0
         let label_y = round_double(label_box.y)
-        let label_width = label_box.width + 4.0
+        let label_width = round_double(label_box.width).to_int() + 4
+        let label_height = round_double(label_box.height).to_int()
         sb.write_string(
-          "<rect x=\"\{label_x}\" y=\"\{label_y}\" width=\"\{label_width}\" height=\"\{label_box.height}\" fill=\"black\"></rect>",
+          "<rect x=\"\{d2_fixed6(label_x)}\" y=\"\{d2_fixed6(label_y)}\" width=\"\{label_width}\" height=\"\{label_height}\" fill=\"black\"></rect>\n",
         )
+        label_count = label_count + 1
       }
       None => ()
     }
+  }
+  if label_count == 0 {
+    sb.write_string("\n")
   }
   sb.write_string("</mask>")
   sb.to_string()
@@ -1796,6 +2158,24 @@ fn marker_body(
     Some(token) => "connection stroke-\{token}"
     None => "connection"
   }
+  let bg_fill_class = match d2_theme_token("#FFFFFF", theme) {
+    Some(token) => "fill-\{token}"
+    None => ""
+  }
+  let stroke_and_bg_class = if bg_fill_class == "" {
+    connection_stroke_class
+  } else {
+    "\{connection_stroke_class} \{bg_fill_class}"
+  }
+  let bg_stroke_class = match d2_theme_token(stroke, theme) {
+    Some(token) =>
+      if bg_fill_class == "" {
+        " stroke-\{token}"
+      } else {
+        " stroke-\{token} \{bg_fill_class}"
+      }
+    None => if bg_fill_class == "" { "" } else { " \{bg_fill_class}" }
+  }
   match arrowhead {
     @graph.None => ""
     @graph.Triangle => {
@@ -1815,24 +2195,24 @@ fn marker_body(
     @graph.Open => {
       let inset = stroke_width / 2.0
       let points = if is_target {
-        "\{inset},\{inset} \{width - inset},\{height / 2.0} \{inset},\{height - inset}"
+        "\{d2_fixed6(inset)},\{d2_fixed6(inset)} \{d2_fixed6(width - inset)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(inset)},\{d2_fixed6(height - inset)}"
       } else {
-        "\{width - inset},\{inset} \{inset},\{height / 2.0} \{width - inset},\{height - inset}"
+        "\{d2_fixed6(width - inset)},\{d2_fixed6(inset)} \{d2_fixed6(inset)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width - inset)},\{d2_fixed6(height - inset)}"
       }
       @xml_emit.Element::new("polygon")
       .attr("points", points)
       .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr("class", connection_stroke_class)
+      .attr("class", stroke_and_bg_class)
       .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
     }
     @graph.Line => {
       let points = if is_target {
-        "\{stroke_width / 2.0},\{stroke_width / 2.0} \{width - stroke_width / 2.0},\{height / 2.0} \{stroke_width / 2.0},\{height - stroke_width / 2.0}"
+        "\{d2_fixed6(stroke_width / 2.0)},\{d2_fixed6(stroke_width / 2.0)} \{d2_fixed6(width - stroke_width / 2.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(stroke_width / 2.0)},\{d2_fixed6(height - stroke_width / 2.0)}"
       } else {
-        "\{width - stroke_width / 2.0},\{stroke_width / 2.0} \{stroke_width / 2.0},\{height / 2.0} \{width - stroke_width / 2.0},\{height - stroke_width / 2.0}"
+        "\{d2_fixed6(width - stroke_width / 2.0)},\{d2_fixed6(stroke_width / 2.0)} \{d2_fixed6(stroke_width / 2.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width - stroke_width / 2.0)},\{d2_fixed6(height - stroke_width / 2.0)}"
       }
       @xml_emit.Element::new("polyline")
       .attr("points", points)
@@ -1845,15 +2225,15 @@ fn marker_body(
     }
     @graph.Diamond => {
       let points = if is_target {
-        "0,\{height / 2.0} \{width / 2.0},\{height / 8.0} \{width},\{height / 2.0} \{width / 2.0},\{height * 0.9}"
+        "\{d2_fixed6(0.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width / 2.0)},\{d2_fixed6(height / 8.0)} \{d2_fixed6(width)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width / 2.0)},\{d2_fixed6(height * 0.9)}"
       } else {
-        "\{width / 8.0},\{height / 2.0} \{width * 0.6},\{height / 8.0} \{width * 1.1},\{height / 2.0} \{width * 0.6},\{height * 7.0 / 8.0}"
+        "\{d2_fixed6(width / 8.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width * 0.6)},\{d2_fixed6(height / 8.0)} \{d2_fixed6(width * 1.1)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width * 0.6)},\{d2_fixed6(height * 7.0 / 8.0)}"
       }
       @xml_emit.Element::new("polygon")
       .attr("points", points)
-      .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr("class", connection_stroke_class)
+      .attr("fill", "#FFFFFF")
+      .attr("class", stroke_and_bg_class)
       .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
@@ -1867,12 +2247,12 @@ fn marker_body(
       }
       let inner_radius = radius - stroke_width
       @xml_emit.Element::new("circle")
-      .attr_num("cx", cx)
-      .attr_num("cy", radius)
-      .attr_num("r", inner_radius)
-      .attr("fill", "#FFFFFF")
+      .attr("r", d2_fixed6(inner_radius))
+      .attr("cx", d2_fixed6(cx))
+      .attr("cy", d2_fixed6(radius))
       .attr("stroke", stroke)
-      .attr("class", connection_stroke_class)
+      .attr("fill", "#FFFFFF")
+      .attr("class", bg_stroke_class)
       .attr("stroke-width", stroke_width_css)
       .self_close()
       .build()
@@ -1892,30 +2272,33 @@ fn marker_body(
 
       let modifier = if is_required {
         @xml_emit.Element::new("path")
-        .attr("d", "M\{offset},0 \{offset},\{height}")
+        .attr(
+          "d",
+          "M\{d2_fixed6(offset)},\{d2_fixed6(0.0)} \{d2_fixed6(offset)},\{d2_fixed6(height)}",
+        )
         .attr("fill", "#FFFFFF")
         .attr("stroke", stroke)
-        .attr("class", connection_stroke_class)
+        .attr("class", stroke_and_bg_class)
         .attr("stroke-width", stroke_width_css)
         .self_close()
         .build()
       } else {
         @xml_emit.Element::new("circle")
-        .attr_num("cx", offset / 2.0 + 2.0)
-        .attr_num("cy", height / 2.0)
-        .attr_num("r", offset / 2.0)
-        .attr("fill", "#FFFFFF")
+        .attr("r", d2_fixed6(offset / 2.0))
+        .attr("cx", d2_fixed6(offset / 2.0 + 2.0))
+        .attr("cy", d2_fixed6(height / 2.0))
         .attr("stroke", stroke)
-        .attr("class", connection_stroke_class)
+        .attr("fill", "#FFFFFF")
+        .attr("class", stroke_and_bg_class)
         .attr("stroke-width", stroke_width_css)
         .self_close()
         .build()
       }
 
       let crow_path = if is_many {
-        "M\{width - 3.0},\{height / 2.0} \{width + offset},\{height / 2.0} M\{offset + 3.0},\{height / 2.0} \{width + offset},0 M\{offset + 3.0},\{height / 2.0} \{width + offset},\{height}"
+        "M\{d2_fixed6(width - 3.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width + offset)},\{d2_fixed6(height / 2.0)} M\{d2_fixed6(offset + 3.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width + offset)},\{d2_fixed6(0.0)} M\{d2_fixed6(offset + 3.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width + offset)},\{d2_fixed6(height)}"
       } else {
-        "M\{width - 3.0},\{height / 2.0} \{width + offset},\{height / 2.0} M\{offset * 2.0},0 \{offset * 2.0},\{height}"
+        "M\{d2_fixed6(width - 3.0)},\{d2_fixed6(height / 2.0)} \{d2_fixed6(width + offset)},\{d2_fixed6(height / 2.0)} M\{d2_fixed6(offset * 2.0)},\{d2_fixed6(0.0)} \{d2_fixed6(offset * 2.0)},\{d2_fixed6(height)}"
       }
       let crow = @xml_emit.Element::new("path")
         .attr("d", crow_path)
@@ -1928,9 +2311,9 @@ fn marker_body(
       }
       @xml_emit.Element::new("g")
       .attr_if("transform", transform)
-      .attr("fill", "#FFFFFF")
       .attr("stroke", stroke)
-      .attr("class", connection_stroke_class)
+      .attr("fill", "#FFFFFF")
+      .attr("class", stroke_and_bg_class)
       .attr("stroke-width", stroke_width_css)
       .child(modifier)
       .child(crow)
@@ -1968,24 +2351,24 @@ fn marker_def(
   if arrowhead == @graph.Diamond {
     marker_width = width_raw * 1.1
   }
-  @xml_emit.Element::new("marker")
-  .attr("id", id)
-  .attr("markerWidth", d2_fixed6(marker_width))
-  .attr("markerHeight", d2_fixed6(marker_height))
-  .attr("refX", d2_fixed6(ref_x))
-  .attr("refY", d2_fixed6(marker_height / 2.0))
-  .attr(
-    "viewBox",
-    "\{d2_fixed6(0.0)} \{d2_fixed6(0.0)} \{d2_fixed6(marker_width)} \{d2_fixed6(marker_height)}",
+  let body = marker_body(
+    arrowhead, is_target, stroke, stroke_width, width_raw, marker_height, theme,
   )
-  .attr("orient", "auto")
-  .attr("markerUnits", "userSpaceOnUse")
-  .child(
-    marker_body(
-      arrowhead, is_target, stroke, stroke_width, width_raw, marker_height, theme,
-    ),
+  let sb = StringBuilder::new()
+  sb.write_string("<marker")
+  sb.write_string(" id=\"\{id}\"")
+  sb.write_string(" markerWidth=\"\{d2_fixed6(marker_width)}\"")
+  sb.write_string(" markerHeight=\"\{d2_fixed6(marker_height)}\"")
+  sb.write_string(" refX=\"\{d2_fixed6(ref_x)}\"")
+  sb.write_string(" refY=\"\{d2_fixed6(marker_height / 2.0)}\"")
+  sb.write_string(
+    " viewBox=\"\{d2_fixed6(0.0)} \{d2_fixed6(0.0)} \{d2_fixed6(marker_width)} \{d2_fixed6(marker_height)}\"",
   )
-  .build()
+  sb.write_string(" orient=\"auto\"")
+  sb.write_string(" markerUnits=\"userSpaceOnUse\"> ")
+  sb.write_string(body)
+  sb.write_string(" </marker>")
+  sb.to_string()
 }
 
 ///|
@@ -2033,6 +2416,7 @@ fn add_fill_patterns(
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
 ) -> Unit {
+  let _ = config
   // Collect unique patterns used
   let patterns_used : @hashset.HashSet[String] = @hashset.new()
   match style_fill_pattern_key(graph.root.style.fill_pattern) {
@@ -2059,7 +2443,7 @@ fn add_fill_patterns(
       "dots" =>
         assets.add_def(
           @svg.dots_pattern(
-            defs_id(config, pattern_def_key(pattern)),
+            pattern_def_id(pattern, assets.diagram_hash),
             stroke_color,
             bg_color,
           ),
@@ -2067,7 +2451,7 @@ fn add_fill_patterns(
       "lines" =>
         assets.add_def(
           @svg.lines_pattern(
-            defs_id(config, pattern_def_key(pattern)),
+            pattern_def_id(pattern, assets.diagram_hash),
             stroke_color,
             bg_color,
           ),
@@ -2075,7 +2459,7 @@ fn add_fill_patterns(
       "crosshatch" =>
         assets.add_def(
           @svg.crosshatch_pattern(
-            defs_id(config, pattern_def_key(pattern)),
+            pattern_def_id(pattern, assets.diagram_hash),
             stroke_color,
             bg_color,
           ),
@@ -2083,7 +2467,7 @@ fn add_fill_patterns(
       "grain" =>
         assets.add_def(
           @svg.grain_pattern(
-            defs_id(config, pattern_def_key(pattern)),
+            pattern_def_id(pattern, assets.diagram_hash),
             stroke_color,
             bg_color,
           ),
@@ -2091,11 +2475,11 @@ fn add_fill_patterns(
       _ => ()
     }
     overlay_rules.push(
-      ".\{pattern_overlay_class(pattern)} {\n  fill: \{defs_url(config, pattern_def_key(pattern))};\n  mix-blend-mode: multiply;\n}",
+      "\n.\{pattern_overlay_class(pattern)} {\n\tfill: url(#\{pattern_def_id(pattern, assets.diagram_hash)});\n\tmix-blend-mode: multiply;\n}",
     )
   }
   if !overlay_rules.is_empty() {
-    let css = overlay_rules.join("\n")
+    let css = overlay_rules.join("")
     assets.add_style(css)
   }
 }
@@ -2140,12 +2524,53 @@ fn add_shadow_filter(assets : SvgEmitAssets, graph : Diagram) -> Unit {
 }
 
 ///|
-fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
-  let mut min_x = 0.0
-  let mut min_y = 0.0
-  let mut max_x = 0.0
-  let mut max_y = 0.0
-  let mut first = true
+fn include_bounds(
+  min_x : Double,
+  min_y : Double,
+  max_x : Double,
+  max_y : Double,
+  first : Bool,
+  left : Double,
+  top : Double,
+  right : Double,
+  bottom : Double,
+) -> (Double, Double, Double, Double, Bool) {
+  if first {
+    (left, top, right, bottom, false)
+  } else {
+    (
+      if left < min_x {
+        left
+      } else {
+        min_x
+      },
+      if top < min_y {
+        top
+      } else {
+        min_y
+      },
+      if right > max_x {
+        right
+      } else {
+        max_x
+      },
+      if bottom > max_y {
+        bottom
+      } else {
+        max_y
+      },
+      false,
+    )
+  }
+}
+
+///|
+fn compute_graph_bounds(
+  graph : Diagram,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> (Double, Double, Double, Double) {
+  let mut bounds = (0.0, 0.0, 0.0, 0.0, true)
   let inline_child_ids : @hashset.HashSet[String] = @hashset.new()
   for parent in graph.shapes {
     if parent.shape_type == Class || parent.shape_type == SqlTable {
@@ -2160,65 +2585,283 @@ fn compute_graph_bounds(graph : Diagram) -> (Double, Double, Double, Double) {
     }
     match obj.box {
       Some(b) => {
-        let left = b.x
-        let top = b.y
-        let right = b.x + b.width
-        let bottom = b.y + b.height
-        if first {
-          min_x = left
-          min_y = top
-          max_x = right
-          max_y = bottom
-          first = false
-        } else {
-          if left < min_x {
-            min_x = left
+        let stroke_width = style_double(
+          obj.style.stroke_width,
+          config.default_stroke_width,
+        )
+        let half_stroke = ceil_double(stroke_width / 2.0)
+        bounds = include_bounds(
+          bounds.0,
+          bounds.1,
+          bounds.2,
+          bounds.3,
+          bounds.4,
+          b.x - half_stroke,
+          b.y - half_stroke,
+          b.x + b.width + half_stroke,
+          b.y + b.height + half_stroke,
+        )
+
+        if obj.shape_type == C4Person {
+          let head_radius = b.width * 0.22
+          let head_center_y = b.height * 0.18
+          let head_top = b.y + head_center_y - head_radius
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            b.x - half_stroke,
+            head_top - stroke_width,
+            b.x + b.width + half_stroke,
+            b.y + b.height + half_stroke,
+          )
+        }
+
+        if non_empty_string(obj.tooltip) is Some(_) ||
+          non_empty_string(obj.link) is Some(_) {
+          let appendix_padding = APPENDIX_ICON_RADIUS.to_double()
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            b.x - half_stroke,
+            b.y - stroke_width - appendix_padding,
+            b.x + b.width + stroke_width + appendix_padding,
+            b.y + b.height + half_stroke,
+          )
+        }
+
+        if style_bool(obj.style.shadow, false) {
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            b.x - half_stroke,
+            b.y - half_stroke,
+            b.x + b.width + half_stroke + SHADOW_SIZE_X,
+            b.y + b.height + half_stroke + SHADOW_SIZE_Y,
+          )
+        }
+
+        if style_bool(obj.style.three_d, false) {
+          let offset_y = if obj.shape_type == Hexagon {
+            THREE_DEE_OFFSET / 2.0
+          } else {
+            THREE_DEE_OFFSET
           }
-          if top < min_y {
-            min_y = top
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            b.x - half_stroke,
+            b.y - offset_y - stroke_width,
+            b.x + THREE_DEE_OFFSET + b.width + stroke_width,
+            b.y + b.height + half_stroke,
+          )
+        }
+
+        if style_bool(obj.style.multiple, false) {
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            b.x - half_stroke,
+            b.y - MULTIPLE_OFFSET - stroke_width,
+            b.x + MULTIPLE_OFFSET + b.width + stroke_width,
+            b.y + b.height + half_stroke,
+          )
+        }
+
+        if obj.label != "" && has_class(obj, "lang:markdown") {
+          let (label_x, label_y, label_w, label_h) = markdown_label_layout(
+            obj, b,
+          )
+          if label_w > 0 && label_h > 0 {
+            bounds = include_bounds(
+              bounds.0,
+              bounds.1,
+              bounds.2,
+              bounds.3,
+              bounds.4,
+              label_x,
+              label_y,
+              label_x + label_w.to_double(),
+              label_y + label_h.to_double(),
+            )
           }
-          if right > max_x {
-            max_x = right
+        } else if obj.label != "" && !has_class(obj, "lang:latex") {
+          let text_transform = if theme.rules.caps_lock {
+            "uppercase"
+          } else {
+            style_string(obj.style.text_transform, "")
           }
-          if bottom > max_y {
-            max_y = bottom
+          let default_font_size = default_object_font_size(obj, config)
+          let font_size = match obj.style.font_size {
+            Some(v) => v.as_int().unwrap_or(default_font_size)
+            None => default_font_size
           }
+          let is_bold = style_bool(obj.style.bold, default_object_bold(obj))
+          let is_italic = style_bool(obj.style.italic, false)
+          let is_mono = obj.shape_type == Code ||
+            theme.rules.mono ||
+            style_is_mono(obj.style.font_family)
+          let label_text = transform_label_text(obj.label, text_transform)
+          let (label_width, label_height) = object_label_dims(
+            obj, label_text, font_size, is_mono, is_bold, is_italic,
+          )
+          let (label_tl_x, label_tl_y, label_box_width) = plain_object_label_layout(
+            obj, b, label_width, label_height,
+          )
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            label_tl_x,
+            label_tl_y,
+            label_tl_x + label_box_width,
+            label_tl_y + label_height,
+          )
         }
       }
+      None => ()
+    }
+  }
+  for edge in graph.connections {
+    let stroke_width = style_double(
+      edge.style.stroke_width,
+      config.default_stroke_width,
+    )
+    let half_stroke = ceil_double(stroke_width / 2.0)
+    for point in edge.route {
+      bounds = include_bounds(
+        bounds.0,
+        bounds.1,
+        bounds.2,
+        bounds.3,
+        bounds.4,
+        @math.floor(point.x) - half_stroke,
+        @math.floor(point.y) - half_stroke,
+        ceil_double(point.x) + half_stroke,
+        ceil_double(point.y) + half_stroke,
+      )
+    }
+
+    if edge.label != "" {
+      match edge.label_box {
+        Some(label_box) =>
+          bounds = include_bounds(
+            bounds.0,
+            bounds.1,
+            bounds.2,
+            bounds.3,
+            bounds.4,
+            label_box.x,
+            label_box.y,
+            label_box.x + label_box.width,
+            label_box.y + label_box.height,
+          )
+        None => ()
+      }
+    }
+
+    let font_size = style_int(edge.style.font_size, config.font_size)
+    let is_mono = theme.rules.mono || style_is_mono(edge.style.font_family)
+    let is_bold = style_bool(edge.style.bold, false)
+    match edge.src_arrowhead_label {
+      Some(text) =>
+        if text != "" {
+          let dims = @text_metrics.measure_label(
+            text, font_size, is_mono, is_bold, true,
+          )
+          match
+            arrowhead_label_top_left(
+              edge,
+              false,
+              dims.width,
+              dims.height,
+              stroke_width,
+            ) {
+            Some(label_tl) =>
+              bounds = include_bounds(
+                bounds.0,
+                bounds.1,
+                bounds.2,
+                bounds.3,
+                bounds.4,
+                label_tl.x,
+                label_tl.y,
+                label_tl.x + dims.width,
+                label_tl.y + dims.height,
+              )
+            None => ()
+          }
+        }
+      None => ()
+    }
+
+    match edge.dst_arrowhead_label {
+      Some(text) =>
+        if text != "" {
+          let dims = @text_metrics.measure_label(
+            text, font_size, is_mono, is_bold, true,
+          )
+          match
+            arrowhead_label_top_left(
+              edge,
+              true,
+              dims.width,
+              dims.height,
+              stroke_width,
+            ) {
+            Some(label_tl) =>
+              bounds = include_bounds(
+                bounds.0,
+                bounds.1,
+                bounds.2,
+                bounds.3,
+                bounds.4,
+                label_tl.x,
+                label_tl.y,
+                label_tl.x + dims.width,
+                label_tl.y + dims.height,
+              )
+            None => ()
+          }
+        }
       None => ()
     }
   }
   // Include activation boxes (for sequence diagrams)
   for ab in graph.activation_boxes {
     let b = ab.1
-    let left = b.x
-    let top = b.y
-    let right = b.x + b.width
-    let bottom = b.y + b.height
-    if first {
-      min_x = left
-      min_y = top
-      max_x = right
-      max_y = bottom
-      first = false
-    } else {
-      if left < min_x {
-        min_x = left
-      }
-      if top < min_y {
-        min_y = top
-      }
-      if right > max_x {
-        max_x = right
-      }
-      if bottom > max_y {
-        max_y = bottom
-      }
-    }
+    bounds = include_bounds(
+      bounds.0,
+      bounds.1,
+      bounds.2,
+      bounds.3,
+      bounds.4,
+      b.x,
+      b.y,
+      b.x + b.width,
+      b.y + b.height,
+    )
   }
-  // D2 parity: bounds are shape-driven. Edge routes and detached label boxes
-  // are excluded from canvas extents.
-  (min_x, min_y, max_x, max_y)
+  if bounds.4 {
+    return (0.0, 0.0, 0.0, 0.0)
+  }
+  (bounds.0, bounds.1, bounds.2, bounds.3)
 }
 
 ///|
@@ -2237,6 +2880,104 @@ fn get_object_depth(id : String) -> Int {
 ///|
 fn is_container(obj : Shape) -> Bool {
   obj.child_ids.length() > 0
+}
+
+///|
+priv enum RenderObject {
+  ShapeObj(Shape)
+  EdgeObj(Connection)
+}
+
+///|
+priv struct RenderObjectItem {
+  obj : RenderObject
+  original_index : Int
+}
+
+///|
+fn render_object_z_index(obj : RenderObject) -> Int {
+  match obj {
+    ShapeObj(shape) => shape.z_index
+    EdgeObj(edge) => edge.z_index
+  }
+}
+
+///|
+fn sort_render_objects(
+  shapes : Array[Shape],
+  connections : Array[Connection],
+) -> Array[RenderObject] {
+  // D2 parity: sort over the combined shape+connection stream:
+  // 1) z-index asc
+  // 2) shape vs shape: shallower(level) first
+  // 3) shape before connection for same z-index
+  // 4) stable by original export order
+  let items : Array[RenderObjectItem] = []
+  for shape in shapes {
+    items.push(RenderObjectItem::{
+      obj: ShapeObj(shape),
+      original_index: items.length(),
+    })
+  }
+  for connection in connections {
+    items.push(RenderObjectItem::{
+      obj: EdgeObj(connection),
+      original_index: items.length(),
+    })
+  }
+  items.sort_by(fn(a, b) {
+    let z_a = render_object_z_index(a.obj)
+    let z_b = render_object_z_index(b.obj)
+    if z_a != z_b {
+      return z_a - z_b
+    }
+    let shape_a = match a.obj {
+      ShapeObj(shape) => Some(shape)
+      EdgeObj(_) => None
+    }
+    let shape_b = match b.obj {
+      ShapeObj(shape) => Some(shape)
+      EdgeObj(_) => None
+    }
+    match shape_a {
+      Some(sa) =>
+        match shape_b {
+          Some(sb) => {
+            let level_a = get_object_depth(sa.id)
+            let level_b = get_object_depth(sb.id)
+            if level_a != level_b {
+              return level_a - level_b
+            }
+            return a.original_index - b.original_index
+          }
+          None => return -1
+        }
+      None =>
+        match shape_b {
+          Some(_) => return 1
+          None => return a.original_index - b.original_index
+        }
+    }
+  })
+  let out : Array[RenderObject] = []
+  for item in items {
+    out.push(item.obj)
+  }
+  out
+}
+
+///|
+#warnings("-unused_value")
+fn sort_objects_by_depth(objects : Array[Shape]) -> Array[Shape] {
+  let sorted = sort_render_objects(objects, [])
+  let out : Array[Shape] = []
+  for item in sorted {
+    match item {
+      ShapeObj(shape) => out.push(shape)
+      EdgeObj(_) => ()
+    }
+  }
+  out
 }
 
 ///|
@@ -2284,38 +3025,6 @@ fn shape_type_name(shape : ShapeType) -> String {
     C4Person => "c4_person"
     C4Container => "c4_container"
   }
-}
-
-///|
-/// Sort objects for SVG rendering using d2-compatible object precedence:
-/// 1) lower z-index first
-/// 2) for same z-index, containers first
-/// 3) then shallower objects first
-/// 4) then preserve export order
-fn sort_objects_by_depth(objects : Array[Shape]) -> Array[Shape] {
-  let sorted = objects.copy()
-  let original_index : Map[String, Int] = {}
-  for i = 0; i < objects.length(); i = i + 1 {
-    original_index[objects[i].id] = i
-  }
-  sorted.sort_by(fn(a, b) {
-    if a.z_index != b.z_index {
-      return a.z_index - b.z_index
-    }
-    let container_a = is_container(a)
-    let container_b = is_container(b)
-    if container_a != container_b {
-      return if container_a { -1 } else { 1 }
-    }
-    let depth_a = get_object_depth(a.id)
-    let depth_b = get_object_depth(b.id)
-    if depth_a != depth_b {
-      return depth_a - depth_b
-    }
-    original_index.get(a.id).unwrap_or(0) -
-    original_index.get(b.id).unwrap_or(0)
-  })
-  sorted
 }
 
 ///|
@@ -2377,29 +3086,17 @@ fn object_language(obj : Shape) -> String? {
 }
 
 ///|
+fn include_object_wrapper_class(cls : String) -> Bool {
+  !cls.has_prefix("lang:")
+}
+
+///|
 fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
   if obj.label == "" {
     return
   }
-  let (x, y, width, height) = match obj.label_box {
-    Some(label_box) =>
-      (
-        label_box.x,
-        label_box.y,
-        if label_box.width > 0.0 {
-          label_box.width
-        } else {
-          box.width
-        },
-        if label_box.height > 0.0 {
-          label_box.height
-        } else {
-          box.height
-        },
-      )
-    None => (box.x, box.y, box.width, box.height)
-  }
-  if width <= 0.0 || height <= 0.0 {
+  let (x, y, width_px, height_px) = markdown_label_layout(obj, box)
+  if width_px <= 0 || height_px <= 0 {
     return
   }
   let md_html = @cmark_html.render(safe=false, strict=false, obj.label) catch {
@@ -2414,10 +3111,10 @@ fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
     .attr(
       "requiredFeatures", "http://www.w3.org/TR/SVG11/feature#Extensibility",
     )
-    .attr_num("x", x)
-    .attr_num("y", y)
-    .attr_num("width", width)
-    .attr_num("height", height)
+    .attr("x", d2_fixed6(x))
+    .attr("y", d2_fixed6(y))
+    .attr_int("width", width_px)
+    .attr_int("height", height_px)
     .raw(div)
     .build()
   svg.add(@xml_emit.Element::new("g").raw(foreign).build())
@@ -2426,6 +3123,8 @@ fn render_svg_markdown_label(svg : @svg.Svg, obj : Shape, box : Box) -> Unit {
 ///|
 fn render_svg_object(
   svg : @svg.Svg,
+  diagram_hash : String,
+  appendix_items : Array[String],
   obj : Shape,
   all_objects : Array[Shape],
   config : SvgConfig,
@@ -2442,8 +3141,6 @@ fn render_svg_object(
   // D2 parity: most shapes are emitted in one pass (shape+label together).
   // Keep two-pass behavior only for special rich shapes.
   let use_single_pass_object = shape_name != "code" &&
-    shape_name != "class" &&
-    shape_name != "sql_table" &&
     shape_name != "text" &&
     shape_name != "image"
   // For background pass, only open groups in foreground pass
@@ -2464,29 +3161,21 @@ fn render_svg_object(
     None => None
   }
   let has_link = link_href is Some(_)
-  let should_wrap_link = has_link &&
-    (if is_foreground {
-      obj.shape_type == Text || obj.shape_type == Image
-    } else {
-      obj.shape_type != Text && obj.shape_type != Image
-    })
+  let should_wrap_link = has_link && object_pass_active
   let opacity_style = if style_double(obj.style.opacity, 1.0) != 1.0 {
     "opacity:\{d2_fixed6(style_double(obj.style.opacity, 1.0))}"
   } else {
     ""
   }
   let use_shadow = style_bool(obj.style.shadow, false) && object_pass_active
-  if use_single_pass_object && !is_foreground {
-    let classes : Array[String] = [d2_wrapper_class(obj.id)]
-    if style_bool(obj.style.animated, false) {
-      classes.push("animated-shape")
-    }
-    for cls in obj.classes {
-      classes.push(cls)
-    }
-    svg.add(d2_group_open(classes.join(" "), style=opacity_style))
-    let shadow_filter = if use_shadow { "url(#shadow-filter)" } else { "" }
-    svg.add(d2_group_open("shape", filter=shadow_filter))
+  let suppress_shadow_for_shape_group = shape_name == "text" ||
+    shape_name == "code" ||
+    shape_name == "class" ||
+    shape_name == "sql_table"
+  let shadow_filter = if use_shadow && !suppress_shadow_for_shape_group {
+    "url(#shadow-filter)"
+  } else {
+    ""
   }
   if should_wrap_link {
     let href = link_href.unwrap()
@@ -2497,30 +3186,43 @@ fn render_svg_object(
       .open_tag(),
     )
   }
-  // Apply tooltip if present (only in foreground pass to avoid double-wrapping)
-  let has_tooltip = obj.tooltip is Some(_) && object_pass_active
-  if has_tooltip {
-    svg.open_group_with_tooltip(obj.tooltip.unwrap())
+  if object_pass_active {
+    let classes : Array[String] = [d2_wrapper_class(obj.id)]
+    if style_bool(obj.style.animated, false) {
+      classes.push("animated-shape")
+    }
+    for cls in obj.classes {
+      if include_object_wrapper_class(cls) {
+        classes.push(cls)
+      }
+    }
+    svg.add(d2_group_open(classes.join(" "), style=opacity_style))
+    svg.add(
+      d2_group_open(
+        "shape",
+        filter=shadow_filter,
+        trailing_space_before_gt=true,
+      ),
+    )
   }
   // Apply sketch filter if enabled (only in foreground pass)
   let use_sketch = style_bool(obj.style.sketch, false) && object_pass_active
   if use_sketch {
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
-  let use_shadow_group = use_shadow && !use_single_pass_object && !is_foreground
-  if use_shadow_group {
-    svg.open_group_with_filter("shadow-filter")
-  }
   // Get style values
   let raw_fill = style_string(obj.style.fill, "N7")
+  let fill_class_token = d2_theme_token(raw_fill, theme)
   let base_fill = resolve_theme_color(raw_fill, theme, use_css_theme_vars)
   // Apply fill pattern if specified
   let fill = resolve_fill_with_pattern(
     base_fill,
     obj.style.fill_pattern,
     config,
+    diagram_hash,
   )
   let raw_stroke = style_string(obj.style.stroke, "N1")
+  let stroke_class_token = d2_theme_token(raw_stroke, theme)
   let stroke = resolve_theme_color(raw_stroke, theme, use_css_theme_vars)
   let stroke_width = style_double(
     obj.style.stroke_width,
@@ -2547,23 +3249,55 @@ fn render_svg_object(
     "image" =>
       // Image shape - render external image (foreground only)
       if is_foreground && obj.icon is Some(url) {
-        svg.add(
-          @xml_emit.Element::new("image")
-          .attr("href", url)
-          .attr_num("x", box.x)
-          .attr_num("y", box.y)
-          .attr_num("width", box.width)
-          .attr_num("height", box.height)
-          .attr("preserveAspectRatio", "xMidYMid meet")
-          .self_close()
-          .build(),
+        let image_elem = StringBuilder::new()
+        image_elem.write_string("<image")
+        image_elem.write_string(" href=\"\{@svg.escape_xml(url)}\"")
+        image_elem.write_string(" x=\"\{d2_fixed6(box.x)}\"")
+        image_elem.write_string(" y=\"\{d2_fixed6(box.y)}\"")
+        image_elem.write_string(" width=\"\{d2_fixed6(box.width)}\"")
+        image_elem.write_string(" height=\"\{d2_fixed6(box.height)}\"")
+        if !use_css_theme_vars || stroke_class_token is None {
+          image_elem.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
+        }
+        if !use_css_theme_vars || fill_class_token is None {
+          image_elem.write_string(" fill=\"\{@svg.escape_xml(fill)}\"")
+        }
+        let image_class = StringBuilder::new()
+        match stroke_class_token {
+          Some(token) => image_class.write_string(" stroke-\{token}")
+          None => ()
+        }
+        match fill_class_token {
+          Some(token) => image_class.write_string(" fill-\{token}")
+          None => ()
+        }
+        let image_class_value = image_class.to_string()
+        if image_class_value != "" {
+          image_elem.write_string(
+            " class=\"\{@svg.escape_xml(image_class_value)}\"",
+          )
+        }
+        let stroke_width_css = if stroke_width.round() == stroke_width {
+          stroke_width.to_int().to_string()
+        } else {
+          d2_fixed6(stroke_width)
+        }
+        image_elem.write_string(
+          " style=\"stroke-width:\{@svg.escape_xml(stroke_width_css)};\"",
         )
+        image_elem.write_string(" />")
+        svg.add(image_elem.to_string())
       }
     "code" => {
       let default_font_size = default_object_font_size(obj, config)
       let font_size = match obj.style.font_size {
         Some(v) => v.as_int().unwrap_or(default_font_size)
         None => default_font_size
+      }
+      if object_pass_active {
+        // D2 parity: code snippets are rendered outside the shape group,
+        // while keeping an empty shape group for structural consistency.
+        svg.close_group()
       }
       // Code shape - render in appropriate pass
       render_svg_code(
@@ -2583,90 +3317,119 @@ fn render_svg_object(
         if use_sketch {
           svg.close_group()
         }
-        if has_tooltip {
-          svg.close_group()
-        }
+      }
+      append_object_title(svg, obj, object_pass_active)
+      if object_pass_active {
+        svg.close_group()
       }
       if should_wrap_link {
         svg.add(@xml_emit.Element::new("a").close_tag())
+      }
+      if object_pass_active {
+        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
       }
       return // Don't render the default label
     }
     "class" => {
       // UML class shape - render in appropriate pass
-      render_svg_class(
-        svg,
-        box,
-        obj.label,
-        object_children(obj, all_objects),
-        obj.style,
-        fill,
-        stroke,
-        stroke_width,
-        config,
-        theme,
-        use_css_theme_vars,
-        pass~,
-      )
+      if not(is_foreground) {
+        render_svg_class(
+          svg,
+          box,
+          obj.label,
+          object_children(obj, all_objects),
+          obj.style,
+          fill,
+          stroke,
+          stroke_width,
+          config,
+          theme,
+          use_css_theme_vars,
+          pass=Background,
+        )
+        render_svg_class(
+          svg,
+          box,
+          obj.label,
+          object_children(obj, all_objects),
+          obj.style,
+          fill,
+          stroke,
+          stroke_width,
+          config,
+          theme,
+          use_css_theme_vars,
+          pass=Foreground,
+        )
+      }
+      if object_pass_active {
+        svg.close_group()
+      }
       if is_foreground {
         if use_sketch {
           svg.close_group()
         }
-        if has_tooltip {
-          svg.close_group()
-        }
+      }
+      append_object_title(svg, obj, object_pass_active)
+      if object_pass_active {
+        svg.close_group()
       }
       if should_wrap_link {
         svg.add(@xml_emit.Element::new("a").close_tag())
+      }
+      if object_pass_active {
+        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
       }
       return // Don't render the default label
     }
     "sql_table" => {
-      // D2 parity: SQL tables are emitted in one pass on the background layer.
-      if !is_foreground {
-        let classes : Array[String] = [d2_wrapper_class(obj.id)]
-        for cls in obj.classes {
-          classes.push(cls)
-        }
-        if style_bool(obj.style.animated, false) {
-          classes.push("animated-shape")
-        }
-        svg.add(d2_group_open(classes.join(" "), style=opacity_style))
-        let shadow_filter = if style_bool(obj.style.shadow, false) {
-          "url(#shadow-filter)"
-        } else {
-          ""
-        }
-        svg.add(d2_group_open("shape", filter=shadow_filter))
+      if not(is_foreground) {
+        render_svg_sql_table(
+          svg,
+          box,
+          obj.label,
+          object_children(obj, all_objects),
+          obj.style,
+          fill,
+          stroke,
+          stroke_width,
+          pass=Background,
+          config,
+          theme,
+          use_css_theme_vars,
+        )
+        render_svg_sql_table(
+          svg,
+          box,
+          obj.label,
+          object_children(obj, all_objects),
+          obj.style,
+          fill,
+          stroke,
+          stroke_width,
+          pass=Foreground,
+          config,
+          theme,
+          use_css_theme_vars,
+        )
       }
-      render_svg_sql_table(
-        svg,
-        box,
-        obj.label,
-        object_children(obj, all_objects),
-        obj.style,
-        fill,
-        stroke,
-        stroke_width,
-        pass~,
-        config,
-        theme,
-        use_css_theme_vars,
-      )
-      if !is_foreground {
-        svg.add("</g>")
-        svg.add("</g>")
+      if object_pass_active {
+        svg.close_group()
       }
       if is_foreground {
         if use_sketch {
           svg.close_group()
         }
-        if has_tooltip {
-          svg.close_group()
-        }
+      }
+      append_object_title(svg, obj, object_pass_active)
+      if object_pass_active {
+        svg.close_group()
       }
       if should_wrap_link {
         svg.add(@xml_emit.Element::new("a").close_tag())
+      }
+      if object_pass_active {
+        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
       }
       return // Don't render the default label
     }
@@ -2674,31 +3437,35 @@ fn render_svg_object(
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          let mcx = mbox.x + mbox.width / 2.0
-          let mcy = mbox.y + mbox.height / 2.0
           svg.add(
-            @svg.ellipse(
-              mcx,
-              mcy,
+            d2_shape_ellipse(
+              mbox.x + mbox.width / 2.0,
+              mbox.y + mbox.height / 2.0,
               mbox.width / 2.0,
               mbox.height / 2.0,
-              fill~,
-              stroke~,
-              stroke_width~,
+              fill,
+              stroke,
+              stroke_width,
+              theme,
+              !use_css_theme_vars,
+              fill_class_token~,
+              stroke_class_token~,
             ),
           )
         }
-        let cx = box.x + box.width / 2.0
-        let cy = box.y + box.height / 2.0
         svg.add(
-          @svg.ellipse(
-            cx,
-            cy,
+          d2_shape_ellipse(
+            box.x + box.width / 2.0,
+            box.y + box.height / 2.0,
             box.width / 2.0,
             box.height / 2.0,
-            fill~,
-            stroke~,
-            stroke_width~,
+            fill,
+            stroke,
+            stroke_width,
+            theme,
+            !use_css_theme_vars,
+            fill_class_token~,
+            stroke_class_token~,
           ),
         )
       }
@@ -2706,25 +3473,43 @@ fn render_svg_object(
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_cylinder(svg, mbox, fill, stroke, stroke_width)
+          render_svg_cylinder(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_cylinder(svg, box, fill, stroke, stroke_width)
+        render_svg_cylinder(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "diamond" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_diamond(svg, mbox, fill, stroke, stroke_width)
+          render_svg_diamond(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_diamond(svg, box, fill, stroke, stroke_width)
+        render_svg_diamond(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "hexagon" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_hexagon(svg, mbox, fill, stroke, stroke_width)
+          render_svg_hexagon(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_hexagon(svg, box, fill, stroke, stroke_width)
+        render_svg_hexagon(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "octagon" =>
       if not(is_foreground) {
@@ -2738,17 +3523,29 @@ fn render_svg_object(
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_parallelogram(svg, mbox, fill, stroke, stroke_width)
+          render_svg_parallelogram(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_parallelogram(svg, box, fill, stroke, stroke_width)
+        render_svg_parallelogram(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "person" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_person(svg, mbox, fill, stroke, stroke_width)
+          render_svg_person(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_person(svg, box, fill, stroke, stroke_width)
+        render_svg_person(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "c4_person" =>
       if not(is_foreground) {
@@ -2802,78 +3599,128 @@ fn render_svg_object(
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_cloud(svg, mbox, fill, stroke, stroke_width)
+          render_svg_cloud(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_cloud(svg, box, fill, stroke, stroke_width)
+        render_svg_cloud(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "document" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_document(svg, mbox, fill, stroke, stroke_width)
+          render_svg_document(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_document(svg, box, fill, stroke, stroke_width)
+        render_svg_document(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "queue" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_queue(svg, mbox, fill, stroke, stroke_width)
+          render_svg_queue(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_queue(svg, box, fill, stroke, stroke_width)
+        render_svg_queue(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "stored_data" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_stored_data(svg, mbox, fill, stroke, stroke_width)
+          render_svg_stored_data(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_stored_data(svg, box, fill, stroke, stroke_width)
+        render_svg_stored_data(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "page" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_page(svg, mbox, fill, stroke, stroke_width)
+          render_svg_page(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_page(svg, box, fill, stroke, stroke_width)
+        render_svg_page(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "package" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_package(svg, mbox, fill, stroke, stroke_width)
+          render_svg_package(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_package(svg, box, fill, stroke, stroke_width)
+        render_svg_package(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "step" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_step(svg, mbox, fill, stroke, stroke_width)
+          render_svg_step(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_step(svg, box, fill, stroke, stroke_width)
+        render_svg_step(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     "callout" =>
       if not(is_foreground) {
         if is_multiple {
           let mbox = shifted_multiple_box(box)
-          render_svg_callout(svg, mbox, fill, stroke, stroke_width)
+          render_svg_callout(
+            svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+            stroke_class_token,
+          )
         }
-        render_svg_callout(svg, box, fill, stroke, stroke_width)
+        render_svg_callout(
+          svg, box, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
+          stroke_class_token,
+        )
       }
     _ =>
       if not(is_foreground) {
         if is_three_d {
           render_svg_3d_rect(
             svg,
+            diagram_hash,
             obj.id,
             box,
             fill,
             side_fill,
             stroke,
             stroke_width,
-            config,
+            theme,
+            use_css_theme_vars,
           )
         } else {
           if is_multiple {
@@ -2890,6 +3737,8 @@ fn render_svg_object(
                 border_radius,
                 theme,
                 !use_css_theme_vars,
+                fill_class_token~,
+                stroke_class_token~,
               ),
             )
           }
@@ -2905,6 +3754,8 @@ fn render_svg_object(
               border_radius,
               theme,
               !use_css_theme_vars,
+              fill_class_token~,
+              stroke_class_token~,
             ),
           )
         }
@@ -2930,6 +3781,8 @@ fn render_svg_object(
           border_radius,
           theme,
           !use_css_theme_vars,
+          fill_class_token=None,
+          stroke_class_token~,
         ),
       )
     }
@@ -2975,34 +3828,38 @@ fn render_svg_object(
         ),
       )
     }
-    if use_shadow_group {
-      svg.close_group()
-    }
   }
-  if use_single_pass_object && !is_foreground {
+  if object_pass_active {
     svg.close_group()
   }
   // Foreground pass: render icon and label
   if object_pass_active {
-    let cx = box.x + box.width / 2.0
-    let cy = box.y + box.height / 2.0
     // Check if icon is present (non-image shapes)
     let has_icon = obj.icon is Some(_) && obj.shape_type != Image
     if has_icon {
-      // Render icon above label
-      let icon_size = 24.0
-      let icon_y = cy - config.font_size.to_double() / 2.0 - icon_size / 2.0
+      let icon_position = D2_DEFAULT_ICON_POSITION
+      let icon_box = if d2_icon_position_is_outside(icon_position) {
+        box
+      } else {
+        shape_inner_box_for_icon(obj, box)
+      }
+      let icon_size_int = d2_get_icon_size(icon_box, icon_position)
+      let icon_size = icon_size_int.to_double()
       let icon_url = obj.icon.unwrap()
-      let icon_x = cx - icon_size / 2.0
-      let icon_top = icon_y - icon_size / 2.0
+      let icon_tl = d2_point_on_box(
+        icon_position,
+        icon_box,
+        LABEL_PADDING,
+        icon_size,
+        icon_size,
+      )
       svg.add(
         @xml_emit.Element::new("image")
         .attr("href", icon_url)
-        .attr_num("x", icon_x)
-        .attr_num("y", icon_top)
-        .attr_num("width", icon_size)
-        .attr_num("height", icon_size)
-        .attr("preserveAspectRatio", "xMidYMid meet")
+        .attr("x", d2_fixed6(icon_tl.x))
+        .attr("y", d2_fixed6(icon_tl.y))
+        .attr_int("width", icon_size_int)
+        .attr_int("height", icon_size_int)
         .self_close()
         .build(),
       )
@@ -3036,58 +3893,12 @@ fn render_svg_object(
         theme.rules.mono ||
         style_is_mono(obj.style.font_family)
       let label_text = transform_label_text(obj.label, text_transform)
-      let label_dims = @text_metrics.measure_label(
-        label_text, font_size, is_mono, is_bold, is_italic,
+      let (label_width, label_height) = object_label_dims(
+        obj, label_text, font_size, is_mono, is_bold, is_italic,
       )
-      let label_overflows = label_dims.width > box.width ||
-        label_dims.height > box.height
-      let inner_box = shape_inner_box_for_label(obj, box, label_dims)
-      let is_grid_container = is_container(obj) &&
-        (obj.grid_rows is Some(_) || obj.grid_columns is Some(_))
-      let (label_tl_x, label_tl_y, label_box_width) = match obj.label_box {
-        Some(label_box) =>
-          (
-            label_box.x,
-            label_box.y,
-            if label_box.width > 0.0 {
-              label_box.width
-            } else {
-              label_dims.width
-            },
-          )
-        None =>
-          if is_container(obj) && !is_grid_container {
-            (
-              box.x + (box.width - label_dims.width) / 2.0,
-              box.y - LABEL_PADDING - label_dims.height,
-              label_dims.width,
-            )
-          } else if is_grid_container {
-            (
-              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-              inner_box.y + LABEL_PADDING,
-              label_dims.width,
-            )
-          } else if has_outside_bottom_label(obj) || label_overflows {
-            (
-              box.x + (box.width - label_dims.width) / 2.0,
-              box.y + box.height + LABEL_PADDING,
-              label_dims.width,
-            )
-          } else if has_icon {
-            (
-              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-              inner_box.y + LABEL_PADDING,
-              label_dims.width,
-            )
-          } else {
-            (
-              inner_box.x + (inner_box.width - label_dims.width) / 2.0,
-              inner_box.y + (inner_box.height - label_dims.height) / 2.0,
-              label_dims.width,
-            )
-          }
-      }
+      let (label_tl_x, label_tl_y, label_box_width) = plain_object_label_layout(
+        obj, box, label_width, label_height,
+      )
       let label_x = label_tl_x + label_box_width / 2.0
       let label_baseline_y = label_tl_y + font_size.to_double()
       let font_class = d2_font_class_name(
@@ -3101,7 +3912,7 @@ fn render_svg_object(
           label_x,
           label_baseline_y,
           label_text,
-          label_dims.height,
+          label_height,
           text_color,
           font_class,
           font_size,
@@ -3114,19 +3925,16 @@ fn render_svg_object(
     if use_sketch {
       svg.close_group()
     }
-    // Close tooltip group if opened
-    if has_tooltip {
-      svg.close_group()
-    }
   }
+  append_object_title(svg, obj, object_pass_active)
   if object_pass_active {
-    render_object_appendix_icons(svg, obj, box)
-  }
-  if use_single_pass_object && !is_foreground {
     svg.close_group()
   }
   if should_wrap_link {
     svg.add(@xml_emit.Element::new("a").close_tag())
+  }
+  if object_pass_active {
+    append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
   }
 }
 
@@ -3201,6 +4009,8 @@ fn render_svg_sql_table(
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
 ) -> Unit {
+  let fill_token = d2_theme_token(style_string(style.fill, "N7"), theme)
+  let stroke_token = d2_theme_token(style_string(style.stroke, "N1"), theme)
   let row_count = children.length() + 1
   let row_height = if row_count > 0 {
     box.height / row_count.to_double()
@@ -3237,11 +4047,11 @@ fn render_svg_sql_table(
   match pass {
     Background => {
       let rect_classes : Array[String] = ["shape"]
-      match d2_theme_token(stroke, theme) {
+      match stroke_token {
         Some(token) => rect_classes.push("stroke-\{token}")
         None => ()
       }
-      match d2_theme_token(fill, theme) {
+      match fill_token {
         Some(token) => rect_classes.push("fill-\{token}")
         None => ()
       }
@@ -3264,7 +4074,7 @@ fn render_svg_sql_table(
         .build(),
       )
       let header_classes : Array[String] = ["class_header"]
-      match d2_theme_token(stroke, theme) {
+      match stroke_token {
         Some(token) => header_classes.push("fill-\{token}")
         None => ()
       }
@@ -3355,7 +4165,7 @@ fn render_svg_sql_table(
           ),
         )
         row_top = row_top + row_height
-        let line_class = match d2_theme_token(stroke, theme) {
+        let line_class = match stroke_token {
           Some(token) => " stroke-\{token}"
           None => ""
         }
@@ -3520,23 +4330,32 @@ fn render_svg_class(
   } else {
     label_dims.height + LABEL_PADDING * 2.0
   }
+  let border_radius = style_double(style.border_radius, 0.0)
   let visibility_color = style_color(None, "B2", theme, use_css_theme_vars)
+  let visibility_token : String? = Some("B2")
   let name_color = style_color(None, "N1", theme, use_css_theme_vars)
+  let name_token = d2_theme_token(name_color, theme)
   let type_color = style_color(None, "AA2", theme, use_css_theme_vars)
+  let type_token = d2_theme_token(type_color, theme)
+  let header_text_color = style_color(None, "N7", theme, use_css_theme_vars)
+  let header_text_token = d2_theme_token(header_text_color, theme)
   let visibility_x = box.x + CLASS_PREFIX_PADDING
   let name_x = visibility_x + CLASS_PREFIX_WIDTH
   let type_x = box.x + box.width - CLASS_TYPE_PADDING
   match pass {
     Background => {
       svg.add(
-        @svg.rect(
+        d2_shape_rect(
           box.x,
           box.y,
           box.width,
           box.height,
-          fill~,
-          stroke~,
-          stroke_width~,
+          fill,
+          stroke,
+          stroke_width,
+          border_radius,
+          theme,
+          !use_css_theme_vars,
         ),
       )
       let header_fill_token = d2_theme_token(stroke, theme)
@@ -3544,76 +4363,104 @@ fn render_svg_class(
         Some(token) => "class_header fill-\{token}"
         None => "class_header"
       }
-      svg.add(
-        @xml_emit.Element::new("rect")
-        .attr_num("x", box.x)
-        .attr_num("y", box.y)
-        .attr_num("width", box.width)
-        .attr_num("height", header_height)
-        .attr("fill", stroke)
-        .attr("class", header_class)
-        .self_close()
-        .build(),
-      )
+      let header_rect = StringBuilder::new()
+      header_rect.write_string("<rect")
+      header_rect.write_string(" x=\"\{d2_fixed6(box.x)}\"")
+      header_rect.write_string(" y=\"\{d2_fixed6(box.y)}\"")
+      header_rect.write_string(" width=\"\{d2_fixed6(box.width)}\"")
+      header_rect.write_string(" height=\"\{d2_fixed6(header_height)}\"")
+      if !use_css_theme_vars || header_fill_token is None {
+        header_rect.write_string(" fill=\"\{@svg.escape_xml(stroke)}\"")
+      }
+      if header_class != "" {
+        header_rect.write_string(" class=\"\{@svg.escape_xml(header_class)}\"")
+      }
+      header_rect.write_string(" />")
+      svg.add(header_rect.to_string())
     }
     Foreground => {
       let header_text_top = box.y + (header_height - label_dims.height) / 2.0
       let name_y = header_text_top + base_font_size.to_double()
-      svg.add(
-        @xml_emit.Element::new("text")
-        .attr_num("x", box.x + box.width / 2.0)
-        .attr_num("y", name_y)
-        .attr("class", "text-mono")
-        .attr("style", "text-anchor:middle;font-size:\{header_font_size}px;")
-        .attr("fill", style_color(None, "N7", theme, use_css_theme_vars))
-        .text(label)
-        .build(),
+      let header_text = StringBuilder::new()
+      header_text.write_string("<text")
+      header_text.write_string(" x=\"\{d2_fixed6(box.x + box.width / 2.0)}\"")
+      header_text.write_string(" y=\"\{d2_fixed6(name_y)}\"")
+      if !use_css_theme_vars || header_text_token is None {
+        header_text.write_string(
+          " fill=\"\{@svg.escape_xml(header_text_color)}\"",
+        )
+      }
+      let header_class = match header_text_token {
+        Some(token) => "text-mono fill-\{token}"
+        None => "text-mono"
+      }
+      header_text.write_string(" class=\"\{@svg.escape_xml(header_class)}\"")
+      header_text.write_string(
+        " style=\"text-anchor:middle;font-size:\{header_font_size}px;\"",
       )
+      header_text.write_string(">")
+      header_text.write_string(@svg.escape_xml(label))
+      header_text.write_string("</text>")
+      svg.add(header_text.to_string())
       let mut row_top = box.y + header_height
       for m in fields {
         let text_y = row_top +
           row_height / 2.0 +
           base_font_size.to_double() / 4.0
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", visibility_x)
-          .attr_num("y", text_y)
-          .attr("class", "text-mono")
-          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
-          .attr("fill", visibility_color)
-          .text(m.visibility)
-          .build(),
+          d2_text_element(
+            visibility_x,
+            text_y,
+            m.visibility,
+            base_font_size.to_double(),
+            visibility_color,
+            "text-mono",
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=visibility_token,
+          ),
         )
-        let name_class = if m.underline {
+        let name_font_class = if m.underline {
           "text-mono text-underline"
         } else {
           "text-mono"
         }
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", name_x)
-          .attr_num("y", text_y)
-          .attr("class", name_class)
-          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
-          .attr("fill", name_color)
-          .text(m.name)
-          .build(),
+          d2_text_element(
+            name_x,
+            text_y,
+            m.name,
+            base_font_size.to_double(),
+            name_color,
+            name_font_class,
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=name_token,
+          ),
         )
         if m.type_name != "" {
           svg.add(
-            @xml_emit.Element::new("text")
-            .attr_num("x", type_x)
-            .attr_num("y", text_y)
-            .attr("class", "text-mono")
-            .attr("style", "text-anchor:end;font-size:\{base_font_size}px")
-            .attr("fill", type_color)
-            .text(m.type_name)
-            .build(),
+            d2_text_element(
+              type_x,
+              text_y,
+              m.type_name,
+              base_font_size.to_double(),
+              type_color,
+              "text-mono",
+              base_font_size,
+              theme,
+              !use_css_theme_vars,
+              text_anchor="end",
+              fill_class_token=type_token,
+            ),
           )
         }
         row_top = row_top + row_height
       }
-      let border_radius = style_double(style.border_radius, 0.0)
       let (sep_x1, sep_x2) = if border_radius > 0.0 && methods.is_empty() {
         (box.x + border_radius, box.x + box.width - border_radius)
       } else {
@@ -3624,57 +4471,75 @@ fn render_svg_class(
         Some(token) => " stroke-\{token}"
         None => ""
       }
-      svg.add(
-        @xml_emit.Element::new("line")
-        .attr_num("x1", sep_x1)
-        .attr_num("y1", row_top)
-        .attr_num("x2", sep_x2)
-        .attr_num("y2", row_top)
-        .attr("stroke", name_color)
-        .attr_if("class", line_class)
-        .attr("style", "stroke-width:1")
-        .self_close()
-        .build(),
-      )
+      let line = StringBuilder::new()
+      line.write_string("<line")
+      line.write_string(" x1=\"\{d2_fixed6(sep_x1)}\"")
+      line.write_string(" x2=\"\{d2_fixed6(sep_x2)}\"")
+      line.write_string(" y1=\"\{d2_fixed6(row_top)}\"")
+      line.write_string(" y2=\"\{d2_fixed6(row_top)}\"")
+      if !use_css_theme_vars || line_token is None {
+        line.write_string(" stroke=\"\{@svg.escape_xml(name_color)}\"")
+      }
+      if line_class != "" {
+        line.write_string(" class=\"\{@svg.escape_xml(line_class)}\"")
+      }
+      line.write_string(" style=\"stroke-width:1\"")
+      line.write_string(" />")
+      svg.add(line.to_string())
       for m in methods {
         let text_y = row_top +
           row_height / 2.0 +
           base_font_size.to_double() / 4.0
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", visibility_x)
-          .attr_num("y", text_y)
-          .attr("class", "text-mono")
-          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
-          .attr("fill", visibility_color)
-          .text(m.visibility)
-          .build(),
+          d2_text_element(
+            visibility_x,
+            text_y,
+            m.visibility,
+            base_font_size.to_double(),
+            visibility_color,
+            "text-mono",
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=visibility_token,
+          ),
         )
-        let name_class = if m.underline {
+        let name_font_class = if m.underline {
           "text-mono text-underline"
         } else {
           "text-mono"
         }
         svg.add(
-          @xml_emit.Element::new("text")
-          .attr_num("x", name_x)
-          .attr_num("y", text_y)
-          .attr("class", name_class)
-          .attr("style", "text-anchor:start;font-size:\{base_font_size}px")
-          .attr("fill", name_color)
-          .text(m.name)
-          .build(),
+          d2_text_element(
+            name_x,
+            text_y,
+            m.name,
+            base_font_size.to_double(),
+            name_color,
+            name_font_class,
+            base_font_size,
+            theme,
+            !use_css_theme_vars,
+            text_anchor="start",
+            fill_class_token=name_token,
+          ),
         )
         if m.type_name != "" {
           svg.add(
-            @xml_emit.Element::new("text")
-            .attr_num("x", type_x)
-            .attr_num("y", text_y)
-            .attr("class", "text-mono")
-            .attr("style", "text-anchor:end;font-size:\{base_font_size}px")
-            .attr("fill", type_color)
-            .text(m.type_name)
-            .build(),
+            d2_text_element(
+              type_x,
+              text_y,
+              m.type_name,
+              base_font_size.to_double(),
+              type_color,
+              "text-mono",
+              base_font_size,
+              theme,
+              !use_css_theme_vars,
+              text_anchor="end",
+              fill_class_token=type_token,
+            ),
           )
         }
         row_top = row_top + row_height
@@ -3707,7 +4572,10 @@ fn render_svg_code(
       let lines = split_lines(label)
       for code_bg in code_bgs {
         let code_group = @xml_emit.Element::new("g")
-          .attr("transform", "translate(\{box.x},\{box.y})")
+          .attr(
+            "transform",
+            "translate(\{d2_fixed6(box.x)} \{d2_fixed6(box.y)})",
+          )
           .attr("class", code_bg.0)
         if font_size != 16 {
           svg.add(code_group.attr("style", "font-size:\{font_size}").open_tag())
@@ -3716,8 +4584,8 @@ fn render_svg_code(
         }
         svg.add(
           @xml_emit.Element::new("rect")
-          .attr_num("width", box.width)
-          .attr_num("height", box.height)
+          .attr("width", d2_fixed6(box.width))
+          .attr("height", d2_fixed6(box.height))
           .attr("stroke", stroke)
           .attr(
             "class",
@@ -3730,15 +4598,31 @@ fn render_svg_code(
           .self_close()
           .build(),
         )
-        svg.open_group("translate(\{padding},\{padding})")
+        svg.open_group("translate(\{d2_fixed6(padding)} \{d2_fixed6(padding)})")
         for i, line in lines {
-          let y_em = "\{1.0 + i.to_double() * 1.3}em"
+          let y_em = "\{d2_fixed6(1.0 + i.to_double() * 1.3)}em"
           let raw = code_line_svg_raw(line, language, code_bg.0 == "dark-code")
+          let raw_with_newline = if code_bg.0 == "dark-code" {
+            let prefixed = if i > 0 {
+              "<tspan fill=\"#cdd6f4\"></tspan>" + raw
+            } else {
+              raw
+            }
+            if i + 1 < lines.length() {
+              prefixed + "<tspan fill=\"#cdd6f4\">\n</tspan>"
+            } else {
+              prefixed
+            }
+          } else if i + 1 < lines.length() {
+            raw + "\n"
+          } else {
+            raw
+          }
           let text = @xml_emit.Element::new("text")
             .attr("class", "text-mono")
             .attr("x", "0")
             .attr("y", y_em)
-            .raw(raw)
+            .raw(raw_with_newline)
             .build()
           svg.add(text)
         }
@@ -5167,9 +6051,6 @@ fn code_write_span(
   class_name : String?,
 ) -> Unit {
   let text = code_svg_escape(raw_text)
-  if text == "" {
-    return
-  }
   match fill {
     Some(color) =>
       match class_name {
@@ -5272,12 +6153,69 @@ fn split_lines(s : String) -> Array[String] {
 }
 
 ///|
+fn d2_shape_path(
+  d : String,
+  fill : String,
+  stroke : String,
+  stroke_width : Double,
+  theme : @themes.Theme,
+  inline_theme : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
+) -> String {
+  let classes = StringBuilder::new()
+  let stroke_token = match stroke_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(stroke, theme)
+  }
+  let fill_token = match fill_class_token {
+    Some(v) => Some(v)
+    None => d2_theme_token(fill, theme)
+  }
+  match stroke_token {
+    Some(token) => classes.write_string(" stroke-\{token}")
+    None => ()
+  }
+  match fill_token {
+    Some(token) => classes.write_string(" fill-\{token}")
+    None => ()
+  }
+  let stroke_width_css = if stroke_width.round() == stroke_width {
+    stroke_width.to_int().to_string()
+  } else {
+    d2_fixed6(stroke_width)
+  }
+  let sb = StringBuilder::new()
+  sb.write_string("<path")
+  sb.write_string(" d=\"\{@svg.escape_xml(d)}\"")
+  if inline_theme || stroke_token is None {
+    sb.write_string(" stroke=\"\{@svg.escape_xml(stroke)}\"")
+  }
+  if inline_theme || fill_token is None {
+    sb.write_string(" fill=\"\{@svg.escape_xml(fill)}\"")
+  }
+  let class_value = classes.to_string()
+  if class_value != "" {
+    sb.write_string(" class=\"\{@svg.escape_xml(class_value)}\"")
+  }
+  sb.write_string(
+    " style=\"stroke-width:\{@svg.escape_xml(stroke_width_css)};\"",
+  )
+  sb.write_string(" />")
+  sb.to_string()
+}
+
+///|
 fn render_svg_cylinder(
   svg : @svg.Svg,
   box : Box,
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
   let arc_depth = 24.0
   let arc_height = if box.height < arc_depth * 2.0 {
@@ -5286,50 +6224,64 @@ fn render_svg_cylinder(
     arc_depth
   }
   let multiplier = 0.45
-  let x0 = box.x
-  let y0 = box.y
+  let x0 = d2_path_chop_precision(box.x)
+  let y0 = d2_path_chop_precision(box.y)
   let w = box.width
   let h = box.height
-  let top_y = y0 + arc_height
-  let bottom_y = y0 + h - arc_height
-  let outer = @svg.PathBuilder::new()
-    .move_to(x0, top_y)
-    .cubic_to(x0, y0, x0 + w * multiplier, y0, x0 + w / 2.0, y0)
-    .cubic_to(x0 + w - w * multiplier, y0, x0 + w, y0, x0 + w, top_y)
-    .line_to(x0 + w, bottom_y)
-    .cubic_to(
-      x0 + w,
-      y0 + h,
-      x0 + w - w * multiplier,
-      y0 + h,
-      x0 + w / 2.0,
-      y0 + h,
-    )
-    .cubic_to(x0 + w * multiplier, y0 + h, x0, y0 + h, x0, bottom_y)
-    .line_to(x0, top_y)
-    .close()
-    .build()
-  svg.add(@svg.path(outer, fill~, stroke~, stroke_width~))
-  let inner = @svg.PathBuilder::new()
-    .move_to(x0, top_y)
-    .cubic_to(
-      x0,
-      y0 + arc_height * 2.0,
-      x0 + w * multiplier,
-      y0 + arc_height * 2.0,
-      x0 + w / 2.0,
-      y0 + arc_height * 2.0,
-    )
-    .cubic_to(
-      x0 + w - w * multiplier,
-      y0 + arc_height * 2.0,
-      x0 + w,
-      y0 + arc_height * 2.0,
-      x0 + w,
-      top_y,
-    )
-    .build()
-  svg.add(@svg.path(inner, fill~, stroke~, stroke_width~))
+  let top_y = d2_path_chop_precision(y0 + arc_height)
+  let mut current_y = top_y
+  let outer : Array[String] = []
+  outer.push("M \{d2_path_number(x0)} \{d2_path_number(top_y)}")
+  outer.push(
+    "C \{d2_path_number(x0)} \{d2_path_number(y0)} \{d2_path_number(x0 + w * multiplier)} \{d2_path_number(y0)} \{d2_path_number(x0 + w / 2.0)} \{d2_path_number(y0)}",
+  )
+  outer.push(
+    "C \{d2_path_number(x0 + w - w * multiplier)} \{d2_path_number(y0)} \{d2_path_number(x0 + w)} \{d2_path_number(y0)} \{d2_path_number(x0 + w)} \{d2_path_number(top_y)}",
+  )
+  current_y = d2_path_chop_precision(current_y + (h - arc_height * 2.0))
+  outer.push("V \{d2_path_number(current_y)}")
+  outer.push(
+    "C \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + w - w * multiplier)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + w / 2.0)} \{d2_path_number(y0 + h)}",
+  )
+  outer.push(
+    "C \{d2_path_number(x0 + w * multiplier)} \{d2_path_number(y0 + h)} \{d2_path_number(x0)} \{d2_path_number(y0 + h)} \{d2_path_number(x0)} \{d2_path_number(y0 + h - arc_height)}",
+  )
+  current_y = d2_path_chop_precision(current_y - (h - arc_height * 2.0))
+  outer.push("V \{d2_path_number(current_y)}")
+  outer.push("Z")
+  svg.add(
+    d2_shape_path(
+      outer.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
+
+  let inner : Array[String] = []
+  inner.push("M \{d2_path_number(x0)} \{d2_path_number(top_y)}")
+  inner.push(
+    "C \{d2_path_number(x0)} \{d2_path_number(y0 + arc_height * 2.0)} \{d2_path_number(x0 + w * multiplier)} \{d2_path_number(y0 + arc_height * 2.0)} \{d2_path_number(x0 + w / 2.0)} \{d2_path_number(y0 + arc_height * 2.0)}",
+  )
+  inner.push(
+    "C \{d2_path_number(x0 + w - w * multiplier)} \{d2_path_number(y0 + arc_height * 2.0)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + arc_height * 2.0)} \{d2_path_number(x0 + w)} \{d2_path_number(top_y)}",
+  )
+  svg.add(
+    d2_shape_path(
+      inner.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5368,25 +6320,106 @@ fn render_svg_diamond(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
   // Ported from ../d2/lib/shape/shape_diamond.go (diamondPath).
   let sx = box.width / 77.0
   let sy = box.height / 76.9
-  let px = fn(v : Double) { box.x + v * sx }
-  let py = fn(v : Double) { box.y + v * sy }
-  let pb = @svg.PathBuilder::new()
-    .move_to(px(38.5), py(76.9))
-    .cubic_to(px(38.2), py(76.9), px(38.0), py(76.8), px(37.8), py(76.6))
-    .line_to(px(0.3), py(39.2))
-    .cubic_to(px(-0.1), py(38.8), px(-0.1), py(38.2), px(0.3), py(37.8))
-    .line_to(px(37.8), py(0.3))
-    .cubic_to(px(38.2), py(-0.1), px(38.8), py(-0.1), px(39.2), py(0.3))
-    .line_to(px(76.7), py(37.8))
-    .cubic_to(px(77.1), py(38.2), px(77.1), py(38.8), px(76.7), py(39.2))
-    .line_to(px(39.2), py(76.6))
-    .cubic_to(px(39.0), py(76.8), px(38.8), py(76.9), px(38.5), py(76.9))
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  let abs = fn(x : Double, y : Double) {
+    (
+      d2_path_chop_precision(box.x + sx * x),
+      d2_path_chop_precision(box.y + sy * y),
+    )
+  }
+  let rel = fn(base_x : Double, base_y : Double, dx : Double, dy : Double) {
+    (
+      d2_path_chop_precision(base_x + sx * dx),
+      d2_path_chop_precision(base_y + sy * dy),
+    )
+  }
+  let commands : Array[String] = []
+  let (start_x, start_y) = abs(38.5, 76.9)
+  let mut current_x = start_x
+  let mut current_y = start_y
+  commands.push("M \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
+
+  let (c1x, c1y) = rel(current_x, current_y, -0.3, 0.0)
+  let (c2x, c2y) = rel(current_x, current_y, -0.5, -0.1)
+  let (c3x, c3y) = rel(current_x, current_y, -0.7, -0.3)
+  commands.push(
+    "C \{d2_path_number(c1x)} \{d2_path_number(c1y)} \{d2_path_number(c2x)} \{d2_path_number(c2y)} \{d2_path_number(c3x)} \{d2_path_number(c3y)}",
+  )
+  current_x = c3x
+  current_y = c3y
+
+  let (l1x, l1y) = abs(0.3, 39.2)
+  commands.push("L \{d2_path_number(l1x)} \{d2_path_number(l1y)}")
+  current_x = l1x
+  current_y = l1y
+
+  let (c4x, c4y) = rel(current_x, current_y, -0.4, -0.4)
+  let (c5x, c5y) = rel(current_x, current_y, -0.4, -1.0)
+  let (c6x, c6y) = rel(current_x, current_y, 0.0, -1.4)
+  commands.push(
+    "C \{d2_path_number(c4x)} \{d2_path_number(c4y)} \{d2_path_number(c5x)} \{d2_path_number(c5y)} \{d2_path_number(c6x)} \{d2_path_number(c6y)}",
+  )
+  current_x = c6x
+  current_y = c6y
+
+  let (l2x, l2y) = abs(37.8, 0.3)
+  commands.push("L \{d2_path_number(l2x)} \{d2_path_number(l2y)}")
+  current_x = l2x
+  current_y = l2y
+
+  let (c7x, c7y) = rel(current_x, current_y, 0.4, -0.4)
+  let (c8x, c8y) = rel(current_x, current_y, 1.0, -0.4)
+  let (c9x, c9y) = rel(current_x, current_y, 1.4, 0.0)
+  commands.push(
+    "C \{d2_path_number(c7x)} \{d2_path_number(c7y)} \{d2_path_number(c8x)} \{d2_path_number(c8y)} \{d2_path_number(c9x)} \{d2_path_number(c9y)}",
+  )
+  current_x = c9x
+  current_y = c9y
+
+  let (l3x, l3y) = rel(current_x, current_y, 37.5, 37.5)
+  commands.push("L \{d2_path_number(l3x)} \{d2_path_number(l3y)}")
+  current_x = l3x
+  current_y = l3y
+
+  let (c10x, c10y) = rel(current_x, current_y, 0.4, 0.4)
+  let (c11x, c11y) = rel(current_x, current_y, 0.4, 1.0)
+  let (c12x, c12y) = rel(current_x, current_y, 0.0, 1.4)
+  commands.push(
+    "C \{d2_path_number(c10x)} \{d2_path_number(c10y)} \{d2_path_number(c11x)} \{d2_path_number(c11y)} \{d2_path_number(c12x)} \{d2_path_number(c12y)}",
+  )
+  current_x = c12x
+  current_y = c12y
+
+  let (l4x, l4y) = abs(39.2, 76.6)
+  commands.push("L \{d2_path_number(l4x)} \{d2_path_number(l4y)}")
+
+  let (c13x, c13y) = abs(39.0, 76.8)
+  let (c14x, c14y) = abs(38.8, 76.9)
+  let (c15x, c15y) = abs(38.5, 76.9)
+  commands.push(
+    "C \{d2_path_number(c13x)} \{d2_path_number(c13y)} \{d2_path_number(c14x)} \{d2_path_number(c14y)} \{d2_path_number(c15x)} \{d2_path_number(c15y)}",
+  )
+  commands.push("Z")
+
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5396,17 +6429,49 @@ fn render_svg_hexagon(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  let inset = box.width * 0.25
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x + inset, box.y)
-    .line_to(box.x + box.width - inset, box.y)
-    .line_to(box.x + box.width, box.y + box.height / 2.0)
-    .line_to(box.x + box.width - inset, box.y + box.height)
-    .line_to(box.x + inset, box.y + box.height)
-    .line_to(box.x, box.y + box.height / 2.0)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  // Ported from ../d2/lib/shape/shape_hexagon.go (hexagonPath).
+  let half_y_factor = 43.6 / 87.3
+  let x0 = box.x
+  let y0 = box.y
+  let w = box.width
+  let h = box.height
+  let commands : Array[String] = []
+  commands.push(
+    "M \{d2_path_number(x0 + w * 0.25)} \{d2_path_number(y0 + h * 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + w * 0.0)} \{d2_path_number(y0 + h * half_y_factor)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + w * 0.25)} \{d2_path_number(y0 + h * 1.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + w * 0.75)} \{d2_path_number(y0 + h * 1.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + w * 1.0)} \{d2_path_number(y0 + h * half_y_factor)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + w * 0.75)} \{d2_path_number(y0 + h * 0.0)}",
+  )
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5416,15 +6481,61 @@ fn render_svg_parallelogram(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  let wedge = if box.width < 52.0 { box.width / 2.0 } else { 26.0 }
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x + wedge, box.y)
-    .line_to(box.x + box.width, box.y)
-    .line_to(box.x + box.width - wedge, box.y + box.height)
-    .line_to(box.x, box.y + box.height)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  // Ported from ../d2/lib/shape/shape_parallelogram.go (parallelogramPath).
+  let wedge = if box.width <= 26.0 { box.width / 2.0 } else { 26.0 }
+  let commands : Array[String] = []
+  commands.push(
+    "M \{d2_path_number(box.x + wedge)} \{d2_path_number(box.y + 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width)} \{d2_path_number(box.y + 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width - wedge)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + 0.0)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + 0.0)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
+}
+
+///|
+fn d2_path_chop_precision(value : Double) -> Double {
+  // Match ../d2/lib/svg/path.go::chopPrecision.
+  // D2 rounds to integer after bringing the value down to float32 precision.
+  // Go reference:
+  // math.Round(float64(float32(f*10000)) / 10000)
+  let rounded = (Float::from_double(value * 10000.0).to_double() / 10000.0).round()
+  if rounded == 0.0 {
+    0.0
+  } else {
+    rounded
+  }
+}
+
+///|
+fn d2_path_number(value : Double) -> String {
+  d2_path_chop_precision(value).to_string()
 }
 
 ///|
@@ -5434,50 +6545,124 @@ fn render_svg_person(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // diago-style person shape based on 68.3 x 77.4 coordinate system
+  // Ported from ../d2/lib/shape/shape_person.go (personPath) + ../d2/lib/svg/path.go precision.
   let sx = box.width / 68.3
   let sy = box.height / 77.4
-  let x = box.x
-  let y = box.y
-  // Build path using PathBuilder
-  // The path draws: bottom line, left leg, left shoulder, head circle, right shoulder, right leg
-  let path_data = @svg.PathBuilder::new()
-    // Start at bottom right
-    .move_to(x + 68.3 * sx, y + 77.4 * sy)
-    // Bottom line
-    .h_to(x)
-    // Left leg
-    .v_rel(-1.1 * sy)
-    .cubic_rel(0.0, -13.2 * sy, 7.5 * sx, -25.1 * sy, 19.3 * sx, -30.8 * sy)
-    // Left shoulder curve
-    .cubic_to(
-      x + 12.8 * sx,
-      y + 40.9 * sy,
-      x + 8.9 * sx,
-      y + 33.4 * sy,
-      x + 8.9 * sx,
-      y + 25.2 * sy,
+  let abs_point = fn(x : Double, y : Double) {
+    (
+      d2_path_chop_precision(box.x + sx * x),
+      d2_path_chop_precision(box.y + sy * y),
     )
-    // Head left half
-    .cubic_to(
-      x + 8.9 * sx,
-      y + 11.3 * sy,
-      x + 20.2 * sx,
-      y + 0.0 * sy,
-      x + 34.1 * sx,
-      y + 0.0 * sy,
+  }
+  let rel_point = fn(
+    base_x : Double,
+    base_y : Double,
+    dx : Double,
+    dy : Double,
+  ) {
+    (
+      d2_path_chop_precision(base_x + sx * dx),
+      d2_path_chop_precision(base_y + sy * dy),
     )
-    // Head right half
-    .cubic_rel(13.9 * sx, 0.0, 25.2 * sx, 11.3 * sy, 25.2 * sx, 25.2 * sy)
-    // Right shoulder
-    .cubic_rel(0.0, 8.2 * sy, -3.8 * sx, 15.6 * sy, -10.4 * sx, 20.4 * sy)
-    // Right leg
-    .cubic_rel(11.8 * sx, 5.7 * sy, 19.3 * sx, 17.6 * sy, 19.3 * sx, 30.8 * sy)
-    .v_rel(1.0 * sy)
-    .close()
-    .build()
-  svg.add(@svg.path(path_data, fill~, stroke~, stroke_width~))
+  }
+
+  let (start_x, start_y) = abs_point(68.3, 77.4)
+  let mut current_x = start_x
+  let mut current_y = start_y
+  let commands : Array[String] = []
+  commands.push("M \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
+
+  let (h_abs_x, _) = abs_point(0.0, 0.0)
+  let h_target_x = h_abs_x
+  commands.push("H \{d2_path_number(h_target_x)}")
+  current_x = h_target_x
+
+  let (_, v_target_y) = rel_point(current_x, current_y, 0.0, -1.1)
+  commands.push("V \{d2_path_number(v_target_y)}")
+  current_y = v_target_y
+
+  let (c1x, c1y) = rel_point(current_x, current_y, 0.0, -13.2)
+  let (c2x, c2y) = rel_point(current_x, current_y, 7.5, -25.1)
+  let (c3x, c3y) = rel_point(current_x, current_y, 19.3, -30.8)
+  commands.push(
+    "C \{d2_path_number(c1x)} \{d2_path_number(c1y)} \{d2_path_number(c2x)} \{d2_path_number(c2y)} \{d2_path_number(c3x)} \{d2_path_number(c3y)}",
+  )
+  current_x = c3x
+  current_y = c3y
+
+  let (c4x1, c4y1) = abs_point(12.8, 40.9)
+  let (c4x2, c4y2) = abs_point(8.9, 33.4)
+  let (c4x3, c4y3) = abs_point(8.9, 25.2)
+  commands.push(
+    "C \{d2_path_number(c4x1)} \{d2_path_number(c4y1)} \{d2_path_number(c4x2)} \{d2_path_number(c4y2)} \{d2_path_number(c4x3)} \{d2_path_number(c4y3)}",
+  )
+  current_x = c4x3
+  current_y = c4y3
+
+  let (c5x1, c5y1) = abs_point(8.9, 11.3)
+  let (c5x2, c5y2) = abs_point(20.2, 0.0)
+  let (c5x3, c5y3) = abs_point(34.1, 0.0)
+  commands.push(
+    "C \{d2_path_number(c5x1)} \{d2_path_number(c5y1)} \{d2_path_number(c5x2)} \{d2_path_number(c5y2)} \{d2_path_number(c5x3)} \{d2_path_number(c5y3)}",
+  )
+  current_x = c5x3
+  current_y = c5y3
+
+  // Mirror of the omitted `s` command in d2.
+  let (c6x1, c6y1) = rel_point(current_x, current_y, 13.9, 0.0)
+  let (c6x2, c6y2) = rel_point(current_x, current_y, 25.2, 11.3)
+  let (c6x3, c6y3) = rel_point(current_x, current_y, 25.2, 25.2)
+  commands.push(
+    "C \{d2_path_number(c6x1)} \{d2_path_number(c6y1)} \{d2_path_number(c6x2)} \{d2_path_number(c6y2)} \{d2_path_number(c6x3)} \{d2_path_number(c6y3)}",
+  )
+  current_x = c6x3
+  current_y = c6y3
+
+  let (c7x1, c7y1) = rel_point(current_x, current_y, 0.0, 8.2)
+  let (c7x2, c7y2) = rel_point(current_x, current_y, -3.8, 15.6)
+  let (c7x3, c7y3) = rel_point(current_x, current_y, -10.4, 20.4)
+  commands.push(
+    "C \{d2_path_number(c7x1)} \{d2_path_number(c7y1)} \{d2_path_number(c7x2)} \{d2_path_number(c7y2)} \{d2_path_number(c7x3)} \{d2_path_number(c7y3)}",
+  )
+  current_x = c7x3
+  current_y = c7y3
+
+  let (c8x1, c8y1) = rel_point(current_x, current_y, 11.8, 5.7)
+  let (c8x2, c8y2) = rel_point(current_x, current_y, 19.3, 17.6)
+  let (c8x3, c8y3) = rel_point(current_x, current_y, 19.3, 30.8)
+  commands.push(
+    "C \{d2_path_number(c8x1)} \{d2_path_number(c8y1)} \{d2_path_number(c8x2)} \{d2_path_number(c8y2)} \{d2_path_number(c8x3)} \{d2_path_number(c8y3)}",
+  )
+  current_x = c8x3
+  current_y = c8y3
+
+  let (_, v2_target_y) = rel_point(current_x, current_y, 0.0, 1.0)
+  commands.push("V \{d2_path_number(v2_target_y)}")
+  current_y = v2_target_y
+
+  let (h2_abs_x, _) = abs_point(68.3, 0.0)
+  commands.push("H \{d2_path_number(h2_abs_x)}")
+  current_x = h2_abs_x
+
+  commands.push("Z")
+
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5487,102 +6672,145 @@ fn render_svg_cloud(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // D2 cloud path (scaled from 834x523 reference box).
+  // Ported from ../d2/lib/shape/shape_cloud.go (cloudPath) and aligned to
+  // ../d2/lib/svg/path.go chopPrecision behavior.
   let sx = box.width / 834.0
   let sy = box.height / 523.0
-  let mut cur_x = box.x + 137.833 * sx
-  let mut cur_y = box.y + 182.833 * sy
-  let mut pb = @svg.PathBuilder::new().move_to(cur_x, cur_y)
-  fn rel(
-    cur_x : Double,
-    cur_y : Double,
-    dx : Double,
-    dy : Double,
-    sx : Double,
-    sy : Double,
-  ) -> (Double, Double) {
-    (cur_x + dx * sx, cur_y + dy * sy)
+  let abs = fn(x : Double, y : Double) {
+    (
+      d2_path_chop_precision(box.x + sx * x),
+      d2_path_chop_precision(box.y + sy * y),
+    )
+  }
+  let rel = fn(base_x : Double, base_y : Double, dx : Double, dy : Double) {
+    (
+      d2_path_chop_precision(base_x + sx * dx),
+      d2_path_chop_precision(base_y + sy * dy),
+    )
   }
 
-  fn abs(
-    box_x : Double,
-    box_y : Double,
-    x : Double,
-    y : Double,
-    sx : Double,
-    sy : Double,
-  ) -> (Double, Double) {
-    (box_x + x * sx, box_y + y * sy)
-  }
+  let commands : Array[String] = []
+  let (start_x, start_y) = abs(137.833, 182.833)
+  let mut current_x = start_x
+  let mut current_y = start_y
+  commands.push("M \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
 
-  let (x1, y1) = rel(cur_x, cur_y, 0.0, 5.556, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -5.556, 11.111, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -11.111, 11.111, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -70.833, 6.944, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -126.389, 77.778, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -126.389, 163.889, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, 0.0, 91.667, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, 62.5, 165.278, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, 141.667, 165.278, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  cur_x = cur_x + 537.5 * sx
-  pb = pb.h_to(cur_x)
-  let (x1, y1) = rel(cur_x, cur_y, 84.723, 0.0, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, 154.167, -79.167, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, 154.167, -175.0, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, 0.0, -91.667, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -63.89, -168.056, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -144.444, -173.611, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -5.556, 0.0, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -11.111, -4.167, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -12.5, -11.111, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -18.056, -93.055, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -101.39, -162.5, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -198.611, -162.5, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -63.889, 0.0, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -120.834, 29.167, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -156.944, 75.0, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -4.167, 5.556, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -11.111, 6.945, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -15.278, 5.556, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = rel(cur_x, cur_y, -13.889, -5.556, sx, sy)
-  let (x2, y2) = rel(cur_x, cur_y, -29.166, -8.333, sx, sy)
-  let (x3, y3) = rel(cur_x, cur_y, -45.833, -8.333, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3)
-  cur_x = x3
-  cur_y = y3
-  let (x1, y1) = abs(box.x, box.y, 196.167, 71.722, sx, sy)
-  let (x2, y2) = abs(box.x, box.y, 143.389, 120.333, sx, sy)
-  let (x3, y3) = abs(box.x, box.y, 137.833, 182.833, sx, sy)
-  pb = pb.cubic_to(x1, y1, x2, y2, x3, y3).close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  let (c1x, c1y) = rel(current_x, current_y, 0.0, 5.556)
+  let (c2x, c2y) = rel(current_x, current_y, -5.556, 11.111)
+  let (c3x, c3y) = rel(current_x, current_y, -11.111, 11.111)
+  commands.push(
+    "C \{d2_path_number(c1x)} \{d2_path_number(c1y)} \{d2_path_number(c2x)} \{d2_path_number(c2y)} \{d2_path_number(c3x)} \{d2_path_number(c3y)}",
+  )
+  current_x = c3x
+  current_y = c3y
+
+  let (c4x, c4y) = rel(current_x, current_y, -70.833, 6.944)
+  let (c5x, c5y) = rel(current_x, current_y, -126.389, 77.778)
+  let (c6x, c6y) = rel(current_x, current_y, -126.389, 163.889)
+  commands.push(
+    "C \{d2_path_number(c4x)} \{d2_path_number(c4y)} \{d2_path_number(c5x)} \{d2_path_number(c5y)} \{d2_path_number(c6x)} \{d2_path_number(c6y)}",
+  )
+  current_x = c6x
+  current_y = c6y
+
+  let (c7x, c7y) = rel(current_x, current_y, 0.0, 91.667)
+  let (c8x, c8y) = rel(current_x, current_y, 62.5, 165.278)
+  let (c9x, c9y) = rel(current_x, current_y, 141.667, 165.278)
+  commands.push(
+    "C \{d2_path_number(c7x)} \{d2_path_number(c7y)} \{d2_path_number(c8x)} \{d2_path_number(c8y)} \{d2_path_number(c9x)} \{d2_path_number(c9y)}",
+  )
+  current_x = c9x
+  current_y = c9y
+
+  current_x = d2_path_chop_precision(current_x + sx * 537.5)
+  commands.push("H \{d2_path_number(current_x)}")
+
+  let (c10x, c10y) = rel(current_x, current_y, 84.723, 0.0)
+  let (c11x, c11y) = rel(current_x, current_y, 154.167, -79.167)
+  let (c12x, c12y) = rel(current_x, current_y, 154.167, -175.0)
+  commands.push(
+    "C \{d2_path_number(c10x)} \{d2_path_number(c10y)} \{d2_path_number(c11x)} \{d2_path_number(c11y)} \{d2_path_number(c12x)} \{d2_path_number(c12y)}",
+  )
+  current_x = c12x
+  current_y = c12y
+
+  let (c13x, c13y) = rel(current_x, current_y, 0.0, -91.667)
+  let (c14x, c14y) = rel(current_x, current_y, -63.89, -168.056)
+  let (c15x, c15y) = rel(current_x, current_y, -144.444, -173.611)
+  commands.push(
+    "C \{d2_path_number(c13x)} \{d2_path_number(c13y)} \{d2_path_number(c14x)} \{d2_path_number(c14y)} \{d2_path_number(c15x)} \{d2_path_number(c15y)}",
+  )
+  current_x = c15x
+  current_y = c15y
+
+  let (c16x, c16y) = rel(current_x, current_y, -5.556, 0.0)
+  let (c17x, c17y) = rel(current_x, current_y, -11.111, -4.167)
+  let (c18x, c18y) = rel(current_x, current_y, -12.5, -11.111)
+  commands.push(
+    "C \{d2_path_number(c16x)} \{d2_path_number(c16y)} \{d2_path_number(c17x)} \{d2_path_number(c17y)} \{d2_path_number(c18x)} \{d2_path_number(c18y)}",
+  )
+  current_x = c18x
+  current_y = c18y
+
+  let (c19x, c19y) = rel(current_x, current_y, -18.056, -93.055)
+  let (c20x, c20y) = rel(current_x, current_y, -101.39, -162.5)
+  let (c21x, c21y) = rel(current_x, current_y, -198.611, -162.5)
+  commands.push(
+    "C \{d2_path_number(c19x)} \{d2_path_number(c19y)} \{d2_path_number(c20x)} \{d2_path_number(c20y)} \{d2_path_number(c21x)} \{d2_path_number(c21y)}",
+  )
+  current_x = c21x
+  current_y = c21y
+
+  let (c22x, c22y) = rel(current_x, current_y, -63.889, 0.0)
+  let (c23x, c23y) = rel(current_x, current_y, -120.834, 29.167)
+  let (c24x, c24y) = rel(current_x, current_y, -156.944, 75.0)
+  commands.push(
+    "C \{d2_path_number(c22x)} \{d2_path_number(c22y)} \{d2_path_number(c23x)} \{d2_path_number(c23y)} \{d2_path_number(c24x)} \{d2_path_number(c24y)}",
+  )
+  current_x = c24x
+  current_y = c24y
+
+  let (c25x, c25y) = rel(current_x, current_y, -4.167, 5.556)
+  let (c26x, c26y) = rel(current_x, current_y, -11.111, 6.945)
+  let (c27x, c27y) = rel(current_x, current_y, -15.278, 5.556)
+  commands.push(
+    "C \{d2_path_number(c25x)} \{d2_path_number(c25y)} \{d2_path_number(c26x)} \{d2_path_number(c26y)} \{d2_path_number(c27x)} \{d2_path_number(c27y)}",
+  )
+  current_x = c27x
+  current_y = c27y
+
+  let (c28x, c28y) = rel(current_x, current_y, -13.889, -5.556)
+  let (c29x, c29y) = rel(current_x, current_y, -29.166, -8.333)
+  let (c30x, c30y) = rel(current_x, current_y, -45.833, -8.333)
+  commands.push(
+    "C \{d2_path_number(c28x)} \{d2_path_number(c28y)} \{d2_path_number(c29x)} \{d2_path_number(c29y)} \{d2_path_number(c30x)} \{d2_path_number(c30y)}",
+  )
+
+  let (c31x, c31y) = abs(196.167, 71.722)
+  let (c32x, c32y) = abs(143.389, 120.333)
+  let (c33x, c33y) = abs(137.833, 182.833)
+  commands.push(
+    "C \{d2_path_number(c31x)} \{d2_path_number(c31y)} \{d2_path_number(c32x)} \{d2_path_number(c32y)} \{d2_path_number(c33x)} \{d2_path_number(c33y)}",
+  )
+  commands.push("Z")
+
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5592,33 +6820,53 @@ fn render_svg_document(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  let base_y = box.height * (16.3 / 18.925)
-  let cp1_y = box.height * (12.8 / 18.925)
-  let cp2_y = box.height * (19.8 / 18.925)
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x, box.y + base_y)
-    .line_to(box.x, box.y)
-    .line_to(box.x + box.width, box.y)
-    .line_to(box.x + box.width, box.y + base_y)
-    .cubic_to(
-      box.x + box.width * (5.0 / 6.0),
-      box.y + cp1_y,
-      box.x + box.width * (2.0 / 3.0),
-      box.y + cp1_y,
-      box.x + box.width * 0.5,
-      box.y + base_y,
-    )
-    .cubic_to(
-      box.x + box.width * (1.0 / 3.0),
-      box.y + cp2_y,
-      box.x + box.width * (1.0 / 6.0),
-      box.y + cp2_y,
-      box.x,
-      box.y + base_y,
-    )
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  // Ported from ../d2/lib/shape/shape_document.go (documentPath).
+  let doc_path_height = 18.925
+  let doc_path_bottom = 16.3
+  let sy = box.height
+  let sx = box.width
+  let x0 = box.x
+  let y0 = box.y
+  let bottom_ratio = doc_path_bottom / doc_path_height
+  let cp_ratio = 12.8 / doc_path_height
+  let cp2_ratio = 19.8 / doc_path_height
+  let commands : Array[String] = []
+  commands.push(
+    "M \{d2_path_number(x0 + sx * 0.0)} \{d2_path_number(y0 + sy * bottom_ratio)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + sx * 0.0)} \{d2_path_number(y0 + sy * 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + sx * 1.0)} \{d2_path_number(y0 + sy * 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(x0 + sx * 1.0)} \{d2_path_number(y0 + sy * bottom_ratio)}",
+  )
+  commands.push(
+    "C \{d2_path_number(x0 + sx * (5.0 / 6.0))} \{d2_path_number(y0 + sy * cp_ratio)} \{d2_path_number(x0 + sx * (2.0 / 3.0))} \{d2_path_number(y0 + sy * cp_ratio)} \{d2_path_number(x0 + sx * 0.5)} \{d2_path_number(y0 + sy * bottom_ratio)}",
+  )
+  commands.push(
+    "C \{d2_path_number(x0 + sx * (1.0 / 3.0))} \{d2_path_number(y0 + sy * cp2_ratio)} \{d2_path_number(x0 + sx * (1.0 / 6.0))} \{d2_path_number(y0 + sy * cp2_ratio)} \{d2_path_number(x0 + sx * 0.0)} \{d2_path_number(y0 + sy * bottom_ratio)}",
+  )
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5628,67 +6876,72 @@ fn render_svg_queue(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
   // Ported from ../d2/lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
   let arc_w = if box.width < 48.0 { box.width / 2.0 } else { 24.0 }
   let m = 0.45
-  let outer = @svg.PathBuilder::new()
-    .move_to(box.x + arc_w, box.y)
-    .line_to(box.x + box.width - arc_w, box.y)
-    .cubic_to(
-      box.x + box.width,
-      box.y,
-      box.x + box.width,
-      box.y + box.height * m,
-      box.x + box.width,
-      box.y + box.height * 0.5,
-    )
-    .cubic_to(
-      box.x + box.width,
-      box.y + box.height - box.height * m,
-      box.x + box.width,
-      box.y + box.height,
-      box.x + box.width - arc_w,
-      box.y + box.height,
-    )
-    .line_to(box.x + arc_w, box.y + box.height)
-    .cubic_to(
-      box.x + arc_w * m,
-      box.y + box.height,
-      box.x,
-      box.y + box.height - box.height * m,
-      box.x,
-      box.y + box.height * 0.5,
-    )
-    .cubic_to(
-      box.x,
-      box.y + box.height * m,
-      box.x + arc_w * m,
-      box.y,
-      box.x + arc_w,
-      box.y,
-    )
-    .close()
-  svg.add(@svg.path(outer.build(), fill~, stroke~, stroke_width~))
-  let inner = @svg.PathBuilder::new()
-    .move_to(box.x + box.width - arc_w, box.y)
-    .cubic_to(
-      box.x + box.width - 2.0 * arc_w,
-      box.y,
-      box.x + box.width - 2.0 * arc_w,
-      box.y + box.height * m,
-      box.x + box.width - 2.0 * arc_w,
-      box.y + box.height * 0.5,
-    )
-    .cubic_to(
-      box.x + box.width - 2.0 * arc_w,
-      box.y + box.height - box.height * m,
-      box.x + box.width - 2.0 * arc_w,
-      box.y + box.height,
-      box.x + box.width - arc_w,
-      box.y + box.height,
-    )
-  svg.add(@svg.path(inner.build(), fill~, stroke~, stroke_width~))
+  let x0 = box.x
+  let y0 = box.y
+  let w = box.width
+  let h = box.height
+
+  let mut current_x = d2_path_chop_precision(x0 + arc_w)
+  let outer : Array[String] = []
+  outer.push("M \{d2_path_number(current_x)} \{d2_path_number(y0)}")
+  current_x = d2_path_chop_precision(current_x + (w - 2.0 * arc_w))
+  outer.push("H \{d2_path_number(current_x)}")
+  outer.push(
+    "C \{d2_path_number(x0 + w)} \{d2_path_number(y0)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h * m)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h / 2.0)}",
+  )
+  outer.push(
+    "C \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h - h * m)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + w - arc_w)} \{d2_path_number(y0 + h)}",
+  )
+  current_x = d2_path_chop_precision(current_x - (w - 2.0 * arc_w))
+  outer.push("H \{d2_path_number(current_x)}")
+  outer.push(
+    "C \{d2_path_number(x0)} \{d2_path_number(y0 + h)} \{d2_path_number(x0)} \{d2_path_number(y0 + h - h * m)} \{d2_path_number(x0)} \{d2_path_number(y0 + h / 2.0)}",
+  )
+  outer.push(
+    "C \{d2_path_number(x0)} \{d2_path_number(y0 + h * m)} \{d2_path_number(x0)} \{d2_path_number(y0)} \{d2_path_number(x0 + arc_w)} \{d2_path_number(y0)}",
+  )
+  outer.push("Z")
+  svg.add(
+    d2_shape_path(
+      outer.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
+
+  let inner : Array[String] = []
+  inner.push("M \{d2_path_number(x0 + w - arc_w)} \{d2_path_number(y0)}")
+  inner.push(
+    "C \{d2_path_number(x0 + w - 2.0 * arc_w)} \{d2_path_number(y0)} \{d2_path_number(x0 + w - 2.0 * arc_w)} \{d2_path_number(y0 + h * m)} \{d2_path_number(x0 + w - 2.0 * arc_w)} \{d2_path_number(y0 + h / 2.0)}",
+  )
+  inner.push(
+    "C \{d2_path_number(x0 + w - 2.0 * arc_w)} \{d2_path_number(y0 + h - h * m)} \{d2_path_number(x0 + w - 2.0 * arc_w)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + w - arc_w)} \{d2_path_number(y0 + h)}",
+  )
+  svg.add(
+    d2_shape_path(
+      inner.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5698,48 +6951,50 @@ fn render_svg_stored_data(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // Stored data (curved sides)
+  // Ported from ../d2/lib/shape/shape_stored_data.go (storedDataPath).
   let wedge = if box.width < 30.0 { box.width / 2.0 } else { 15.0 }
   let m = 0.27
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x + wedge, box.y)
-    .line_to(box.x + box.width - wedge, box.y)
-    .cubic_to(
-      box.x + box.width - wedge * m,
-      box.y,
-      box.x + box.width,
-      box.y + box.height * 0.25,
-      box.x + box.width,
-      box.y + box.height * 0.5,
-    )
-    .cubic_to(
-      box.x + box.width,
-      box.y + box.height * 0.75,
-      box.x + box.width - wedge * m,
-      box.y + box.height,
-      box.x + box.width - wedge,
-      box.y + box.height,
-    )
-    .line_to(box.x + wedge, box.y + box.height)
-    .cubic_to(
-      box.x + wedge * m,
-      box.y + box.height,
-      box.x,
-      box.y + box.height * 0.75,
-      box.x,
-      box.y + box.height * 0.5,
-    )
-    .cubic_to(
-      box.x,
-      box.y + box.height * 0.25,
-      box.x + wedge * m,
-      box.y,
-      box.x + wedge,
-      box.y,
-    )
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  let x0 = box.x
+  let y0 = box.y
+  let w = box.width
+  let h = box.height
+  let mut current_x = d2_path_chop_precision(x0 + wedge)
+  let pb : Array[String] = []
+  pb.push("M \{d2_path_number(current_x)} \{d2_path_number(y0)}")
+  current_x = d2_path_chop_precision(current_x + (w - wedge))
+  pb.push("H \{d2_path_number(current_x)}")
+  pb.push(
+    "C \{d2_path_number(x0 + w - wedge * m)} \{d2_path_number(y0)} \{d2_path_number(x0 + w - wedge)} \{d2_path_number(y0 + h * m)} \{d2_path_number(x0 + w - wedge)} \{d2_path_number(y0 + h / 2.0)}",
+  )
+  pb.push(
+    "C \{d2_path_number(x0 + w - wedge)} \{d2_path_number(y0 + h - h * m)} \{d2_path_number(x0 + w - wedge * m)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + h)}",
+  )
+  current_x = d2_path_chop_precision(current_x - (w - wedge))
+  pb.push("H \{d2_path_number(current_x)}")
+  pb.push(
+    "C \{d2_path_number(x0 + wedge - wedge * m)} \{d2_path_number(y0 + h)} \{d2_path_number(x0)} \{d2_path_number(y0 + h - h * m)} \{d2_path_number(x0)} \{d2_path_number(y0 + h / 2.0)}",
+  )
+  pb.push(
+    "C \{d2_path_number(x0)} \{d2_path_number(y0 + h * m)} \{d2_path_number(x0 + wedge - wedge * m)} \{d2_path_number(y0)} \{d2_path_number(x0 + wedge)} \{d2_path_number(y0)}",
+  )
+  pb.push("Z")
+  svg.add(
+    d2_shape_path(
+      pb.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5749,28 +7004,177 @@ fn render_svg_page(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // Page with folded corner
-  let fold = if box.width < 40.0 { box.width * 0.25 } else { 20.0 }
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x, box.y)
-    .line_to(box.x + box.width - fold, box.y)
-    .line_to(box.x + box.width, box.y + fold)
-    .line_to(box.x + box.width, box.y + box.height)
-    .line_to(box.x, box.y + box.height)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
-  // Fold line
-  let fold_pb = @svg.PathBuilder::new()
-    .move_to(box.x + box.width, box.y + box.height)
-    .line_to(box.x, box.y + box.height)
-    .line_to(box.x, box.y)
-    .line_to(box.x + box.width - fold, box.y)
-    .line_to(box.x + box.width - fold, box.y + fold)
-    .line_to(box.x + box.width, box.y + fold)
-    .line_to(box.x + box.width, box.y + box.height)
-    .close()
-  svg.add(@svg.path(fold_pb.build(), fill~, stroke~, stroke_width~))
+  // Ported from ../d2/lib/shape/shape_page.go (pageOuterPath/pageInnerPath).
+  let x0 = box.x
+  let y0 = box.y
+  let w = box.width
+  let h = box.height
+
+  let outer : Array[String] = []
+  outer.push("M \{d2_path_number(x0 + 0.5)} \{d2_path_number(y0 + 0.0)}")
+  outer.push("H \{d2_path_number(x0 + (w - 20.8164))}")
+  outer.push(
+    "C \{d2_path_number(x0 + (w - 19.6456))} \{d2_path_number(y0 + 0.0)} \{d2_path_number(x0 + (w - 18.5210))} \{d2_path_number(y0 + 0.456297)} \{d2_path_number(x0 + (w - 17.6811))} \{d2_path_number(y0 + 1.27202)}",
+  )
+  outer.push(
+    "L \{d2_path_number(x0 + (w - 1.3647))} \{d2_path_number(y0 + 17.12)}",
+  )
+  outer.push(
+    "C \{d2_path_number(x0 + (w - 0.4923))} \{d2_path_number(y0 + 17.9674)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + 19.1318)} \{d2_path_number(x0 + w)} \{d2_path_number(y0 + 20.348)}",
+  )
+  outer.push("V \{d2_path_number(y0 + (h - 0.5))}")
+  outer.push(
+    "C \{d2_path_number(x0 + w)} \{d2_path_number(y0 + (h - 0.2239))} \{d2_path_number(x0 + (w - 0.2239))} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + (w - 0.5))} \{d2_path_number(y0 + h)}",
+  )
+  outer.push("H \{d2_path_number(x0 + 0.499999)}")
+  outer.push(
+    "C \{d2_path_number(x0 + 0.223857)} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + 0.0)} \{d2_path_number(y0 + (h - 0.2239))} \{d2_path_number(x0 + 0.0)} \{d2_path_number(y0 + (h - 0.5))}",
+  )
+  outer.push("V \{d2_path_number(y0 + 0.499999)}")
+  outer.push(
+    "C \{d2_path_number(x0 + 0.0)} \{d2_path_number(y0 + 0.223857)} \{d2_path_number(x0 + 0.223857)} \{d2_path_number(y0 + 0.0)} \{d2_path_number(x0 + 0.5)} \{d2_path_number(y0 + 0.0)}",
+  )
+  outer.push("Z")
+  svg.add(
+    d2_shape_path(
+      outer.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
+
+  let inner : Array[String] = []
+  let mut current_x = d2_path_chop_precision(x0 + (w - 1.08197))
+  let mut current_y = d2_path_chop_precision(y0 + h)
+  inner.push("M \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
+  let h1 = d2_path_chop_precision(x0 + 1.08196)
+  inner.push("H \{d2_path_number(h1)}")
+  current_x = h1
+  let (c1x, c1y) = (
+    d2_path_chop_precision(current_x - 0.64918),
+    d2_path_chop_precision(current_y + 0.0),
+  )
+  let (c2x, c2y) = (
+    d2_path_chop_precision(current_x - 1.08196),
+    d2_path_chop_precision(current_y - 0.43287),
+  )
+  let (c3x, c3y) = (
+    d2_path_chop_precision(current_x - 1.08196),
+    d2_path_chop_precision(current_y - 1.08219),
+  )
+  inner.push(
+    "C \{d2_path_number(c1x)} \{d2_path_number(c1y)} \{d2_path_number(c2x)} \{d2_path_number(c2y)} \{d2_path_number(c3x)} \{d2_path_number(c3y)}",
+  )
+  current_x = c3x
+  current_y = c3y
+  let v1 = d2_path_chop_precision(y0 + 1.08219)
+  inner.push("V \{d2_path_number(v1)}")
+  current_y = v1
+  let (c4x, c4y) = (
+    d2_path_chop_precision(current_x + 0.0),
+    d2_path_chop_precision(current_y - 0.64931),
+  )
+  let (c5x, c5y) = (
+    d2_path_chop_precision(current_x + 0.43278),
+    d2_path_chop_precision(current_y - 1.08219),
+  )
+  let (c6x, c6y) = (
+    d2_path_chop_precision(current_x + 1.08196),
+    d2_path_chop_precision(current_y - 1.08219),
+  )
+  inner.push(
+    "C \{d2_path_number(c4x)} \{d2_path_number(c4y)} \{d2_path_number(c5x)} \{d2_path_number(c5y)} \{d2_path_number(c6x)} \{d2_path_number(c6y)}",
+  )
+  current_x = c6x
+  current_y = c6y
+  let h2 = d2_path_chop_precision(current_x + (w - 22.72132))
+  inner.push("H \{d2_path_number(h2)}")
+  current_x = h2
+  let (c7x, c7y) = (
+    d2_path_chop_precision(current_x + 0.64918),
+    d2_path_chop_precision(current_y + 0.0),
+  )
+  let (c8x, c8y) = (
+    d2_path_chop_precision(current_x + 1.08196),
+    d2_path_chop_precision(current_y + 0.43287),
+  )
+  let (c9x, c9y) = (
+    d2_path_chop_precision(current_x + 1.08196),
+    d2_path_chop_precision(current_y + 1.08219),
+  )
+  inner.push(
+    "C \{d2_path_number(c7x)} \{d2_path_number(c7y)} \{d2_path_number(c8x)} \{d2_path_number(c8y)} \{d2_path_number(c9x)} \{d2_path_number(c9y)}",
+  )
+  current_x = c9x
+  current_y = c9y
+  let v2 = d2_path_chop_precision(current_y + 17.09863)
+  inner.push("V \{d2_path_number(v2)}")
+  current_y = v2
+  let (c10x, c10y) = (
+    d2_path_chop_precision(current_x + 0.0),
+    d2_path_chop_precision(current_y + 1.29863),
+  )
+  let (c11x, c11y) = (
+    d2_path_chop_precision(current_x + 0.86557),
+    d2_path_chop_precision(current_y + 2.38082),
+  )
+  let (c12x, c12y) = (
+    d2_path_chop_precision(current_x + 2.38032),
+    d2_path_chop_precision(current_y + 2.38082),
+  )
+  inner.push(
+    "C \{d2_path_number(c10x)} \{d2_path_number(c10y)} \{d2_path_number(c11x)} \{d2_path_number(c11y)} \{d2_path_number(c12x)} \{d2_path_number(c12y)}",
+  )
+  current_x = c12x
+  current_y = c12y
+  let h3 = d2_path_chop_precision(x0 + (w - 1.08197))
+  inner.push("H \{d2_path_number(h3)}")
+  current_x = h3
+  let (c13x, c13y) = (
+    d2_path_chop_precision(current_x + 0.64918),
+    d2_path_chop_precision(current_y + 0.0),
+  )
+  let (c14x, c14y) = (
+    d2_path_chop_precision(current_x + 1.08196),
+    d2_path_chop_precision(current_y + 0.43287),
+  )
+  let (c15x, c15y) = (
+    d2_path_chop_precision(current_x + 1.08196),
+    d2_path_chop_precision(current_y + 1.08196),
+  )
+  inner.push(
+    "C \{d2_path_number(c13x)} \{d2_path_number(c13y)} \{d2_path_number(c14x)} \{d2_path_number(c14y)} \{d2_path_number(c15x)} \{d2_path_number(c15y)}",
+  )
+  current_x = c15x
+  current_y = c15y
+  let v3 = d2_path_chop_precision(y0 + (h - 1.0822))
+  inner.push("V \{d2_path_number(v3)}")
+  inner.push(
+    "C \{d2_path_number(x0 + (w - 1.0))} \{d2_path_number(y0 + (h - 0.43288))} \{d2_path_number(x0 + (w - 0.43279))} \{d2_path_number(y0 + h)} \{d2_path_number(x0 + (w - 1.08197))} \{d2_path_number(y0 + h)}",
+  )
+  inner.push("Z")
+  svg.add(
+    d2_shape_path(
+      inner.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5780,27 +7184,55 @@ fn render_svg_package(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // UML package with top flap
-  let mut tab_w = box.width * 0.5
+  // Ported from ../d2/lib/shape/shape_package.go (getTopDimensions/packagePath).
+  let mut top_width = box.width * 0.5
   if box.width >= 100.0 {
-    if tab_w < 50.0 {
-      tab_w = 50.0
-    } else if tab_w > 150.0 {
-      tab_w = 150.0
+    top_width = if top_width > 150.0 {
+      150.0
+    } else if top_width < 50.0 {
+      50.0
+    } else {
+      top_width
     }
   }
-  let h20 = box.height * 0.2
-  let tab_h = if 55.0 < h20 { 55.0 } else { h20 }
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x, box.y)
-    .line_to(box.x + tab_w, box.y)
-    .line_to(box.x + tab_w, box.y + tab_h)
-    .line_to(box.x + box.width, box.y + tab_h)
-    .line_to(box.x + box.width, box.y + box.height)
-    .line_to(box.x, box.y + box.height)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  let top_height = if box.height * 0.2 < 55.0 { box.height * 0.2 } else { 55.0 }
+  let commands : Array[String] = []
+  commands.push(
+    "M \{d2_path_number(box.x + 0.0)} \{d2_path_number(box.y + 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + top_width)} \{d2_path_number(box.y + 0.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + top_width)} \{d2_path_number(box.y + top_height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width)} \{d2_path_number(box.y + top_height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + 0.0)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5810,18 +7242,43 @@ fn render_svg_step(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
-  // Chevron/arrow pointing right
-  let wedge = if box.width < 70.0 { box.width / 2.0 } else { 35.0 }
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x, box.y)
-    .line_to(box.x + box.width - wedge, box.y)
-    .line_to(box.x + box.width, box.y + box.height / 2.0)
-    .line_to(box.x + box.width - wedge, box.y + box.height)
-    .line_to(box.x, box.y + box.height)
-    .line_to(box.x + wedge, box.y + box.height / 2.0)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  // Ported from ../d2/lib/shape/shape_step.go (stepPath).
+  let wedge = if box.width <= 35.0 { box.width / 2.0 } else { 35.0 }
+  let commands : Array[String] = []
+  commands.push("M \{d2_path_number(box.x)} \{d2_path_number(box.y)}")
+  commands.push(
+    "L \{d2_path_number(box.x + box.width - wedge)} \{d2_path_number(box.y)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width)} \{d2_path_number(box.y + box.height / 2.0)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + box.width - wedge)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x)} \{d2_path_number(box.y + box.height)}",
+  )
+  commands.push(
+    "L \{d2_path_number(box.x + wedge)} \{d2_path_number(box.y + box.height / 2.0)}",
+  )
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5831,22 +7288,53 @@ fn render_svg_callout(
   fill : String,
   stroke : String,
   stroke_width : Double,
+  theme : @themes.Theme,
+  use_css_theme_vars : Bool,
+  fill_class_token : String?,
+  stroke_class_token : String?,
 ) -> Unit {
+  // Ported from ../d2/lib/shape/shape_callout.go (calloutPath).
   let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
   let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
-  let main_h = box.height - tip_h
-  let mid_x = (box.x + box.width / 2.0 + 0.5).to_int().to_double()
-  let pb = @svg.PathBuilder::new()
-    .move_to(box.x, box.y)
-    .line_to(box.x, box.y + main_h)
-    .line_to(mid_x, box.y + main_h)
-    .line_to(mid_x, box.y + box.height)
-    .line_to(mid_x + tip_w, box.y + main_h)
-    .line_to(box.x + box.width, box.y + main_h)
-    .line_to(box.x + box.width, box.y)
-    .line_to(box.x, box.y)
-    .close()
-  svg.add(@svg.path(pb.build(), fill~, stroke~, stroke_width~))
+  let commands : Array[String] = []
+  let mut current_x = d2_path_chop_precision(box.x)
+  let mut current_y = d2_path_chop_precision(box.y)
+  commands.push("M \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
+
+  current_y = d2_path_chop_precision(current_y + (box.height - tip_h))
+  commands.push("V \{d2_path_number(current_y)}")
+
+  current_x = d2_path_chop_precision(current_x + box.width / 2.0)
+  commands.push("H \{d2_path_number(current_x)}")
+
+  current_y = d2_path_chop_precision(current_y + tip_h)
+  commands.push("V \{d2_path_number(current_y)}")
+
+  current_x = d2_path_chop_precision(current_x + tip_w)
+  current_y = d2_path_chop_precision(current_y - tip_h)
+  commands.push("L \{d2_path_number(current_x)} \{d2_path_number(current_y)}")
+
+  current_x = d2_path_chop_precision(current_x + (box.width / 2.0 - tip_w))
+  commands.push("H \{d2_path_number(current_x)}")
+
+  current_y = d2_path_chop_precision(current_y - (box.height - tip_h))
+  commands.push("V \{d2_path_number(current_y)}")
+
+  current_x = d2_path_chop_precision(current_x - box.width)
+  commands.push("H \{d2_path_number(current_x)}")
+  commands.push("Z")
+  svg.add(
+    d2_shape_path(
+      commands.join(" "),
+      fill,
+      stroke,
+      stroke_width,
+      theme,
+      !use_css_theme_vars,
+      fill_class_token,
+      stroke_class_token,
+    ),
+  )
 }
 
 ///|
@@ -5862,210 +7350,178 @@ fn shifted_multiple_box(box : Box) -> Box {
 ///|
 fn render_svg_3d_rect(
   svg : @svg.Svg,
+  diagram_hash : String,
   obj_id : String,
   box : Box,
   fill : String,
   side_fill : String,
   stroke : String,
   stroke_width : Double,
-  config : SvgConfig,
+  theme : @themes.Theme,
+  _use_css_theme_vars : Bool,
 ) -> Unit {
   // Ported from ../d2/d2renderers/d2svg/d2svg.go (render3DRect).
-  let x = box.x
-  let y = box.y
-  let w = box.width
-  let h = box.height
-  let border = @svg.PathBuilder::new()
-    .move_to(x, y)
-    .line_to(x + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
-    .line_to(x + w + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
-    .line_to(x + w + THREE_DEE_OFFSET, y + h - THREE_DEE_OFFSET)
-    .line_to(x + w, y + h)
-    .line_to(x, y + h)
-    .line_to(x, y)
-    .line_to(x + w, y)
-    .line_to(x + w, y + h)
-    .move_to(x + w, y)
-    .line_to(x + w + THREE_DEE_OFFSET, y - THREE_DEE_OFFSET)
-    .build()
-  let mask_id = defs_id(config, "border-mask-\{hash_u32(obj_id).to_string()}")
-  let mask_x = x
-  let mask_y = y - THREE_DEE_OFFSET
-  let mask_w = w + THREE_DEE_OFFSET
-  let mask_h = h + THREE_DEE_OFFSET
-  let mask_style = "stroke-width:\{stroke_width};stroke:#000;fill:none;opacity:1;"
-  let mask_def = "<mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\"><rect x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\" fill=\"white\"></rect><path d=\"\{border}\" style=\"\{mask_style}\"/></mask>"
-  svg.add_def(mask_def)
+  let xi = round_double(box.x).to_int()
+  let yi = round_double(box.y).to_int()
+  let wi = round_double(box.width).to_int()
+  let hi = round_double(box.height).to_int()
+  let offset = round_double(THREE_DEE_OFFSET).to_int()
+  let border_segments : Array[String] = [
+    "M\{xi},\{yi}",
+    "L\{xi + offset},\{yi - offset}",
+    "L\{xi + wi + offset},\{yi - offset}",
+    "L\{xi + wi + offset},\{yi + hi - offset}",
+    "L\{xi + wi},\{yi + hi}",
+    "L\{xi},\{yi + hi}",
+    "L\{xi},\{yi}",
+    "L\{xi + wi},\{yi}",
+    "L\{xi + wi},\{yi + hi}",
+    "M\{xi + wi},\{yi}",
+    "L\{xi + wi + offset},\{yi - offset}",
+  ]
+  let border_path_mask = border_segments.join("")
+  let border_path = border_segments.join(" ")
+  let mask_id = "border-mask-\{diagram_hash}-\{@svg.escape_xml(obj_id)}"
+  let stroke_width_css = if stroke_width.round() == stroke_width {
+    stroke_width.to_int().to_string()
+  } else {
+    d2_fixed6(stroke_width)
+  }
+  let border_style = "stroke-width:\{stroke_width_css};"
+  let mask_x = xi
+  let mask_y = yi - offset
+  let mask_w = wi + offset
+  let mask_h = hi + offset
   svg.add(
-    @xml_emit.Element::new("rect")
-    .attr_num("x", x)
-    .attr_num("y", y)
-    .attr_num("width", w)
-    .attr_num("height", h)
-    .attr("mask", "url(#\{mask_id})")
-    .attr("stroke", "none")
-    .attr("fill", fill)
-    .attr_num("stroke-width", stroke_width)
-    .self_close()
-    .build(),
+    "<defs><mask id=\"\{mask_id}\" maskUnits=\"userSpaceOnUse\" x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\">\n<rect x=\"\{mask_x}\" y=\"\{mask_y}\" width=\"\{mask_w}\" height=\"\{mask_h}\" fill=\"white\"></rect>\n<path d=\"\{border_path_mask}\" style=\"\{border_style};stroke:#000;fill:none;opacity:1;\"/></mask></defs>",
   )
-  let side_points = "\{x},\{y} \{x + THREE_DEE_OFFSET},\{y - THREE_DEE_OFFSET} \{x + w + THREE_DEE_OFFSET},\{y - THREE_DEE_OFFSET} \{x + w + THREE_DEE_OFFSET},\{y + h - THREE_DEE_OFFSET} \{x + w},\{y + h} \{x + w},\{y}"
   svg.add(
-    @xml_emit.Element::new("polygon")
-    .attr("mask", "url(#\{mask_id})")
-    .attr("points", side_points)
-    .attr("fill", side_fill)
-    .attr("stroke", "none")
-    .attr_num("stroke-width", stroke_width)
-    .self_close()
-    .build(),
+    "<rect x=\"\{d2_fixed6(xi.to_double())}\" y=\"\{d2_fixed6(yi.to_double())}\" width=\"\{d2_fixed6(wi.to_double())}\" height=\"\{d2_fixed6(hi.to_double())}\" mask=\"url(#\{mask_id})\" stroke=\"none\" fill=\"\{@svg.escape_xml(fill)}\" style=\"\{border_style}\" />",
   )
-  svg.add(@svg.path(border, fill="none", stroke~, stroke_width~))
+  let side_points = "\{xi},\{yi} \{xi + offset},\{yi - offset} \{xi + wi + offset},\{yi - offset} \{xi + wi + offset},\{yi + hi - offset} \{xi + wi},\{yi + hi} \{xi + wi},\{yi}"
+  svg.add(
+    "<polygon mask=\"url(#\{mask_id})\" points=\"\{side_points}\" fill=\"\{@svg.escape_xml(side_fill)}\" style=\"\{border_style}\" />",
+  )
+  let stroke_class = match d2_theme_token(stroke, theme) {
+    Some(token) => " class=\" stroke-\{token}\""
+    None => ""
+  }
+  svg.add(
+    "<path d=\"\{border_path}\" stroke=\"\{@svg.escape_xml(stroke)}\" fill=\"none\"\{stroke_class} style=\"\{border_style}\" />",
+  )
 }
 
 ///|
-fn compress_collinear_points(points : Array[Point]) -> Array[Point] {
-  if points.length() <= 2 {
-    return points
+fn d2_path_data(
+  edge : Connection,
+  src_adj : (Double, Double),
+  dst_adj : (Double, Double),
+  rounded : Bool,
+  connection_border_radius : Double,
+) -> String {
+  let route = edge.route
+  if route.length() < 2 {
+    return ""
   }
-  let compressed : Array[Point] = [points[0]]
-  for i = 1; i < points.length() - 1; i = i + 1 {
-    let prev = compressed[compressed.length() - 1]
-    let curr = points[i]
-    let next = points[i + 1]
-    let dx1 = curr.x - prev.x
-    let dy1 = curr.y - prev.y
-    let dx2 = next.x - curr.x
-    let dy2 = next.y - curr.y
-    let cross = dx1 * dy2 - dy1 * dx2
-    if cross.abs() >= 0.001 {
-      compressed.push(curr)
+  let path : Array[String] = []
+  path.push(
+    "M \{d2_fixed6(route[0].x + src_adj.0)} \{d2_fixed6(route[0].y + src_adj.1)}",
+  )
+
+  if edge.is_curve {
+    let mut i = 1
+    while i < route.length() - 3 {
+      path.push(
+        "C \{d2_fixed6(route[i].x)} \{d2_fixed6(route[i].y)} \{d2_fixed6(route[i + 1].x)} \{d2_fixed6(route[i + 1].y)} \{d2_fixed6(route[i + 2].x)} \{d2_fixed6(route[i + 2].y)}",
+      )
+      i = i + 3
     }
-  }
-  compressed.push(points[points.length() - 1])
-  compressed
-}
-
-///|
-/// Build a polyline path with rounded corners.
-fn build_rounded_path(pb : @svg.PathBuilder, raw_points : Array[Point]) -> Unit {
-  let points = compress_collinear_points(raw_points)
-  if points.length() < 2 {
-    return
-  }
-  let _ = pb.move_to(points[0].x, points[0].y)
-  if points.length() == 2 {
-    let _ = pb.line_to(points[1].x, points[1].y)
-    return
-  }
-  let radius = 10.0
-  let mut i = 1
-  while i < points.length() - 1 {
-    let prev_source = points[i - 1]
-    let prev_target = points[i]
-    let curr_target = points[i + 1]
-    let prev_dx = prev_target.x - prev_source.x
-    let prev_dy = prev_target.y - prev_source.y
-    let curr_dx = curr_target.x - prev_target.x
-    let curr_dy = curr_target.y - prev_target.y
-    let prev_len = (prev_dx * prev_dx + prev_dy * prev_dy).sqrt()
-    let curr_len = (curr_dx * curr_dx + curr_dy * curr_dy).sqrt()
-    if prev_len < 0.001 || curr_len < 0.001 {
-      let _ = pb.line_to(prev_target.x, prev_target.y)
-      i = i + 1
-      continue
-    }
-    let dist = curr_len
-    let units = @cmp.minimum(radius, dist / 2.0)
-    let prev_tx = prev_dx / prev_len * units
-    let prev_ty = prev_dy / prev_len * units
-    let curr_tx = curr_dx / curr_len * units
-    let curr_ty = curr_dy / curr_len * units
-
-    let _ = pb.line_to(prev_target.x - prev_tx, prev_target.y - prev_ty)
-
-    if units < radius && i < points.length() - 2 {
-      let next_target = points[i + 2]
-      let next_dx = next_target.x - curr_target.x
-      let next_dy = next_target.y - curr_target.y
-      let next_len = (next_dx * next_dx + next_dy * next_dy).sqrt()
-      if next_len >= 0.001 {
-        i = i + 1
-        let next_tx = next_dx / next_len * units
-        let next_ty = next_dy / next_len * units
-        let _ = pb.cubic_to(
-          prev_target.x + prev_tx,
-          prev_target.y + prev_ty,
-          curr_target.x - next_tx,
-          curr_target.y - next_ty,
-          curr_target.x + next_tx,
-          curr_target.y + next_ty,
-        )
-      } else {
-        let _ = pb.smooth_cubic_to(
-          prev_target.x,
-          prev_target.y,
-          prev_target.x + curr_tx,
-          prev_target.y + curr_ty,
-        )
-      }
-    } else {
-      let _ = pb.smooth_cubic_to(
-        prev_target.x,
-        prev_target.y,
-        prev_target.x + curr_tx,
-        prev_target.y + curr_ty,
+    if i + 2 < route.length() {
+      path.push(
+        "C \{d2_fixed6(route[i].x)} \{d2_fixed6(route[i].y)} \{d2_fixed6(route[i + 1].x)} \{d2_fixed6(route[i + 1].y)} \{d2_fixed6(route[i + 2].x + dst_adj.0)} \{d2_fixed6(route[i + 2].y + dst_adj.1)}",
       )
     }
-    i = i + 1
+    return path.join(" ")
   }
-  let last = points[points.length() - 1]
-  let _ = pb.line_to(last.x, last.y)
+
+  if rounded {
+    let mut i = 1
+    while i < route.length() - 1 {
+      let prev_source = route[i - 1]
+      let prev_target = route[i]
+      let curr_target = route[i + 1]
+      let prev_vector_x = prev_target.x - prev_source.x
+      let prev_vector_y = prev_target.y - prev_source.y
+      let curr_vector_x = curr_target.x - prev_target.x
+      let curr_vector_y = curr_target.y - prev_target.y
+      let dist = @graph.Point::distance(prev_target, curr_target)
+      let units = @cmp.minimum(connection_border_radius, dist / 2.0)
+      let (prev_tx, prev_ty) = unit_vector_scaled(
+        prev_vector_x, prev_vector_y, units,
+      )
+      let (curr_tx, curr_ty) = unit_vector_scaled(
+        curr_vector_x, curr_vector_y, units,
+      )
+
+      path.push(
+        "L \{d2_fixed6(prev_target.x - prev_tx)} \{d2_fixed6(prev_target.y - prev_ty)}",
+      )
+
+      if units < connection_border_radius && i < route.length() - 2 {
+        let next_target = route[i + 2]
+        let next_vector_x = next_target.x - curr_target.x
+        let next_vector_y = next_target.y - curr_target.y
+        i = i + 1
+        let (next_tx, next_ty) = unit_vector_scaled(
+          next_vector_x, next_vector_y, units,
+        )
+        path.push(
+          "C \{d2_fixed6(prev_target.x + prev_tx)} \{d2_fixed6(prev_target.y + prev_ty)} \{d2_fixed6(curr_target.x - next_tx)} \{d2_fixed6(curr_target.y - next_ty)} \{d2_fixed6(curr_target.x + next_tx)} \{d2_fixed6(curr_target.y + next_ty)}",
+        )
+      } else {
+        path.push(
+          "S \{d2_fixed6(prev_target.x)} \{d2_fixed6(prev_target.y)} \{d2_fixed6(prev_target.x + curr_tx)} \{d2_fixed6(prev_target.y + curr_ty)}",
+        )
+      }
+      i = i + 1
+    }
+  } else {
+    for i = 1; i < route.length() - 1; i = i + 1 {
+      path.push("L \{d2_fixed6(route[i].x)} \{d2_fixed6(route[i].y)}")
+    }
+  }
+
+  let last_point = route[route.length() - 1]
+  path.push(
+    "L \{d2_fixed6(last_point.x + dst_adj.0)} \{d2_fixed6(last_point.y + dst_adj.1)}",
+  )
+  path.join(" ")
 }
 
 ///|
-fn build_polyline_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
-  if points.length() < 2 {
-    return
-  }
-  let _ = pb.move_to(points[0].x, points[0].y)
-  for i = 1; i < points.length(); i = i + 1 {
-    let p = points[i]
-    let _ = pb.line_to(p.x, p.y)
-  }
-}
-
-///|
-fn build_d2_curve_path(pb : @svg.PathBuilder, points : Array[Point]) -> Unit {
-  if points.length() < 2 {
-    return
-  }
-  if points.length() < 4 {
-    build_polyline_path(pb, points)
-    return
-  }
-  let _ = pb.move_to(points[0].x, points[0].y)
-  let mut i = 1
-  while i + 2 < points.length() {
-    let c1 = points[i]
-    let c2 = points[i + 1]
-    let p = points[i + 2]
-    let _ = pb.cubic_to(c1.x, c1.y, c2.x, c2.y, p.x, p.y)
-    i = i + 3
+fn unit_vector_scaled(
+  dx : Double,
+  dy : Double,
+  scale : Double,
+) -> (Double, Double) {
+  let length = (dx * dx + dy * dy).sqrt()
+  if length <= 0.000001 {
+    (0.0, 0.0)
+  } else {
+    (dx / length * scale, dy / length * scale)
   }
 }
 
 ///|
-fn adjusted_route_for_arrowheads(
+fn get_arrowhead_adjustments(
   edge : Connection,
   shapes : Array[Shape],
   edge_stroke_width : Double,
   default_shape_stroke_width : Double,
-) -> Array[Point] {
+) -> ((Double, Double), (Double, Double)) {
   if edge.route.length() < 2 {
-    return edge.route
+    return ((0.0, 0.0), (0.0, 0.0))
   }
-  let out = edge.route.copy()
   let src_shape_stroke = shape_stroke_width(
     shapes,
     edge.src_id,
@@ -6077,26 +7533,21 @@ fn adjusted_route_for_arrowheads(
     default_shape_stroke_width,
   )
   let src_adj = arrowhead_adjustment(
-    out[1],
-    out[0],
+    edge.route[1],
+    edge.route[0],
     edge.src_arrowhead,
     edge_stroke_width,
     src_shape_stroke,
   )
-  let last = out.length() - 1
+  let last = edge.route.length() - 1
   let dst_adj = arrowhead_adjustment(
-    out[last - 1],
-    out[last],
+    edge.route[last - 1],
+    edge.route[last],
     edge.dst_arrowhead,
     edge_stroke_width,
     dst_shape_stroke,
   )
-  out[0] = @graph.Point::new(out[0].x + src_adj.0, out[0].y + src_adj.1)
-  out[last] = @graph.Point::new(
-    out[last].x + dst_adj.0,
-    out[last].y + dst_adj.1,
-  )
-  out
+  (src_adj, dst_adj)
 }
 
 ///|
@@ -6110,7 +7561,7 @@ fn shape_stroke_width(
       return style_double(shape.style.stroke_width, default_value)
     }
   }
-  default_value
+  0.0
 }
 
 ///|
@@ -6165,30 +7616,42 @@ fn point_at_distance_on_route(
   if points.length() < 2 {
     return (Point::new(0.0, 0.0), 0)
   }
-  if distance <= 0.0 {
-    return (points[0], 0)
-  }
-  let total = route_length(points)
-  if distance >= total {
-    return (points[points.length() - 1], points.length() - 2)
-  }
-  let mut walked = 0.0
+  // Match ../d2/lib/geo/route.go::GetPointAtDistance:
+  // do not clamp distance into [0, total], extrapolate on the last segment.
+  let mut remaining = distance
+  let mut curr = points[0]
+  let mut next = points[1]
+  let mut seg_len = 0.0
   for i = 0; i < points.length() - 1; i = i + 1 {
-    let p0 = points[i]
-    let p1 = points[i + 1]
-    let dx = p1.x - p0.x
-    let dy = p1.y - p0.y
-    let seg = (dx * dx + dy * dy).sqrt()
-    if seg <= 0.000001 {
-      continue
+    curr = points[i]
+    next = points[i + 1]
+    let dx = next.x - curr.x
+    let dy = next.y - curr.y
+    seg_len = (dx * dx + dy * dy).sqrt()
+    if remaining <= seg_len {
+      if seg_len <= 0.000001 {
+        return (curr, i)
+      }
+      let t = remaining / seg_len
+      return (
+        Point::new(
+          curr.x * (1.0 - t) + next.x * t,
+          curr.y * (1.0 - t) + next.y * t,
+        ),
+        i,
+      )
     }
-    if walked + seg >= distance {
-      let t = (distance - walked) / seg
-      return (Point::new(p0.x + dx * t, p0.y + dy * t), i)
-    }
-    walked = walked + seg
+    remaining = remaining - seg_len
   }
-  (points[points.length() - 1], points.length() - 2)
+  let last_index = points.length() - 2
+  if seg_len <= 0.000001 {
+    return (next, last_index)
+  }
+  let t = 1.0 + remaining / seg_len
+  (
+    Point::new(curr.x * (1.0 - t) + next.x * t, curr.y * (1.0 - t) + next.y * t),
+    last_index,
+  )
 }
 
 ///|
@@ -6238,7 +7701,13 @@ fn unlocked_top_label_top_left(
   let offset_y = stroke_width / 2.0 + LABEL_PADDING + height / 2.0
   let center_x = base_point.x + normal_x * offset_x
   let center_y = base_point.y + normal_y * offset_y
-  (Point::new(center_x - width / 2.0, center_y - height / 2.0), segment_index)
+  (
+    Point::new(
+      d2_path_chop_precision(center_x - width / 2.0),
+      d2_path_chop_precision(center_y - height / 2.0),
+    ),
+    segment_index,
+  )
 }
 
 ///|
@@ -6398,9 +7867,6 @@ fn render_svg_edge(
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
 ) -> Unit raise @render_api.RenderError {
-  if is_synthetic_sequence_lifeline(edge) {
-    return
-  }
   if edge.route.length() < 2 {
     return
   }
@@ -6411,7 +7877,7 @@ fn render_svg_edge(
   }
   svg.add(
     d2_group_open(
-      d2_wrapper_class(d2_connection_abs_id(edge, repeat_index)),
+      d2_connection_wrapper_class(d2_connection_abs_id(edge, repeat_index)),
       style=wrapper_style,
     ),
   )
@@ -6421,29 +7887,33 @@ fn render_svg_edge(
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
   // Get style values
-  let stroke_signature = style_string(edge.style.stroke, "B1")
-  let stroke = style_color(edge.style.stroke, "B1", theme, use_css_theme_vars)
+  let stroke_default = default_edge_stroke_token(edge)
+  let stroke_signature = style_string(edge.style.stroke, stroke_default)
+  let stroke = style_color(
+    edge.style.stroke,
+    stroke_default,
+    theme,
+    use_css_theme_vars,
+  )
   let stroke_width = style_double(
     edge.style.stroke_width,
     config.default_stroke_width,
   )
+  let connection_border_radius = style_double(edge.style.border_radius, 10.0)
   let stroke_dash = style_double(edge.style.stroke_dash, 0.0)
-  let adjusted_route = adjusted_route_for_arrowheads(
+  let (src_adj, dst_adj) = get_arrowhead_adjustments(
     edge,
     shapes,
     stroke_width,
     config.default_stroke_width,
   )
-  let pb = @svg.PathBuilder::new()
-  if edge.is_curve {
-    build_d2_curve_path(pb, adjusted_route)
-  } else if style_bool(edge.style.curved, true) {
-    // Route points are provided by the layout pipeline.
-    // Only apply rounded corner transitions at bends here.
-    build_rounded_path(pb, adjusted_route)
-  } else {
-    build_polyline_path(pb, adjusted_route)
-  }
+  let path_data = d2_path_data(
+    edge,
+    src_adj,
+    dst_adj,
+    style_bool(edge.style.curved, true),
+    connection_border_radius,
+  )
   // Determine markers based on arrowhead types
   let marker_start = marker_url_for_edge(
     svg,
@@ -6469,8 +7939,9 @@ fn render_svg_edge(
   )
   svg.add(
     d2_connection_path_element(
-      pb.build(),
+      path_data,
       stroke,
+      stroke_signature,
       stroke_width,
       stroke_dash,
       marker_start,
@@ -6560,107 +8031,6 @@ fn render_svg_edge(
     svg.close_group()
   }
   svg.close_group()
-}
-
-///|
-fn sequence_participant_ids_for_render(graph : Diagram) -> Array[String] {
-  let object_ids : Map[String, Bool] = {}
-  for obj in graph.shapes {
-    object_ids[obj.id] = true
-  }
-  if !graph.root.child_ids.is_empty() {
-    let ids : Array[String] = []
-    for id in graph.root.child_ids {
-      if object_ids.contains(id) {
-        ids.push(id)
-      }
-    }
-    if !ids.is_empty() {
-      return ids
-    }
-  }
-  let child_ids : Map[String, Bool] = {}
-  for obj in graph.shapes {
-    for child_id in obj.child_ids {
-      child_ids[child_id] = true
-    }
-  }
-  let ids : Array[String] = []
-  for obj in graph.shapes {
-    if !child_ids.contains(obj.id) {
-      ids.push(obj.id)
-    }
-  }
-  ids
-}
-
-///|
-fn is_synthetic_sequence_lifeline(conn : Connection) -> Bool {
-  !conn.src_arrow &&
-  !conn.dst_arrow &&
-  conn.label == "" &&
-  conn.dst_id.contains("-lifeline-end-")
-}
-
-///|
-fn render_sequence_lifelines(
-  svg : @svg.Svg,
-  graph : Diagram,
-  theme : @themes.Theme,
-  use_css_theme_vars : Bool,
-) -> Unit {
-  let ids = sequence_participant_ids_for_render(graph)
-  if ids.is_empty() {
-    return
-  }
-  let object_by_id : Map[String, Shape] = {}
-  for obj in graph.shapes {
-    object_by_id[obj.id] = obj
-  }
-  let mut max_message_y = -1.0
-  for edge in graph.connections {
-    if is_synthetic_sequence_lifeline(edge) {
-      continue
-    }
-    for p in edge.route {
-      if p.y > max_message_y {
-        max_message_y = p.y
-      }
-    }
-  }
-  let stroke = resolve_theme_color("B2", theme, use_css_theme_vars)
-  for id in ids {
-    match object_by_id.get(id) {
-      Some(obj) =>
-        match obj.box {
-          Some(box) => {
-            let x = box.x + box.width / 2.0
-            let start_y = box.y + box.height + 2.0
-            let end_y = if max_message_y >= 0.0 {
-              max_message_y + 69.0
-            } else {
-              start_y + 120.0
-            }
-            let d = @svg.PathBuilder::new()
-              .move_to(x, start_y)
-              .line_to(x, end_y)
-              .build()
-            svg.add(
-              @xml_emit.Element::new("path")
-              .attr("d", d)
-              .attr("stroke", stroke)
-              .attr("fill", "none")
-              .attr_num("stroke-width", 2.0)
-              .attr("stroke-dasharray", "12.000000,11.838767")
-              .self_close()
-              .build(),
-            )
-          }
-          None => ()
-        }
-      None => ()
-    }
-  }
 }
 
 ///|
@@ -6769,6 +8139,15 @@ fn render_svg_c4_container(
 }
 
 ///|
+fn default_edge_stroke_token(edge : Connection) -> String {
+  if style_double(edge.style.stroke_dash, 0.0) != 0.0 {
+    "B2"
+  } else {
+    "B1"
+  }
+}
+
+///|
 /// Render a sequence diagram note (uses page shape with folded corner)
 fn render_svg_sequence_note(
   svg : @svg.Svg,
@@ -6779,8 +8158,19 @@ fn render_svg_sequence_note(
   let fill = "#ffffc0" // Light yellow for notes
   let stroke = config.default_stroke
   let stroke_width = config.default_stroke_width
+  let theme = @themes.get_theme(config.theme_id)
   // Use page shape for notes (with folded corner)
-  render_svg_page(svg, box, fill, stroke, stroke_width)
+  render_svg_page(
+    svg,
+    box,
+    fill,
+    stroke,
+    stroke_width,
+    theme,
+    false,
+    None,
+    None,
+  )
   // Render note text centered
   let cx = box.x + box.width / 2.0
   let cy = box.y + box.height / 2.0

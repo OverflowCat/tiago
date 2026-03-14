@@ -228,13 +228,10 @@ pub fn Svg::to_string(self : Svg) -> String {
   }
   if self.defs.length() > 0 {
     let mut defs = @xml_emit.Element::new("defs")
-    for i, def in self.defs {
-      if i > 0 {
-        defs = defs.child("\n")
-      }
-      defs = defs.child(def)
-    }
     defs = defs.child("\n")
+    for def in self.defs {
+      defs = defs.child(def).child("\n")
+    }
     blocks.push(defs.build())
   }
   for elem in self.elements {
@@ -1080,38 +1077,20 @@ pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
 /// Build a lines pattern definition (horizontal lines)
 pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
   let _ = bg_color
-  let size = 15.0
-  let rows = [2.0, 7.0, 12.0]
-  let line_groups : Array[String] = []
-  for y in rows {
-    let rect = @xml_emit.Element::new("rect")
-      .attr_num("y", y)
-      .attr_num("width", size)
-      .attr_num("height", 1.0)
-      .attr("fill", color)
-      .self_close()
-      .build()
-    line_groups.push(
-      @xml_emit.Element::new("g")
-      .attr("style", "mix-blend-mode:multiply")
-      .attr("opacity", "0.05")
-      .child(rect)
-      .build(),
-    )
-  }
-  let lines = @xml_emit.Element::new("g")
-    .attr("style", "mix-blend-mode:multiply")
-    .children(line_groups)
-    .build()
-  @xml_emit.Element::new("pattern")
-  .attr("id", id)
-  .attr_int("x", 0)
-  .attr_int("y", 0)
-  .attr("patternUnits", "userSpaceOnUse")
-  .attr_num("width", size)
-  .attr_num("height", size)
-  .child(lines)
-  .build()
+  // Keep template formatting aligned with d2's embedded lines.txt output.
+  "<pattern id=\"\{@xml_emit.escape(id)}\" x=\"0\" y=\"0\" width=\"15\" height=\"15\" patternUnits=\"userSpaceOnUse\">\n" +
+  "<g style=\"mix-blend-mode:multiply\">\n" +
+  "<g style=\"mix-blend-mode:multiply\" opacity=\"0.05\">\n" +
+  "<rect y=\"2\" width=\"15\" height=\"1\" fill=\"\{@xml_emit.escape(color)}\"/>\n" +
+  "</g>\n" +
+  "<g style=\"mix-blend-mode:multiply\" opacity=\"0.05\">\n" +
+  "<rect y=\"7\" width=\"15\" height=\"1\" fill=\"\{@xml_emit.escape(color)}\"/>\n" +
+  "</g>\n" +
+  "<g style=\"mix-blend-mode:multiply\" opacity=\"0.05\">\n" +
+  "<rect y=\"12\" width=\"15\" height=\"1\" fill=\"\{@xml_emit.escape(color)}\"/>\n" +
+  "</g>\n" +
+  "</g>\n" +
+  "</pattern>\n"
 }
 
 ///|
@@ -1371,42 +1350,14 @@ pub fn sketch_filter(id : String) -> String {
 ///|
 /// Build a drop-shadow filter used by D2's `shadow: true` style.
 pub fn shadow_filter(id : String) -> String {
-  let blur = @xml_emit.Element::new("feGaussianBlur")
-    .attr("stdDeviation", "1.7 ")
-    .attr("in", "SourceGraphic")
-    .build()
-  let flood = @xml_emit.Element::new("feFlood")
-    .attr("flood-color", "#3d4574")
-    .attr("flood-opacity", "0.4")
-    .attr("result", "ShadowFeFlood")
-    .attr("in", "SourceGraphic")
-    .build()
-  let composite = @xml_emit.Element::new("feComposite")
-    .attr("in", "ShadowFeFlood")
-    .attr("in2", "SourceAlpha")
-    .attr("operator", "in")
-    .attr("result", "ShadowFeComposite")
-    .build()
-  let offset = @xml_emit.Element::new("feOffset")
-    .attr("dx", "3")
-    .attr("dy", "5")
-    .attr("result", "ShadowFeOffset")
-    .attr("in", "ShadowFeComposite")
-    .build()
-  let blend = @xml_emit.Element::new("feBlend")
-    .attr("in", "SourceGraphic")
-    .attr("in2", "ShadowFeOffset")
-    .attr("mode", "normal")
-    .attr("result", "ShadowFeBlend")
-    .build()
-  @xml_emit.Element::new("filter")
-  .attr("id", id)
-  .attr("width", "200%")
-  .attr("height", "200%")
-  .attr("x", "-50%")
-  .attr("y", "-50%")
-  .children([blur, flood, composite, offset, blend])
-  .build()
+  // Keep formatting aligned with d2's defineShadowFilter output.
+  "\n\t<filter id=\"\{@xml_emit.escape(id)}\" width=\"200%\" height=\"200%\" x=\"-50%\" y=\"-50%\">\n" +
+  "\t\t<feGaussianBlur stdDeviation=\"1.7 \" in=\"SourceGraphic\"></feGaussianBlur>\n" +
+  "\t\t<feFlood flood-color=\"#3d4574\" flood-opacity=\"0.4\" result=\"ShadowFeFlood\" in=\"SourceGraphic\"></feFlood>\n" +
+  "\t\t<feComposite in=\"ShadowFeFlood\" in2=\"SourceAlpha\" operator=\"in\" result=\"ShadowFeComposite\"></feComposite>\n" +
+  "\t\t<feOffset dx=\"3\" dy=\"5\" result=\"ShadowFeOffset\" in=\"ShadowFeComposite\"></feOffset>\n" +
+  "\t\t<feBlend in=\"SourceGraphic\" in2=\"ShadowFeOffset\" mode=\"normal\" result=\"ShadowFeBlend\"></feBlend>\n" +
+  "\t</filter>\n"
 }
 
 // =============================================================================
