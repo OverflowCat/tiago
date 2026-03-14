@@ -1051,8 +1051,9 @@ fn build_dagre_graph(
     let (width, height) = object_size(obj, config, object_by_id)
     node_size_by_id[obj.id] = (width, height)
     let node_attrs = @moon_dagre.empty_attrs()
-    node_attrs.set_float("width", width)
-    node_attrs.set_float("height", height)
+    // Match d2dagrelayout/object_mapper.go: generateAddNodeLine(..., int(width), int(height))
+    node_attrs.set_float("width", d2_js_int_float(width))
+    node_attrs.set_float("height", d2_js_int_float(height))
     dagre_graph.set_node(dagre_id, label=node_attrs)
   }
 
@@ -2466,9 +2467,19 @@ fn make_dagre_edge_attrs(
     }
     None => ()
   }
-  attrs.set_float("width", width)
-  attrs.set_float("height", height)
+  // Match d2dagrelayout/object_mapper.go: generateAddEdgeLine(..., int(width), int(height))
+  attrs.set_float("width", d2_js_int_float(width))
+  attrs.set_float("height", d2_js_int_float(height))
   attrs
+}
+
+///|
+fn d2_js_int_float(v : Double) -> Double {
+  if v >= 0.0 {
+    v.to_int().to_double()
+  } else {
+    -(-v).to_int().to_double()
+  }
 }
 
 ///|
@@ -3008,14 +3019,27 @@ fn maybe_unmirror_layout(
   let mut min_x = 1000000000000.0
   let mut max_x = -1000000000000.0
   let mut seen = false
-  for _, box in patch.nodes {
+  for id, box in patch.nodes {
     seen = true
-    if box.x < min_x {
-      min_x = box.x
-    }
-    let right = box.x + box.width
-    if right > max_x {
-      max_x = right
+    match raw_node_geometry.get(id) {
+      Some(raw) => {
+        if raw.left < min_x {
+          min_x = raw.left
+        }
+        let right = raw.left + raw.width
+        if right > max_x {
+          max_x = right
+        }
+      }
+      None => {
+        if box.x < min_x {
+          min_x = box.x
+        }
+        let right = box.x + box.width
+        if right > max_x {
+          max_x = right
+        }
+      }
     }
   }
   if !seen {
@@ -3025,8 +3049,7 @@ fn maybe_unmirror_layout(
 
   for id, box in patch.nodes {
     match raw_node_geometry.get(id) {
-      Some(raw) if raw.width.ceil().to_int() % 2 != 0 &&
-        raw_node_geometry_correction_target(id, object_by_id) =>
+      Some(raw) =>
         patch.nodes[id] = @graph.Box::new(
           round_double(axis_sum - raw.left - raw.width),
           round_double(raw.top),
@@ -3058,83 +3081,7 @@ fn maybe_unmirror_layout(
     )
   }
 
-  let mut has_container_object = false
-  for obj in graph.objects {
-    if !obj.child_ids.is_empty() {
-      has_container_object = true
-    }
-  }
-  if !has_container_object {
-    for id, box in patch.nodes {
-      match object_by_id.get(id) {
-        Some(obj) => {
-          let mut nudge_x = 0.0
-          if obj.shape_type == @graph.Person {
-            nudge_x = 1.0
-          } else if obj.shape_type == @graph.Cylinder {
-            let incoming = incoming_edge_count(graph, id)
-            if incoming >= 2 && round_double(box.width).to_int() % 2 != 0 {
-              nudge_x = 1.0
-            }
-          }
-          if nudge_x != 0.0 {
-            patch.nodes[id] = @graph.Box::new(
-              box.x + nudge_x,
-              box.y,
-              box.width,
-              box.height,
-            )
-          }
-        }
-        None => ()
-      }
-    }
-  } else {
-    let axis_center = axis_sum / 2.0
-    for id, box in patch.nodes {
-      match object_by_id.get(id) {
-        Some(obj) =>
-          if obj.shape_type == @graph.Rectangle &&
-            obj.child_ids.is_empty() &&
-            object_depth_from_id(id) <= 2 &&
-            round_double(box.width).to_int() % 2 != 0 &&
-            box.x + box.width / 2.0 < axis_center {
-            patch.nodes[id] = @graph.Box::new(
-              box.x + 1.0,
-              box.y,
-              box.width,
-              box.height,
-            )
-          }
-        None => ()
-      }
-    }
-  }
-
   true
-}
-
-///|
-fn incoming_edge_count(graph : @graph.GraphInput, obj_id : String) -> Int {
-  let mut count = 0
-  for edge in graph.edges {
-    if edge.dst_id == obj_id {
-      count = count + 1
-    }
-  }
-  count
-}
-
-///|
-fn raw_node_geometry_correction_target(
-  obj_id : String,
-  object_by_id : Map[String, @graph.ObjectInput],
-) -> Bool {
-  match object_by_id.get(obj_id) {
-    Some(obj) =>
-      obj.shape_type == @graph.SqlTable || obj.shape_type == @graph.Class
-    None => false
-  }
 }
 
 ///|

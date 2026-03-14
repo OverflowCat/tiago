@@ -504,20 +504,12 @@ fn plain_object_label_layout(
       )
     None =>
       if is_container(obj) && !is_grid_container {
-        if label_overflows {
-          let anchor_box = label_outside_anchor_box(obj, box)
-          (
-            anchor_box.x + (anchor_box.width - label_width) / 2.0,
-            anchor_box.y - LABEL_PADDING - label_height,
-            label_width,
-          )
-        } else {
-          (
-            inner_box.x + (inner_box.width - label_width) / 2.0,
-            inner_box.y + LABEL_PADDING,
-            label_width,
-          )
-        }
+        let anchor_box = label_outside_anchor_box(obj, box)
+        (
+          anchor_box.x + (anchor_box.width - label_width) / 2.0,
+          anchor_box.y - LABEL_PADDING - label_height,
+          label_width,
+        )
       } else if is_grid_container {
         (
           inner_box.x + (inner_box.width - label_width) / 2.0,
