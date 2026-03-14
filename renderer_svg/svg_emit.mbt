@@ -488,7 +488,8 @@ fn d2_legend_corpus(legend : @graph.LegendInput) -> String {
     match entry {
       @graph.ShapeEntry(label~, ..) => sb.write_string(label)
       @graph.ConnectionEntry(label~, ..) => sb.write_string(label)
-      @graph.CustomEntry(label~, ..) => sb.write_string(label)
+      // D2 GetCorpus includes legend shape/connection labels only.
+      @graph.CustomEntry(..) => ()
       @graph.Separator => ()
     }
   }
