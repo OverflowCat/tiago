@@ -425,6 +425,7 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   convert_dagre_routes_to_d2_curves(patch, graph)
   recompute_edge_label_boxes(patch, graph)
   apply_constant_near_positions(patch, graph)
+  recompute_container_label_boxes(patch, graph)
   patch
 }
 
@@ -6644,6 +6645,32 @@ fn recompute_edge_label_boxes(
     patch.edge_labels[edge.index] = @graph.Box::new(
       label_x, label_y, width, height,
     )
+  }
+}
+
+///|
+fn recompute_container_label_boxes(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  for obj in graph.objects {
+    if obj.label == "" || obj.child_ids.is_empty() {
+      continue
+    }
+    if obj.shape_type == @graph.SqlTable || obj.shape_type == @graph.Class {
+      continue
+    }
+    let node_box = match patch.nodes.get(obj.id) {
+      Some(v) => v
+      None => continue
+    }
+    let (label_width, label_height) = match object_label_dimensions(obj) {
+      Some(v) => v
+      None => continue
+    }
+    let x = node_box.x + (node_box.width - label_width) / 2.0
+    let y = node_box.y - D2_LABEL_PADDING - label_height
+    patch.node_labels[obj.id] = @graph.Box::new(x, y, label_width, label_height)
   }
 }
 

@@ -606,15 +606,18 @@ fn build_elk_graph(
 
     let node_json : Map[String, Json] = {
       "id": Json::string(obj.id),
+      "x": Json::number(0.0),
+      "y": Json::number(0.0),
       "width": Json::number(width),
       "height": Json::number(height),
-      "children": Json::array([]),
     }
 
     if !obj.label.is_empty() {
       node_json["labels"] = Json::array([
         Json::object({
           "text": Json::string(obj.label),
+          "x": Json::number(0.0),
+          "y": Json::number(0.0),
           "width": Json::number(label_width(obj, config)),
           "height": Json::number(label_height(obj, config)),
         }),
@@ -658,7 +661,7 @@ fn build_elk_graph(
       Some(node) => node
       None => continue
     }
-    let children_json = json_array_field(parent_node, "children")
+    let children_json : Array[Json] = []
     for child_id in obj.child_ids {
       if excluded_node_ids.contains(child_id) {
         continue
@@ -671,8 +674,10 @@ fn build_elk_graph(
         None => ()
       }
     }
-    parent_node["children"] = Json::array(children_json)
-    node_json_by_id[obj.id] = parent_node
+    if !children_json.is_empty() {
+      parent_node["children"] = Json::array(children_json)
+      node_json_by_id[obj.id] = parent_node
+    }
   }
 
   let root_children : Array[Json] = []
@@ -762,6 +767,7 @@ fn build_elk_graph(
       "id": Json::string(edge_id),
       "sources": Json::array([Json::string(source_endpoint)]),
       "targets": Json::array([Json::string(target_endpoint)]),
+      "container": Json::string(""),
     }
 
     match edge_label_size(edge) {
@@ -769,10 +775,14 @@ fn build_elk_graph(
         edge_json["labels"] = Json::array([
           Json::object({
             "text": Json::string(edge.label),
+            "x": Json::number(0.0),
+            "y": Json::number(0.0),
             "width": Json::number(label_w),
             "height": Json::number(label_h),
             "layoutOptions": Json::object({
+              "elk.direction": Json::string(""),
               "elk.edgeLabels.inline": Json::boolean(true),
+              "elk.spacing.nodeSelfLoop": Json::number(0.0),
             }),
           }),
         ])
@@ -2160,6 +2170,7 @@ fn make_container_layout_options(
   let spacing = layout_node_spacing(config, direction)
   let padding = layout_padding_value(config)
   {
+    "elk.direction": Json::string(""),
     "elk.layered.crossingMinimization.forceNodeModelOrder": Json::boolean(true),
     "elk.hierarchyHandling": Json::string("INCLUDE_CHILDREN"),
     "elk.layered.nodePlacement.bk.fixedAlignment": Json::string("BALANCED"),
@@ -2184,7 +2195,11 @@ fn make_container_layout_options(
 
 ///|
 fn make_leaf_layout_options() -> Map[String, Json] {
-  { "elk.layered.edgeRouting.selfLoopDistribution": Json::string("EQUALLY") }
+  {
+    "elk.direction": Json::string(""),
+    "elk.layered.edgeRouting.selfLoopDistribution": Json::string("EQUALLY"),
+    "elk.spacing.nodeSelfLoop": Json::number(0.0),
+  }
 }
 
 ///|

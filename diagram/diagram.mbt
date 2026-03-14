@@ -386,56 +386,23 @@ fn normalize_bend_points_like_d2(
 }
 
 ///|
-fn object_uses_grid_layout(obj : @graph.ObjectInput) -> Bool {
-  obj.grid_rows is Some(_) || obj.grid_columns is Some(_)
-}
 
 ///|
-fn object_has_grid_ancestor_from(
-  current_id : String,
-  parent_id_by_child_id : Map[String, String],
-  object_by_id : Map[String, @graph.ObjectInput],
-) -> Bool {
-  let parent_id = match parent_id_by_child_id.get(current_id) {
-    Some(v) => v
-    None => return false
-  }
-  let parent_obj = match object_by_id.get(parent_id) {
-    Some(v) => v
-    None => return false
-  }
-  if object_uses_grid_layout(parent_obj) {
-    true
+fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
+  let projected_metrics_box = project_box_for_target(obj.label_box)
+  let projected_label_box = if obj.child_ids.is_empty() {
+    None
   } else {
-    object_has_grid_ancestor_from(
-      parent_id, parent_id_by_child_id, object_by_id,
-    )
+    // Keep container label anchor coordinates in full precision.
+    // d2 computes text placement from float label anchors; truncating here
+    // introduces 0.5px drift in centered container titles (e.g. legend labels).
+    obj.label_box
   }
-}
-
-///|
-fn object_has_grid_ancestor(
-  obj_id : String,
-  parent_id_by_child_id : Map[String, String],
-  object_by_id : Map[String, @graph.ObjectInput],
-) -> Bool {
-  object_has_grid_ancestor_from(obj_id, parent_id_by_child_id, object_by_id)
-}
-
-///|
-fn shape_from_object(
-  obj : @graph.ObjectInput,
-  parent_id_by_child_id : Map[String, String],
-  object_by_id : Map[String, @graph.ObjectInput],
-) -> Shape {
-  let keep_label_box = object_uses_grid_layout(obj) ||
-    object_has_grid_ancestor(obj.id, parent_id_by_child_id, object_by_id)
-  let projected_label_box = if keep_label_box { obj.label_box } else { None }
-  let label_width = match obj.label_box {
+  let label_width = match projected_metrics_box {
     Some(label_box) => Some(label_box.width)
     None => None
   }
-  let label_height = match obj.label_box {
+  let label_height = match projected_metrics_box {
     Some(label_box) => Some(label_box.height)
     None => None
   }
@@ -719,24 +686,9 @@ fn append_sequence_lifeline_connections(
 ///
 /// This is the only conversion renderers should need.
 pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
-  let object_by_id : Map[String, @graph.ObjectInput] = {}
-  object_by_id[graph.root.id] = graph.root
-  for obj in graph.objects {
-    object_by_id[obj.id] = obj
-  }
-  let parent_id_by_child_id : Map[String, String] = {}
-  for parent_obj in graph.objects {
-    for child_id in parent_obj.child_ids {
-      parent_id_by_child_id[child_id] = parent_obj.id
-    }
-  }
-  for child_id in graph.root.child_ids {
-    parent_id_by_child_id[child_id] = graph.root.id
-  }
-
   let shapes : Array[Shape] = []
   for obj in graph.objects {
-    shapes.push(shape_from_object(obj, parent_id_by_child_id, object_by_id))
+    shapes.push(shape_from_object(obj))
   }
   let connections : Array[Connection] = []
   for edge in graph.edges {
@@ -758,7 +710,7 @@ pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
   {
     name: graph.name,
     config,
-    root: shape_from_object(graph.root, parent_id_by_child_id, object_by_id),
+    root: shape_from_object(graph.root),
     shapes,
     connections,
     activation_boxes: graph.activation_boxes,
