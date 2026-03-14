@@ -1383,19 +1383,13 @@ fn sfnt_aligned_table_for_checksum(
 
 ///|
 fn compress_zlib_default(data : Array[Byte]) -> Array[Byte]? {
-  let encoder = @moon_yazi.Encoder::new()
-  encoder.set_format(@moon_yazi.Format::Zlib)
-  encoder.set_level(@moon_yazi.CompressionLevel::Default)
-  encoder.set_strategy(@moon_yazi.CompressionStrategy::Default)
-  let compressed : Array[Byte] = []
-  let stream = encoder.stream_into_vec(compressed)
-  stream.write(Bytes::from_array(data[:])) catch {
+  let compressed = @moon_yazi.compress(
+    Bytes::from_array(data[:]),
+    @moon_yazi.Format::Zlib,
+    @moon_yazi.CompressionLevel::Default,
+  ) catch {
     _ => return None
   }
-  stream.write(Bytes::from_array([])) catch {
-    _ => return None
-  }
-  ignore(stream.finish() catch { _ => return None })
   Some(compressed)
 }
 
