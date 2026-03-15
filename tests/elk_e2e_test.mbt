@@ -215,9 +215,8 @@ fn normalize_text_snapshot(text : String) -> String {
 
 ///|
 fn skip_elk_d2_parity_for_moon_elk_issue(name : String) -> Bool {
-  // moon_elk issues #7, #8 and #9:
-  // layered+INCLUDE_CHILDREN outputs diverge from elkjs for `containers`, `isomorphic`,
-  // and `play_containers`.
-  // Keep snapshot coverage in diago; skip strict d2 parity on impacted cases until fixed upstream.
-  name == "containers" || name == "isomorphic" || name == "play_containers"
+  // moon_elk issue #9:
+  // `isomorphic` output still diverges from elkjs under layered+INCLUDE_CHILDREN.
+  // Keep snapshot coverage in diago; skip strict d2 parity on this case until fixed upstream.
+  name == "isomorphic"
 }
