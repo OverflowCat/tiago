@@ -7408,7 +7408,6 @@ fn d2_path_data(
   edge : Connection,
   src_adj : (Double, Double),
   dst_adj : (Double, Double),
-  rounded : Bool,
   connection_border_radius : Double,
 ) -> String {
   let route = edge.route
@@ -7436,51 +7435,45 @@ fn d2_path_data(
     return path.join(" ")
   }
 
-  if rounded {
-    let mut i = 1
-    while i < route.length() - 1 {
-      let prev_source = route[i - 1]
-      let prev_target = route[i]
-      let curr_target = route[i + 1]
-      let prev_vector_x = prev_target.x - prev_source.x
-      let prev_vector_y = prev_target.y - prev_source.y
-      let curr_vector_x = curr_target.x - prev_target.x
-      let curr_vector_y = curr_target.y - prev_target.y
-      let dist = @graph.Point::distance(prev_target, curr_target)
-      let units = @cmp.minimum(connection_border_radius, dist / 2.0)
-      let (prev_tx, prev_ty) = unit_vector_scaled(
-        prev_vector_x, prev_vector_y, units,
-      )
-      let (curr_tx, curr_ty) = unit_vector_scaled(
-        curr_vector_x, curr_vector_y, units,
-      )
+  let mut i = 1
+  while i < route.length() - 1 {
+    let prev_source = route[i - 1]
+    let prev_target = route[i]
+    let curr_target = route[i + 1]
+    let prev_vector_x = prev_target.x - prev_source.x
+    let prev_vector_y = prev_target.y - prev_source.y
+    let curr_vector_x = curr_target.x - prev_target.x
+    let curr_vector_y = curr_target.y - prev_target.y
+    let dist = @graph.Point::distance(prev_target, curr_target)
+    let units = @cmp.minimum(connection_border_radius, dist / 2.0)
+    let (prev_tx, prev_ty) = unit_vector_scaled(
+      prev_vector_x, prev_vector_y, units,
+    )
+    let (curr_tx, curr_ty) = unit_vector_scaled(
+      curr_vector_x, curr_vector_y, units,
+    )
 
-      path.push(
-        "L \{d2_fixed6(prev_target.x - prev_tx)} \{d2_fixed6(prev_target.y - prev_ty)}",
-      )
+    path.push(
+      "L \{d2_fixed6(prev_target.x - prev_tx)} \{d2_fixed6(prev_target.y - prev_ty)}",
+    )
 
-      if units < connection_border_radius && i < route.length() - 2 {
-        let next_target = route[i + 2]
-        let next_vector_x = next_target.x - curr_target.x
-        let next_vector_y = next_target.y - curr_target.y
-        i = i + 1
-        let (next_tx, next_ty) = unit_vector_scaled(
-          next_vector_x, next_vector_y, units,
-        )
-        path.push(
-          "C \{d2_fixed6(prev_target.x + prev_tx)} \{d2_fixed6(prev_target.y + prev_ty)} \{d2_fixed6(curr_target.x - next_tx)} \{d2_fixed6(curr_target.y - next_ty)} \{d2_fixed6(curr_target.x + next_tx)} \{d2_fixed6(curr_target.y + next_ty)}",
-        )
-      } else {
-        path.push(
-          "S \{d2_fixed6(prev_target.x)} \{d2_fixed6(prev_target.y)} \{d2_fixed6(prev_target.x + curr_tx)} \{d2_fixed6(prev_target.y + curr_ty)}",
-        )
-      }
+    if units < connection_border_radius && i < route.length() - 2 {
+      let next_target = route[i + 2]
+      let next_vector_x = next_target.x - curr_target.x
+      let next_vector_y = next_target.y - curr_target.y
       i = i + 1
+      let (next_tx, next_ty) = unit_vector_scaled(
+        next_vector_x, next_vector_y, units,
+      )
+      path.push(
+        "C \{d2_fixed6(prev_target.x + prev_tx)} \{d2_fixed6(prev_target.y + prev_ty)} \{d2_fixed6(curr_target.x - next_tx)} \{d2_fixed6(curr_target.y - next_ty)} \{d2_fixed6(curr_target.x + next_tx)} \{d2_fixed6(curr_target.y + next_ty)}",
+      )
+    } else {
+      path.push(
+        "S \{d2_fixed6(prev_target.x)} \{d2_fixed6(prev_target.y)} \{d2_fixed6(prev_target.x + curr_tx)} \{d2_fixed6(prev_target.y + curr_ty)}",
+      )
     }
-  } else {
-    for i = 1; i < route.length() - 1; i = i + 1 {
-      path.push("L \{d2_fixed6(route[i].x)} \{d2_fixed6(route[i].y)}")
-    }
+    i = i + 1
   }
 
   let last_point = route[route.length() - 1]
@@ -7899,13 +7892,7 @@ fn render_svg_edge(
     stroke_width,
     config.default_stroke_width,
   )
-  let path_data = d2_path_data(
-    edge,
-    src_adj,
-    dst_adj,
-    style_bool(edge.style.curved, true),
-    connection_border_radius,
-  )
+  let path_data = d2_path_data(edge, src_adj, dst_adj, connection_border_radius)
   // Determine markers based on arrowhead types
   let marker_start = marker_url_for_edge(
     svg,

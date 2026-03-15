@@ -342,9 +342,6 @@ const D2_SEQUENCE_GROUP_CONTAINER_PADDING : Double = 12.0
 const D2_SEQUENCE_MIN_MESSAGE_DISTANCE : Double = 30.0
 
 ///|
-const D2_SEQUENCE_LABEL_Y_OFFSET : Double = 10.0
-
-///|
 const CLOUD_WIDE_INNER_WIDTH : Double = 0.819
 
 ///|
@@ -645,27 +642,6 @@ fn layout_sequence_diagram(
       ]
       message_offset = start_y + text_height / 2.0 + y_step
     }
-
-    if edge.label != "" {
-      let (label_width, label_height) = sequence_edge_label_size(edge)
-      match patch.edges.get(edge.index) {
-        Some(route) =>
-          if !route.is_empty() {
-            let center_x = if route.length() >= 4 {
-              (route[0].x + route[1].x) / 2.0
-            } else {
-              (route[0].x + route[route.length() - 1].x) / 2.0
-            }
-            patch.edge_labels[edge.index] = @graph.Box::new(
-              center_x - label_width / 2.0,
-              route[0].y - D2_SEQUENCE_LABEL_Y_OFFSET,
-              label_width,
-              label_height,
-            )
-          }
-        None => ()
-      }
-    }
   }
 
   for edge in ordered_edges {
@@ -731,6 +707,7 @@ fn layout_sequence_diagram(
     }
   }
 
+  recompute_edge_label_boxes(patch, graph)
   patch
 }
 
