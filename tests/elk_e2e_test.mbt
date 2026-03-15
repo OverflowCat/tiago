@@ -42,10 +42,6 @@ test "examples: elk svg e2e snapshots and d2 semantic parity" {
       normalize_svg_snapshot(snapshot_svg),
     )
 
-    if skip_elk_d2_parity_for_moon_elk_issue(name) {
-      continue
-    }
-
     let d2_svg = read_required_file(
       "examples/d2-elk-svg-output/" + name + ".svg",
     ).unwrap()
@@ -101,10 +97,6 @@ test "examples: elk ascii e2e snapshots" {
       msg="\{name}: diago elk ascii snapshot mismatch",
     )
 
-    if skip_elk_d2_parity_for_moon_elk_issue(name) {
-      continue
-    }
-
     let d2_ascii = read_required_file(
       "examples/d2-elk-ascii-output/" + name + ".txt",
     ).unwrap()
@@ -131,10 +123,6 @@ test "examples: elk unicode e2e snapshots" {
       normalize_text_snapshot(snapshot_unicode),
       msg="\{name}: diago elk unicode snapshot mismatch",
     )
-
-    if skip_elk_d2_parity_for_moon_elk_issue(name) {
-      continue
-    }
 
     let d2_unicode = read_required_file(
       "examples/d2-elk-unicode-output/" + name + ".txt",
@@ -211,12 +199,4 @@ fn normalize_text_snapshot(text : String) -> String {
   .replace(old="\r", new="\n")
   .trim()
   .to_string()
-}
-
-///|
-fn skip_elk_d2_parity_for_moon_elk_issue(name : String) -> Bool {
-  // moon_elk issue #9:
-  // `isomorphic` output still diverges from elkjs under layered+INCLUDE_CHILDREN.
-  // Keep snapshot coverage in diago; skip strict d2 parity on this case until fixed upstream.
-  name == "isomorphic"
 }

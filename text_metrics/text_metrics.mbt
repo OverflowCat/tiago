@@ -217,6 +217,16 @@ fn lookup_sized_glyph_metrics(
             scale: 1.0,
             fixed_scale: 1.0 / 64.0,
           }
+        } else if font_size == 28 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_regular_sz28[codepoint],
+              x_max: glyph_x_maxs_sans_regular_sz28[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_regular_sz28[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
         } else {
           base
         }

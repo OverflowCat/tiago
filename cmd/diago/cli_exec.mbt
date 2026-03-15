@@ -338,7 +338,6 @@ fn execute_fmt(request : FmtRequest) -> Result[Unit, String] {
     if source != formatted {
       if request.check {
         unformatted_count = unformatted_count + 1
-        println(normalized)
       } else {
         @fs.write_string_to_file(normalized, formatted) catch {
           e => return Err("Error writing file '\{normalized}': \{e}")
