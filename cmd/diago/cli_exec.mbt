@@ -88,32 +88,12 @@ fn execute_render_once(request : RenderRequest) -> Result[Unit, String] {
     let source = @fs.read_file_to_string("/dev/stdin") catch {
       e => return Err("Error reading from stdin: \{e}")
     }
-    let output = match
-      compile_source(
-        source,
-        source_compile_mode(request.output_mode),
-        request.theme_name,
-        None,
-        request.layout_engine,
-        request.layout_explicit,
-        request.target_spec,
-        ascii_mode=request.ascii_mode,
-        dark_theme_id=request.dark_theme_id,
-        pad=request.pad,
-        center=request.center,
-        theme_overrides=request.theme_overrides,
-        dark_theme_overrides=request.dark_theme_overrides,
-        scale=request.scale,
-        bundle=request.bundle,
-        no_xml_tag=request.no_xml_tag,
-        salt=request.salt,
-        omit_version=request.omit_version,
-      ) {
+    let compiled = match compile_render_source(request, source, None) {
       Ok(v) => v
       Err(err) => return Err(err)
     }
     let output_target = normalize_output_target(request.output_path)
-    return write_compiled_output(request.output_mode, output_target, output)
+    return write_render_output(request.output_mode, output_target, compiled)
   }
 
   let input_path = match request.input_path {
@@ -123,12 +103,57 @@ fn execute_render_once(request : RenderRequest) -> Result[Unit, String] {
   let source = @fs.read_file_to_string(input_path) catch {
     e => return Err("Error reading file '\{input_path}': \{e}")
   }
-  let output = match
+  let compiled = match
+    compile_render_source(request, source, get_dir_path(input_path)) {
+    Ok(v) => v
+    Err(err) => return Err(err)
+  }
+  let output_target = normalize_output_target(request.output_path)
+  write_render_output(request.output_mode, output_target, compiled)
+}
+
+///|
+fn normalize_output_target(output_path : String?) -> String? {
+  match output_path {
+    Some(path) => if is_stdout_output_path(path) { None } else { Some(path) }
+    None => None
+  }
+}
+
+///|
+fn compile_render_source(
+  request : RenderRequest,
+  source : String,
+  base_path : String?,
+) -> Result[CompiledSourceResult, String] {
+  if request.output_mode == OutputMode::Svg {
+    return compile_source_with_warnings(
+      source,
+      source_compile_mode(request.output_mode),
+      request.theme_name,
+      base_path,
+      request.layout_engine,
+      request.layout_explicit,
+      request.target_spec,
+      ascii_mode=request.ascii_mode,
+      dark_theme_id=request.dark_theme_id,
+      pad=request.pad,
+      center=request.center,
+      theme_overrides=request.theme_overrides,
+      dark_theme_overrides=request.dark_theme_overrides,
+      scale=request.scale,
+      bundle=request.bundle,
+      no_xml_tag=request.no_xml_tag,
+      salt=request.salt,
+      omit_version=request.omit_version,
+    )
+  }
+  match
     compile_source(
       source,
       source_compile_mode(request.output_mode),
       request.theme_name,
-      get_dir_path(input_path),
+      base_path,
       request.layout_engine,
       request.layout_explicit,
       request.target_spec,
@@ -144,18 +169,28 @@ fn execute_render_once(request : RenderRequest) -> Result[Unit, String] {
       salt=request.salt,
       omit_version=request.omit_version,
     ) {
-    Ok(v) => v
-    Err(err) => return Err(err)
+    Ok(output) => Ok({ output, warning: None })
+    Err(err) => Err(err)
   }
-  let output_target = normalize_output_target(request.output_path)
-  write_compiled_output(request.output_mode, output_target, output)
 }
 
 ///|
-fn normalize_output_target(output_path : String?) -> String? {
-  match output_path {
-    Some(path) => if is_stdout_output_path(path) { None } else { Some(path) }
-    None => None
+fn write_render_output(
+  output_mode : OutputMode,
+  output_path : String?,
+  compiled : CompiledSourceResult,
+) -> Result[Unit, String] {
+  match compiled.warning {
+    Some(warning) =>
+      if output_mode == OutputMode::Svg {
+        match write_compiled_output(output_mode, output_path, compiled.output) {
+          Ok(_) => Err(warning)
+          Err(err) => Err(err)
+        }
+      } else {
+        Err(warning)
+      }
+    None => write_compiled_output(output_mode, output_path, compiled.output)
   }
 }
 
@@ -217,30 +252,11 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
   let mut last_source = @fs.read_file_to_string(input) catch {
     e => return Err("Error reading file '\{input}': \{e}")
   }
-  let initial = compile_source(
-    last_source,
-    source_compile_mode(request.output_mode),
-    request.theme_name,
-    base_path,
-    request.layout_engine,
-    request.layout_explicit,
-    request.target_spec,
-    ascii_mode=request.ascii_mode,
-    dark_theme_id=request.dark_theme_id,
-    pad=request.pad,
-    center=request.center,
-    theme_overrides=request.theme_overrides,
-    dark_theme_overrides=request.dark_theme_overrides,
-    scale=request.scale,
-    bundle=request.bundle,
-    no_xml_tag=request.no_xml_tag,
-    salt=request.salt,
-    omit_version=request.omit_version,
-  )
+  let initial = compile_render_source(request, last_source, base_path)
   let mut initial_error : String? = None
   match initial {
-    Ok(output) =>
-      match write_compiled_output(request.output_mode, Some(out_path), output) {
+    Ok(compiled) =>
+      match write_render_output(request.output_mode, Some(out_path), compiled) {
         Ok(_) => ()
         Err(e) => {
           println("Error: \{e}")
@@ -286,31 +302,12 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
       continue
     }
     last_source = source
-    let result = compile_source(
-      last_source,
-      source_compile_mode(request.output_mode),
-      request.theme_name,
-      base_path,
-      request.layout_engine,
-      request.layout_explicit,
-      request.target_spec,
-      ascii_mode=request.ascii_mode,
-      dark_theme_id=request.dark_theme_id,
-      pad=request.pad,
-      center=request.center,
-      theme_overrides=request.theme_overrides,
-      dark_theme_overrides=request.dark_theme_overrides,
-      scale=request.scale,
-      bundle=request.bundle,
-      no_xml_tag=request.no_xml_tag,
-      salt=request.salt,
-      omit_version=request.omit_version,
-    )
+    let result = compile_render_source(request, last_source, base_path)
     let mut compile_error : String? = None
     match result {
-      Ok(output) =>
+      Ok(compiled) =>
         match
-          write_compiled_output(request.output_mode, Some(out_path), output) {
+          write_render_output(request.output_mode, Some(out_path), compiled) {
           Ok(_) => ()
           Err(e) => {
             println("Error: \{e}")

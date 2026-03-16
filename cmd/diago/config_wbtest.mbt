@@ -468,6 +468,44 @@ test "local image assets are bundled even when remote bundling is disabled" {
 }
 
 ///|
+test "svg compile keeps output when local bundling reports an error" {
+  let ok_icon_path = ".diago_bundle_compile_partial_ok.svg"
+  let missing_icon_path = ".diago_bundle_compile_partial_missing.svg"
+  let icon_svg =
+    #|<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>
+  remove_config_test_file(ok_icon_path)
+  @fs.write_string_to_file(ok_icon_path, icon_svg)
+  let source =
+    #|good: {
+    #|  shape: image
+    #|  icon: .diago_bundle_compile_partial_ok.svg
+    #|}
+    #|bad: {
+    #|  shape: image
+    #|  icon: .diago_bundle_compile_partial_missing.svg
+    #|}
+  let compiled = compile_source_with_warnings(
+    source,
+    OutputMode::Svg,
+    None,
+    Some("."),
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+    bundle=false,
+  ).unwrap()
+  remove_config_test_file(ok_icon_path)
+  assert_eq(
+    compiled.warning,
+    Some(
+      "failed to bundle local images: [.diago_bundle_compile_partial_missing.svg]",
+    ),
+  )
+  assert_true(compiled.output.contains("data:image/svg+xml;base64,"))
+  assert_true(compiled.output.contains(missing_icon_path))
+}
+
+///|
 test "omit-version removes data-d2-version attribute" {
   let source_default =
     #|a -> b

@@ -139,6 +139,12 @@ enum DumpInputEngine {
 } derive(Show, Eq)
 
 ///|
+priv struct CompiledSourceResult {
+  output : String
+  warning : String?
+}
+
+///|
 fn parse_layout_engine(name : String) -> LayoutEngineChoice? {
   match name.to_lower() {
     "dagre" => Some(LayoutEngineChoice::Dagre)
@@ -900,9 +906,60 @@ fn compile_source(
   salt? : String? = None,
   omit_version? : Bool? = None,
 ) -> Result[String, String] {
+  match
+    compile_source_with_warnings(
+      source,
+      output_mode,
+      theme_name,
+      base_path,
+      layout_engine,
+      layout_explicit,
+      target_spec,
+      ascii_mode~,
+      dark_theme_id~,
+      pad~,
+      center~,
+      theme_overrides~,
+      dark_theme_overrides~,
+      scale~,
+      bundle~,
+      no_xml_tag~,
+      salt~,
+      omit_version~,
+    ) {
+    Ok(result) =>
+      match result.warning {
+        Some(warning) => Err(warning)
+        None => Ok(result.output)
+      }
+    Err(err) => Err(err)
+  }
+}
+
+///|
+fn compile_source_with_warnings(
+  source : String,
+  output_mode : OutputMode,
+  theme_name : String?,
+  base_path : String?,
+  layout_engine : LayoutEngineChoice,
+  layout_explicit : Bool,
+  target_spec : String?,
+  ascii_mode? : AsciiMode = AsciiMode::Extended,
+  dark_theme_id? : Int? = None,
+  pad? : Double? = None,
+  center? : Bool? = None,
+  theme_overrides? : @diagram.ThemeOverrides? = None,
+  dark_theme_overrides? : @diagram.ThemeOverrides? = None,
+  scale? : Double? = None,
+  bundle? : Bool = false,
+  no_xml_tag? : Bool? = None,
+  salt? : String? = None,
+  omit_version? : Bool? = None,
+) -> Result[CompiledSourceResult, String] {
   match output_mode {
     OutputMode::Svg =>
-      compile_diago_svg(
+      compile_diago_svg_with_warnings(
         source,
         theme_name,
         base_path,
@@ -921,27 +978,39 @@ fn compile_source(
         omit_version~,
       )
     OutputMode::Ascii =>
-      compile_diago_ascii(
-        source,
-        base_path,
-        layout_engine,
-        layout_explicit,
-        target_spec,
-        ascii_mode=AsciiMode::Standard,
-      )
+      match
+        compile_diago_ascii(
+          source,
+          base_path,
+          layout_engine,
+          layout_explicit,
+          target_spec,
+          ascii_mode=AsciiMode::Standard,
+        ) {
+        Ok(output) => Ok({ output, warning: None })
+        Err(err) => Err(err)
+      }
     OutputMode::Unicode =>
-      compile_diago_unicode(
-        source, base_path, layout_engine, layout_explicit, target_spec,
-      )
+      match
+        compile_diago_unicode(
+          source, base_path, layout_engine, layout_explicit, target_spec,
+        ) {
+        Ok(output) => Ok({ output, warning: None })
+        Err(err) => Err(err)
+      }
     OutputMode::Txt =>
-      compile_diago_ascii(
-        source,
-        base_path,
-        layout_engine,
-        layout_explicit,
-        target_spec,
-        ascii_mode~,
-      )
+      match
+        compile_diago_ascii(
+          source,
+          base_path,
+          layout_engine,
+          layout_explicit,
+          target_spec,
+          ascii_mode~,
+        ) {
+        Ok(output) => Ok({ output, warning: None })
+        Err(err) => Err(err)
+      }
     OutputMode::Png | OutputMode::Pdf | OutputMode::Pptx | OutputMode::Gif =>
       Err(
         "Output format '" +
@@ -952,8 +1021,7 @@ fn compile_source(
 }
 
 ///|
-/// Compile diago source to SVG
-fn compile_diago_svg(
+fn compile_diago_svg_with_warnings(
   source : String,
   theme_name : String?,
   base_path : String?,
@@ -970,7 +1038,7 @@ fn compile_diago_svg(
   no_xml_tag? : Bool? = None,
   salt? : String? = None,
   omit_version? : Bool? = None,
-) -> Result[String, String] {
+) -> Result[CompiledSourceResult, String] {
   match
     compile_to_diagram(
       source, base_path, layout_engine, layout_explicit, target_spec,
@@ -993,16 +1061,25 @@ fn compile_diago_svg(
       try @renderer_svg.render(diagram, render_config) catch {
         e => Err(e.to_string())
       } noraise {
-        v =>
-          match bundle_local_svg_images(v, base_path, cache_images~) {
-            Err(e) => Err(e)
-            Ok(local_svg) =>
-              if bundle {
-                bundle_remote_svg_images(local_svg, cache_images~)
-              } else {
-                Ok(local_svg)
-              }
+        v => {
+          let local_result = bundle_local_svg_images(
+            v,
+            base_path,
+            cache_images~,
+          )
+          let remote_result = if bundle {
+            bundle_remote_svg_images(local_result.svg, cache_images~)
+          } else {
+            { svg: local_result.svg, error: None }
           }
+          Ok({
+            output: remote_result.svg,
+            warning: combine_compilation_warning(
+              local_result.error,
+              remote_result.error,
+            ),
+          })
+        }
       }
     }
     Err(e) => Err(e)
@@ -1014,6 +1091,18 @@ fn bundle_cache_enabled() -> Bool {
   match @sys.get_env_var("IMG_CACHE") {
     Some(value) => value == "1"
     None => false
+  }
+}
+
+///|
+fn combine_compilation_warning(first : String?, second : String?) -> String? {
+  match first {
+    Some(a) =>
+      match second {
+        Some(b) => Some(a + "; " + b)
+        None => Some(a)
+      }
+    None => second
   }
 }
 

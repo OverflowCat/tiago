@@ -25,6 +25,18 @@ priv enum BundleScope {
 }
 
 ///|
+priv struct SvgBundleResult {
+  svg : String
+  error : String?
+}
+
+///|
+priv struct ImageTagBundleResult {
+  tag : String
+  error_href : String?
+}
+
+///|
 let max_bundle_image_size : Int = 1 << 25
 
 ///|
@@ -45,7 +57,7 @@ fn bundle_local_svg_images(
   svg : String,
   base_path : String?,
   cache_images? : Bool = false,
-) -> Result[String, String] {
+) -> SvgBundleResult {
   bundle_svg_images_in_scope(svg, base_path, BundleScope::Local, cache_images)
 }
 
@@ -53,7 +65,7 @@ fn bundle_local_svg_images(
 fn bundle_remote_svg_images(
   svg : String,
   cache_images? : Bool = false,
-) -> Result[String, String] {
+) -> SvgBundleResult {
   bundle_svg_images_in_scope(svg, None, BundleScope::Remote, cache_images)
 }
 
@@ -63,8 +75,10 @@ fn bundle_svg_images_in_scope(
   base_path : String?,
   scope : BundleScope,
   cache_images : Bool,
-) -> Result[String, String] {
+) -> SvgBundleResult {
   let cache : Array[(String, String)] = []
+  let failed_cache : Array[(String, String)] = []
+  let error_hrefs : Array[String] = []
   let out = StringBuilder::new()
   let mut cursor = 0
   while cursor < svg.length() {
@@ -84,15 +98,17 @@ fn bundle_svg_images_in_scope(
       }
     }
     let tag = slice_string(svg, image_start, image_end + 1)
-    let bundled_tag = match
-      bundle_image_tag(tag, base_path, scope, cache, cache_images) {
-      Ok(v) => v
-      Err(e) => return Err(e)
+    let bundled = bundle_image_tag(
+      tag, base_path, scope, cache, failed_cache, cache_images,
+    )
+    out.write_string(bundled.tag)
+    match bundled.error_href {
+      Some(href) => error_hrefs.push(href)
+      None => ()
     }
-    out.write_string(bundled_tag)
     cursor = image_end + 1
   }
-  Ok(out.to_string())
+  { svg: out.to_string(), error: bundle_scope_error(scope, error_hrefs) }
 }
 
 ///|
@@ -101,43 +117,53 @@ fn bundle_image_tag(
   base_path : String?,
   scope : BundleScope,
   cache : Array[(String, String)],
+  failed_cache : Array[(String, String)],
   cache_images : Bool,
-) -> Result[String, String] {
+) -> ImageTagBundleResult {
   let href_raw = match read_image_href(tag) {
     Some(value) => value
-    None => return Ok(tag)
+    None => return { tag, error_href: None }
   }
   let href = decode_xml_attr_entities(href_raw).trim().to_string()
   if href == "" || href.has_prefix("data:") {
-    return Ok(tag)
+    return { tag, error_href: None }
   }
   let normalized = normalize_source_reference(href)
   let is_remote = is_http_source(normalized)
   match scope {
-    BundleScope::Local => if is_remote { return Ok(tag) }
-    BundleScope::Remote => if !is_remote { return Ok(tag) }
+    BundleScope::Local => if is_remote { return { tag, error_href: None } }
+    BundleScope::Remote => if !is_remote { return { tag, error_href: None } }
   }
   let key = bundle_cache_key(normalized, base_path)
+  if lookup_bundle_failure_cache(failed_cache, key) is Some(_) {
+    return { tag, error_href: None }
+  }
   let data_uri = match lookup_bundle_cache(cache, key) {
-    Some(uri) => uri
+    Some(uri) => Some(uri)
     None =>
       match lookup_persistent_bundle_cache(key, cache_images) {
         Some(uri) => {
           cache.push((key, uri))
-          uri
+          Some(uri)
         }
-        None => {
-          let built = match build_image_data_uri(normalized, base_path) {
-            Ok(v) => v
-            Err(e) => return Err(e)
+        None =>
+          match build_image_data_uri(normalized, base_path) {
+            Ok(v) => {
+              cache.push((key, v))
+              store_persistent_bundle_cache(key, v, cache_images)
+              Some(v)
+            }
+            Err(_) => {
+              failed_cache.push((key, normalized))
+              None
+            }
           }
-          cache.push((key, built))
-          store_persistent_bundle_cache(key, built, cache_images)
-          built
-        }
       }
   }
-  Ok(apply_bundled_href(tag, data_uri))
+  match data_uri {
+    Some(uri) => { tag: apply_bundled_href(tag, uri), error_href: None }
+    None => { tag, error_href: Some(normalized) }
+  }
 }
 
 ///|
@@ -277,6 +303,19 @@ fn lookup_bundle_cache(
 }
 
 ///|
+fn lookup_bundle_failure_cache(
+  cache : Array[(String, String)],
+  key : String,
+) -> String? {
+  for entry in cache {
+    if entry.0 == key {
+      return Some(entry.1)
+    }
+  }
+  None
+}
+
+///|
 fn lookup_persistent_bundle_cache(key : String, cache_images : Bool) -> String? {
   if cache_images {
     persistent_bundle_cache.get(key)
@@ -321,6 +360,46 @@ fn build_image_data_uri(
   }
   let encoded = @base64.encode(bytes)
   Ok("data:\{mime_type};base64,\{encoded}")
+}
+
+///|
+fn bundle_scope_error(
+  scope : BundleScope,
+  error_hrefs : Array[String],
+) -> String? {
+  if error_hrefs.is_empty() {
+    return None
+  }
+  let scope_name = match scope {
+    BundleScope::Local => "local"
+    BundleScope::Remote => "remote"
+  }
+  Some(
+    "failed to bundle " +
+    scope_name +
+    " images: " +
+    format_bundle_error_hrefs(error_hrefs),
+  )
+}
+
+///|
+fn format_bundle_error_hrefs(error_hrefs : Array[String]) -> String {
+  if error_hrefs.is_empty() {
+    return "[]"
+  }
+  let out = StringBuilder::new()
+  out.write_char('[')
+  let mut first = true
+  for href in error_hrefs {
+    if first {
+      first = false
+    } else {
+      out.write_char(' ')
+    }
+    out.write_string(href)
+  }
+  out.write_char(']')
+  out.to_string()
 }
 
 ///|
