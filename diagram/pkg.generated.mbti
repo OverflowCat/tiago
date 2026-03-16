@@ -112,8 +112,11 @@ pub struct Shape {
   child_ids : Array[String]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]

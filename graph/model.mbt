@@ -224,8 +224,11 @@ pub struct ObjectModel {
   children : Array[ObjectModel]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]
@@ -263,8 +266,11 @@ pub fn ObjectModel::new(
     children: [],
     z_index: 0,
     icon: None,
+    icon_position: None,
     tooltip: None,
+    tooltip_position: None,
     link: None,
+    label_position: None,
     classes: [],
     language: None,
     sql_constraints: [],

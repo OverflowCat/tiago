@@ -28,6 +28,8 @@ pub let style_keywords : Array[String]
 
 pub let text_transforms : Array[String]
 
+pub let tooltip_positions : Array[String]
+
 // Errors
 
 // Types and methods

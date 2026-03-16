@@ -114,8 +114,11 @@ pub struct Shape {
   child_ids : Array[String]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]
@@ -637,12 +640,24 @@ fn diagram_shape_json(shape : Shape) -> String {
     Some(value) => fields.push(("icon", json_string(value)))
     None => ()
   }
+  match shape.icon_position {
+    Some(value) => fields.push(("iconPosition", json_string(value)))
+    None => ()
+  }
   match shape.tooltip {
     Some(value) => fields.push(("tooltip", json_string(value)))
     None => ()
   }
+  match shape.tooltip_position {
+    Some(value) => fields.push(("tooltipPosition", json_string(value)))
+    None => ()
+  }
   match shape.link {
     Some(value) => fields.push(("link", json_string(value)))
+    None => ()
+  }
+  match shape.label_position {
+    Some(value) => fields.push(("labelPosition", json_string(value)))
     None => ()
   }
   match shape.language {
@@ -1103,8 +1118,11 @@ fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
     child_ids: obj.child_ids,
     z_index: obj.z_index,
     icon: obj.icon,
+    icon_position: obj.icon_position,
     tooltip: obj.tooltip,
+    tooltip_position: obj.tooltip_position,
     link: obj.link,
+    label_position: obj.label_position,
     classes: obj.classes,
     language: obj.language,
     sql_constraints: obj.sql_constraints,

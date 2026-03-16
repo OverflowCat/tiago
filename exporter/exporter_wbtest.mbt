@@ -270,6 +270,60 @@ test "board links resolve relative underscores and discard invalid links" {
 }
 
 ///|
+test "label icon and tooltip near fields follow d2 position semantics" {
+  let source =
+    #|hey: {
+    #|  label: sushi {
+    #|    near: outside-top-left
+    #|  }
+    #|  icon: https://asdf.com {
+    #|    near: border-right-center
+    #|  }
+    #|  tooltip: hover text {
+    #|    near: center-left
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.find_object("hey") is Some(hey) else { fail("expected object") }
+  assert_eq(hey.label, "sushi")
+  assert_eq(hey.icon, Some("https://asdf.com"))
+  assert_eq(hey.tooltip, Some("hover text"))
+  assert_eq(hey.label_position, Some("OUTSIDE_TOP_LEFT"))
+  assert_eq(hey.icon_position, Some("BORDER_RIGHT_MIDDLE"))
+  assert_eq(hey.tooltip_position, Some("center-left"))
+}
+
+///|
+test "separate near fields and null position resets follow d2 semantics" {
+  let source =
+    #|hey: sushi {
+    #|  label.near: outside-top-left
+    #|  tooltip: hover text {
+    #|    near: null
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.find_object("hey") is Some(hey) else { fail("expected object") }
+  assert_eq(hey.label, "sushi")
+  assert_eq(hey.label_position, Some("OUTSIDE_TOP_LEFT"))
+  assert_eq(hey.tooltip_position, None)
+}
+
+///|
+test "tooltip near rejects label-only positions like d2" {
+  let source =
+    #|hey: {
+    #|  tooltip: hover text {
+    #|    near: outside-top-left
+    #|  }
+    #|}
+  match compile_source_graph(source) {
+    Err(_) => ()
+    Ok(_) => fail("expected invalid near error")
+  }
+}
+
+///|
 test "graph objects preserve explicit language and sql constraints" {
   let code_body = @ir.Map::new()
   code_body.add_field(

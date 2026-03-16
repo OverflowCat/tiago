@@ -381,8 +381,11 @@ pub struct ObjectInput {
   child_ids : Array[String]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]
@@ -420,8 +423,11 @@ pub fn ObjectInput::new(
     child_ids: [],
     z_index: 0,
     icon: None,
+    icon_position: None,
     tooltip: None,
+    tooltip_position: None,
     link: None,
+    label_position: None,
     classes: [],
     language: None,
     sql_constraints: [],
@@ -470,6 +476,9 @@ pub fn ObjectInput::from_parts(
   id_syntax? : String = id,
   abs_id_syntax? : String = id,
   references? : Array[ObjectReference] = [],
+  icon_position? : String? = None,
+  tooltip_position? : String? = None,
+  label_position? : String? = None,
 ) -> ObjectInput {
   {
     id,
@@ -487,6 +496,9 @@ pub fn ObjectInput::from_parts(
     icon,
     tooltip,
     link,
+    icon_position,
+    tooltip_position,
+    label_position,
     classes,
     language,
     sql_constraints,
@@ -1096,6 +1108,9 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     id_syntax=obj.id_syntax,
     abs_id_syntax=obj.abs_id_syntax,
     references~,
+    icon_position=obj.icon_position,
+    tooltip_position=obj.tooltip_position,
+    label_position=obj.label_position,
   )
 }
 

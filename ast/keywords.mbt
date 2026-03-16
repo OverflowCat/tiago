@@ -88,5 +88,15 @@ pub let label_positions : Array[String] = [
   "bottom-left", "bottom-center", "bottom-right", "outside-top-left", "outside-top-center",
   "outside-top-right", "outside-left-top", "outside-left-center", "outside-left-bottom",
   "outside-right-top", "outside-right-center", "outside-right-bottom", "outside-bottom-left",
-  "outside-bottom-center", "outside-bottom-right",
+  "outside-bottom-center", "outside-bottom-right", "border-top-left", "border-top-center",
+  "border-top-right", "border-left-top", "border-left-center", "border-left-bottom",
+  "border-right-top", "border-right-center", "border-right-bottom", "border-bottom-left",
+  "border-bottom-center", "border-bottom-right",
+]
+
+///|
+/// Tooltip positions
+pub let tooltip_positions : Array[String] = [
+  "top-left", "top-center", "top-right", "center-left", "center-right", "bottom-left",
+  "bottom-center", "bottom-right",
 ]

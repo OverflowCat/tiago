@@ -357,8 +357,11 @@ pub struct ObjectInput {
   child_ids : Array[String]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]
@@ -375,7 +378,7 @@ pub struct ObjectInput {
   direction : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String], id_val? : String, id_syntax? : String, abs_id_syntax? : String, references? : Array[ObjectReference]) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String], id_val? : String, id_syntax? : String, abs_id_syntax? : String, references? : Array[ObjectReference], icon_position? : String?, tooltip_position? : String?, label_position? : String?) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
 pub fn ObjectInput::lookup_id(Self) -> String
@@ -397,8 +400,11 @@ pub struct ObjectModel {
   children : Array[ObjectModel]
   z_index : Int
   icon : String?
+  icon_position : String?
   tooltip : String?
+  tooltip_position : String?
   link : String?
+  label_position : String?
   classes : Array[String]
   language : String?
   sql_constraints : Array[String]

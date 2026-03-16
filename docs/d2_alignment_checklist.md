@@ -148,7 +148,10 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: SVG asset bundling now mirrors D2's `imgbundler` split more closely, with local assets always bundled for SVG output, remote assets gated by the bundle option, D2-style relative local path resolution, duplicate remote URL de-duplication, optional cross-run cache plumbing, and explicit oversized/error fetch coverage.
   - Remaining gaps: global `sketch` render semantics still differ from D2 because diago currently uses local SVG sketch filters rather than D2's sketch renderer pipeline; bundle failure propagation also still follows diago's current `Result`-based render pipeline instead of D2 CLI's "return output plus bundling error" behavior.
 
-- [ ] Align root canvas sizing and board bounding box behavior with D2.
+- [x] Align root canvas sizing and board bounding box behavior with D2.
+  - Landed in diago: D2-style `label.near`, `icon.near`, and `tooltip.near` now compile through `exporter -> graph -> diagram` as target metadata instead of being lost in renderer heuristics.
+  - Landed in diago: SVG label placement, icon placement, positioned tooltip rendering, target hashing, and root bound calculations now consume those target fields directly, including D2-style outside/border label positions, outside icon extents, and positioned tooltip bounds.
+  - Verified with D2-derived compiler cases plus renderer whitebox coverage for explicit label positioning, positioned tooltip rendering, and root-bound expansion from outside icons/tooltips.
 
 - [ ] Align theme override semantics and type model with D2.
   - D2 uses a typed theme override structure.

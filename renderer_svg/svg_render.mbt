@@ -284,6 +284,32 @@ fn label_outside_anchor_box(obj : Shape, box : Box) -> Box {
 }
 
 ///|
+fn d2_label_position_is_outside(position : String) -> Bool {
+  position.has_prefix("OUTSIDE_")
+}
+
+///|
+fn d2_label_position_is_border(position : String) -> Bool {
+  position.has_prefix("BORDER_")
+}
+
+///|
+fn d2_box_for_label_position(
+  obj : Shape,
+  box : Box,
+  position : String,
+  label_width : Double,
+  label_height : Double,
+) -> Box {
+  if d2_label_position_is_outside(position) ||
+    d2_label_position_is_border(position) {
+    label_outside_anchor_box(obj, box)
+  } else {
+    shape_inner_box_for_label(obj, box, label_width, label_height)
+  }
+}
+
+///|
 fn shape_inner_box_for_label(
   obj : Shape,
   box : Box,
@@ -493,6 +519,22 @@ fn plain_object_label_layout(
   label_width : Double,
   label_height : Double,
 ) -> (Double, Double, Double) {
+  match obj.label_position {
+    Some(position) => {
+      let label_box = d2_box_for_label_position(
+        obj, box, position, label_width, label_height,
+      )
+      let label_tl = d2_point_on_box(
+        position,
+        label_box,
+        LABEL_PADDING,
+        label_width,
+        label_height,
+      )
+      return (label_tl.x, label_tl.y, label_width)
+    }
+    None => ()
+  }
   let inner_box = shape_inner_box_for_label(obj, box, label_width, label_height)
   let label_overflows = label_width > box.width || label_height > box.height
   let is_grid_container = is_container(obj) &&
@@ -547,10 +589,6 @@ fn plain_object_label_layout(
 
 ///|
 fn markdown_label_layout(obj : Shape, box : Box) -> (Double, Double, Int, Int) {
-  let (x, y) = match obj.label_box {
-    Some(label_box) => (label_box.x, label_box.y)
-    None => (box.x, box.y)
-  }
   let width_px = match object_precomputed_label_dims(obj) {
     Some((width, _)) => width.ceil().to_int()
     None => ceil_double(box.width).to_int()
@@ -558,6 +596,30 @@ fn markdown_label_layout(obj : Shape, box : Box) -> (Double, Double, Int, Int) {
   let height_px = match object_precomputed_label_dims(obj) {
     Some((_, height)) => height.ceil().to_int()
     None => ceil_double(box.height).to_int()
+  }
+  match obj.label_position {
+    Some(position) => {
+      let label_box = d2_box_for_label_position(
+        obj,
+        box,
+        position,
+        width_px.to_double(),
+        height_px.to_double(),
+      )
+      let label_tl = d2_point_on_box(
+        position,
+        label_box,
+        LABEL_PADDING,
+        width_px.to_double(),
+        height_px.to_double(),
+      )
+      return (label_tl.x, label_tl.y, width_px, height_px)
+    }
+    None => ()
+  }
+  let (x, y) = match obj.label_box {
+    Some(label_box) => (label_box.x, label_box.y)
+    None => (box.x, box.y)
   }
   (x, y, width_px, height_px)
 }
@@ -1538,36 +1600,253 @@ fn link_icon_svg(clip_id : String) -> String {
 }
 
 ///|
+fn positioned_tooltip_size(
+  obj : Shape,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> (Int, Int) {
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(default_object_font_size(obj, config))
+    None => default_object_font_size(obj, config)
+  }
+  let is_mono = obj.shape_type == Code ||
+    theme.rules.mono ||
+    style_is_mono(obj.style.font_family)
+  let dims = @text_metrics.measure_text(
+    obj.tooltip.unwrap_or(""),
+    font_size,
+    is_mono,
+    false,
+    false,
+  )
+  (
+    dims.dimensions.width.ceil().to_int() + 20,
+    dims.dimensions.height.ceil().to_int() + 20,
+  )
+}
+
+///|
+fn d2_calculate_tooltip_position(
+  shape_x : Double,
+  shape_y : Double,
+  shape_width : Double,
+  shape_height : Double,
+  tooltip_width : Int,
+  tooltip_height : Int,
+  position : String,
+) -> (Double, Double) {
+  let padding = 10.0
+  match position {
+    "top-left" => (shape_x, shape_y - tooltip_height.to_double() - padding)
+    "top-center" =>
+      (
+        shape_x + shape_width / 2.0 - tooltip_width.to_double() / 2.0,
+        shape_y - tooltip_height.to_double() - padding,
+      )
+    "top-right" =>
+      (
+        shape_x + shape_width - tooltip_width.to_double(),
+        shape_y - tooltip_height.to_double() - padding,
+      )
+    "center-left" =>
+      (
+        shape_x - tooltip_width.to_double() - padding,
+        shape_y + shape_height / 2.0 - tooltip_height.to_double() / 2.0,
+      )
+    "center-right" =>
+      (
+        shape_x + shape_width + padding,
+        shape_y + shape_height / 2.0 - tooltip_height.to_double() / 2.0,
+      )
+    "bottom-left" => (shape_x, shape_y + shape_height + padding)
+    "bottom-center" =>
+      (
+        shape_x + shape_width / 2.0 - tooltip_width.to_double() / 2.0,
+        shape_y + shape_height + padding,
+      )
+    "bottom-right" =>
+      (
+        shape_x + shape_width - tooltip_width.to_double(),
+        shape_y + shape_height + padding,
+      )
+    _ =>
+      (
+        shape_x + shape_width / 2.0 - tooltip_width.to_double() / 2.0,
+        shape_y - tooltip_height.to_double() - padding,
+      )
+  }
+}
+
+///|
+fn positioned_tooltip_bounds(
+  obj : Shape,
+  box : Box,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> (Double, Double, Double, Double)? {
+  match obj.tooltip_position {
+    Some(position) =>
+      if non_empty_string(obj.tooltip) is Some(_) {
+        let (tooltip_width, tooltip_height) = positioned_tooltip_size(
+          obj, config, theme,
+        )
+        let (x, y) = d2_calculate_tooltip_position(
+          box.x,
+          box.y,
+          box.width,
+          box.height,
+          tooltip_width,
+          tooltip_height,
+          position,
+        )
+        Some(
+          (
+            @math.floor(x),
+            @math.floor(y),
+            ceil_double(x) + tooltip_width.to_double(),
+            ceil_double(y) + tooltip_height.to_double(),
+          ),
+        )
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn positioned_tooltip_tail(
+  tail_direction : String,
+  tail_x : Double,
+  tail_y : Double,
+) -> String {
+  let tail_size = 8.0
+  match tail_direction {
+    "top" =>
+      "<path d=\"M \{d2_fixed6(tail_x - tail_size / 2.0)} \{d2_fixed6(tail_y)} L \{d2_fixed6(tail_x + tail_size / 2.0)} \{d2_fixed6(tail_y)} L \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y - tail_size)} Z\" fill=\"white\" stroke=\"#DEE1EB\" stroke-width=\"1\"/>"
+    "bottom" =>
+      "<path d=\"M \{d2_fixed6(tail_x - tail_size / 2.0)} \{d2_fixed6(tail_y)} L \{d2_fixed6(tail_x + tail_size / 2.0)} \{d2_fixed6(tail_y)} L \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y + tail_size)} Z\" fill=\"white\" stroke=\"#DEE1EB\" stroke-width=\"1\"/>"
+    "left" =>
+      "<path d=\"M \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y - tail_size / 2.0)} L \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y + tail_size / 2.0)} L \{d2_fixed6(tail_x - tail_size)} \{d2_fixed6(tail_y)} Z\" fill=\"white\" stroke=\"#DEE1EB\" stroke-width=\"1\"/>"
+    "right" =>
+      "<path d=\"M \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y - tail_size / 2.0)} L \{d2_fixed6(tail_x)} \{d2_fixed6(tail_y + tail_size / 2.0)} L \{d2_fixed6(tail_x + tail_size)} \{d2_fixed6(tail_y)} Z\" fill=\"white\" stroke=\"#DEE1EB\" stroke-width=\"1\"/>"
+    _ => ""
+  }
+}
+
+///|
+fn render_positioned_tooltip(
+  obj : Shape,
+  box : Box,
+  config : SvgConfig,
+  theme : @themes.Theme,
+) -> String? {
+  let tooltip_text = non_empty_string(obj.tooltip)
+  match (tooltip_text, obj.tooltip_position) {
+    (Some(text), Some(position)) => {
+      let (tooltip_width, tooltip_height) = positioned_tooltip_size(
+        obj, config, theme,
+      )
+      let (x, y) = d2_calculate_tooltip_position(
+        box.x,
+        box.y,
+        box.width,
+        box.height,
+        tooltip_width,
+        tooltip_height,
+        position,
+      )
+      let (tail_direction, tail_x, tail_y) = match position {
+        "top-left" => ("bottom", 20.0, tooltip_height.to_double())
+        "top-center" =>
+          (
+            "bottom",
+            tooltip_width.to_double() / 2.0,
+            tooltip_height.to_double(),
+          )
+        "top-right" =>
+          (
+            "bottom",
+            tooltip_width.to_double() - 20.0,
+            tooltip_height.to_double(),
+          )
+        "center-left" =>
+          ("right", tooltip_width.to_double(), tooltip_height.to_double() / 2.0)
+        "center-right" => ("left", 0.0, tooltip_height.to_double() / 2.0)
+        "bottom-left" => ("top", 20.0, 0.0)
+        "bottom-center" => ("top", tooltip_width.to_double() / 2.0, 0.0)
+        "bottom-right" => ("top", tooltip_width.to_double() - 20.0, 0.0)
+        _ =>
+          (
+            "bottom",
+            tooltip_width.to_double() / 2.0,
+            tooltip_height.to_double(),
+          )
+      }
+      let md_html = @cmark_html.render(safe=false, strict=false, text) catch {
+        _ => @svg.escape_xml(text)
+      }
+      let foreign = @xml_emit.Element::new("foreignObject")
+        .attr("x", d2_fixed6(x + 10.0))
+        .attr("y", d2_fixed6(y + 10.0))
+        .attr_int("width", tooltip_width - 20)
+        .attr_int("height", tooltip_height - 20)
+        .raw(
+          @xml_emit.Element::new("div")
+          .attr("xmlns", "http://www.w3.org/1999/xhtml")
+          .attr("class", "md color-N1")
+          .raw(md_html)
+          .build(),
+        )
+        .build()
+      Some(
+        "<g class=\"positioned-tooltip\"><rect x=\"\{d2_fixed6(x)}\" y=\"\{d2_fixed6(y)}\" width=\"\{tooltip_width}\" height=\"\{tooltip_height}\" rx=\"4\" ry=\"4\" fill=\"white\" stroke=\"#DEE1EB\" stroke-width=\"1\"/>\{positioned_tooltip_tail(tail_direction, tail_x + x, tail_y + y)}\{foreign}</g>",
+      )
+    }
+    _ => None
+  }
+}
+
+///|
 fn render_object_appendix_icons(
   diagram_hash : String,
   obj : Shape,
   box : @graph.Box,
+  config : SvgConfig,
+  theme : @themes.Theme,
 ) -> Array[String] {
   let elements : Array[String] = []
   let tooltip_text = non_empty_string(obj.tooltip)
   let link_href = non_empty_string(obj.link)
-  if tooltip_text is None && link_href is None {
+  let has_tooltip_icon = tooltip_text is Some(_) && obj.tooltip_position is None
+  if !has_tooltip_icon && link_href is None && obj.tooltip_position is None {
     return elements
   }
   let anchor_x = (box.x + box.width).ceil().to_int()
   let anchor_y = box.y.ceil().to_int()
   let tooltip_slot_offset = 0
-  let link_slot_offset = if tooltip_text is Some(_) {
+  let link_slot_offset = if has_tooltip_icon {
     APPENDIX_ICON_DIAMETER
   } else {
     0
   }
 
+  match render_positioned_tooltip(obj, box, config, theme) {
+    Some(rendered) => elements.push(rendered)
+    None => ()
+  }
+
   match tooltip_text {
-    Some(text) => {
-      let x = anchor_x - APPENDIX_ICON_RADIUS - tooltip_slot_offset
-      let y = anchor_y - APPENDIX_ICON_RADIUS
-      let clip_id = "clip0_3427_35082111-\{diagram_hash}-\{d2_svg_id(d2_output_abs_id(obj.id))}"
-      let icon_svg = tooltip_icon_svg(clip_id)
-      elements.push(
-        "<g transform=\"translate(\{x} \{y})\" class=\"appendix-icon\"><title>\{@svg.escape_xml(text)}</title>\{icon_svg}\n</g>",
-      )
-    }
+    Some(text) =>
+      if obj.tooltip_position is None {
+        let x = anchor_x - APPENDIX_ICON_RADIUS - tooltip_slot_offset
+        let y = anchor_y - APPENDIX_ICON_RADIUS
+        let clip_id = "clip0_3427_35082111-\{diagram_hash}-\{d2_svg_id(d2_output_abs_id(obj.id))}"
+        let icon_svg = tooltip_icon_svg(clip_id)
+        elements.push(
+          "<g transform=\"translate(\{x} \{y})\" class=\"appendix-icon\"><title>\{@svg.escape_xml(text)}</title>\{icon_svg}\n</g>",
+        )
+      }
     None => ()
   }
 
@@ -1592,8 +1871,11 @@ fn append_object_appendix_icons(
   appendix_items : Array[String],
   obj : Shape,
   box : @graph.Box,
+  config : SvgConfig,
+  theme : @themes.Theme,
 ) -> Unit {
-  for item in render_object_appendix_icons(diagram_hash, obj, box) {
+  for
+    item in render_object_appendix_icons(diagram_hash, obj, box, config, theme) {
     appendix_items.push(item)
   }
 }
@@ -1607,9 +1889,10 @@ fn append_object_title(
   if !object_pass_active {
     return
   }
-  match non_empty_string(obj.tooltip) {
-    Some(text) => svg.add(@xml_emit.Element::new("title").text(text).build())
-    None => ()
+  match (non_empty_string(obj.tooltip), obj.tooltip_position) {
+    (Some(text), None) =>
+      svg.add(@xml_emit.Element::new("title").text(text).build())
+    _ => ()
   }
 }
 
@@ -2617,8 +2900,10 @@ fn compute_graph_bounds(
           )
         }
 
-        if non_empty_string(obj.tooltip) is Some(_) ||
-          non_empty_string(obj.link) is Some(_) {
+        let has_tooltip_icon = non_empty_string(obj.tooltip) is Some(_) &&
+          obj.tooltip_position is None
+        let has_link_icon = non_empty_string(obj.link) is Some(_)
+        if has_tooltip_icon || has_link_icon {
           let appendix_padding = APPENDIX_ICON_RADIUS.to_double()
           bounds = include_bounds(
             bounds.0,
@@ -2631,6 +2916,26 @@ fn compute_graph_bounds(
             b.x + b.width + stroke_width + appendix_padding,
             b.y + b.height + half_stroke,
           )
+        }
+
+        match obj.tooltip_position {
+          Some(_) =>
+            match positioned_tooltip_bounds(obj, b, config, theme) {
+              Some((min_x, min_y, max_x, max_y)) =>
+                bounds = include_bounds(
+                  bounds.0,
+                  bounds.1,
+                  bounds.2,
+                  bounds.3,
+                  bounds.4,
+                  min_x,
+                  min_y,
+                  max_x,
+                  max_y,
+                )
+              None => ()
+            }
+          None => ()
         }
 
         if style_bool(obj.style.shadow, false) {
@@ -2678,6 +2983,33 @@ fn compute_graph_bounds(
             b.x + MULTIPLE_OFFSET + b.width + stroke_width,
             b.y + b.height + half_stroke,
           )
+        }
+
+        match obj.icon_position {
+          Some(position) =>
+            if obj.icon is Some(_) && d2_icon_position_is_outside(position) {
+              let icon_size_int = d2_get_icon_size(b, position)
+              let icon_size = icon_size_int.to_double()
+              let icon_tl = d2_point_on_box(
+                position,
+                b,
+                LABEL_PADDING,
+                icon_size,
+                icon_size,
+              )
+              bounds = include_bounds(
+                bounds.0,
+                bounds.1,
+                bounds.2,
+                bounds.3,
+                bounds.4,
+                icon_tl.x,
+                icon_tl.y,
+                icon_tl.x + icon_size,
+                icon_tl.y + icon_size,
+              )
+            }
+          None => ()
         }
 
         if obj.label != "" && has_class(obj, "lang:markdown") {
@@ -3339,7 +3671,9 @@ fn render_svg_object(
         svg.add(@xml_emit.Element::new("a").close_tag())
       }
       if object_pass_active {
-        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
+        append_object_appendix_icons(
+          diagram_hash, appendix_items, obj, box, config, theme,
+        )
       }
       return // Don't render the default label
     }
@@ -3391,7 +3725,9 @@ fn render_svg_object(
         svg.add(@xml_emit.Element::new("a").close_tag())
       }
       if object_pass_active {
-        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
+        append_object_appendix_icons(
+          diagram_hash, appendix_items, obj, box, config, theme,
+        )
       }
       return // Don't render the default label
     }
@@ -3442,7 +3778,9 @@ fn render_svg_object(
         svg.add(@xml_emit.Element::new("a").close_tag())
       }
       if object_pass_active {
-        append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
+        append_object_appendix_icons(
+          diagram_hash, appendix_items, obj, box, config, theme,
+        )
       }
       return // Don't render the default label
     }
@@ -3850,7 +4188,7 @@ fn render_svg_object(
     // Check if icon is present (non-image shapes)
     let has_icon = obj.icon is Some(_) && obj.shape_type != Image
     if has_icon {
-      let icon_position = D2_DEFAULT_ICON_POSITION
+      let icon_position = obj.icon_position.unwrap_or(D2_DEFAULT_ICON_POSITION)
       let icon_box = if d2_icon_position_is_outside(icon_position) {
         box
       } else {
@@ -3947,7 +4285,9 @@ fn render_svg_object(
     svg.add(@xml_emit.Element::new("a").close_tag())
   }
   if object_pass_active {
-    append_object_appendix_icons(diagram_hash, appendix_items, obj, box)
+    append_object_appendix_icons(
+      diagram_hash, appendix_items, obj, box, config, theme,
+    )
   }
 }
 

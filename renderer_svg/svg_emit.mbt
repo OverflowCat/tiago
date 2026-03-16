@@ -865,6 +865,10 @@ fn d2_hash_shape_label_position(shape : Shape, config : SvgConfig) -> String? {
   if shape.label == "" {
     return None
   }
+  match shape.label_position {
+    Some(position) => return Some(position)
+    None => ()
+  }
   match shape.shape_type {
     Class | SqlTable | Code => return None
     _ => ()
@@ -1032,6 +1036,12 @@ fn d2_hash_shape_json(
   fields.push(
     d2_json_field("tooltip", d2_json_string(shape.tooltip.unwrap_or(""))),
   )
+  fields.push(
+    d2_json_field(
+      "tooltipPosition",
+      d2_json_string(shape.tooltip_position.unwrap_or("")),
+    ),
+  )
   fields.push(d2_json_field("link", d2_json_string(shape.link.unwrap_or(""))))
   fields.push(
     d2_json_field(
@@ -1042,7 +1052,12 @@ fn d2_hash_shape_json(
       },
     ),
   )
-  fields.push(d2_json_field("iconPosition", d2_json_string("")))
+  fields.push(
+    d2_json_field(
+      "iconPosition",
+      d2_json_string(shape.icon_position.unwrap_or("")),
+    ),
+  )
   fields.push(d2_json_field("blend", d2_json_bool(false)))
 
   match shape.shape_type {

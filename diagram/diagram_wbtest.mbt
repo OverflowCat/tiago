@@ -284,3 +284,96 @@ test "hash_id follows d2 target config bytes and salt" {
   assert_eq(a.hash_id(None) == b.hash_id(None), false)
   assert_eq(a.hash_id(None) == a.hash_id(Some("salt")), false)
 }
+
+///|
+test "hash_id includes target position metadata" {
+  let base = from_graph(
+    @graph.GraphInput::from_parts(
+      "hash-pos-base",
+      @graph.ObjectInput::new("root"),
+      [
+        @graph.ObjectInput::from_parts(
+          "node",
+          "Node",
+          @graph.ShapeType::Rectangle,
+          @graph.StyleInput::new(),
+          Some(@graph.Box::new(0.0, 0.0, 120.0, 60.0)),
+          None,
+          [],
+          0,
+          Some("https://example.com/icon.svg"),
+          Some("hover text"),
+          None,
+          [],
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+        ),
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      None,
+    ),
+    None,
+  )
+  let positioned = from_graph(
+    @graph.GraphInput::from_parts(
+      "hash-pos-positioned",
+      @graph.ObjectInput::new("root"),
+      [
+        @graph.ObjectInput::from_parts(
+          "node",
+          "Node",
+          @graph.ShapeType::Rectangle,
+          @graph.StyleInput::new(),
+          Some(@graph.Box::new(0.0, 0.0, 120.0, 60.0)),
+          None,
+          [],
+          0,
+          Some("https://example.com/icon.svg"),
+          Some("hover text"),
+          None,
+          [],
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          None,
+          icon_position=Some("OUTSIDE_RIGHT_MIDDLE"),
+          tooltip_position=Some("bottom-right"),
+          label_position=Some("OUTSIDE_TOP_LEFT"),
+        ),
+      ],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [],
+      None,
+    ),
+    None,
+  )
+
+  assert_true(base.hash_id(None) != positioned.hash_id(None))
+}

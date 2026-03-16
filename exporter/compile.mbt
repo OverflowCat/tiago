@@ -88,8 +88,11 @@ priv struct Object {
   children : Array[Object]
   z_index : Int
   mut icon : String?
+  mut icon_position : String?
   mut tooltip : String?
+  mut tooltip_position : String?
   mut link : String?
+  mut label_position : String?
   classes : Array[String]
   mut language : String?
   sql_constraints : Array[String]
@@ -128,8 +131,11 @@ fn Object::new(
     children: [],
     z_index: 0,
     icon: None,
+    icon_position: None,
     tooltip: None,
+    tooltip_position: None,
     link: None,
+    label_position: None,
     classes: [],
     language: None,
     sql_constraints: [],
@@ -555,6 +561,9 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     id_syntax=obj.id_syntax,
     abs_id_syntax=obj.abs_id_syntax,
     references~,
+    icon_position=obj.icon_position,
+    tooltip_position=obj.tooltip_position,
+    label_position=obj.label_position,
   )
 }
 
@@ -1533,6 +1542,105 @@ fn set_object_language(obj : Object, language : String?) -> Unit {
 }
 
 ///|
+fn set_object_position(
+  obj : Object,
+  keyword : String,
+  position : String?,
+) -> Unit {
+  match keyword {
+    "label" => obj.label_position = position
+    "icon" => obj.icon_position = position
+    "tooltip" => obj.tooltip_position = position
+    _ => ()
+  }
+}
+
+///|
+fn d2_target_label_position(raw : String) -> String? {
+  match raw {
+    "top-left" => Some("INSIDE_TOP_LEFT")
+    "top-center" => Some("INSIDE_TOP_CENTER")
+    "top-right" => Some("INSIDE_TOP_RIGHT")
+    "center-left" => Some("INSIDE_MIDDLE_LEFT")
+    "center-center" => Some("INSIDE_MIDDLE_CENTER")
+    "center-right" => Some("INSIDE_MIDDLE_RIGHT")
+    "bottom-left" => Some("INSIDE_BOTTOM_LEFT")
+    "bottom-center" => Some("INSIDE_BOTTOM_CENTER")
+    "bottom-right" => Some("INSIDE_BOTTOM_RIGHT")
+    "outside-top-left" => Some("OUTSIDE_TOP_LEFT")
+    "outside-top-center" => Some("OUTSIDE_TOP_CENTER")
+    "outside-top-right" => Some("OUTSIDE_TOP_RIGHT")
+    "outside-left-top" => Some("OUTSIDE_LEFT_TOP")
+    "outside-left-center" => Some("OUTSIDE_LEFT_MIDDLE")
+    "outside-left-bottom" => Some("OUTSIDE_LEFT_BOTTOM")
+    "outside-right-top" => Some("OUTSIDE_RIGHT_TOP")
+    "outside-right-center" => Some("OUTSIDE_RIGHT_MIDDLE")
+    "outside-right-bottom" => Some("OUTSIDE_RIGHT_BOTTOM")
+    "outside-bottom-left" => Some("OUTSIDE_BOTTOM_LEFT")
+    "outside-bottom-center" => Some("OUTSIDE_BOTTOM_CENTER")
+    "outside-bottom-right" => Some("OUTSIDE_BOTTOM_RIGHT")
+    "border-top-left" => Some("BORDER_TOP_LEFT")
+    "border-top-center" => Some("BORDER_TOP_CENTER")
+    "border-top-right" => Some("BORDER_TOP_RIGHT")
+    "border-left-top" => Some("BORDER_LEFT_TOP")
+    "border-left-center" => Some("BORDER_LEFT_MIDDLE")
+    "border-left-bottom" => Some("BORDER_LEFT_BOTTOM")
+    "border-right-top" => Some("BORDER_RIGHT_TOP")
+    "border-right-center" => Some("BORDER_RIGHT_MIDDLE")
+    "border-right-bottom" => Some("BORDER_RIGHT_BOTTOM")
+    "border-bottom-left" => Some("BORDER_BOTTOM_LEFT")
+    "border-bottom-center" => Some("BORDER_BOTTOM_CENTER")
+    "border-bottom-right" => Some("BORDER_BOTTOM_RIGHT")
+    _ => None
+  }
+}
+
+///|
+fn process_composite_position_field(
+  obj : Object,
+  keyword : String,
+  field : @ir.Field,
+) -> Unit raise GraphCompileError {
+  match field.composite {
+    Some(@ir.Composite::Map(position_map)) => {
+      for nested in position_map.fields {
+        if nested.name == "near" && nested.name_is_unquoted() {
+          match nested.primary {
+            Some(value) =>
+              if value.is_null() {
+                set_object_position(obj, keyword, None)
+              } else {
+                let raw = value.to_string()
+                let position = match keyword {
+                  "label" | "icon" => d2_target_label_position(raw)
+                  "tooltip" =>
+                    if @ast.tooltip_positions.contains(raw) {
+                      Some(raw)
+                    } else {
+                      None
+                    }
+                  _ => None
+                }
+                match position {
+                  Some(v) => set_object_position(obj, keyword, Some(v))
+                  None => raise Semantic("invalid \"near\" field")
+                }
+              }
+            None => raise Semantic("invalid \"near\" field")
+          }
+        } else {
+          raise Semantic("unexpected field \{nested.name}")
+        }
+      }
+      if !position_map.edges.is_empty() {
+        raise Semantic("unexpected edges in map")
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
 fn extract_sql_constraints(ir : @ir.Map) -> Array[String] {
   let out : Array[String] = []
   match ir.get_field("constraint") {
@@ -1582,11 +1690,13 @@ fn process_special_fields(
   }
   // Process label (override)
   match ir.get_field("label") {
-    Some(f) =>
+    Some(f) => {
       match f.primary {
         Some(s) => set_object_label_from_scalar(obj, s)
         None => ()
       }
+      process_composite_position_field(obj, "label", f)
+    }
     None => ()
   }
   // Process direction
@@ -1635,20 +1745,24 @@ fn process_special_fields(
   }
   // Process icon
   match ir.get_field("icon") {
-    Some(f) =>
+    Some(f) => {
       match f.primary {
         Some(s) => obj.icon = Some(s.to_string())
         None => ()
       }
+      process_composite_position_field(obj, "icon", f)
+    }
     None => ()
   }
   // Process tooltip
   match ir.get_field("tooltip") {
-    Some(f) =>
+    Some(f) => {
       match f.primary {
         Some(s) => obj.tooltip = Some(s.to_string())
         None => ()
       }
+      process_composite_position_field(obj, "tooltip", f)
+    }
     None => ()
   }
   // Process link
