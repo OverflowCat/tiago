@@ -485,6 +485,45 @@ test "vars d2-config dark-theme-id emits dark media css" {
 }
 
 ///|
+test "target selection matches D2 board-only vs board-with-children semantics" {
+  let source =
+    #|layers: {
+    #|  core: {
+    #|    a -> b
+    #|    scenarios: {
+    #|      variant: {
+    #|        c -> d
+    #|      }
+    #|    }
+    #|  }
+    #|}
+  let board_only = compile_to_diagram(
+    source,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    Some("layers.core"),
+  ).unwrap()
+  let board_with_children = compile_to_diagram(
+    source,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    Some("layers.core.*"),
+  ).unwrap()
+  let root_only = compile_to_diagram(
+    source,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    Some(""),
+  ).unwrap()
+  assert_eq(board_only.scenarios.length(), 0)
+  assert_eq(board_with_children.scenarios.length(), 1)
+  assert_eq(root_only.layers.length(), 0)
+}
+
+///|
 test "salt namespaces SVG marker IDs" {
   let source =
     #|vars: {

@@ -151,9 +151,14 @@ test "compile_diagram supports board target selection" {
     #|layers: {
     #|  core: {
     #|    a -> b
+    #|    scenarios: {
+    #|      variant: {
+    #|        c -> d
+    #|      }
+    #|    }
     #|  }
     #|  extra: {
-    #|    c -> d
+    #|    e -> f
     #|  }
     #|}
   let diagram = compile_diagram(
@@ -161,7 +166,33 @@ test "compile_diagram supports board target selection" {
     options=CompileOptions::new().with_target_spec(Some("layers.core")),
   )
   assert_true(diagram.find_object("a") is Some(_))
-  assert_true(diagram.find_object("c") is None)
+  assert_true(diagram.find_object("e") is None)
+  assert_eq(diagram.scenarios.length(), 0)
+}
+
+///|
+test "compile_diagram target star keeps child boards while empty target trims root children" {
+  let source =
+    #|layers: {
+    #|  core: {
+    #|    a -> b
+    #|    scenarios: {
+    #|      variant: {
+    #|        c -> d
+    #|      }
+    #|    }
+    #|  }
+    #|}
+  let board = compile_diagram(
+    source,
+    options=CompileOptions::new().with_target_spec(Some("layers.core.*")),
+  )
+  let root_only = compile_diagram(
+    source,
+    options=CompileOptions::new().with_target_spec(Some("")),
+  )
+  assert_eq(board.scenarios.length(), 1)
+  assert_eq(root_only.layers.length(), 0)
 }
 
 ///|

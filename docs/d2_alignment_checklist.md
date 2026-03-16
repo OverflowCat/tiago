@@ -136,7 +136,8 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: compiler-side near validation now mirrors the upstream D2 checks for targeting constant-near objects, targeting grid descendants, targeting objects inside sequence diagrams, and rejecting self-entering edges from constant-near containers, grid diagrams, grid cells, and sequence diagrams.
   - Landed in diago: D2-style constant-near placement for Dagre and ELK now keeps near containers, descendants, internal edges, and cross-subgraph edges coherent after the near move, matching the `d2near.Layout` + post-injection reroute behavior more closely.
   - Landed in diago: the `d2near.place(...)` outside-label compensation branches are now mirrored for Dagre and ELK as well, so constant-near boxes offset for `OUTSIDE_*` / `BORDER_*` label positions on the same `_TOP_` / `_LEFT_` / `_RIGHT_` / `_BOTTOM_` conditions as upstream.
-  - Remaining gaps: object-near is still only guarded by the new D2 feature checks, and full nested/grid/sequence interactions still depend on the unfinished `LayoutNested` orchestration parity work above.
+  - Landed in diago: built-in engine handling of object-near now matches the current upstream support surface as well. Dagre and ELK reject it through the same capability gate categories as D2, and plugin-based object-near support remains out of scope with plugin integration.
+  - Remaining gaps: full nested/grid/sequence interactions still depend on the unfinished `LayoutNested` orchestration parity work above.
 
 - [ ] Decide how Railway fits into the parity plan.
   - Recommended policy: keep Railway as a diago-specific extension, but ensure it does not distort Dagre/ELK parity work.
@@ -192,7 +193,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align CLI flag surface and semantics.
   - Verify layout selection, theme flags, dark theme, pad, center, scale, watch, bundle, force appendix, font overrides, output format, target board selection, and timeout behavior.
-  - Landed in diago: target board flags now reject invalid D2 path syntax and accept quoted board names.
+  - Landed in diago: target board flags now reject invalid D2 path syntax, accept quoted board names, and distinguish D2's `board only` vs `board with children` target forms (`layers.x` vs `layers.x.*`, plus `--target=''` for root only).
 
 - [ ] Align watch mode behavior with D2.
   - D2 has a richer embedded watch server and reload protocol.

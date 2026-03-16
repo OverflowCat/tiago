@@ -475,6 +475,12 @@ fn merge_theme_overrides(
 }
 
 ///|
+priv struct TargetSelection {
+  path : Array[String]
+  no_children : Bool
+}
+
+///|
 fn select_target_board(
   diagram : @diagram.Diagram,
   target_spec : String?,
@@ -482,36 +488,46 @@ fn select_target_board(
   match target_spec {
     None => Ok(diagram)
     Some(spec) => {
-      let path = match parse_target_path(spec) {
-        Ok(path) => path
+      let selection = match parse_target_selection(spec) {
+        Ok(selection) => selection
         Err(message) => return Err(TargetError(message))
       }
-      if path.length() == 0 {
-        return Ok(diagram)
+      let target = if selection.path.length() == 0 {
+        diagram
+      } else {
+        match diagram.get_board(selection.path) {
+          Some(board) => board
+          None => return Err(TargetError("Target board not found: \{spec}"))
+        }
       }
-      match diagram.get_board(path) {
-        Some(board) => Ok(board)
-        None => Err(TargetError("Target board not found: \{spec}"))
+      if selection.no_children {
+        Ok(target.without_children())
+      } else {
+        Ok(target)
       }
     }
   }
 }
 
 ///|
-fn parse_target_path(spec : String) -> Result[Array[String], String] {
-  if spec.length() == 0 || spec == "*" {
-    return Ok([])
+fn parse_target_selection(spec : String) -> Result[TargetSelection, String] {
+  if spec == "*" {
+    return Ok({ path: [], no_children: false })
   }
-  let target = if spec.has_suffix(".*") {
-    spec[:spec.length() - 2].to_string()
-  } else {
+  if spec.length() == 0 {
+    return Ok({ path: [], no_children: true })
+  }
+  let no_children = !spec.has_suffix(".*")
+  let target = if no_children {
     spec
+  } else {
+    spec[:spec.length() - 2].to_string()
   }
   if target.length() == 0 {
-    return Ok([])
+    return Ok({ path: [], no_children })
   }
   match @parser.parse_key_path(target) {
-    Ok(key_path) => Ok(key_path.to_strings())
+    Ok(key_path) => Ok({ path: key_path.to_strings(), no_children })
     Err(_) => Err("Invalid target: \{spec}")
   }
 }

@@ -203,6 +203,11 @@ pub fn Diagram::has_steps(self : Diagram) -> Bool {
 }
 
 ///|
+pub fn Diagram::without_children(self : Diagram) -> Diagram {
+  { ..self, layers: [], scenarios: [], steps: [] }
+}
+
+///|
 pub fn Diagram::has_legend(self : Diagram) -> Bool {
   match self.legend {
     Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
