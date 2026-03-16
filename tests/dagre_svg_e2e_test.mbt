@@ -485,30 +485,10 @@ fn normalize_svg_snapshot(svg : String) -> String {
 
 ///|
 fn normalize_svg_hashes(svg : String) -> String {
-  let out = StringBuilder::new()
-  let mut i = 0
-  while i < svg.length() {
-    if i + 3 <= svg.length() && slice_string(svg, i, i + 3) == "d2-" {
-      let mut j = i + 3
-      while j < svg.length() {
-        let code = svg.code_unit_at(j)
-        if code < '0'.to_int().to_uint16() || code > '9'.to_int().to_uint16() {
-          break
-        }
-        j += 1
-      }
-      if j > i + 3 {
-        out.write_string("d2-HASH")
-        i = j
-        continue
-      }
-    }
-    match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
-      ch => out.write_string(ch)
-    }
-    i += 1
+  match extract_svg_scope_hash(svg) {
+    Some(hash) => replace_all_string(svg, hash, "d2-HASH")
+    None => svg
   }
-  out.to_string()
 }
 
 ///|
@@ -516,26 +496,20 @@ fn normalize_svg_wrapper_classes(svg : String) -> String {
   let out = StringBuilder::new()
   let mut i = 0
   while i < svg.length() {
-    if i + 7 <= svg.length() && slice_string(svg, i, i + 7) == "class=\"" {
-      let value_start = i + 7
-      let rest = slice_string(svg, value_start, svg.length())
-      let value_end_rel = match find_substring(rest, "\"") {
-        Some(v) => v
+    if i + 2 <= svg.length() && slice_string(svg, i, i + 2) == "<g" {
+      let tag_end = match
+        find_substring(slice_string(svg, i, svg.length()), ">") {
+        Some(v) => i + v
         None => {
-          match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
-            ch => out.write_string(ch)
-          }
-          i += 1
-          continue
+          out.write_string(slice_string(svg, i, svg.length()))
+          break
         }
       }
-      let value_end = value_start + value_end_rel
-      let value = slice_string(svg, value_start, value_end)
-      if should_normalize_svg_wrapper_class(value) {
-        out.write_string("class=\"__ID__\"")
-        i = value_end + 1
-        continue
-      }
+      let tag = slice_string(svg, i, tag_end + 1)
+      let normalized = normalize_svg_wrapper_group_tag(tag)
+      out.write_string(normalized)
+      i = tag_end + 1
+      continue
     }
     match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
       ch => out.write_string(ch)
@@ -546,26 +520,136 @@ fn normalize_svg_wrapper_classes(svg : String) -> String {
 }
 
 ///|
-fn should_normalize_svg_wrapper_class(value : String) -> Bool {
-  if value.length() < 8 || value.contains(" ") {
+fn extract_svg_scope_hash(svg : String) -> String? {
+  let marker = "class=\"d2-"
+  let start = match find_substring(svg, marker) {
+    Some(v) => v + "class=\"".length()
+    None => return None
+  }
+  let rest = slice_string(svg, start, svg.length())
+  let end_rel = match find_substring(rest, " d2-svg\"") {
+    Some(v) => v
+    None => return None
+  }
+  Some(slice_string(svg, start, start + end_rel))
+}
+
+///|
+fn replace_all_string(source : String, old : String, new : String) -> String {
+  if old.length() == 0 {
+    return source
+  }
+  let out = StringBuilder::new()
+  let mut cursor = 0
+  while cursor < source.length() {
+    let rest = slice_string(source, cursor, source.length())
+    match find_substring(rest, old) {
+      Some(rel) => {
+        let hit = cursor + rel
+        out.write_string(slice_string(source, cursor, hit))
+        out.write_string(new)
+        cursor = hit + old.length()
+      }
+      None => {
+        out.write_string(slice_string(source, cursor, source.length()))
+        break
+      }
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn normalize_svg_wrapper_group_tag(tag : String) -> String {
+  match parse_attr_string(tag, "class") {
+    Some(class_value) =>
+      match normalize_svg_wrapper_class_value(class_value) {
+        Some(normalized) => replace_attr_string_value(tag, "class", normalized)
+        None => tag
+      }
+    None => tag
+  }
+}
+
+///|
+fn normalize_svg_wrapper_class_value(value : String) -> String? {
+  let first_space = find_substring(value, " ")
+  let first_token = match first_space {
+    Some(v) => slice_string(value, 0, v)
+    None => value
+  }
+  if !is_svg_wrapper_class_token(first_token) {
+    return None
+  }
+  let suffix = match first_space {
+    Some(v) => slice_string(value, v, value.length())
+    None => ""
+  }
+  Some("__ID__" + suffix)
+}
+
+///|
+fn is_svg_wrapper_class_token(token : String) -> Bool {
+  if token.length() < 8 || token.length() % 4 == 1 {
     return false
   }
-  let mut has_padding = false
-  for ch in value {
-    if ('A' <= ch && ch <= 'Z') ||
-      ('a' <= ch && ch <= 'z') ||
-      ('0' <= ch && ch <= '9') ||
-      ch == '+' ||
-      ch == '/' {
-      continue
-    }
+  let mut has_signal = false
+  let mut seen_padding = false
+  let mut padding_count = 0
+  for i = 0; i < token.length(); i = i + 1 {
+    let ch = token.code_unit_at(i)
     if ch == '=' {
-      has_padding = true
+      if i < token.length() - 2 {
+        return false
+      }
+      seen_padding = true
+      padding_count += 1
+      if padding_count > 2 {
+        return false
+      }
+      has_signal = true
+      continue
+    }
+    if seen_padding {
+      return false
+    }
+    if ('A'.to_int().to_uint16() <= ch && ch <= 'Z'.to_int().to_uint16()) ||
+      ('0'.to_int().to_uint16() <= ch && ch <= '9'.to_int().to_uint16()) ||
+      ch == '_' {
+      has_signal = true
+    }
+    if ('A'.to_int().to_uint16() <= ch && ch <= 'Z'.to_int().to_uint16()) ||
+      ('a'.to_int().to_uint16() <= ch && ch <= 'z'.to_int().to_uint16()) ||
+      ('0'.to_int().to_uint16() <= ch && ch <= '9'.to_int().to_uint16()) ||
+      ch == '-' ||
+      ch == '_' {
       continue
     }
     return false
   }
-  has_padding
+  has_signal
+}
+
+///|
+test "normalize_svg_hashes only replaces extracted root hash token" {
+  let svg =
+    #|<svg><svg class="d2-12345 d2-svg"><style>.d2-12345 .text{font-family:"d2-12345-font-regular"} .other{content:"d2-99999";}</style><mask id="d2-12345"></mask><text>d2-99999</text></svg></svg>
+  let normalized = normalize_svg_hashes(svg)
+  assert_true(normalized.contains("class=\"d2-HASH d2-svg\""))
+  assert_true(normalized.contains(".d2-HASH .text"))
+  assert_true(normalized.contains("font-family:\"d2-HASH-font-regular\""))
+  assert_true(normalized.contains("id=\"d2-HASH\""))
+  assert_true(normalized.contains(">d2-99999<"))
+}
+
+///|
+test "normalize_svg_wrapper_classes only rewrites group wrapper id token" {
+  let svg =
+    #|<svg><g class="aW1fYQ== animated-shape foo"></g><g class="shape"></g><rect class="aW1fYQ=="></rect></svg>
+  let normalized = normalize_svg_wrapper_classes(svg)
+  assert_true(normalized.contains("<g class=\"__ID__ animated-shape foo\">"))
+  assert_true(normalized.contains("<g class=\"shape\">"))
+  assert_true(normalized.contains("<rect class=\"aW1fYQ==\">"))
 }
 
 ///|
