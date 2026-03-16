@@ -110,7 +110,8 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align the high-level nested layout orchestration model with D2.
   - D2 reference: `d2layouts.LayoutNested`, extracted subgraphs, child-order restore, constant-near handling, nested grid and sequence passes, routing after layout.
-  - diago currently distributes some of this responsibility across `engine_api`, `graph`, and engine implementations.
+  - Landed in diago: the D2 constant-near branch is now partially mirrored for Dagre and ELK. Top-level constant-near containers now move their descendant subgraph together, keep internal edges aligned with the moved subtree, and reroute cross-subgraph edges after the near placement instead of leaving stale pre-near routes behind.
+  - Remaining gaps: full `ExtractSubgraph` / `InjectNested` style orchestration, child-order preservation/restoration, and the dedicated nested grid / sequence control flow still remain distributed across `engine_api`, `graph`, and engine-specific code.
 
 - [x] Add or verify explicit support for D2 layout capability checks.
   - D2 reference: the layout layer distinguishes capabilities such as `near_object`, `container_dimensions`, `top_left`, `descendant_edges`, and routed edges.
@@ -132,6 +133,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align `near` behavior with D2.
   - Includes constant-near, object-near, and interactions with layout engines that may or may not support full D2 semantics.
+  - Landed in diago: D2-style constant-near placement for Dagre and ELK now keeps near containers, descendants, internal edges, and cross-subgraph edges coherent after the near move, matching the `d2near.Layout` + post-injection reroute behavior more closely.
+  - Landed in diago: the `d2near.place(...)` outside-label compensation branches are now mirrored for Dagre and ELK as well, so constant-near boxes offset for `OUTSIDE_*` / `BORDER_*` label positions on the same `_TOP_` / `_LEFT_` / `_RIGHT_` / `_BOTTOM_` conditions as upstream.
+  - Remaining gaps: object-near is still only guarded by the new D2 feature checks, and full nested/grid/sequence interactions still depend on the unfinished `LayoutNested` orchestration parity work above.
 
 - [ ] Decide how Railway fits into the parity plan.
   - Recommended policy: keep Railway as a diago-specific extension, but ensure it does not distort Dagre/ELK parity work.

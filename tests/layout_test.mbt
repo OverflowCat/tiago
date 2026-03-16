@@ -224,6 +224,101 @@ test "nested children are packed inside parent" {
 }
 
 ///|
+test "constant near containers keep descendants and cross edges aligned in dagre and elk" {
+  let source =
+    #|main
+    #|cluster: {
+    #|  near: top-left
+    #|  a
+    #|  b
+    #|  a -> b
+    #|}
+    #|cluster.a -> main
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  assert_constant_near_container_layout(dagre, "dagre")
+
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+  assert_constant_near_container_layout(elk, "elk")
+}
+
+///|
+fn assert_constant_near_container_layout(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let cluster = graph.find_object("cluster").unwrap()
+  let child_a = graph.find_object("cluster.a").unwrap()
+  let child_b = graph.find_object("cluster.b").unwrap()
+  let main = graph.find_object("main").unwrap()
+  match
+    (cluster.get_box(), child_a.get_box(), child_b.get_box(), main.get_box()) {
+    (Some(cluster_box), Some(a_box), Some(b_box), Some(main_box)) => {
+      assert_true(
+        cluster_box.contains(a_box.center()),
+        msg="\{engine_name} constant-near child a should stay inside container",
+      )
+      assert_true(
+        cluster_box.contains(b_box.center()),
+        msg="\{engine_name} constant-near child b should stay inside container",
+      )
+      assert_true(
+        cluster_box.x < main_box.x && cluster_box.y < main_box.y,
+        msg="\{engine_name} constant-near container should move above-left of the main graph",
+      )
+    }
+    _ => fail("\{engine_name} constant-near objects should all have boxes")
+  }
+
+  let mut cross_edge : @graph.EdgeInput? = None
+  for edge in graph.edges {
+    if edge.src_id == "cluster.a" && edge.dst_id == "main" {
+      cross_edge = Some(edge)
+      break
+    }
+  }
+  guard cross_edge is Some(edge) else {
+    fail("\{engine_name} expected cluster.a -> main edge")
+  }
+  let route = edge.route
+  assert_true(
+    route.length() >= 2,
+    msg="\{engine_name} cross edge should have route points",
+  )
+  match (child_a.get_box(), main.get_box()) {
+    (Some(a_box), Some(main_box)) => {
+      let start = route[0]
+      let end = route[route.length() - 1]
+      assert_true(
+        start.distance(a_box.center()) < a_box.get_width(),
+        msg="\{engine_name} cross edge should start near moved child",
+      )
+      assert_true(
+        end.distance(main_box.center()) < main_box.get_width(),
+        msg="\{engine_name} cross edge should end near destination",
+      )
+    }
+    _ => fail("\{engine_name} edge endpoint objects should have boxes")
+  }
+}
+
+///|
 test "edges have route points" {
   let graph = compile_to_graph("a -> b", @engine_api.Direction::Down).unwrap()
   let edges = graph.get_edges()

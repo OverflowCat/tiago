@@ -321,6 +321,7 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
     direction,
   )
   apply_constant_near_positions(patch, graph)
+  recompute_edge_label_boxes(patch, graph)
 
   patch
 }
@@ -1737,6 +1738,7 @@ fn apply_constant_near_positions(
       let width = max_x - min_x
       let height = max_y - min_y
       let (x, y) = place_constant_near_box(
+        obj,
         near_key,
         min_x,
         min_y,
@@ -1745,13 +1747,204 @@ fn apply_constant_near_positions(
         box.width,
         box.height,
       )
-      patch.nodes[obj.id] = @graph.Box::new(x, y, box.width, box.height)
+      let dx = x - box.x
+      let dy = y - box.y
+      shift_constant_near_subtree(patch, graph, obj.id, dx, dy)
       current_set_ids.push(obj.id)
     }
     for id in current_set_ids {
       placed_near[id] = true
     }
   }
+  reroute_constant_near_cross_edges(patch, graph, near_key_by_id)
+  clip_patch_routes_after_constant_near(patch, graph)
+}
+
+///|
+fn shift_constant_near_subtree(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  near_id : String,
+  dx : Double,
+  dy : Double,
+) -> Unit {
+  if approx_eq(dx, 0.0) && approx_eq(dy, 0.0) {
+    return
+  }
+  for obj in graph.objects {
+    if !is_inside_constant_near_subtree(obj.id, near_id) {
+      continue
+    }
+    match patch.nodes.get(obj.id) {
+      Some(box) => patch.nodes[obj.id] = shift_box(box, dx, dy)
+      None => ()
+    }
+    match patch.node_labels.get(obj.id) {
+      Some(label_box) =>
+        patch.node_labels[obj.id] = shift_box(label_box, dx, dy)
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    if !is_inside_constant_near_subtree(edge.src_id, near_id) ||
+      !is_inside_constant_near_subtree(edge.dst_id, near_id) {
+      continue
+    }
+    match patch.edges.get(edge.index) {
+      Some(route) => patch.edges[edge.index] = shift_route(route, dx, dy)
+      None => ()
+    }
+    match patch.edge_bend_points.get(edge.index) {
+      Some(bend_points) =>
+        patch.edge_bend_points[edge.index] = shift_route(bend_points, dx, dy)
+      None => ()
+    }
+  }
+}
+
+///|
+fn reroute_constant_near_cross_edges(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  near_key_by_id : Map[String, String],
+) -> Unit {
+  let node_ids : Map[String, Bool] = {}
+  for id, _ in patch.nodes {
+    node_ids[id] = true
+  }
+  let (object_by_id, parent_id_by_child_id) = build_object_maps(graph)
+  for edge in graph.edges {
+    let src_near = outer_constant_near_id(edge.src_id, near_key_by_id)
+    let dst_near = outer_constant_near_id(edge.dst_id, near_key_by_id)
+    let needs_reroute = match (src_near, dst_near) {
+      (Some(src_id), Some(dst_id)) => src_id != dst_id
+      (Some(_), None) | (None, Some(_)) => true
+      (None, None) => false
+    }
+    if !needs_reroute {
+      continue
+    }
+    let src_id = match
+      resolve_edge_endpoint_id(
+        edge.src_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    let dst_id = match
+      resolve_edge_endpoint_id(
+        edge.dst_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    let src_box = match patch.nodes.get(src_id) {
+      Some(box) => box
+      None => continue
+    }
+    let dst_box = match patch.nodes.get(dst_id) {
+      Some(box) => box
+      None => continue
+    }
+    patch.edges[edge.index] = [src_box.center(), dst_box.center()]
+    patch.edge_bend_points.remove(edge.index)
+    patch.edge_curves[edge.index] = false
+  }
+}
+
+///|
+fn clip_patch_routes_after_constant_near(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  let edge_endpoints_by_index = build_patch_edge_endpoints_by_index(
+    graph, patch,
+  )
+  trace_route_endpoints_like_d2(
+    patch.edges,
+    graph,
+    edge_endpoints_by_index,
+    patch.nodes,
+  )
+}
+
+///|
+fn build_patch_edge_endpoints_by_index(
+  graph : @graph.GraphInput,
+  patch : @graph.LayoutPatch,
+) -> Map[Int, (String, String)] {
+  let node_ids : Map[String, Bool] = {}
+  for id, _ in patch.nodes {
+    node_ids[id] = true
+  }
+  let (object_by_id, parent_id_by_child_id) = build_object_maps(graph)
+  let edge_endpoints_by_index : Map[Int, (String, String)] = {}
+  for edge in graph.edges {
+    let src_id = match
+      resolve_edge_endpoint_id(
+        edge.src_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    let dst_id = match
+      resolve_edge_endpoint_id(
+        edge.dst_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    edge_endpoints_by_index[edge.index] = (src_id, dst_id)
+  }
+  edge_endpoints_by_index
+}
+
+///|
+fn outer_constant_near_id(
+  obj_id : String,
+  near_key_by_id : Map[String, String],
+) -> String? {
+  for near_id, _ in near_key_by_id {
+    if is_inside_constant_near_subtree(obj_id, near_id) {
+      return Some(near_id)
+    }
+  }
+  None
+}
+
+///|
+fn is_inside_constant_near_subtree(obj_id : String, near_id : String) -> Bool {
+  obj_id == near_id || obj_id.has_prefix(near_id + ".")
+}
+
+///|
+fn shift_box(box : @graph.Box, dx : Double, dy : Double) -> @graph.Box {
+  @graph.Box::new(box.x + dx, box.y + dy, box.width, box.height)
+}
+
+///|
+fn shift_route(
+  route : Array[@graph.Point],
+  dx : Double,
+  dy : Double,
+) -> Array[@graph.Point] {
+  let shifted : Array[@graph.Point] = []
+  for point in route {
+    shifted.push(@graph.Point::new(point.x + dx, point.y + dy))
+  }
+  shifted
 }
 
 ///|
@@ -1897,6 +2090,7 @@ fn has_outer_near_container(
 
 ///|
 fn place_constant_near_box(
+  obj : @graph.ObjectInput,
   near_key : String,
   min_x : Double,
   min_y : Double,
@@ -1905,7 +2099,7 @@ fn place_constant_near_box(
   box_width : Double,
   box_height : Double,
 ) -> (Double, Double) {
-  match near_key {
+  let (x, y) = match near_key {
     "top-left" =>
       (min_x - box_width - D2_NEAR_PAD, min_y - box_height - D2_NEAR_PAD)
     "top-center" =>
@@ -1923,6 +2117,56 @@ fn place_constant_near_box(
     "bottom-right" =>
       (min_x + width + D2_NEAR_PAD, min_y + height + D2_NEAR_PAD)
     _ => (min_x, min_y)
+  }
+  adjust_constant_near_for_label(obj, near_key, x, y)
+}
+
+///|
+fn adjust_constant_near_for_label(
+  obj : @graph.ObjectInput,
+  near_key : String,
+  x : Double,
+  y : Double,
+) -> (Double, Double) {
+  let label_position = match obj.label_position {
+    Some(v) => v
+    None => return (x, y)
+  }
+  if label_position.contains("INSIDE") {
+    return (x, y)
+  }
+  let (label_width, label_height) = match object_label_dimensions(obj) {
+    Some(v) => v
+    None => return (x, y)
+  }
+  let x = x
+  let y = y
+  if label_position.contains("_TOP_") {
+    if near_key.contains("bottom") {
+      (x, y + label_height)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_LEFT_") {
+    if near_key.contains("right") {
+      (x + label_width, y)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_RIGHT_") {
+    if near_key.contains("left") {
+      (x - label_width, y)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_BOTTOM_") {
+    if near_key.contains("top") {
+      (x, y - label_height)
+    } else {
+      (x, y)
+    }
+  } else {
+    (x, y)
   }
 }
 
