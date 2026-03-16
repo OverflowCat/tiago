@@ -145,7 +145,8 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 - [ ] Align SVG render configuration semantics with D2.
   - Verify `theme`, `dark-theme`, `pad`, `center`, `scale`, `no-xml-tag`, `salt`, `omit-version`, and bundled asset behavior.
   - Landed in diago: CLI/lib/render option plumbing now carries D2-style `pad` and `center`, and SVG `preserveAspectRatio` now follows D2's `xMinYMin` vs `xMidYMid` behavior.
-  - Remaining gap: global `sketch` render semantics still differ from D2 because diago currently uses local SVG sketch filters rather than D2's sketch renderer pipeline.
+  - Landed in diago: SVG asset bundling now mirrors D2's `imgbundler` split more closely, with local assets always bundled for SVG output, remote assets gated by the bundle option, D2-style relative local path resolution, duplicate remote URL de-duplication, optional cross-run cache plumbing, and explicit oversized/error fetch coverage.
+  - Remaining gaps: global `sketch` render semantics still differ from D2 because diago currently uses local SVG sketch filters rather than D2's sketch renderer pipeline; bundle failure propagation also still follows diago's current `Result`-based render pipeline instead of D2 CLI's "return output plus bundling error" behavior.
 
 - [ ] Align root canvas sizing and board bounding box behavior with D2.
 

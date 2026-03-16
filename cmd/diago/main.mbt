@@ -974,6 +974,7 @@ fn compile_diago_svg(
       source, base_path, layout_engine, layout_explicit, target_spec,
     ) {
     Ok(diagram) => {
+      let cache_images = bundle_cache_enabled()
       let render_config = resolve_svg_config(
         theme_name,
         diagram.config,
@@ -990,10 +991,27 @@ fn compile_diago_svg(
       try @renderer_svg.render(diagram, render_config) catch {
         e => Err(e.to_string())
       } noraise {
-        v => if bundle { bundle_svg_images(v, base_path) } else { Ok(v) }
+        v =>
+          match bundle_local_svg_images(v, base_path, cache_images~) {
+            Err(e) => Err(e)
+            Ok(local_svg) =>
+              if bundle {
+                bundle_remote_svg_images(local_svg, cache_images~)
+              } else {
+                Ok(local_svg)
+              }
+          }
       }
     }
     Err(e) => Err(e)
+  }
+}
+
+///|
+fn bundle_cache_enabled() -> Bool {
+  match @sys.get_env_var("IMG_CACHE") {
+    Some(value) => value == "1"
+    None => false
   }
 }
 

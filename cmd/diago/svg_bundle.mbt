@@ -19,9 +19,50 @@ priv struct AttributeSpan {
 }
 
 ///|
-fn bundle_svg_images(
+priv enum BundleScope {
+  Local
+  Remote
+}
+
+///|
+let max_bundle_image_size : Int = 1 << 25
+
+///|
+let persistent_bundle_cache : Map[String, String] = {}
+
+///|
+// Whitebox tests use these maps to mirror D2's mockable HTTP transport.
+let test_remote_fetch_ok_overrides : Map[String, (Bytes, String)] = {}
+
+///|
+let test_remote_fetch_error_overrides : Map[String, String] = {}
+
+///|
+let test_remote_fetch_count : Map[String, Int] = {}
+
+///|
+fn bundle_local_svg_images(
   svg : String,
   base_path : String?,
+  cache_images? : Bool = false,
+) -> Result[String, String] {
+  bundle_svg_images_in_scope(svg, base_path, BundleScope::Local, cache_images)
+}
+
+///|
+fn bundle_remote_svg_images(
+  svg : String,
+  cache_images? : Bool = false,
+) -> Result[String, String] {
+  bundle_svg_images_in_scope(svg, None, BundleScope::Remote, cache_images)
+}
+
+///|
+fn bundle_svg_images_in_scope(
+  svg : String,
+  base_path : String?,
+  scope : BundleScope,
+  cache_images : Bool,
 ) -> Result[String, String] {
   let cache : Array[(String, String)] = []
   let out = StringBuilder::new()
@@ -43,7 +84,8 @@ fn bundle_svg_images(
       }
     }
     let tag = slice_string(svg, image_start, image_end + 1)
-    let bundled_tag = match bundle_image_tag(tag, base_path, cache) {
+    let bundled_tag = match
+      bundle_image_tag(tag, base_path, scope, cache, cache_images) {
       Ok(v) => v
       Err(e) => return Err(e)
     }
@@ -57,7 +99,9 @@ fn bundle_svg_images(
 fn bundle_image_tag(
   tag : String,
   base_path : String?,
+  scope : BundleScope,
   cache : Array[(String, String)],
+  cache_images : Bool,
 ) -> Result[String, String] {
   let href_raw = match read_image_href(tag) {
     Some(value) => value
@@ -67,17 +111,31 @@ fn bundle_image_tag(
   if href == "" || href.has_prefix("data:") {
     return Ok(tag)
   }
-  let key = bundle_cache_key(href, base_path)
+  let normalized = normalize_source_reference(href)
+  let is_remote = is_http_source(normalized)
+  match scope {
+    BundleScope::Local => if is_remote { return Ok(tag) }
+    BundleScope::Remote => if !is_remote { return Ok(tag) }
+  }
+  let key = bundle_cache_key(normalized, base_path)
   let data_uri = match lookup_bundle_cache(cache, key) {
     Some(uri) => uri
-    None => {
-      let built = match build_image_data_uri(href, base_path) {
-        Ok(v) => v
-        Err(e) => return Err(e)
+    None =>
+      match lookup_persistent_bundle_cache(key, cache_images) {
+        Some(uri) => {
+          cache.push((key, uri))
+          uri
+        }
+        None => {
+          let built = match build_image_data_uri(normalized, base_path) {
+            Ok(v) => v
+            Err(e) => return Err(e)
+          }
+          cache.push((key, built))
+          store_persistent_bundle_cache(key, built, cache_images)
+          built
+        }
       }
-      cache.push((key, built))
-      built
-    }
   }
   Ok(apply_bundled_href(tag, data_uri))
 }
@@ -219,6 +277,26 @@ fn lookup_bundle_cache(
 }
 
 ///|
+fn lookup_persistent_bundle_cache(key : String, cache_images : Bool) -> String? {
+  if cache_images {
+    persistent_bundle_cache.get(key)
+  } else {
+    None
+  }
+}
+
+///|
+fn store_persistent_bundle_cache(
+  key : String,
+  data_uri : String,
+  cache_images : Bool,
+) -> Unit {
+  if cache_images {
+    persistent_bundle_cache[key] = data_uri
+  }
+}
+
+///|
 fn build_image_data_uri(
   source : String,
   base_path : String?,
@@ -266,6 +344,10 @@ fn resolve_bundle_mime_type(
 
 ///|
 fn fetch_remote_image_bytes(url : String) -> Result[(Bytes, String), String] {
+  match fetch_remote_image_bytes_override(url) {
+    Some(result) => return result
+    None => ()
+  }
   if !command_exec_is_supported() {
     return Err(
       "remote image bundling requires native command execution support",
@@ -324,11 +406,52 @@ fn fetch_remote_image_bytes(url : String) -> Result[(Bytes, String), String] {
       return Err("failed to read fetched image '\{tmp_path}': \{e}")
     }
   }
+  if bytes.length() > max_bundle_image_size {
+    bundle_remove_file_quiet(tmp_path)
+    bundle_remove_file_quiet(header_path)
+    return Err(
+      "fetched image '\{url}' exceeds max size \{max_bundle_image_size} bytes",
+    )
+  }
   let header_text = @fs.read_file_to_string(header_path) catch { _ => "" }
   let content_type = parse_last_content_type_header(header_text).unwrap_or("")
   bundle_remove_file_quiet(tmp_path)
   bundle_remove_file_quiet(header_path)
   Ok((bytes, content_type))
+}
+
+///|
+fn fetch_remote_image_bytes_override(
+  url : String,
+) -> Result[(Bytes, String), String]? {
+  match test_remote_fetch_ok_overrides.get(url) {
+    Some((bytes, content_type)) => {
+      test_remote_fetch_count[url] = test_remote_fetch_count.get_or_default(
+          url, 0,
+        ) +
+        1
+      if bytes.length() > max_bundle_image_size {
+        Some(
+          Err(
+            "fetched image '\{url}' exceeds max size \{max_bundle_image_size} bytes",
+          ),
+        )
+      } else {
+        Some(Ok((bytes, content_type)))
+      }
+    }
+    None =>
+      match test_remote_fetch_error_overrides.get(url) {
+        Some(message) => {
+          test_remote_fetch_count[url] = test_remote_fetch_count.get_or_default(
+              url, 0,
+            ) +
+            1
+          Some(Err(message))
+        }
+        None => None
+      }
+  }
 }
 
 ///|

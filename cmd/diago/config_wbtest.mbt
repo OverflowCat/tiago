@@ -441,6 +441,33 @@ test "salt namespaces SVG marker IDs" {
 }
 
 ///|
+test "local image assets are bundled even when remote bundling is disabled" {
+  let icon_path = ".diago_bundle_compile_local.svg"
+  let icon_svg =
+    #|<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>
+  remove_config_test_file(icon_path)
+  @fs.write_string_to_file(icon_path, icon_svg)
+  let source =
+    #|photo: {
+    #|  shape: image
+    #|  icon: .diago_bundle_compile_local.svg
+    #|}
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    Some("."),
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+    bundle=false,
+  ).unwrap()
+  remove_config_test_file(icon_path)
+  assert_true(svg.contains("data:image/svg+xml;base64,"))
+  assert_false(svg.contains(icon_path))
+}
+
+///|
 test "omit-version removes data-d2-version attribute" {
   let source_default =
     #|a -> b
@@ -516,6 +543,13 @@ test "url tooltip with link fails semantic validation" {
     ) {
     Ok(_) => fail("expected link + URL tooltip check to fail")
     Err(msg) => assert_true(msg.contains("Tooltip cannot be set to URL"))
+  }
+}
+
+///|
+fn remove_config_test_file(path : String) -> Unit {
+  @fs.remove_file(path) catch {
+    _ => ()
   }
 }
 
