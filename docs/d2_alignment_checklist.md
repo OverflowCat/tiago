@@ -32,8 +32,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 | `d2ir` | `ir` | Major parity gap in node/reference/context richness. |
 | `d2graph` | `graph` | Major parity gap in graph/object/reference metadata and orchestration hooks. |
 | `d2target` | `diagram` | Similar role, but D2 target model is richer and more product-oriented. |
-| `d2compiler` | `compiler` + `exporter` | Compiler-layer split now exists, but wider package ownership parity still needs cleanup. |
-| `d2lib` | `lib` + `diago.mbt` facade | Library-layer orchestration now exists; the public facade still needs broader parity follow-through. |
+| `d2exporter` | `exporter` | Owned as an internal compiler-stage lowering package. |
+| `d2compiler` | `compiler` | Owned as the source-to-graph orchestration layer; file-based facade helpers stay outside it by design. |
+| `d2lib` | `lib` + `diago.mbt` facade | Ownership decision is now explicit: `lib` is the D2-library-equivalent layer, while `diago.mbt` remains a MoonBit-native public facade. |
 | `d2layouts/*` | `engine_api` + `engine_*` + layout helpers in `graph` / `diagram` | Same broad responsibility, different control flow and missing D2 orchestration pieces. |
 | `d2renderers/d2svg` | `renderer_svg` | Similar surface, but D2 still has several product features not fully matched. |
 | `d2renderers/d2ascii` | `renderer_ascii` + `renderer_unicode` | Similar surface, behavior parity still needs systematic verification. |
@@ -50,11 +51,13 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Completed by introducing a dedicated `compiler` layer for source-to-graph compilation and a dedicated `lib` layer for layout/render orchestration, with `diago.mbt` reduced to a public facade and `cmd/wasm` updated to reuse the split.
   - Remaining follow-up lives in the next two architecture items: package ownership mapping and the final decision on how closely the MoonBit split should mirror D2 naming and boundaries.
 
-- [ ] Decide whether diago should mirror D2's explicit `compiler` + `lib` split or document a deliberate MoonBit-native equivalent.
-  - This is an architectural alignment decision and blocks several cleanup tasks.
+- [x] Decide whether diago should mirror D2's explicit `compiler` + `lib` split or document a deliberate MoonBit-native equivalent.
+  - Decision recorded in `docs/d2_package_ownership_decision.md`.
+  - Chosen policy: keep the current split as a MoonBit-native equivalent of D2's `d2compiler` + `d2lib`, while retaining `diago.mbt` as the public facade and keeping file I/O outside `compiler`.
 
-- [ ] Create a package-level alignment map in code ownership terms.
-  - Done when every D2 package we care about has one clearly named diago owner package or an explicit "not implemented / intentionally omitted" note.
+- [x] Create a package-level alignment map in code ownership terms.
+  - Completed in `docs/d2_package_ownership_decision.md`.
+  - Every D2 package area currently in scope now has an explicit diago owner or an explicit omitted/out-of-scope note.
 
 ## 2. IR And Semantic Model Parity
 
@@ -252,6 +255,5 @@ These are the gaps most likely to block broad parity:
 
 - IR/reference/context richness is below D2's model.
 - Graph/object metadata and board semantics are below D2's model.
-- The new compiler/lib split exists, but the remaining package ownership map is still less explicit than D2's.
 - D2's nested layout orchestration and layout capability gating are richer.
 - diago does not yet expose D2's full product surface for LSP/oracle tooling and non-SVG export formats.
