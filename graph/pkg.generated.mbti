@@ -60,6 +60,8 @@ pub struct EdgeInput {
   index : Int
   src_id : String
   dst_id : String
+  src_id_syntax : String
+  dst_id_syntax : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -82,17 +84,19 @@ pub struct EdgeInput {
   dst_column_index : Int?
 }
 pub fn EdgeInput::from_model(EdgeModel) -> Self
-pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String?, String?, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?) -> Self
+pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String?, String?, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?, src_id_syntax? : String, dst_id_syntax? : String) -> Self
 pub fn EdgeInput::get_dst_id(Self) -> String
 pub fn EdgeInput::get_label_box(Self) -> Box?
 pub fn EdgeInput::get_src_id(Self) -> String
-pub fn EdgeInput::new(Int, String, String, Bool, Bool) -> Self
+pub fn EdgeInput::new(Int, String, String, Bool, Bool, src_id_syntax? : String, dst_id_syntax? : String) -> Self
 pub impl Show for EdgeInput
 
 pub struct EdgeModel {
   index : Int
   src_id : String
   dst_id : String
+  src_id_syntax : String
+  dst_id_syntax : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -114,7 +118,7 @@ pub struct EdgeModel {
   src_column_index : Int?
   dst_column_index : Int?
 }
-pub fn EdgeModel::new(Int, String, String, Bool, Bool) -> Self
+pub fn EdgeModel::new(Int, String, String, Bool, Bool, src_id_syntax? : String, dst_id_syntax? : String) -> Self
 pub fn EdgeModel::with_label(Self, String) -> Self
 pub fn EdgeModel::with_label_box(Self, Box?) -> Self
 pub fn EdgeModel::with_route(Self, Array[Point]) -> Self
@@ -313,6 +317,9 @@ pub impl Show for LegendPosition
 
 pub struct ObjectInput {
   id : String
+  id_val : String
+  id_syntax : String
+  abs_id_syntax : String
   label : String
   shape_type : ShapeType
   style : StyleInput
@@ -339,15 +346,18 @@ pub struct ObjectInput {
   direction : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String]) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String], id_val? : String, id_syntax? : String, abs_id_syntax? : String) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
-pub fn ObjectInput::new(String) -> Self
+pub fn ObjectInput::new(String, id_val? : String, id_syntax? : String, abs_id_syntax? : String) -> Self
 pub fn ObjectInput::with_direction(Self, String?) -> Self
 pub impl Show for ObjectInput
 
 pub struct ObjectModel {
   id : String
+  id_val : String
+  id_syntax : String
+  abs_id_syntax : String
   label : String
   shape_type : ShapeType
   style : StyleModel
@@ -374,7 +384,7 @@ pub struct ObjectModel {
   direction : String?
 }
 pub fn ObjectModel::add_child(Self, Self) -> Self
-pub fn ObjectModel::new(String) -> Self
+pub fn ObjectModel::new(String, id_val? : String, id_syntax? : String, abs_id_syntax? : String) -> Self
 pub fn ObjectModel::with_box(Self, Box?) -> Self
 pub fn ObjectModel::with_label(Self, String) -> Self
 pub fn ObjectModel::with_label_box(Self, Box?) -> Self

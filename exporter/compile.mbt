@@ -77,6 +77,9 @@ fn Style::new() -> Style {
 ///|
 priv struct Object {
   id : String
+  id_val : String
+  id_syntax : String
+  abs_id_syntax : String
   mut label : String
   mut shape_type : ShapeType
   mut raw_shape : String?
@@ -105,10 +108,18 @@ priv struct Object {
 } derive(Show)
 
 ///|
-fn Object::new(id : String) -> Object {
+fn Object::new(
+  id : String,
+  id_val? : String = id,
+  id_syntax? : String = id,
+  abs_id_syntax? : String = id,
+) -> Object {
   {
     id,
-    label: id,
+    id_val,
+    id_syntax,
+    abs_id_syntax,
+    label: id_val,
     shape_type: Rectangle,
     raw_shape: None,
     style: Style::new(),
@@ -146,6 +157,8 @@ priv struct Edge {
   index : Int
   src_id : String
   dst_id : String
+  src_id_syntax : String
+  dst_id_syntax : String
   src_arrow : Bool
   dst_arrow : Bool
   mut src_arrowhead : ArrowheadType
@@ -173,11 +186,15 @@ fn Edge::new(
   dst_id : String,
   src_arrow : Bool,
   dst_arrow : Bool,
+  src_id_syntax? : String = src_id,
+  dst_id_syntax? : String = dst_id,
 ) -> Edge {
   {
     index,
     src_id,
     dst_id,
+    src_id_syntax,
+    dst_id_syntax,
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
@@ -526,6 +543,9 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     direction=obj.direction,
     language=obj.language,
     sql_constraints~,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
   )
 }
 
@@ -575,6 +595,8 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
     None,
     edge.src_column_index,
     edge.dst_column_index,
+    src_id_syntax=edge.src_id_syntax,
+    dst_id_syntax=edge.dst_id_syntax,
   )
 }
 
@@ -636,6 +658,9 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
     direction=graph.root.direction,
     language=graph.root.language,
     sql_constraints=root_sql_constraints,
+    id_val=graph.root.id_val,
+    id_syntax=graph.root.id_syntax,
+    abs_id_syntax=graph.root.abs_id_syntax,
   )
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
@@ -731,7 +756,7 @@ fn compile_board_graph(
   ir : @ir.Map,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
-  compile_objects(graph, ir, "", classes)
+  compile_objects(graph, ir, "", "", classes)
   compile_edges(graph, ir)
   compile_layers(graph, ir, classes)
   compile_scenarios(graph, ir, classes)
@@ -751,6 +776,7 @@ fn compile_objects(
   graph : Graph,
   ir : @ir.Map,
   prefix : String,
+  prefix_syntax : String,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
@@ -758,8 +784,15 @@ fn compile_objects(
     if field.is_reserved_keyword_name() {
       continue
     }
-    let id = if prefix == "" { field.name } else { "\{prefix}.\{field.name}" }
-    let obj = Object::new(id)
+    let id_val = field.name
+    let id_syntax = d2_format_key_segment(id_val)
+    let id = if prefix == "" { id_val } else { "\{prefix}.\{id_val}" }
+    let abs_id_syntax = if prefix_syntax == "" {
+      id_syntax
+    } else {
+      "\{prefix_syntax}.\{id_syntax}"
+    }
+    let obj = Object::new(id, id_val~, id_syntax~, abs_id_syntax~)
     // Set label from primary value
     match field.primary {
       Some(scalar) => set_object_label_from_scalar(obj, scalar)
@@ -775,7 +808,7 @@ fn compile_objects(
         // D2 registers objects in encounter order before descending.
         graph.add_object(obj)
         // Recursively compile children
-        compile_children(graph, obj, inner, id, classes)
+        compile_children(graph, obj, inner, id, abs_id_syntax, classes)
       }
       _ => graph.add_object(obj)
     }
@@ -828,6 +861,7 @@ fn compile_children(
   parent : Object,
   ir : @ir.Map,
   prefix : String,
+  prefix_syntax : String,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
@@ -835,8 +869,11 @@ fn compile_children(
     if field.is_reserved_keyword_name() {
       continue
     }
-    let id = "\{prefix}.\{field.name}"
-    let child = Object::new(id)
+    let id_val = field.name
+    let id_syntax = d2_format_key_segment(id_val)
+    let id = "\{prefix}.\{id_val}"
+    let abs_id_syntax = "\{prefix_syntax}.\{id_syntax}"
+    let child = Object::new(id, id_val~, id_syntax~, abs_id_syntax~)
     // Set label - use field name as default, or primary value if provided
     match field.primary {
       Some(scalar) => set_object_label_from_scalar(child, scalar)
@@ -861,7 +898,7 @@ fn compile_children(
         parent.add_child(child)
         graph.add_object(child)
         // Recursively compile children
-        compile_children(graph, child, inner, id, classes)
+        compile_children(graph, child, inner, id, abs_id_syntax, classes)
       }
       _ => {
         parent.add_child(child)
@@ -1488,6 +1525,164 @@ fn process_style(style : Style, ir : @ir.Map) -> Unit {
 }
 
 ///|
+fn d2_has_surrounding_whitespace(s : String) -> Bool {
+  if s.length() == 0 {
+    false
+  } else {
+    s.trim().length() != s.length()
+  }
+}
+
+///|
+fn d2_contains_char(s : String, target : Char) -> Bool {
+  for c in s {
+    if c == target {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn d2_escape_single_quoted_value(s : String) -> String {
+  let b = StringBuilder::new()
+  for r in s {
+    match r {
+      '\'' => b.write_char('\'')
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ => ()
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_escape_double_quoted_value(s : String) -> String {
+  let b = StringBuilder::new()
+  for r in s {
+    match r {
+      '"' | '\\' => b.write_char('\\')
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ => ()
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_escape_unquoted_key_value(s : String) -> String {
+  if s.length() == 0 {
+    return "\"\""
+  }
+  if s.to_lower() == "null" {
+    return "'null'"
+  }
+  let key_specials = "#;\n\\{}[]'\"|:.-<>*&()@&"
+  let chars = s.to_array()
+  let b = StringBuilder::new()
+  for i, r in chars {
+    match r {
+      '\'' | '"' | '|' => if i == 0 { b.write_char('\\') } else { () }
+      '\n' => {
+        b.write_char('\\')
+        b.write_char('n')
+        continue
+      }
+      _ =>
+        if r == '-' {
+          if i + 1 < chars.length() && chars[i + 1] == '-' {
+            b.write_char('\\')
+          }
+        } else if r == '&' {
+          if i == 0 {
+            b.write_char('\\')
+          }
+        } else if d2_contains_char(key_specials, r) {
+          b.write_char('\\')
+        }
+    }
+    b.write_char(r)
+  }
+  b.to_string()
+}
+
+///|
+fn d2_is_reserved_for_unquoted_key(s : String) -> Bool {
+  let lower = s.to_lower()
+  lower == "null" ||
+  lower == "suspend" ||
+  lower == "unsuspend" ||
+  lower == "style" ||
+  lower == "shape" ||
+  lower == "icon" ||
+  lower == "tooltip" ||
+  lower == "link" ||
+  lower == "near" ||
+  lower == "width" ||
+  lower == "height" ||
+  lower == "top" ||
+  lower == "left" ||
+  lower == "direction" ||
+  lower == "constraint" ||
+  lower == "class" ||
+  lower == "classes" ||
+  lower == "vars" ||
+  lower == "grid-rows" ||
+  lower == "grid-columns" ||
+  lower == "grid-gap" ||
+  lower == "horizontal-gap" ||
+  lower == "vertical-gap" ||
+  lower == "grid-column-span" ||
+  lower == "grid-row-span" ||
+  lower == "layers" ||
+  lower == "scenarios" ||
+  lower == "steps"
+}
+
+///|
+fn d2_format_key_segment(s : String) -> String {
+  if s.length() == 0 {
+    return "\"\""
+  }
+  let key_specials = "#;\n\\{}[]'\"|:.-<>*&()@&"
+  let chars = s.to_array()
+  for i, r in chars {
+    if r == '-' {
+      if i + 1 < chars.length() && chars[i + 1] != '-' {
+        continue
+      }
+    }
+    if d2_contains_char(key_specials, r) {
+      if !d2_contains_char(s, '"') {
+        return "\"\{d2_escape_double_quoted_value(s)}\""
+      }
+      if d2_contains_char(s, '\n') {
+        return "\"\{d2_escape_double_quoted_value(s)}\""
+      }
+      return "'\{d2_escape_single_quoted_value(s)}'"
+    }
+  }
+  if d2_has_surrounding_whitespace(s) {
+    return "\"\{d2_escape_double_quoted_value(s)}\""
+  }
+  let mut out = d2_escape_unquoted_key_value(s)
+  if d2_is_reserved_for_unquoted_key(out) {
+    out = out.to_lower()
+  }
+  out
+}
+
+///|
 fn join_path(prefix : String, path : Array[String]) -> String {
   let buf = StringBuilder::new()
   if prefix.length() > 0 {
@@ -1505,10 +1700,28 @@ fn join_path(prefix : String, path : Array[String]) -> String {
 }
 
 ///|
+fn join_path_syntax(prefix : String, path : Array[String]) -> String {
+  let buf = StringBuilder::new()
+  if prefix.length() > 0 {
+    buf.write_string(prefix)
+  }
+  let mut first = prefix.length() == 0
+  for segment in path {
+    if !first {
+      buf.write_char('.')
+    }
+    buf.write_string(d2_format_key_segment(segment))
+    first = false
+  }
+  buf.to_string()
+}
+
+///|
 fn compile_edges_in_map(
   graph : Graph,
   ir : @ir.Map,
   prefix : String,
+  prefix_syntax : String,
   next_index : Int,
 ) -> Int raise GraphCompileError {
   let mut next_index = next_index
@@ -1523,8 +1736,13 @@ fn compile_edges_in_map(
         } else {
           prefix + "." + field.name
         }
+        let child_prefix_syntax = if prefix_syntax == "" {
+          d2_format_key_segment(field.name)
+        } else {
+          prefix_syntax + "." + d2_format_key_segment(field.name)
+        }
         next_index = compile_edges_in_map(
-          graph, inner, child_prefix, next_index,
+          graph, inner, child_prefix, child_prefix_syntax, next_index,
         )
       }
       _ => ()
@@ -1533,12 +1751,16 @@ fn compile_edges_in_map(
   for edge in ir.edges {
     let src_id = join_path(prefix, edge.id.src_path)
     let dst_id = join_path(prefix, edge.id.dst_path)
+    let src_id_syntax = join_path_syntax(prefix_syntax, edge.id.src_path)
+    let dst_id_syntax = join_path_syntax(prefix_syntax, edge.id.dst_path)
     let graph_edge = Edge::new(
       next_index,
       src_id,
       dst_id,
       edge.id.src_arrow,
       edge.id.dst_arrow,
+      src_id_syntax~,
+      dst_id_syntax~,
     )
     next_index = next_index + 1
     // Set reference count from IR edge references
@@ -1741,7 +1963,7 @@ fn process_edge_arrowhead_field(
 
 ///|
 fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit raise GraphCompileError {
-  compile_edges_in_map(graph, ir, "", 0) |> ignore
+  compile_edges_in_map(graph, ir, "", "", 0) |> ignore
 }
 
 ///|
@@ -2057,7 +2279,7 @@ fn compile_legend(
   // Compile the legend map as a standalone graph, then turn its objects/edges
   // into legend entries.
   let legend_graph = Graph::new("d2-legend")
-  compile_objects(legend_graph, legend_map, "", classes)
+  compile_objects(legend_graph, legend_map, "", "", classes)
   compile_edges(legend_graph, legend_map)
   let legend = Legend::new()
   match lf.primary {

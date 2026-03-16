@@ -81,8 +81,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: graph inputs/models now preserve D2-style folder-only board metadata, graph-scoped config `data`, and explicit object metadata for language and SQL constraints instead of relying only on encoded class names.
   - Remaining graph parity items still tracked separately below: `ID` vs `IDVal`, object/edge reference tracking, and broader board compilation semantics.
 
-- [ ] Align object identity semantics with D2's `ID` vs `IDVal` split.
-  - Done when syntax-preserving IDs and semantic IDs are both available where needed.
+- [x] Align object identity semantics with D2's `ID` vs `IDVal` split.
+  - Landed in diago: graph models/inputs now preserve compatibility semantic IDs, local `id_val`, canonical local `id_syntax`, canonical absolute `abs_id_syntax`, and syntax-aware edge endpoint IDs.
+  - `GraphInput::find_object` now resolves canonical D2 absolute IDs before falling back to the legacy flattened semantic path string, which covers quoted-dot and quoted-key lookups.
 
 - [ ] Align graph reference tracking for objects and edges.
   - This is required for true `d2lsp` / `d2oracle` parity.

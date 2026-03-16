@@ -95,6 +95,14 @@ pub fn GraphInput::from_parts(
 
 ///|
 pub fn GraphInput::find_object(self : GraphInput, id : String) -> ObjectInput? {
+  if self.root.abs_id_syntax == id {
+    return Some(self.root)
+  }
+  for obj in self.objects {
+    if obj.abs_id_syntax == id {
+      return Some(obj)
+    }
+  }
   if self.root.id == id {
     return Some(self.root)
   }
@@ -213,7 +221,10 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 ///
 /// Fields:
 ///
-/// * `id` : Unique identifier for the object.
+/// * `id` : Compatibility absolute identifier using semantic path values.
+/// * `id_val` : Semantic value of the local object identifier.
+/// * `id_syntax` : Canonical D2 syntax for the local object identifier.
+/// * `abs_id_syntax` : Canonical D2 syntax for the absolute object path.
 /// * `label` : Display text for the object.
 /// * `shape_type` : Visual shape of the object.
 /// * `style` : Visual styling properties.
@@ -241,6 +252,9 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 ///
 pub struct ObjectInput {
   id : String
+  id_val : String
+  id_syntax : String
+  abs_id_syntax : String
   label : String
   shape_type : ShapeType
   style : StyleInput
@@ -268,10 +282,18 @@ pub struct ObjectInput {
 } derive(Show)
 
 ///|
-pub fn ObjectInput::new(id : String) -> ObjectInput {
+pub fn ObjectInput::new(
+  id : String,
+  id_val? : String = id,
+  id_syntax? : String = id,
+  abs_id_syntax? : String = id,
+) -> ObjectInput {
   {
     id,
-    label: id,
+    id_val,
+    id_syntax,
+    abs_id_syntax,
+    label: id_val,
     shape_type: Rectangle,
     style: StyleInput::new(),
     box: None,
@@ -325,9 +347,15 @@ pub fn ObjectInput::from_parts(
   direction? : String? = None,
   language? : String? = None,
   sql_constraints? : Array[String] = [],
+  id_val? : String = id,
+  id_syntax? : String = id,
+  abs_id_syntax? : String = id,
 ) -> ObjectInput {
   {
     id,
+    id_val,
+    id_syntax,
+    abs_id_syntax,
     label,
     shape_type,
     style,
@@ -378,6 +406,8 @@ pub struct EdgeInput {
   index : Int
   src_id : String
   dst_id : String
+  src_id_syntax : String
+  dst_id_syntax : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -407,11 +437,15 @@ pub fn EdgeInput::new(
   dst_id : String,
   src_arrow : Bool,
   dst_arrow : Bool,
+  src_id_syntax? : String = src_id,
+  dst_id_syntax? : String = dst_id,
 ) -> EdgeInput {
   {
     index,
     src_id,
     dst_id,
+    src_id_syntax,
+    dst_id_syntax,
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
@@ -468,11 +502,15 @@ pub fn EdgeInput::from_parts(
   label_box : Box?,
   src_column_index : Int?,
   dst_column_index : Int?,
+  src_id_syntax? : String = src_id,
+  dst_id_syntax? : String = dst_id,
 ) -> EdgeInput {
   {
     index,
     src_id,
     dst_id,
+    src_id_syntax,
+    dst_id_syntax,
     src_arrow,
     dst_arrow,
     src_arrowhead,
@@ -910,6 +948,9 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     direction=obj.direction,
     language=obj.language,
     sql_constraints~,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
   )
 }
 
@@ -949,6 +990,8 @@ pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
     edge.label_box,
     edge.src_column_index,
     edge.dst_column_index,
+    src_id_syntax=edge.src_id_syntax,
+    dst_id_syntax=edge.dst_id_syntax,
   )
 }
 

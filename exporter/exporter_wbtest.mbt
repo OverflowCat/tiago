@@ -41,7 +41,7 @@ test "classes block is treated as reserved during object compilation" {
   assert_true(classes_field.is_reserved_keyword_name())
   let classes = extract_classes(ir)
   let graph = Graph::new("root")
-  compile_objects(graph, ir, "", classes)
+  compile_objects(graph, ir, "", "", classes)
   assert_eq(graph.objects.length(), 1)
   assert_eq(graph.objects[0].id, "alice")
 }

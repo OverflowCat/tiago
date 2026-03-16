@@ -90,3 +90,73 @@ test "exporter object IDs are deterministic" {
   assert_eq(e1.src_id, e2.src_id)
   assert_eq(e1.dst_id, e2.dst_id)
 }
+
+///|
+test "graph lookups prefer D2 absolute syntax IDs before flattened semantic IDs" {
+  let source =
+    #|"a.b"
+    #|a: {
+    #|  b
+    #|}
+  let graph = compile_graph_no_layout(source).unwrap()
+  guard graph.find_object("\"a.b\"") is Some(quoted) else {
+    fail("expected quoted-dot object")
+  }
+  guard graph.find_object("a.b") is Some(nested) else {
+    fail("expected nested object")
+  }
+  assert_eq(quoted.id, "a.b")
+  assert_eq(quoted.id_val, "a.b")
+  assert_eq(quoted.id_syntax, "\"a.b\"")
+  assert_eq(quoted.abs_id_syntax, "\"a.b\"")
+  assert_eq(nested.id, "a.b")
+  assert_eq(nested.id_val, "b")
+  assert_eq(nested.id_syntax, "b")
+  assert_eq(nested.abs_id_syntax, "a.b")
+}
+
+///|
+test "exporter carries D2 syntax IDs for objects and edge endpoints" {
+  let source =
+    #|'null'
+    #|special: {
+    #|  "shape"
+    #|}
+    #|"<---->"
+    #|"<---->" -> special."shape"
+    #|'null' -> "<---->"
+  let graph = compile_graph_no_layout(source).unwrap()
+  guard graph.find_object("'null'") is Some(null_obj) else {
+    fail("expected null object")
+  }
+  guard graph.find_object("special.shape") is Some(shape_obj) else {
+    fail("expected nested reserved-name object")
+  }
+  guard graph.find_object("\"<---->\"") is Some(special_obj) else {
+    fail("expected special-character object")
+  }
+  assert_eq(null_obj.id, "null")
+  assert_eq(null_obj.id_val, "null")
+  assert_eq(null_obj.id_syntax, "'null'")
+  assert_eq(null_obj.abs_id_syntax, "'null'")
+  assert_eq(shape_obj.id, "special.shape")
+  assert_eq(shape_obj.id_val, "shape")
+  assert_eq(shape_obj.id_syntax, "shape")
+  assert_eq(shape_obj.abs_id_syntax, "special.shape")
+  assert_eq(special_obj.id, "<---->")
+  assert_eq(special_obj.id_val, "<---->")
+  assert_eq(special_obj.id_syntax, "\"<---->\"")
+  assert_eq(special_obj.abs_id_syntax, "\"<---->\"")
+
+  let edge0 = graph.get_edges()[0]
+  assert_eq(edge0.src_id, "<---->")
+  assert_eq(edge0.src_id_syntax, "\"<---->\"")
+  assert_eq(edge0.dst_id, "special.shape")
+  assert_eq(edge0.dst_id_syntax, "special.shape")
+
+  let edge1 = graph.get_edges()[1]
+  assert_eq(edge1.src_id, "null")
+  assert_eq(edge1.src_id_syntax, "'null'")
+  assert_eq(edge1.dst_id, "<---->")
+  assert_eq(edge1.dst_id_syntax, "\"<---->\"")
+}

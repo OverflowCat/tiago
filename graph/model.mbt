@@ -145,6 +145,9 @@ pub fn StyleModel::new() -> StyleModel {
 /// Immutable object model
 pub struct ObjectModel {
   id : String
+  id_val : String
+  id_syntax : String
+  abs_id_syntax : String
   label : String
   shape_type : ShapeType
   style : StyleModel
@@ -172,10 +175,18 @@ pub struct ObjectModel {
 } derive(Show)
 
 ///|
-pub fn ObjectModel::new(id : String) -> ObjectModel {
+pub fn ObjectModel::new(
+  id : String,
+  id_val? : String = id,
+  id_syntax? : String = id,
+  abs_id_syntax? : String = id,
+) -> ObjectModel {
   {
     id,
-    label: id,
+    id_val,
+    id_syntax,
+    abs_id_syntax,
+    label: id_val,
     shape_type: Rectangle,
     style: StyleModel::new(),
     box: None,
@@ -208,6 +219,8 @@ pub struct EdgeModel {
   index : Int
   src_id : String
   dst_id : String
+  src_id_syntax : String
+  dst_id_syntax : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -237,11 +250,15 @@ pub fn EdgeModel::new(
   dst_id : String,
   src_arrow : Bool,
   dst_arrow : Bool,
+  src_id_syntax? : String = src_id,
+  dst_id_syntax? : String = dst_id,
 ) -> EdgeModel {
   {
     index,
     src_id,
     dst_id,
+    src_id_syntax,
+    dst_id_syntax,
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
