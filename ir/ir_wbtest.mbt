@@ -60,6 +60,39 @@ test "compile nested keys" {
 }
 
 ///|
+test "field references retain AST context" {
+  let (ast, _) = @parser.parse("a.b.c: value")
+  let expected_key = match ast.nodes[0] {
+    @ast.MapNode::Key(key) => key
+    _ => fail("expected key node")
+  }
+  let ir = compile(ast)
+  guard ir.get_field("a") is Some(a_field) else { fail("expected field a") }
+  guard a_field.map() is Some(a_map) else { fail("expected map a") }
+  guard a_map.get_field("b") is Some(b_field) else { fail("expected field b") }
+  guard b_field.map() is Some(b_map) else { fail("expected map b") }
+  guard b_map.get_field("c") is Some(c_field) else { fail("expected field c") }
+  guard c_field.last_ref() is Some(Reference::FieldRef(last_ref)) else {
+    fail("expected last field reference")
+  }
+  assert_eq(last_ref.string, "c")
+  assert_true(last_ref.primary)
+  guard last_ref.context() is Some(context) else {
+    fail("expected reference context")
+  }
+  assert_eq(context.source_path, None)
+  assert_eq(context.key, Some(expected_key))
+  guard c_field.last_primary_key() is Some(primary_key) else {
+    fail("expected primary key")
+  }
+  assert_eq(primary_key, expected_key)
+  guard c_field.ast() is Some(@ast.Node::StringValue(syntax)) else {
+    fail("expected string AST node")
+  }
+  assert_eq(syntax.content(), "c")
+}
+
+///|
 test "compile edge" {
   let (ast, _) = @parser.parse("a -> b")
   let ir = compile(ast)
@@ -71,6 +104,36 @@ test "compile edge" {
   // Source and destination fields should exist
   assert_true(ir.has_field("a"))
   assert_true(ir.has_field("b"))
+}
+
+///|
+test "edge references retain context for glob expansions" {
+  let source =
+    #|a
+    #|c
+    #|* -> c
+  let (ast, _) = @parser.parse(source)
+  let expected_key = match ast.nodes[2] {
+    @ast.MapNode::Key(key) => key
+    _ => fail("expected edge key")
+  }
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  let edge = ir.edges[0]
+  guard edge.last_ref() is Some(Reference::EdgeRef(reference)) else {
+    fail("expected edge reference")
+  }
+  assert_true(reference.due_to_glob)
+  guard reference.context() is Some(context) else {
+    fail("expected edge context")
+  }
+  assert_eq(context.key, Some(expected_key))
+  guard context.edge is Some(edge_ast) else { fail("expected edge ast") }
+  assert_true(edge_ast.src.has_glob())
+  guard edge.ast() is Some(@ast.Node::Edge(ast_edge)) else {
+    fail("expected edge AST node")
+  }
+  assert_eq(ast_edge, edge_ast)
 }
 
 ///|
@@ -274,6 +337,37 @@ test "glob style.fill applies to all fields" {
 }
 
 ///|
+test "glob-created properties keep due_to_glob references" {
+  let source =
+    #|a
+    #|*.style.fill: red
+  let (ast, _) = @parser.parse(source)
+  let expected_key = match ast.nodes[1] {
+    @ast.MapNode::Key(key) => key
+    _ => fail("expected glob key")
+  }
+  let ir = compile(ast)
+  guard ir.get_field("a") is Some(a_field) else { fail("expected field a") }
+  guard a_field.map() is Some(a_map) else { fail("expected field map") }
+  guard a_map.get_field("style") is Some(style_field) else {
+    fail("expected style field")
+  }
+  guard style_field.map() is Some(style_map) else { fail("expected style map") }
+  guard style_map.get_field("fill") is Some(fill_field) else {
+    fail("expected fill field")
+  }
+  guard fill_field.last_ref() is Some(Reference::FieldRef(reference)) else {
+    fail("expected fill reference")
+  }
+  assert_true(reference.due_to_glob)
+  assert_eq(reference.string, "fill")
+  guard reference.context() is Some(context) else {
+    fail("expected glob context")
+  }
+  assert_eq(context.key, Some(expected_key))
+}
+
+///|
 test "double glob applies to nested fields" {
   let source =
     #|container {
@@ -330,6 +424,40 @@ test "compile with imports - basic" {
   }
   assert_true(common_map.has_field("server"))
   assert_true(common_map.has_field("database"))
+}
+
+///|
+test "compile with imports tracks source path in references" {
+  let resolver = ImportResolver::new(fn(path) {
+    match path {
+      "inner.d2" => Some("service.api: ok")
+      _ => None
+    }
+  })
+  let (ast, _) = @parser.parse("common: @inner")
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("common") is Some(inner_field) else {
+    fail("expected imported field")
+  }
+  guard inner_field.map() is Some(inner_map) else {
+    fail("expected imported map")
+  }
+  guard inner_map.get_field("service") is Some(service_field) else {
+    fail("expected service field")
+  }
+  guard service_field.map() is Some(service_map) else {
+    fail("expected service map")
+  }
+  guard service_map.get_field("api") is Some(api_field) else {
+    fail("expected api field")
+  }
+  guard api_field.last_ref() is Some(Reference::FieldRef(reference)) else {
+    fail("expected imported reference")
+  }
+  guard reference.context() is Some(context) else {
+    fail("expected imported context")
+  }
+  assert_eq(context.source_path, Some("inner.d2"))
 }
 
 ///|

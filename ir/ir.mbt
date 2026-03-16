@@ -25,6 +25,8 @@
 pub struct Scalar {
   value : ScalarValue
   range : @lexer.Range
+  ast : @ast.Node?
+  source_path : String?
 } derive(Eq, Show)
 
 ///|
@@ -41,6 +43,8 @@ pub(all) enum ScalarValue {
 pub struct Map {
   fields : Array[Field]
   edges : Array[Edge]
+  ast : @ast.Node?
+  source_path : String?
 } derive(Eq, Show)
 
 ///|
@@ -63,6 +67,8 @@ pub(all) enum Composite {
 /// An array of values
 pub struct IRArray {
   values : Array[Value]
+  ast : @ast.Node?
+  source_path : String?
 } derive(Eq, Show)
 
 ///|
@@ -94,10 +100,22 @@ pub struct EdgeID {
 } derive(Eq, Show)
 
 ///|
+/// Reference context for a field or edge reference.
+pub struct RefContext {
+  edge : @ast.Edge?
+  key : @ast.Key?
+  scope : @ast.Map?
+  source_path : String?
+} derive(Eq, Show)
+
+///|
 /// Reference to a field from the AST
 pub struct FieldReference {
   range : @lexer.Range
   string : String
+  syntax : @ast.StringValue?
+  key_path : @ast.KeyPath?
+  context : RefContext?
   key_path_index : Int
   primary : Bool
   due_to_glob : Bool
@@ -108,10 +126,19 @@ pub struct FieldReference {
 /// Reference to an edge from the AST
 pub struct EdgeReference {
   range : @lexer.Range
+  edge : @ast.Edge?
+  context : RefContext?
   edge_index : Int
   primary : Bool
   due_to_glob : Bool
   due_to_lazy_glob : Bool
+} derive(Eq, Show)
+
+///|
+/// Boxed reference for generic traversal.
+pub(all) enum Reference {
+  FieldRef(FieldReference)
+  EdgeRef(EdgeReference)
 } derive(Eq, Show)
 
 ///|
@@ -191,6 +218,55 @@ pub fn Node::children(self : Node) -> Array[Node] {
   out
 }
 
+///|
+pub fn Node::ast(self : Node) -> @ast.Node? {
+  match self {
+    Scalar(s) => s.ast()
+    Field(f) => f.ast()
+    Edge(e) => e.ast()
+    IRArray(a) => a.ast()
+    Map(m) => m.ast()
+    Composite(c) =>
+      match c {
+        Array(a) => a.ast()
+        Map(m) => m.ast()
+      }
+    Value(v) =>
+      match v {
+        Scalar(s) => s.ast()
+        Array(a) => a.ast()
+        Map(m) => m.ast()
+      }
+  }
+}
+
+///|
+pub fn Node::last_ref(self : Node) -> Reference? {
+  match self {
+    Field(f) => f.last_ref()
+    Edge(e) => e.last_ref()
+    _ => None
+  }
+}
+
+///|
+pub fn Node::last_primary_ref(self : Node) -> Reference? {
+  match self {
+    Field(f) => f.last_primary_ref()
+    Edge(e) => e.last_primary_ref()
+    _ => None
+  }
+}
+
+///|
+pub fn Node::last_primary_key(self : Node) -> @ast.Key? {
+  match self {
+    Field(f) => f.last_primary_key()
+    Edge(e) => e.last_primary_key()
+    _ => None
+  }
+}
+
 // ============================================================================
 // Constructors
 // ============================================================================
@@ -203,7 +279,16 @@ fn default_range() -> @lexer.Range {
 
 ///|
 pub fn Scalar::at(range : @lexer.Range, value : ScalarValue) -> Scalar {
-  { value, range }
+  { value, range, ast: None, source_path: None }
+}
+
+///|
+pub fn Scalar::from_ast(
+  ast : @ast.Node,
+  value : ScalarValue,
+  source_path? : String? = None,
+) -> Scalar {
+  { value, range: ast.range(), ast: Some(ast), source_path }
 }
 
 ///|
@@ -242,7 +327,12 @@ pub fn Scalar::string(s : String) -> Scalar {
 
 ///|
 pub fn Map::new() -> Map {
-  { fields: [], edges: [] }
+  { fields: [], edges: [], ast: None, source_path: None }
+}
+
+///|
+pub fn Map::from_ast(ast : @ast.Map, source_path? : String? = None) -> Map {
+  { fields: [], edges: [], ast: Some(@ast.Node::Map(ast)), source_path }
 }
 
 ///|
@@ -262,7 +352,16 @@ pub fn Field::simple(name : String) -> Field {
 
 ///|
 pub fn IRArray::new(values : Array[Value]) -> IRArray {
-  { values, }
+  { values, ast: None, source_path: None }
+}
+
+///|
+pub fn IRArray::from_ast(
+  ast : @ast.ArrayValue,
+  values : Array[Value],
+  source_path? : String? = None,
+) -> IRArray {
+  { values, ast: Some(@ast.Node::ArrayValue(ast)), source_path }
 }
 
 ///|
@@ -316,10 +415,46 @@ pub fn FieldReference::new(
   {
     range,
     string,
+    syntax: None,
+    key_path: None,
+    context: None,
     key_path_index,
     primary,
     due_to_glob: false,
     due_to_lazy_glob: false,
+  }
+}
+
+///|
+pub fn RefContext::new(
+  edge : @ast.Edge?,
+  key : @ast.Key?,
+  scope : @ast.Map?,
+  source_path? : String? = None,
+) -> RefContext {
+  { edge, key, scope, source_path }
+}
+
+///|
+pub fn FieldReference::from_ast(
+  syntax : @ast.StringValue,
+  key_path : @ast.KeyPath,
+  key_path_index : Int,
+  primary : Bool,
+  context : RefContext,
+  due_to_glob? : Bool = false,
+  due_to_lazy_glob? : Bool = false,
+) -> FieldReference {
+  {
+    range: syntax.range(),
+    string: syntax.content(),
+    syntax: Some(syntax),
+    key_path: Some(key_path),
+    context: Some(context),
+    key_path_index,
+    primary,
+    due_to_glob,
+    due_to_lazy_glob,
   }
 }
 
@@ -329,7 +464,35 @@ pub fn EdgeReference::new(
   edge_index : Int,
   primary : Bool,
 ) -> EdgeReference {
-  { range, edge_index, primary, due_to_glob: false, due_to_lazy_glob: false }
+  {
+    range,
+    edge: None,
+    context: None,
+    edge_index,
+    primary,
+    due_to_glob: false,
+    due_to_lazy_glob: false,
+  }
+}
+
+///|
+pub fn EdgeReference::from_ast(
+  edge : @ast.Edge,
+  edge_index : Int,
+  primary : Bool,
+  context : RefContext,
+  due_to_glob? : Bool = false,
+  due_to_lazy_glob? : Bool = false,
+) -> EdgeReference {
+  {
+    range: edge.range,
+    edge: Some(edge),
+    context: Some(context),
+    edge_index,
+    primary,
+    due_to_glob,
+    due_to_lazy_glob,
+  }
 }
 
 // ============================================================================
@@ -512,6 +675,104 @@ pub fn Value::as_array(self : Value) -> IRArray? {
 }
 
 // ============================================================================
+// Reference operations
+// ============================================================================
+
+///|
+pub fn FieldReference::ast(self : FieldReference) -> @ast.Node? {
+  match self.syntax {
+    Some(syntax) => Some(@ast.Node::StringValue(syntax))
+    None =>
+      match self.key_path {
+        Some(key_path) => Some(@ast.Node::KeyPath(key_path))
+        None =>
+          match self.context {
+            Some(context) =>
+              match context.key {
+                Some(key) => Some(@ast.Node::Key(key))
+                None => None
+              }
+            None => None
+          }
+      }
+  }
+}
+
+///|
+pub fn FieldReference::context(self : FieldReference) -> RefContext? {
+  self.context
+}
+
+///|
+pub fn EdgeReference::ast(self : EdgeReference) -> @ast.Node? {
+  match self.edge {
+    Some(edge) => Some(@ast.Node::Edge(edge))
+    None =>
+      match self.context {
+        Some(context) =>
+          match context.key {
+            Some(key) => Some(@ast.Node::Key(key))
+            None => None
+          }
+        None => None
+      }
+  }
+}
+
+///|
+pub fn EdgeReference::context(self : EdgeReference) -> RefContext? {
+  self.context
+}
+
+///|
+pub fn Reference::range(self : Reference) -> @lexer.Range {
+  match self {
+    FieldRef(reference) => reference.range
+    EdgeRef(reference) => reference.range
+  }
+}
+
+///|
+pub fn Reference::ast(self : Reference) -> @ast.Node? {
+  match self {
+    FieldRef(reference) => reference.ast()
+    EdgeRef(reference) => reference.ast()
+  }
+}
+
+///|
+pub fn Reference::primary(self : Reference) -> Bool {
+  match self {
+    FieldRef(reference) => reference.primary
+    EdgeRef(reference) => reference.primary
+  }
+}
+
+///|
+pub fn Reference::context(self : Reference) -> RefContext? {
+  match self {
+    FieldRef(reference) => reference.context()
+    EdgeRef(reference) => reference.context()
+  }
+}
+
+///|
+pub fn Reference::due_to_glob(self : Reference) -> Bool {
+  match self {
+    FieldRef(reference) => reference.due_to_glob
+    EdgeRef(reference) => reference.due_to_glob
+  }
+}
+
+///|
+pub fn Reference::due_to_lazy_glob(self : Reference) -> Bool {
+  match self {
+    FieldRef(reference) => reference.due_to_lazy_glob
+    EdgeRef(reference) => reference.due_to_lazy_glob
+  }
+}
+
+// ============================================================================
 // Scalar operations
 // ============================================================================
 
@@ -594,6 +855,16 @@ pub fn Scalar::get_range(self : Scalar) -> @lexer.Range {
 }
 
 ///|
+pub fn Scalar::ast(self : Scalar) -> @ast.Node? {
+  self.ast
+}
+
+///|
+pub fn Scalar::source_path(self : Scalar) -> String? {
+  self.source_path
+}
+
+///|
 /// Check if scalar is a number
 pub fn Scalar::is_number(self : Scalar) -> Bool {
   self.value is Number(_)
@@ -637,4 +908,102 @@ pub fn Field::has_primary(self : Field) -> Bool {
 /// Check if this field has a composite value
 pub fn Field::has_composite(self : Field) -> Bool {
   self.composite is Some(_)
+}
+
+///|
+pub fn Field::last_ref(self : Field) -> Reference? {
+  if self.references.is_empty() {
+    None
+  } else {
+    Some(Reference::FieldRef(self.references[self.references.length() - 1]))
+  }
+}
+
+///|
+pub fn Field::last_primary_ref(self : Field) -> Reference? {
+  for i = self.references.length() - 1; i >= 0; i = i - 1 {
+    if self.references[i].primary {
+      return Some(Reference::FieldRef(self.references[i]))
+    }
+  }
+  None
+}
+
+///|
+pub fn Field::last_primary_key(self : Field) -> @ast.Key? {
+  match self.last_primary_ref() {
+    Some(reference) =>
+      match reference.context() {
+        Some(context) => context.key
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+pub fn Field::ast(self : Field) -> @ast.Node? {
+  match self.last_ref() {
+    Some(reference) => reference.ast()
+    None => None
+  }
+}
+
+///|
+pub fn Edge::last_ref(self : Edge) -> Reference? {
+  if self.references.is_empty() {
+    None
+  } else {
+    Some(Reference::EdgeRef(self.references[self.references.length() - 1]))
+  }
+}
+
+///|
+pub fn Edge::last_primary_ref(self : Edge) -> Reference? {
+  for i = self.references.length() - 1; i >= 0; i = i - 1 {
+    if self.references[i].primary && !self.references[i].due_to_lazy_glob {
+      return Some(Reference::EdgeRef(self.references[i]))
+    }
+  }
+  None
+}
+
+///|
+pub fn Edge::last_primary_key(self : Edge) -> @ast.Key? {
+  match self.last_primary_ref() {
+    Some(reference) =>
+      match reference.context() {
+        Some(context) => context.key
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+pub fn Edge::ast(self : Edge) -> @ast.Node? {
+  match self.last_ref() {
+    Some(reference) => reference.ast()
+    None => None
+  }
+}
+
+///|
+pub fn Map::ast(self : Map) -> @ast.Node? {
+  self.ast
+}
+
+///|
+pub fn Map::source_path(self : Map) -> String? {
+  self.source_path
+}
+
+///|
+pub fn IRArray::ast(self : IRArray) -> @ast.Node? {
+  self.ast
+}
+
+///|
+pub fn IRArray::source_path(self : IRArray) -> String? {
+  self.source_path
 }

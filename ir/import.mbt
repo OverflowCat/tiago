@@ -35,8 +35,8 @@ pub fn compile_with_imports(
   ast : @ast.Map,
   resolver : ImportResolver,
 ) -> Map raise CompileError {
-  let ir = Map::new()
-  compile_map_nodes_with_imports(ir, ast.nodes, resolver, [])
+  let ir = Map::from_ast(ast)
+  compile_map_nodes_with_imports(ir, ast, ast.nodes, resolver, [])
   // Resolve variable substitutions
   ir.resolve_substitutions()
   ir
@@ -45,20 +45,26 @@ pub fn compile_with_imports(
 ///|
 fn compile_map_nodes_with_imports(
   ir : Map,
+  scope_ast : @ast.Map,
   nodes : Array[@ast.MapNode],
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path? : String? = None,
 ) -> Unit raise CompileError {
   for node in nodes {
     match node {
       @ast.MapNode::Comment(_, _) => ()
       @ast.MapNode::BlockComment(_, _) => ()
       @ast.MapNode::Substitution(sub) =>
-        ir.add_field(Field::new("", Some(substitution_scalar(sub)), None, []))
+        ir.add_field(
+          Field::new("", Some(substitution_scalar(sub, source_path)), None, []),
+        )
       @ast.MapNode::Import(imp) =>
         compile_import(ir, imp, resolver, import_stack)
       @ast.MapNode::Key(key) =>
-        compile_key_with_imports(ir, key, resolver, import_stack)
+        compile_key_with_imports(
+          ir, key, scope_ast, resolver, import_stack, source_path,
+        )
     }
   }
 }
@@ -89,8 +95,15 @@ fn compile_import(
       "parse error in imported file '\{display}': \{errors}",
     )
   }
-  let import_ir = Map::new()
-  compile_map_nodes_with_imports(import_ir, import_ast.nodes, resolver, stack2)
+  let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
+  compile_map_nodes_with_imports(
+    import_ir,
+    import_ast,
+    import_ast.nodes,
+    resolver,
+    stack2,
+    source_path=Some(canonical),
+  )
   if imp.spread {
     // Spread import in map context: only maps are allowed.
     let m2 = select_map_for_spread(import_ir, selector) catch {
@@ -292,8 +305,10 @@ fn extract_filename(path : String) -> String {
 fn compile_key_with_imports(
   ir : Map,
   key : @ast.Key,
+  scope_ast : @ast.Map,
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path : String?,
 ) -> Unit raise CompileError {
   // Handle ampersand filters
   if key.ampersand || key.not_ampersand {
@@ -301,16 +316,19 @@ fn compile_key_with_imports(
   }
   // Handle edges first
   if key.edges.length() > 0 {
-    compile_edges_with_imports(ir, key, resolver, import_stack)
+    compile_edges_with_imports(
+      ir, key, scope_ast, resolver, import_stack, source_path,
+    )
     return
   }
   // Handle regular key
   guard key.key is Some(key_path) else { return }
   // Check for glob pattern
   if key_path.has_glob() {
-    compile_glob_key(ir, key_path, key)
+    compile_glob_key(ir, key_path, key, scope_ast, source_path)
     return
   }
+  let context = RefContext::new(None, Some(key), Some(scope_ast), source_path~)
   let path = key_path.to_strings()
   if path.length() == 0 {
     return
@@ -324,6 +342,8 @@ fn compile_key_with_imports(
       current_map,
       current_map.ensure_field(name),
       elem,
+      key_path,
+      context,
       i,
       false,
     )
@@ -350,12 +370,16 @@ fn compile_key_with_imports(
   let last_elem = key_path.path[last_index]
   let field0 = current_map.ensure_field(final_name)
   let field1 = if key.primary is Some(_) {
-    record_field_reference(current_map, field0, last_elem, last_index, true)
+    record_field_reference(
+      current_map, field0, last_elem, key_path, context, last_index, true,
+    )
   } else {
     field0
   }
   let field = if key.value is Some(_) {
-    record_field_reference(current_map, field1, last_elem, last_index, false)
+    record_field_reference(
+      current_map, field1, last_elem, key_path, context, last_index, true,
+    )
   } else {
     field1
   }
@@ -364,7 +388,7 @@ fn compile_key_with_imports(
     Some(scalar) =>
       Field::new(
         field.name,
-        Some(compile_scalar(scalar)),
+        Some(compile_scalar(scalar, source_path)),
         field.composite,
         field.references,
       )
@@ -373,7 +397,9 @@ fn compile_key_with_imports(
   // Set value (with import handling)
   let field = match key.value {
     Some(value) =>
-      compile_value_with_imports(field, value, resolver, import_stack)
+      compile_value_with_imports(
+        field, value, resolver, import_stack, source_path,
+      )
     None => field
   }
   current_map.set_field(field)
@@ -385,18 +411,26 @@ fn compile_value_with_imports(
   value : @ast.Value,
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path : String?,
 ) -> Field raise CompileError {
   match value {
     @ast.Value::Scalar(s) =>
       Field::new(
         field.name,
-        Some(compile_scalar(s)),
+        Some(compile_scalar(s, source_path)),
         field.composite,
         field.references,
       )
     @ast.Value::Map(m) => {
-      let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
+      let ir_map = Map::from_ast(m, source_path~)
+      compile_map_nodes_with_imports(
+        ir_map,
+        m,
+        m.nodes,
+        resolver,
+        import_stack,
+        source_path~,
+      )
       Field::new(
         field.name,
         field.primary,
@@ -405,7 +439,9 @@ fn compile_value_with_imports(
       )
     }
     @ast.Value::Array(a) => {
-      let ir_array = compile_array_with_imports(a, resolver, import_stack)
+      let ir_array = compile_array_with_imports(
+        a, resolver, import_stack, source_path,
+      )
       Field::new(
         field.name,
         field.primary,
@@ -434,12 +470,14 @@ fn compile_value_with_imports(
           "parse error in imported file '\{display}'",
         )
       }
-      let import_ir = Map::new()
+      let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
       compile_map_nodes_with_imports(
         import_ir,
+        import_ast,
         import_ast.nodes,
         resolver,
         stack2,
+        source_path=Some(canonical),
       )
       let (primary, composite) = select_primary_and_composite(
         import_ir, selector,
@@ -451,14 +489,21 @@ fn compile_value_with_imports(
         @ast.Value::Scalar(s) =>
           Field::new(
             field.name,
-            Some(compile_scalar(s)),
+            Some(compile_scalar(s, source_path)),
             field.composite,
             field.references,
           )
         _ => field
       }
-      let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
+      let ir_map = Map::from_ast(m, source_path~)
+      compile_map_nodes_with_imports(
+        ir_map,
+        m,
+        m.nodes,
+        resolver,
+        import_stack,
+        source_path~,
+      )
       Field::new(
         field.name,
         field.primary,
@@ -474,6 +519,7 @@ fn compile_array_with_imports(
   arr : @ast.ArrayValue,
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path : String?,
 ) -> IRArray raise CompileError {
   let values : Array[Value] = []
   for node in arr.nodes {
@@ -481,7 +527,7 @@ fn compile_array_with_imports(
       @ast.ArrayNode::Comment(_, _) => ()
       @ast.ArrayNode::BlockComment(_, _) => ()
       @ast.ArrayNode::Substitution(sub) =>
-        values.push(Value::Scalar(substitution_scalar(sub)))
+        values.push(Value::Scalar(substitution_scalar(sub, source_path)))
       @ast.ArrayNode::Import(imp) => {
         let (file_key, selector, display) = split_import_file_and_selector(imp)
         let (content, canonical) = resolve_import_content(resolver, file_key) catch {
@@ -503,12 +549,14 @@ fn compile_array_with_imports(
             "parse error in imported file '\{display}'",
           )
         }
-        let import_ir = Map::new()
+        let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
         compile_map_nodes_with_imports(
           import_ir,
+          import_ast,
           import_ast.nodes,
           resolver,
           stack2,
+          source_path=Some(canonical),
         )
         if imp.spread {
           // Only allow spreading arrays into arrays (d2 parity).
@@ -536,12 +584,14 @@ fn compile_array_with_imports(
         }
       }
       @ast.ArrayNode::Value(v) => {
-        let compiled = compile_ast_value_with_imports(v, resolver, import_stack)
+        let compiled = compile_ast_value_with_imports(
+          v, resolver, import_stack, source_path,
+        )
         values.push(compiled)
       }
     }
   }
-  IRArray::new(values)
+  IRArray::from_ast(arr, values, source_path~)
 }
 
 ///|
@@ -549,16 +599,26 @@ fn compile_ast_value_with_imports(
   value : @ast.Value,
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path : String?,
 ) -> Value raise CompileError {
   match value {
-    @ast.Value::Scalar(s) => Value::Scalar(compile_scalar(s))
+    @ast.Value::Scalar(s) => Value::Scalar(compile_scalar(s, source_path))
     @ast.Value::Map(m) => {
-      let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
+      let ir_map = Map::from_ast(m, source_path~)
+      compile_map_nodes_with_imports(
+        ir_map,
+        m,
+        m.nodes,
+        resolver,
+        import_stack,
+        source_path~,
+      )
       Value::Map(ir_map)
     }
     @ast.Value::Array(a) =>
-      Value::Array(compile_array_with_imports(a, resolver, import_stack))
+      Value::Array(
+        compile_array_with_imports(a, resolver, import_stack, source_path),
+      )
     @ast.Value::Import(imp) => {
       let (file_key, selector, display) = split_import_file_and_selector(imp)
       let (content, canonical) = resolve_import_content(resolver, file_key) catch {
@@ -580,12 +640,14 @@ fn compile_ast_value_with_imports(
           "parse error in imported file '\{display}'",
         )
       }
-      let import_ir = Map::new()
+      let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
       compile_map_nodes_with_imports(
         import_ir,
+        import_ast,
         import_ast.nodes,
         resolver,
         stack2,
+        source_path=Some(canonical),
       )
       let (primary, composite) = select_primary_and_composite(
         import_ir, selector,
@@ -598,8 +660,15 @@ fn compile_ast_value_with_imports(
       }
     }
     @ast.Value::BlockScalar(_, m) => {
-      let ir_map = Map::new()
-      compile_map_nodes_with_imports(ir_map, m.nodes, resolver, import_stack)
+      let ir_map = Map::from_ast(m, source_path~)
+      compile_map_nodes_with_imports(
+        ir_map,
+        m,
+        m.nodes,
+        resolver,
+        import_stack,
+        source_path~,
+      )
       Value::Map(ir_map)
     }
   }
@@ -609,10 +678,18 @@ fn compile_ast_value_with_imports(
 fn compile_edges_with_imports(
   ir : Map,
   key : @ast.Key,
+  scope_ast : @ast.Map,
   resolver : ImportResolver,
   import_stack : Array[String],
+  source_path : String?,
 ) -> Unit raise CompileError {
   for edge in key.edges {
+    let edge_context = RefContext::new(
+      Some(edge),
+      Some(key),
+      Some(scope_ast),
+      source_path~,
+    )
     let src_paths = edge_endpoint_paths(ir, edge.src)
     let dst_paths = edge_endpoint_paths(ir, edge.dst)
     let src_has_glob = edge.src.has_glob()
@@ -650,28 +727,33 @@ fn compile_edges_with_imports(
       match (existing, value) {
         (Some(e), Some(v)) =>
           match v {
-            @ast.Value::Scalar(s) => (Some(compile_scalar(s)), e.map)
+            @ast.Value::Scalar(s) =>
+              (Some(compile_scalar(s, source_path)), e.map)
             @ast.Value::Map(m) => {
-              let ir_map = Map::new()
+              let ir_map = Map::from_ast(m, source_path~)
               compile_map_nodes_with_imports(
                 ir_map,
+                m,
                 m.nodes,
                 resolver,
                 import_stack,
+                source_path~,
               )
               (e.primary, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
               let updated_primary = match label {
-                @ast.Value::Scalar(s) => Some(compile_scalar(s))
+                @ast.Value::Scalar(s) => Some(compile_scalar(s, source_path))
                 _ => e.primary
               }
-              let ir_map = Map::new()
+              let ir_map = Map::from_ast(m, source_path~)
               compile_map_nodes_with_imports(
                 ir_map,
+                m,
                 m.nodes,
                 resolver,
                 import_stack,
+                source_path~,
               )
               (updated_primary, Some(ir_map))
             }
@@ -680,29 +762,35 @@ fn compile_edges_with_imports(
         (Some(e), None) => (e.primary, e.map)
         (None, Some(v)) =>
           match v {
-            @ast.Value::Scalar(s) => (Some(compile_scalar(s)), None)
+            @ast.Value::Scalar(s) =>
+              (Some(compile_scalar(s, source_path)), None)
             @ast.Value::Map(m) => {
-              let ir_map = Map::new()
+              let ir_map = Map::from_ast(m, source_path~)
               compile_map_nodes_with_imports(
                 ir_map,
+                m,
                 m.nodes,
                 resolver,
                 import_stack,
+                source_path~,
               )
               (None, Some(ir_map))
             }
             @ast.Value::BlockScalar(label, m) => {
               let mut primary : Scalar? = None
               match label {
-                @ast.Value::Scalar(s) => primary = Some(compile_scalar(s))
+                @ast.Value::Scalar(s) =>
+                  primary = Some(compile_scalar(s, source_path))
                 _ => ()
               }
-              let ir_map = Map::new()
+              let ir_map = Map::from_ast(m, source_path~)
               compile_map_nodes_with_imports(
                 ir_map,
+                m,
                 m.nodes,
                 resolver,
                 import_stack,
+                source_path~,
               )
               (primary, Some(ir_map))
             }
@@ -730,7 +818,13 @@ fn compile_edges_with_imports(
               let existing = ir.find_edges(base_id)
               for e in existing {
                 e.references.push(
-                  EdgeReference::new(edge.range, e.id.index.unwrap_or(0), true),
+                  EdgeReference::from_ast(
+                    edge,
+                    e.id.index.unwrap_or(0),
+                    true,
+                    edge_context,
+                    due_to_glob=true,
+                  ),
                 )
                 let (primary, edge_map) = compile_edge_value(
                   Some(e),
@@ -751,7 +845,15 @@ fn compile_edges_with_imports(
               )
               match find_exact_edge(ir, edge_id) {
                 Some(e) => {
-                  e.references.push(EdgeReference::new(edge.range, idx, true))
+                  e.references.push(
+                    EdgeReference::from_ast(
+                      edge,
+                      idx,
+                      true,
+                      edge_context,
+                      due_to_glob=src_has_glob || dst_has_glob,
+                    ),
+                  )
                   let (primary, edge_map) = compile_edge_value(
                     Some(e),
                     key.value,
@@ -768,7 +870,13 @@ fn compile_edges_with_imports(
                     import_stack,
                   )
                   let new_edge = Edge::new(edge_id, primary, edge_map, [
-                    EdgeReference::new(edge.range, idx, true),
+                    EdgeReference::from_ast(
+                      edge,
+                      idx,
+                      true,
+                      edge_context,
+                      due_to_glob=src_has_glob || dst_has_glob,
+                    ),
                   ])
                   ir.add_edge(new_edge)
                   ensure_field_path(ir, src_path)
@@ -792,7 +900,13 @@ fn compile_edges_with_imports(
               import_stack,
             )
             let new_edge = Edge::new(edge_id, primary, edge_map, [
-              EdgeReference::new(edge.range, idx, true),
+              EdgeReference::from_ast(
+                edge,
+                idx,
+                true,
+                edge_context,
+                due_to_glob=src_has_glob || dst_has_glob,
+              ),
             ])
             ir.add_edge(new_edge)
             ensure_field_path(ir, src_path)

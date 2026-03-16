@@ -957,7 +957,7 @@ fn overlay_map(base : Map, overlay : Map) -> Unit {
 
 ///|
 fn clone_scalar(s : Scalar) -> Scalar {
-  Scalar::at(s.range, s.value)
+  { value: s.value, range: s.range, ast: s.ast, source_path: s.source_path }
 }
 
 ///|
@@ -970,7 +970,12 @@ fn clone_composite(c : Composite) -> Composite {
 
 ///|
 fn clone_map(m : Map) -> Map {
-  let out = Map::new()
+  let out : Map = {
+    fields: [],
+    edges: [],
+    ast: m.ast,
+    source_path: m.source_path,
+  }
   for f in m.fields {
     out.fields.push(clone_field(f))
   }
@@ -1033,5 +1038,5 @@ fn clone_array(a : IRArray) -> IRArray {
   for v in a.values {
     values.push(clone_value(v))
   }
-  IRArray::new(values)
+  { values, ast: a.ast, source_path: a.source_path }
 }
