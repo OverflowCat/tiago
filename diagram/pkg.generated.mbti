@@ -8,6 +8,8 @@ import {
 // Values
 pub fn from_graph(@graph.GraphInput, Config?) -> Diagram
 
+pub fn merge_theme_overrides(ThemeOverrides?, ThemeOverrides?) -> ThemeOverrides?
+
 // Errors
 
 // Types and methods
@@ -15,8 +17,8 @@ pub struct Config {
   sketch : Bool?
   theme_id : Int?
   dark_theme_id : Int?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : ThemeOverrides?
+  dark_theme_overrides : ThemeOverrides?
   pad : Double?
   center : Bool?
   layout_engine : String?
@@ -26,7 +28,7 @@ pub struct Config {
   omit_version : Bool?
   data : Map[String, ConfigDataValue]
 }
-pub fn Config::from_parts(Bool?, Int?, Int?, Map[String, String], Map[String, String], Double?, Bool?, String?, Double?, Bool?, String?, Bool?, Map[String, ConfigDataValue]) -> Self
+pub fn Config::from_parts(Bool?, Int?, Int?, ThemeOverrides?, ThemeOverrides?, Double?, Bool?, String?, Double?, Bool?, String?, Bool?, Map[String, ConfigDataValue]) -> Self
 pub fn Config::new() -> Self
 pub impl Show for Config
 
@@ -133,6 +135,35 @@ pub fn Shape::center(Self) -> @graph.Point?
 pub fn Shape::get_box(Self) -> @graph.Box?
 pub fn Shape::get_id(Self) -> String
 pub impl Show for Shape
+
+pub struct ThemeOverrides {
+  n1 : String?
+  n2 : String?
+  n3 : String?
+  n4 : String?
+  n5 : String?
+  n6 : String?
+  n7 : String?
+  b1 : String?
+  b2 : String?
+  b3 : String?
+  b4 : String?
+  b5 : String?
+  b6 : String?
+  aa2 : String?
+  aa4 : String?
+  aa5 : String?
+  ab4 : String?
+  ab5 : String?
+}
+pub fn ThemeOverrides::entries(Self) -> Array[(String, String)]
+pub fn ThemeOverrides::get(Self, String) -> String?
+pub fn ThemeOverrides::is_empty(Self) -> Bool
+pub fn ThemeOverrides::merge(Self, Self) -> Self
+pub fn ThemeOverrides::new() -> Self
+pub fn ThemeOverrides::with_code(Self, String, String) -> Self
+pub impl Eq for ThemeOverrides
+pub impl Show for ThemeOverrides
 
 // Type aliases
 

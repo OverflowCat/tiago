@@ -1341,15 +1341,10 @@ fn d2_hash_root_json(graph : Diagram) -> String {
 }
 
 ///|
-fn d2_hash_string_map(m : Map[String, String]) -> String {
-  let keys : Array[String] = []
-  for key, _ in m {
-    keys.push(key)
-  }
-  keys.sort_by(fn(a, b) { a.compare(b) })
+fn d2_hash_theme_overrides(overrides : @diagram.ThemeOverrides) -> String {
   let fields : Array[D2JsonField] = []
-  for key in keys {
-    fields.push(d2_json_field(key, d2_json_string(m[key])))
+  for entry in overrides.entries() {
+    fields.push(d2_json_field(entry.0.to_lower(), d2_json_string(entry.1)))
   }
   d2_json_object(fields)
 }
@@ -1420,21 +1415,29 @@ fn d2_hash_config_json(graph : Diagram) -> String? {
           },
         ),
       )
-      if !cfg.theme_overrides.is_empty() {
-        fields.push(
-          d2_json_field(
-            "themeOverrides",
-            d2_hash_string_map(cfg.theme_overrides),
-          ),
-        )
+      match cfg.theme_overrides {
+        Some(overrides) =>
+          if !overrides.is_empty() {
+            fields.push(
+              d2_json_field(
+                "themeOverrides",
+                d2_hash_theme_overrides(overrides),
+              ),
+            )
+          }
+        None => ()
       }
-      if !cfg.dark_theme_overrides.is_empty() {
-        fields.push(
-          d2_json_field(
-            "darkThemeOverrides",
-            d2_hash_string_map(cfg.dark_theme_overrides),
-          ),
-        )
+      match cfg.dark_theme_overrides {
+        Some(overrides) =>
+          if !overrides.is_empty() {
+            fields.push(
+              d2_json_field(
+                "darkThemeOverrides",
+                d2_hash_theme_overrides(overrides),
+              ),
+            )
+          }
+        None => ()
       }
       if !cfg.data.is_empty() {
         fields.push(d2_json_field("data", d2_hash_config_data_map(cfg.data)))

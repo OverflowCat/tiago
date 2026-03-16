@@ -47,8 +47,8 @@ fn parse_render(
             dark_theme_id: None,
             pad: None,
             center: None,
-            theme_overrides: {},
-            dark_theme_overrides: {},
+            theme_overrides: None,
+            dark_theme_overrides: None,
             scale: None,
             bundle: true,
             no_xml_tag: None,
@@ -79,8 +79,8 @@ fn parse_render(
         dark_theme_id: None,
         pad: None,
         center: None,
-        theme_overrides: {},
-        dark_theme_overrides: {},
+        theme_overrides: None,
+        dark_theme_overrides: None,
         scale: None,
         bundle: true,
         no_xml_tag: None,
@@ -188,6 +188,20 @@ test "render parses D2-style pad and center svg options" {
   )
   assert_eq(req.pad, Some(24.0))
   assert_eq(req.center, Some(true))
+}
+
+///|
+test "render parses typed theme override flags" {
+  let req = parse_render(
+    [
+      "diago", "render", "demo.d2", "--theme-overrides", "B1:red,N1=white", "--dark-theme-overrides",
+      "AA4:#f0ff3a",
+    ],
+    {},
+  )
+  assert_eq(req.theme_overrides.unwrap().get("B1"), Some("red"))
+  assert_eq(req.theme_overrides.unwrap().get("N1"), Some("white"))
+  assert_eq(req.dark_theme_overrides.unwrap().get("AA4"), Some("#f0ff3a"))
 }
 
 ///|

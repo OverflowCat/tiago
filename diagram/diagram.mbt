@@ -33,8 +33,8 @@ pub struct Config {
   sketch : Bool?
   theme_id : Int?
   dark_theme_id : Int?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : ThemeOverrides?
+  dark_theme_overrides : ThemeOverrides?
   pad : Double?
   center : Bool?
   layout_engine : String?
@@ -51,8 +51,8 @@ pub fn Config::new() -> Config {
     sketch: None,
     theme_id: None,
     dark_theme_id: None,
-    theme_overrides: {},
-    dark_theme_overrides: {},
+    theme_overrides: None,
+    dark_theme_overrides: None,
     pad: None,
     center: None,
     layout_engine: None,
@@ -69,8 +69,8 @@ pub fn Config::from_parts(
   sketch : Bool?,
   theme_id : Int?,
   dark_theme_id : Int?,
-  theme_overrides : Map[String, String],
-  dark_theme_overrides : Map[String, String],
+  theme_overrides : ThemeOverrides?,
+  dark_theme_overrides : ThemeOverrides?,
   pad : Double?,
   center : Bool?,
   layout_engine : String?,
@@ -788,15 +788,10 @@ fn config_data_value_json(value : ConfigDataValue) -> String {
 }
 
 ///|
-fn sorted_string_map_json(values : Map[String, String]) -> String {
-  let keys : Array[String] = []
-  for key, _ in values {
-    keys.push(key)
-  }
-  keys.sort_by(fn(a, b) { a.compare(b) })
+fn theme_overrides_json(overrides : ThemeOverrides) -> String {
   let fields : Array[(String, String)] = []
-  for key in keys {
-    fields.push((key, json_string(values[key])))
+  for entry in overrides.entries() {
+    fields.push((entry.0.to_lower(), json_string(entry.1)))
   }
   json_object(fields)
 }
@@ -842,18 +837,19 @@ fn diagram_config_json(config : Config) -> String {
     Some(value) => fields.push(("layoutEngine", json_string(value)))
     None => ()
   }
-  if !config.theme_overrides.is_empty() {
-    fields.push(
-      ("themeOverrides", sorted_string_map_json(config.theme_overrides)),
-    )
+  match config.theme_overrides {
+    Some(overrides) =>
+      if !overrides.is_empty() {
+        fields.push(("themeOverrides", theme_overrides_json(overrides)))
+      }
+    None => ()
   }
-  if !config.dark_theme_overrides.is_empty() {
-    fields.push(
-      (
-        "darkThemeOverrides",
-        sorted_string_map_json(config.dark_theme_overrides),
-      ),
-    )
+  match config.dark_theme_overrides {
+    Some(overrides) =>
+      if !overrides.is_empty() {
+        fields.push(("darkThemeOverrides", theme_overrides_json(overrides)))
+      }
+    None => ()
   }
   if !config.data.is_empty() {
     fields.push(("data", sorted_config_data_json(config.data)))

@@ -415,13 +415,19 @@ fn parse_render_request(
     }
   }
   let center = matches.flags.get("center")
-  let theme_overrides : Map[String, String] = {}
+  let mut theme_overrides : @diagram.ThemeOverrides? = None
   for value in match_values(matches, "theme-overrides") {
-    merge_theme_overrides(theme_overrides, parse_override_pairs(value))
+    theme_overrides = merge_theme_overrides(
+      theme_overrides,
+      parse_override_pairs(value),
+    )
   }
-  let dark_theme_overrides : Map[String, String] = {}
+  let mut dark_theme_overrides : @diagram.ThemeOverrides? = None
   for value in match_values(matches, "dark-theme-overrides") {
-    merge_theme_overrides(dark_theme_overrides, parse_override_pairs(value))
+    dark_theme_overrides = merge_theme_overrides(
+      dark_theme_overrides,
+      parse_override_pairs(value),
+    )
   }
   let mut scale : Double? = None
   if first_match_value(matches, "scale") is Some(value) {

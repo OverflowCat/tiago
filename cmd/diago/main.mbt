@@ -766,17 +766,15 @@ fn parse_scale_option(value : String, fallback : Double?) -> Double? {
 
 ///|
 fn merge_theme_overrides(
-  dst : Map[String, String],
-  src : Map[String, String],
-) -> Unit {
-  for key, value in src {
-    dst[key.to_upper()] = value
-  }
+  dst : @diagram.ThemeOverrides?,
+  src : @diagram.ThemeOverrides?,
+) -> @diagram.ThemeOverrides? {
+  @diagram.merge_theme_overrides(dst, src)
 }
 
 ///|
-fn parse_override_pairs(raw : String) -> Map[String, String] {
-  let out : Map[String, String] = {}
+fn parse_override_pairs(raw : String) -> @diagram.ThemeOverrides? {
+  let mut out = @diagram.ThemeOverrides::new()
   let mut s = raw.trim().to_string()
   if s.has_prefix("{") {
     s = s.strip_prefix("{").unwrap().to_string()
@@ -798,10 +796,14 @@ fn parse_override_pairs(raw : String) -> Map[String, String] {
       string_slice(pair, sep + 1, pair.length()),
     )
     if key != "" && value != "" {
-      out[key.to_upper()] = value
+      out = out.with_code(key, value)
     }
   }
-  out
+  if out.is_empty() {
+    None
+  } else {
+    Some(out)
+  }
 }
 
 ///|
@@ -890,8 +892,8 @@ fn compile_source(
   dark_theme_id? : Int? = None,
   pad? : Double? = None,
   center? : Bool? = None,
-  theme_overrides? : Map[String, String] = {},
-  dark_theme_overrides? : Map[String, String] = {},
+  theme_overrides? : @diagram.ThemeOverrides? = None,
+  dark_theme_overrides? : @diagram.ThemeOverrides? = None,
   scale? : Double? = None,
   bundle? : Bool = false,
   no_xml_tag? : Bool? = None,
@@ -961,8 +963,8 @@ fn compile_diago_svg(
   dark_theme_id? : Int? = None,
   pad? : Double? = None,
   center? : Bool? = None,
-  theme_overrides? : Map[String, String] = {},
-  dark_theme_overrides? : Map[String, String] = {},
+  theme_overrides? : @diagram.ThemeOverrides? = None,
+  dark_theme_overrides? : @diagram.ThemeOverrides? = None,
   scale? : Double? = None,
   bundle? : Bool = false,
   no_xml_tag? : Bool? = None,
@@ -1150,8 +1152,8 @@ fn resolve_svg_config(
   dark_theme_id? : Int? = None,
   pad? : Double? = None,
   center? : Bool? = None,
-  theme_overrides? : Map[String, String] = {},
-  dark_theme_overrides? : Map[String, String] = {},
+  theme_overrides? : @diagram.ThemeOverrides? = None,
+  dark_theme_overrides? : @diagram.ThemeOverrides? = None,
   scale? : Double? = None,
   no_xml_tag? : Bool? = None,
   salt? : String? = None,
@@ -1190,20 +1192,20 @@ fn resolve_svg_config(
     None => ()
   }
 
-  let merged_theme_overrides : Map[String, String] = {}
-  let merged_dark_theme_overrides : Map[String, String] = {}
-  match source_config {
-    Some(config) => {
-      merge_theme_overrides(merged_theme_overrides, config.theme_overrides)
-      merge_theme_overrides(
-        merged_dark_theme_overrides,
-        config.dark_theme_overrides,
-      )
-    }
-    None => ()
+  let source_theme_overrides = match source_config {
+    Some(config) => config.theme_overrides
+    None => None
   }
-  merge_theme_overrides(merged_theme_overrides, theme_overrides)
-  merge_theme_overrides(merged_dark_theme_overrides, dark_theme_overrides)
+  let source_dark_theme_overrides = match source_config {
+    Some(config) => config.dark_theme_overrides
+    None => None
+  }
+  let merged_theme_overrides = merge_theme_overrides(
+    source_theme_overrides, theme_overrides,
+  )
+  let merged_dark_theme_overrides = merge_theme_overrides(
+    source_dark_theme_overrides, dark_theme_overrides,
+  )
 
   let effective_scale = match scale {
     Some(v) => Some(v)
@@ -1281,8 +1283,8 @@ fn resolve_layout_engine(
 ///|
 fn compile_theme_overrides_map(
   overrides_map : @ir.Map,
-) -> Result[Map[String, String], String] {
-  let overrides : Map[String, String] = {}
+) -> Result[@diagram.ThemeOverrides?, String] {
+  let mut overrides = @diagram.ThemeOverrides::new()
   let errors : Array[String] = []
   for field in overrides_map.fields {
     if field.primary is Some(value) {
@@ -1299,13 +1301,17 @@ fn compile_theme_overrides_map(
         )
         continue
       }
-      overrides[key] = color_value
+      overrides = overrides.with_code(key, color_value)
     }
   }
   if not(errors.is_empty()) {
     return Err(errors.join("; "))
   }
-  Ok(overrides)
+  if overrides.is_empty() {
+    Ok(None)
+  } else {
+    Ok(Some(overrides))
+  }
 }
 
 ///|
@@ -1468,8 +1474,8 @@ fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
   let mut sketch : Bool? = None
   let mut theme_id : Int? = None
   let mut dark_theme_id : Int? = None
-  let theme_overrides : Map[String, String] = {}
-  let dark_theme_overrides : Map[String, String] = {}
+  let mut theme_overrides : @diagram.ThemeOverrides? = None
+  let mut dark_theme_overrides : @diagram.ThemeOverrides? = None
   let mut pad : Double? = None
   let mut center : Bool? = None
   let mut layout_engine : String? = None
@@ -1499,7 +1505,7 @@ fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
         Ok(parsed) => parsed
         Err(e) => return Err(e)
       }
-      merge_theme_overrides(theme_overrides, overrides)
+      theme_overrides = merge_theme_overrides(theme_overrides, overrides)
     }
   }
   if config_map.get_field("dark-theme-overrides")
@@ -1509,7 +1515,9 @@ fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
         Ok(parsed) => parsed
         Err(e) => return Err(e)
       }
-      merge_theme_overrides(dark_theme_overrides, overrides)
+      dark_theme_overrides = merge_theme_overrides(
+        dark_theme_overrides, overrides,
+      )
     }
   }
   if config_map.get_field("pad") is Some(field) {

@@ -51,10 +51,10 @@ pub struct SvgConfig {
   theme_id : Int
   /// Optional dark theme ID.
   dark_theme_id : Int?
-  /// Light theme color overrides by token (e.g. B1, N7).
-  theme_overrides : Map[String, String]
-  /// Dark theme color overrides by token.
-  dark_theme_overrides : Map[String, String]
+  /// Light theme color overrides.
+  theme_overrides : @diagram.ThemeOverrides?
+  /// Dark theme color overrides.
+  dark_theme_overrides : @diagram.ThemeOverrides?
   /// Optional output scale factor.
   scale : Double?
   /// Omit XML declaration when true.
@@ -80,8 +80,8 @@ pub fn SvgConfig::new() -> SvgConfig {
     arrow_size: 10.0,
     theme_id: 0,
     dark_theme_id: None,
-    theme_overrides: {},
-    dark_theme_overrides: {},
+    theme_overrides: None,
+    dark_theme_overrides: None,
     scale: None,
     no_xml_tag: false,
     salt: None,
@@ -106,8 +106,8 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
     arrow_size: 10.0,
     theme_id,
     dark_theme_id: None,
-    theme_overrides: {},
-    dark_theme_overrides: {},
+    theme_overrides: None,
+    dark_theme_overrides: None,
     scale: None,
     no_xml_tag: false,
     salt: None,
@@ -132,8 +132,8 @@ pub fn SvgConfig::with_theme_name(name : String) -> SvgConfig {
 pub fn SvgConfig::with_render_options(
   self : SvgConfig,
   dark_theme_id : Int?,
-  theme_overrides : Map[String, String],
-  dark_theme_overrides : Map[String, String],
+  theme_overrides : @diagram.ThemeOverrides?,
+  dark_theme_overrides : @diagram.ThemeOverrides?,
   center : Bool,
   scale : Double?,
   no_xml_tag : Bool,

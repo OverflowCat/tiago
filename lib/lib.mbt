@@ -105,8 +105,8 @@ pub struct RenderOptions {
   dark_theme_id : Int?
   pad : Double?
   center : Bool?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   no_xml_tag : Bool?
   salt : String?
@@ -121,8 +121,8 @@ pub fn RenderOptions::new() -> RenderOptions {
     dark_theme_id: None,
     pad: None,
     center: None,
-    theme_overrides: {},
-    dark_theme_overrides: {},
+    theme_overrides: None,
+    dark_theme_overrides: None,
     scale: None,
     no_xml_tag: None,
     salt: None,
@@ -173,7 +173,7 @@ pub fn RenderOptions::with_center(
 ///|
 pub fn RenderOptions::with_theme_overrides(
   self : RenderOptions,
-  theme_overrides : Map[String, String],
+  theme_overrides : @diagram.ThemeOverrides?,
 ) -> RenderOptions {
   { ..self, theme_overrides, }
 }
@@ -181,7 +181,7 @@ pub fn RenderOptions::with_theme_overrides(
 ///|
 pub fn RenderOptions::with_dark_theme_overrides(
   self : RenderOptions,
-  dark_theme_overrides : Map[String, String],
+  dark_theme_overrides : @diagram.ThemeOverrides?,
 ) -> RenderOptions {
   { ..self, dark_theme_overrides, }
 }
@@ -380,21 +380,20 @@ fn resolve_svg_config(
     Some(pad_value) => resolved = resolved.with_padding(pad_value)
     None => ()
   }
-  let merged_theme_overrides : Map[String, String] = {}
-  let merged_dark_theme_overrides : Map[String, String] = {}
-  match source_config {
-    Some(config) => {
-      merge_theme_overrides(merged_theme_overrides, config.theme_overrides)
-      merge_theme_overrides(
-        merged_dark_theme_overrides,
-        config.dark_theme_overrides,
-      )
-    }
-    None => ()
+  let source_theme_overrides = match source_config {
+    Some(config) => config.theme_overrides
+    None => None
   }
-  merge_theme_overrides(merged_theme_overrides, options.theme_overrides)
-  merge_theme_overrides(
-    merged_dark_theme_overrides,
+  let source_dark_theme_overrides = match source_config {
+    Some(config) => config.dark_theme_overrides
+    None => None
+  }
+  let merged_theme_overrides = merge_theme_overrides(
+    source_theme_overrides,
+    options.theme_overrides,
+  )
+  let merged_dark_theme_overrides = merge_theme_overrides(
+    source_dark_theme_overrides,
     options.dark_theme_overrides,
   )
   let effective_scale = match options.scale {
@@ -445,12 +444,10 @@ fn resolve_svg_config(
 
 ///|
 fn merge_theme_overrides(
-  dst : Map[String, String],
-  src : Map[String, String],
-) -> Unit {
-  for key, value in src {
-    dst[key] = value
-  }
+  dst : @diagram.ThemeOverrides?,
+  src : @diagram.ThemeOverrides?,
+) -> @diagram.ThemeOverrides? {
+  @diagram.merge_theme_overrides(dst, src)
 }
 
 ///|

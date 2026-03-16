@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "Milky2018/diago/themes"
 
+import {
+  "Milky2018/diago/diagram",
+}
+
 // Values
 pub fn get_theme(Int) -> Theme
 
@@ -62,7 +66,7 @@ pub fn Theme::is_dark(Self) -> Bool
 pub fn Theme::resolve(Self, String) -> String
 pub fn Theme::stroke_color(Self) -> String
 pub fn Theme::text_color(Self) -> String
-pub fn Theme::with_overrides(Self, Map[String, String]) -> Self
+pub fn Theme::with_overrides(Self, @diagram.ThemeOverrides?) -> Self
 pub impl Show for Theme
 
 // Type aliases

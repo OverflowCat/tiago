@@ -37,8 +37,8 @@ priv struct RenderRequest {
   dark_theme_id : Int?
   pad : Double?
   center : Bool?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   bundle : Bool
   no_xml_tag : Bool?

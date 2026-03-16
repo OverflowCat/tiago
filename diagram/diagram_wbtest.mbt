@@ -131,8 +131,8 @@ fn test_config(theme_id : Int) -> Config {
     None,
     Some(theme_id),
     None,
-    {},
-    {},
+    None,
+    None,
     None,
     None,
     None,
@@ -283,6 +283,40 @@ test "hash_id follows d2 target config bytes and salt" {
 
   assert_eq(a.hash_id(None) == b.hash_id(None), false)
   assert_eq(a.hash_id(None) == a.hash_id(Some("salt")), false)
+}
+
+///|
+test "diagram bytes encode typed theme overrides like d2target config json" {
+  let overrides = ThemeOverrides::new()
+    .with_code("B1", "red")
+    .with_code("N1", "black")
+    .with_code("AA4", "#f0ff3a")
+  let diagram = test_diagram(
+    "root",
+    objects=[test_object("node", "Node", @graph.ShapeType::Rectangle)],
+    config=Some(
+      Config::from_parts(
+        None,
+        Some(3),
+        None,
+        Some(overrides),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        {},
+      ),
+    ),
+  )
+
+  assert_eq(
+    diagram.bytes(),
+    "[{\"id\":\"node\",\"semanticId\":\"node\",\"label\":\"Node\",\"shapeType\":\"rectangle\",\"style\":{},\"childIds\":[],\"zIndex\":0,\"classes\":[],\"sqlConstraints\":[]}][]{\"id\":\"root\",\"semanticId\":\"root\",\"label\":\"root\",\"shapeType\":\"rectangle\",\"style\":{},\"childIds\":[],\"zIndex\":0,\"classes\":[],\"sqlConstraints\":[]}{\"themeID\":3,\"themeOverrides\":{\"n1\":\"black\",\"b1\":\"red\",\"aa4\":\"#f0ff3a\"}}",
+  )
 }
 
 ///|

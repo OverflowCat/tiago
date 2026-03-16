@@ -54,8 +54,8 @@ pub struct SvgConfig {
   arrow_size : Double
   theme_id : Int
   dark_theme_id : Int?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   no_xml_tag : Bool
   salt : String?
@@ -63,7 +63,7 @@ pub struct SvgConfig {
 }
 pub fn SvgConfig::new() -> Self
 pub fn SvgConfig::with_padding(Self, Double) -> Self
-pub fn SvgConfig::with_render_options(Self, Int?, Map[String, String], Map[String, String], Bool, Double?, Bool, String?, Bool) -> Self
+pub fn SvgConfig::with_render_options(Self, Int?, @diagram.ThemeOverrides?, @diagram.ThemeOverrides?, Bool, Double?, Bool, String?, Bool) -> Self
 pub fn SvgConfig::with_theme(Int) -> Self
 pub fn SvgConfig::with_theme_name(String) -> Self
 pub impl Show for SvgConfig

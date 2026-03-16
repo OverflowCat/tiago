@@ -61,8 +61,8 @@ pub struct RenderOptions {
   dark_theme_id : Int?
   pad : Double?
   center : Bool?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   no_xml_tag : Bool?
   salt : String?
@@ -71,7 +71,7 @@ pub struct RenderOptions {
 pub fn RenderOptions::new() -> Self
 pub fn RenderOptions::with_center(Self, Bool?) -> Self
 pub fn RenderOptions::with_dark_theme_id(Self, Int?) -> Self
-pub fn RenderOptions::with_dark_theme_overrides(Self, Map[String, String]) -> Self
+pub fn RenderOptions::with_dark_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self
 pub fn RenderOptions::with_no_xml_tag(Self, Bool?) -> Self
 pub fn RenderOptions::with_omit_version(Self, Bool?) -> Self
 pub fn RenderOptions::with_output_mode(Self, OutputMode) -> Self
@@ -79,7 +79,7 @@ pub fn RenderOptions::with_pad(Self, Double?) -> Self
 pub fn RenderOptions::with_salt(Self, String?) -> Self
 pub fn RenderOptions::with_scale(Self, Double?) -> Self
 pub fn RenderOptions::with_theme_name(Self, String?) -> Self
-pub fn RenderOptions::with_theme_overrides(Self, Map[String, String]) -> Self
+pub fn RenderOptions::with_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self
 
 // Type aliases
 

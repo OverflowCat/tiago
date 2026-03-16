@@ -51,8 +51,8 @@ pub struct CompileOptions {
   parse_options : ParseOptions
   theme_name : String?
   dark_theme_id : Int?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   no_xml_tag : Bool?
   salt : String?
@@ -60,7 +60,7 @@ pub struct CompileOptions {
 }
 pub fn CompileOptions::new() -> Self
 pub fn CompileOptions::with_dark_theme_id(Self, Int?) -> Self
-pub fn CompileOptions::with_dark_theme_overrides(Self, Map[String, String]) -> Self
+pub fn CompileOptions::with_dark_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self
 pub fn CompileOptions::with_direction(Self, @engine_api.Direction) -> Self
 pub fn CompileOptions::with_layout_engine(Self, LayoutEngine) -> Self
 pub fn CompileOptions::with_layout_plugin(Self, LayoutPlugin?) -> Self
@@ -73,7 +73,7 @@ pub fn CompileOptions::with_salt(Self, String?) -> Self
 pub fn CompileOptions::with_scale(Self, Double?) -> Self
 pub fn CompileOptions::with_target_spec(Self, String?) -> Self
 pub fn CompileOptions::with_theme_name(Self, String?) -> Self
-pub fn CompileOptions::with_theme_overrides(Self, Map[String, String]) -> Self
+pub fn CompileOptions::with_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self
 
 pub struct CompletionItem {
   label : String

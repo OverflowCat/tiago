@@ -116,8 +116,8 @@ pub struct CompileOptions {
   parse_options : ParseOptions
   theme_name : String?
   dark_theme_id : Int?
-  theme_overrides : Map[String, String]
-  dark_theme_overrides : Map[String, String]
+  theme_overrides : @diagram.ThemeOverrides?
+  dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
   no_xml_tag : Bool?
   salt : String?
@@ -136,8 +136,8 @@ pub fn CompileOptions::new() -> CompileOptions {
     parse_options: ParseOptions::new(),
     theme_name: None,
     dark_theme_id: None,
-    theme_overrides: {},
-    dark_theme_overrides: {},
+    theme_overrides: None,
+    dark_theme_overrides: None,
     scale: None,
     no_xml_tag: None,
     salt: None,
@@ -220,7 +220,7 @@ pub fn CompileOptions::with_dark_theme_id(
 ///|
 pub fn CompileOptions::with_theme_overrides(
   self : CompileOptions,
-  theme_overrides : Map[String, String],
+  theme_overrides : @diagram.ThemeOverrides?,
 ) -> CompileOptions {
   { ..self, theme_overrides, }
 }
@@ -228,7 +228,7 @@ pub fn CompileOptions::with_theme_overrides(
 ///|
 pub fn CompileOptions::with_dark_theme_overrides(
   self : CompileOptions,
-  dark_theme_overrides : Map[String, String],
+  dark_theme_overrides : @diagram.ThemeOverrides?,
 ) -> CompileOptions {
   { ..self, dark_theme_overrides, }
 }

@@ -153,9 +153,10 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: SVG label placement, icon placement, positioned tooltip rendering, target hashing, and root bound calculations now consume those target fields directly, including D2-style outside/border label positions, outside icon extents, and positioned tooltip bounds.
   - Verified with D2-derived compiler cases plus renderer whitebox coverage for explicit label positioning, positioned tooltip rendering, and root-bound expansion from outside icons/tooltips.
 
-- [ ] Align theme override semantics and type model with D2.
-  - D2 uses a typed theme override structure.
-  - diago currently uses string maps.
+- [x] Align theme override semantics and type model with D2.
+  - Landed in diago: source config parsing, CLI render options, facade/lib render options, SVG config, renderer hashing, and target config serialization now use a typed `diagram.ThemeOverrides` model that mirrors `../d2/d2target.ThemeOverrides` instead of generic string maps.
+  - Landed in diago: source-level `theme-overrides` / `dark-theme-overrides` compilation still follows `compileThemeOverrides` key and color validation, while target/config bytes now encode override objects with D2-style fixed lower-case field names and declaration order.
+  - Verified with compiler config tests, CLI override parsing coverage, and target-bytes coverage that locks the D2-style config JSON shape.
 
 - [ ] Align SVG feature coverage.
   - Includes patterns, sketch mode, dark-theme switching, appendix rendering, links/tooltips behavior, legend rendering, markdown styling, and code block rendering.

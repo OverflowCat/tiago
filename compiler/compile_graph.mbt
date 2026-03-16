@@ -14,19 +14,17 @@
 
 ///|
 fn merge_theme_overrides(
-  dst : Map[String, String],
-  src : Map[String, String],
-) -> Unit {
-  for key, value in src {
-    dst[key] = value
-  }
+  dst : @diagram.ThemeOverrides?,
+  src : @diagram.ThemeOverrides?,
+) -> @diagram.ThemeOverrides? {
+  @diagram.merge_theme_overrides(dst, src)
 }
 
 ///|
 fn compile_theme_overrides_map(
   overrides_map : @ir.Map,
-) -> Result[Map[String, String], CompileError] {
-  let overrides : Map[String, String] = {}
+) -> Result[@diagram.ThemeOverrides?, CompileError] {
+  let mut overrides = @diagram.ThemeOverrides::new()
   let errors : Array[String] = []
   for field in overrides_map.fields {
     if field.primary is Some(value) {
@@ -43,13 +41,17 @@ fn compile_theme_overrides_map(
         )
         continue
       }
-      overrides[key] = color_value
+      overrides = overrides.with_code(key, color_value)
     }
   }
   if not(errors.is_empty()) {
     return Err(ConfigError(errors.join("; ")))
   }
-  Ok(overrides)
+  if overrides.is_empty() {
+    Ok(None)
+  } else {
+    Ok(Some(overrides))
+  }
 }
 
 ///|
@@ -214,8 +216,8 @@ fn extract_source_config(
   let mut sketch : Bool? = None
   let mut theme_id : Int? = None
   let mut dark_theme_id : Int? = None
-  let theme_overrides : Map[String, String] = {}
-  let dark_theme_overrides : Map[String, String] = {}
+  let mut theme_overrides : @diagram.ThemeOverrides? = None
+  let mut dark_theme_overrides : @diagram.ThemeOverrides? = None
   let mut pad : Double? = None
   let mut center : Bool? = None
   let mut layout_engine : String? = None
@@ -245,7 +247,7 @@ fn extract_source_config(
         Ok(parsed) => parsed
         Err(err) => return Err(err)
       }
-      merge_theme_overrides(theme_overrides, overrides)
+      theme_overrides = merge_theme_overrides(theme_overrides, overrides)
     }
   }
   if config_map.get_field("dark-theme-overrides")
@@ -255,7 +257,9 @@ fn extract_source_config(
         Ok(parsed) => parsed
         Err(err) => return Err(err)
       }
-      merge_theme_overrides(dark_theme_overrides, overrides)
+      dark_theme_overrides = merge_theme_overrides(
+        dark_theme_overrides, overrides,
+      )
     }
   }
   if config_map.get_field("pad") is Some(field) {
