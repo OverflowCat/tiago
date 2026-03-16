@@ -295,10 +295,10 @@ fn Legend::new() -> Legend {
     position: BottomRight,
     entries: [],
     fill: Some("#ffffff"),
-    stroke: Some("#cccccc"),
-    padding: 12.0,
-    entry_gap: 8.0,
-    icon_size: 20.0,
+    stroke: Some("#DEE1EB"),
+    padding: 20.0,
+    entry_gap: 15.0,
+    icon_size: 24.0,
   }
 }
 
@@ -3060,10 +3060,6 @@ fn compile_legend(
   let mut have_edges = false
   let mut added_sep = false
   for edge in legend_graph.edges {
-    match edge.style.opacity {
-      Some(op) => if op == 0.0 { continue }
-      None => ()
-    }
     if have_shapes && !added_sep {
       legend.add_entry(LegendEntry::separator())
       added_sep = true
@@ -3074,11 +3070,7 @@ fn compile_legend(
       LegendEntry::connection(
         src_arrowhead,
         dst_arrowhead,
-        if edge.label.length() == 0 {
-          connection_label(src_arrowhead, dst_arrowhead)
-        } else {
-          edge.label
-        },
+        edge.label,
         Some(edge.style),
       ),
     )

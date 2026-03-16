@@ -134,10 +134,10 @@ pub fn Legend::new() -> Legend {
     position: BottomRight,
     entries: [],
     fill: Some("#ffffff"),
-    stroke: Some("#cccccc"),
-    padding: 12.0,
-    entry_gap: 8.0,
-    icon_size: 20.0,
+    stroke: Some("#DEE1EB"),
+    padding: 20.0,
+    entry_gap: 15.0,
+    icon_size: 24.0,
   }
 }
 

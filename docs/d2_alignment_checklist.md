@@ -97,9 +97,10 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: board compilation now distinguishes isolated `layers` from inherited `scenarios` / `steps`, preserves D2-style folder-only behavior, applies board primary labels, rejects duplicate board names across kinds, and reports board keywords outside board-root scope.
   - Landed in diago: board links now canonicalize and validate against the compiled board tree, including D2-style relative `_` resolution, self-link removal, missing-board rejection, and quote-aware board paths.
 
-- [ ] Align legend compilation behavior.
-  - D2 builds legends from `vars.d2-legend` with explicit filtering and synthetic layout defaults.
-  - Verify diago matches the same source semantics and output structure.
+- [x] Align legend compilation behavior.
+  - Landed in diago: `vars.d2-legend` now follows the upstream D2 compiler path more closely by compiling a standalone legend graph, preserving the legend label from the field primary value, filtering zero-opacity shapes, keeping legend edges even when their opacity is zero, and preserving edge labels instead of synthesizing fallback arrow-text labels.
+  - Landed in diago: the internal legend defaults used for exported legend structure now match D2's renderer-side synthetic constants more closely for border stroke, padding, entry gap, and icon size.
+  - Verified with D2-derived exporter coverage for hidden shapes, preserved edge styles, zero-opacity legend edges, and legend default metadata.
 
 - [x] Align AST-based sort order behavior.
   - Landed in diago: exporter graph compilation now sorts objects, nested children, and edges by reference/source ranges with stable fallback to encounter order.

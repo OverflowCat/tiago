@@ -324,6 +324,143 @@ test "tooltip near rejects label-only positions like d2" {
 }
 
 ///|
+test "d2-legend follows D2 compile semantics and defaults" {
+  let source =
+    #|vars: {
+    #|  d2-legend: "凡例" {
+    #|    User: "A person who interacts with the system" {
+    #|      shape: person
+    #|      style: {
+    #|        fill: "#f5f5f5"
+    #|      }
+    #|    }
+    #|
+    #|    Database: "Stores application data" {
+    #|      shape: cylinder
+    #|      style.fill: "#b5d3ff"
+    #|    }
+    #|
+    #|    HiddenShape: "This should not appear in the legend" {
+    #|      style.opacity: 0
+    #|    }
+    #|
+    #|    User -> Database: "Reads data" {
+    #|      style.stroke: blue
+    #|    }
+    #|
+    #|    Database -> User: "Returns results" {
+    #|      style.stroke-dash: 5
+    #|    }
+    #|  }
+    #|}
+    #|
+    #|user: User
+    #|db: Database
+    #|user -> db: Uses
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.legend is Some(legend) else {
+    fail("expected legend to be compiled")
+  }
+
+  assert_eq(legend.title, Some("凡例"))
+  assert_eq(legend.position, @graph.LegendPosition::BottomRight)
+  assert_eq(legend.fill, Some("#ffffff"))
+  assert_eq(legend.stroke, Some("#DEE1EB"))
+  assert_eq(legend.padding, 20.0)
+  assert_eq(legend.entry_gap, 15.0)
+  assert_eq(legend.icon_size, 24.0)
+  assert_eq(legend.entry_count(), 4)
+  assert_eq(legend.entries.length(), 5)
+
+  match legend.entries[0] {
+    @graph.ShapeEntry(shape~, label~, style~) => {
+      assert_eq(shape, @graph.ShapeType::Person)
+      assert_eq(label, "A person who interacts with the system")
+      guard style is Some(style_input) else {
+        fail("expected user legend style")
+      }
+      assert_eq(style_input.fill.unwrap().get_value(), "#f5f5f5")
+    }
+    _ => fail("expected first legend entry to be user shape")
+  }
+
+  match legend.entries[1] {
+    @graph.ShapeEntry(shape~, label~, style~) => {
+      assert_eq(shape, @graph.ShapeType::Cylinder)
+      assert_eq(label, "Stores application data")
+      guard style is Some(style_input) else {
+        fail("expected database legend style")
+      }
+      assert_eq(style_input.fill.unwrap().get_value(), "#b5d3ff")
+    }
+    _ => fail("expected second legend entry to be database shape")
+  }
+
+  assert_true(legend.entries[2] is @graph.Separator)
+
+  match legend.entries[3] {
+    @graph.ConnectionEntry(src_arrow~, dst_arrow~, label~, style~) => {
+      assert_eq(src_arrow, @graph.ArrowheadType::None)
+      assert_eq(dst_arrow, @graph.ArrowheadType::Triangle)
+      assert_eq(label, "Reads data")
+      guard style is Some(style_input) else {
+        fail("expected reads-data legend style")
+      }
+      assert_eq(style_input.stroke.unwrap().get_value(), "blue")
+    }
+    _ => fail("expected fourth legend entry to be reads-data connection")
+  }
+
+  match legend.entries[4] {
+    @graph.ConnectionEntry(src_arrow~, dst_arrow~, label~, style~) => {
+      assert_eq(src_arrow, @graph.ArrowheadType::None)
+      assert_eq(dst_arrow, @graph.ArrowheadType::Triangle)
+      assert_eq(label, "Returns results")
+      guard style is Some(style_input) else {
+        fail("expected returns-results legend style")
+      }
+      assert_eq(style_input.stroke_dash.unwrap().get_value(), "5")
+    }
+    _ => fail("expected fifth legend entry to be returns-results connection")
+  }
+
+  assert_true(graph.find_object("user") is Some(_))
+  assert_true(graph.find_object("db") is Some(_))
+}
+
+///|
+test "d2-legend keeps zero-opacity edges like D2 compiler" {
+  let source =
+    #|vars: {
+    #|  d2-legend: {
+    #|    A
+    #|    B
+    #|    A -> B: Hidden {
+    #|      style.opacity: 0
+    #|    }
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.legend is Some(legend) else {
+    fail("expected legend to be compiled")
+  }
+  assert_eq(legend.entry_count(), 3)
+  guard legend.entries.last() is Some(last_entry) else {
+    fail("expected trailing legend connection entry")
+  }
+  match last_entry {
+    @graph.ConnectionEntry(label~, style~, ..) => {
+      assert_eq(label, "Hidden")
+      guard style is Some(style_input) else {
+        fail("expected style on hidden legend edge")
+      }
+      assert_eq(style_input.opacity.unwrap().get_value(), "0")
+    }
+    _ => fail("expected trailing legend entry to be connection")
+  }
+}
+
+///|
 test "graph objects preserve explicit language and sql constraints" {
   let code_body = @ir.Map::new()
   code_body.add_field(
