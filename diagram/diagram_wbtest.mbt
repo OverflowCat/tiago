@@ -286,6 +286,19 @@ test "hash_id follows d2 target config bytes and salt" {
 }
 
 ///|
+test "with_render_hash_config feeds render appearance into diagram hash" {
+  let base = test_diagram("root", objects=[
+    test_object("node", "Node", @graph.ShapeType::Rectangle),
+  ])
+  let themed = base.with_render_hash_config(0, None, false)
+  let sketched = base.with_render_hash_config(0, None, true)
+  let dark_themed = base.with_render_hash_config(0, Some(200), false)
+
+  assert_true(themed.hash_id(None) != sketched.hash_id(None))
+  assert_true(themed.hash_id(None) != dark_themed.hash_id(None))
+}
+
+///|
 test "diagram bytes encode typed theme overrides like d2target config json" {
   let overrides = ThemeOverrides::new()
     .with_code("B1", "red")

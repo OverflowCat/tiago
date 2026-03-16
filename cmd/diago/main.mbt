@@ -896,6 +896,7 @@ fn compile_source(
   target_spec : String?,
   ascii_mode? : AsciiMode = AsciiMode::Extended,
   dark_theme_id? : Int? = None,
+  sketch? : Bool? = None,
   pad? : Double? = None,
   center? : Bool? = None,
   theme_overrides? : @diagram.ThemeOverrides? = None,
@@ -917,6 +918,7 @@ fn compile_source(
       target_spec,
       ascii_mode~,
       dark_theme_id~,
+      sketch~,
       pad~,
       center~,
       theme_overrides~,
@@ -947,6 +949,7 @@ fn compile_source_with_warnings(
   target_spec : String?,
   ascii_mode? : AsciiMode = AsciiMode::Extended,
   dark_theme_id? : Int? = None,
+  sketch? : Bool? = None,
   pad? : Double? = None,
   center? : Bool? = None,
   theme_overrides? : @diagram.ThemeOverrides? = None,
@@ -967,6 +970,7 @@ fn compile_source_with_warnings(
         layout_explicit,
         target_spec,
         dark_theme_id~,
+        sketch~,
         pad~,
         center~,
         theme_overrides~,
@@ -1029,6 +1033,7 @@ fn compile_diago_svg_with_warnings(
   layout_explicit : Bool,
   target_spec : String?,
   dark_theme_id? : Int? = None,
+  sketch? : Bool? = None,
   pad? : Double? = None,
   center? : Bool? = None,
   theme_overrides? : @diagram.ThemeOverrides? = None,
@@ -1049,6 +1054,7 @@ fn compile_diago_svg_with_warnings(
         theme_name,
         diagram.config,
         dark_theme_id~,
+        sketch~,
         pad~,
         center~,
         theme_overrides~,
@@ -1057,6 +1063,11 @@ fn compile_diago_svg_with_warnings(
         no_xml_tag~,
         salt~,
         omit_version~,
+      )
+      let diagram = diagram.with_render_hash_config(
+        render_config.theme_id,
+        render_config.dark_theme_id,
+        render_config.sketch,
       )
       try @renderer_svg.render(diagram, render_config) catch {
         e => Err(e.to_string())
@@ -1239,6 +1250,7 @@ fn resolve_svg_config(
   theme_name : String?,
   source_config : @diagram.Config?,
   dark_theme_id? : Int? = None,
+  sketch? : Bool? = None,
   pad? : Double? = None,
   center? : Bool? = None,
   theme_overrides? : @diagram.ThemeOverrides? = None,
@@ -1259,6 +1271,14 @@ fn resolve_svg_config(
   let effective_dark_theme_id = match dark_theme_id {
     Some(v) => Some(v)
     None => source_dark_theme_id
+  }
+  let effective_sketch = match sketch {
+    Some(v) => v
+    None =>
+      match source_config {
+        Some(config) => config.sketch.unwrap_or(false)
+        None => false
+      }
   }
   let mut resolved = match theme_name {
     Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
@@ -1339,7 +1359,8 @@ fn resolve_svg_config(
 
   resolved.with_render_options(
     effective_dark_theme_id, merged_theme_overrides, merged_dark_theme_overrides,
-    effective_center, effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
+    effective_center, effective_sketch, effective_scale, effective_no_xml_tag, effective_salt,
+    effective_omit_version,
   )
 }
 

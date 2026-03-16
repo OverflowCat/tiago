@@ -153,9 +153,10 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 - [ ] Align SVG render configuration semantics with D2.
   - Verify `theme`, `dark-theme`, `pad`, `center`, `scale`, `no-xml-tag`, `salt`, `omit-version`, and bundled asset behavior.
   - Landed in diago: CLI/lib/render option plumbing now carries D2-style `pad` and `center`, and SVG `preserveAspectRatio` now follows D2's `xMinYMin` vs `xMidYMid` behavior.
+  - Landed in diago: source config, facade/lib render options, and CLI `--sketch` now follow D2's global sketch precedence more closely as well. Explicit render options override `vars.d2-config.sketch`, the default still falls back to `false`, and the effective `theme` / `dark-theme` / `sketch` values are now fed back into `diagram.Config` before SVG hashing just like `d2lib.Compile`.
   - Landed in diago: SVG asset bundling now mirrors D2's `imgbundler` split more closely, with local assets always bundled for SVG output, remote assets gated by the bundle option, D2-style relative local path resolution, duplicate remote URL de-duplication, optional cross-run cache plumbing, and explicit oversized/error fetch coverage.
   - Landed in diago: SVG bundling failure propagation now follows the upstream D2 CLI contract more closely as well. The bundler preserves already-produced SVG, keeps successful image replacements, leaves failed image refs untouched, and returns aggregated local/remote bundling warnings separately so the CLI can still write SVG output before surfacing the bundling error.
-  - Remaining gap: global `sketch` render semantics still differ from D2 because diago currently uses local SVG sketch filters rather than D2's sketch renderer pipeline.
+  - Remaining gap: diago still renders sketch mode through its local SVG filter-based path instead of D2's `d2sketch` renderer pipeline, so full sketch output parity is still open even though global config and hash semantics now line up more closely.
 
 - [x] Align root canvas sizing and board bounding box behavior with D2.
   - Landed in diago: D2-style `label.near`, `icon.near`, and `tooltip.near` now compile through `exporter -> graph -> diagram` as target metadata instead of being lost in renderer heuristics.

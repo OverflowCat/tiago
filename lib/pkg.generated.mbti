@@ -59,6 +59,7 @@ pub struct RenderOptions {
   output_mode : OutputMode
   theme_name : String?
   dark_theme_id : Int?
+  sketch : Bool?
   pad : Double?
   center : Bool?
   theme_overrides : @diagram.ThemeOverrides?
@@ -78,6 +79,7 @@ pub fn RenderOptions::with_output_mode(Self, OutputMode) -> Self
 pub fn RenderOptions::with_pad(Self, Double?) -> Self
 pub fn RenderOptions::with_salt(Self, String?) -> Self
 pub fn RenderOptions::with_scale(Self, Double?) -> Self
+pub fn RenderOptions::with_sketch(Self, Bool?) -> Self
 pub fn RenderOptions::with_theme_name(Self, String?) -> Self
 pub fn RenderOptions::with_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self
 

@@ -397,6 +397,72 @@ test "cli center overrides vars d2-config center=false" {
 }
 
 ///|
+test "vars d2-config sketch enables global svg sketch mode" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    sketch: true
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  assert_true(svg.contains("sketch-filter"))
+}
+
+///|
+test "cli sketch overrides vars d2-config sketch=false and sketch=true" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    sketch: true
+    #|  }
+    #|}
+    #|a -> b
+  let source_svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  let cli_disabled_svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+    sketch=Some(false),
+  ).unwrap()
+  let plain_source =
+    #|a -> b
+  let cli_enabled_svg = compile_source(
+    plain_source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+    sketch=Some(true),
+  ).unwrap()
+  assert_true(source_svg.contains("sketch-filter"))
+  assert_false(cli_disabled_svg.contains("sketch-filter"))
+  assert_true(cli_enabled_svg.contains("sketch-filter"))
+}
+
+///|
 test "vars d2-config dark-theme-id emits dark media css" {
   let source =
     #|vars: {

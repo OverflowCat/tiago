@@ -116,6 +116,7 @@ pub struct CompileOptions {
   parse_options : ParseOptions
   theme_name : String?
   dark_theme_id : Int?
+  sketch : Bool?
   theme_overrides : @diagram.ThemeOverrides?
   dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
@@ -136,6 +137,7 @@ pub fn CompileOptions::new() -> CompileOptions {
     parse_options: ParseOptions::new(),
     theme_name: None,
     dark_theme_id: None,
+    sketch: None,
     theme_overrides: None,
     dark_theme_overrides: None,
     scale: None,
@@ -215,6 +217,14 @@ pub fn CompileOptions::with_dark_theme_id(
   dark_theme_id : Int?,
 ) -> CompileOptions {
   { ..self, dark_theme_id, }
+}
+
+///|
+pub fn CompileOptions::with_sketch(
+  self : CompileOptions,
+  sketch : Bool?,
+) -> CompileOptions {
+  { ..self, sketch, }
 }
 
 ///|
@@ -425,6 +435,7 @@ fn to_lib_render_options(options : CompileOptions) -> @lib.RenderOptions {
   .with_output_mode(to_lib_output_mode(options.output_mode))
   .with_theme_name(options.theme_name)
   .with_dark_theme_id(options.dark_theme_id)
+  .with_sketch(options.sketch)
   .with_theme_overrides(options.theme_overrides)
   .with_dark_theme_overrides(options.dark_theme_overrides)
   .with_scale(options.scale)

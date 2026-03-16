@@ -45,6 +45,7 @@ fn parse_render(
             target_spec: None,
             theme_name: None,
             dark_theme_id: None,
+            sketch: None,
             pad: None,
             center: None,
             theme_overrides: None,
@@ -77,6 +78,7 @@ fn parse_render(
         target_spec: None,
         theme_name: None,
         dark_theme_id: None,
+        sketch: None,
         pad: None,
         center: None,
         theme_overrides: None,
@@ -191,6 +193,12 @@ test "render parses D2-style pad and center svg options" {
 }
 
 ///|
+test "render parses D2-style sketch flag" {
+  let req = parse_render(["diago", "render", "demo.d2", "--sketch"], {})
+  assert_eq(req.sketch, Some(true))
+}
+
+///|
 test "render parses typed theme override flags" {
   let req = parse_render(
     [
@@ -274,6 +282,7 @@ test "precedence: env layout overrides invalid vars.d2-config layout-engine" {
     req.target_spec,
     ascii_mode=req.ascii_mode,
     dark_theme_id=req.dark_theme_id,
+    sketch=req.sketch,
     theme_overrides=req.theme_overrides,
     dark_theme_overrides=req.dark_theme_overrides,
     scale=req.scale,

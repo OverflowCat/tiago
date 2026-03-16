@@ -99,6 +99,7 @@ pub fn Diagram::has_scenarios(Self) -> Bool
 pub fn Diagram::has_shape(Self, (Shape) -> Bool) -> Bool
 pub fn Diagram::has_steps(Self) -> Bool
 pub fn Diagram::hash_id(Self, String?) -> String
+pub fn Diagram::with_render_hash_config(Self, Int, Int?, Bool) -> Self
 pub impl Show for Diagram
 
 pub struct Shape {

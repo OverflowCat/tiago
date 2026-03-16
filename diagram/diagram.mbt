@@ -397,6 +397,64 @@ pub fn Diagram::hash_id(self : Diagram, salt : String?) -> String {
 }
 
 ///|
+pub fn Diagram::with_render_hash_config(
+  self : Diagram,
+  theme_id : Int,
+  dark_theme_id : Int?,
+  sketch : Bool,
+) -> Diagram {
+  let updated_config = match self.config {
+    Some(config) =>
+      Config::from_parts(
+        Some(sketch),
+        Some(theme_id),
+        dark_theme_id,
+        config.theme_overrides,
+        config.dark_theme_overrides,
+        config.pad,
+        config.center,
+        config.layout_engine,
+        config.scale,
+        config.no_xml_tag,
+        config.salt,
+        config.omit_version,
+        config.data,
+      )
+    None =>
+      Config::from_parts(
+        Some(sketch),
+        Some(theme_id),
+        dark_theme_id,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        {},
+      )
+  }
+  let layers : Array[Diagram] = []
+  for board in self.layers {
+    layers.push(board.with_render_hash_config(theme_id, dark_theme_id, sketch))
+  }
+  let scenarios : Array[Diagram] = []
+  for board in self.scenarios {
+    scenarios.push(
+      board.with_render_hash_config(theme_id, dark_theme_id, sketch),
+    )
+  }
+  let steps : Array[Diagram] = []
+  for board in self.steps {
+    steps.push(board.with_render_hash_config(theme_id, dark_theme_id, sketch))
+  }
+  { ..self, config: Some(updated_config), layers, scenarios, steps }
+}
+
+///|
 pub fn Diagram::get_nested_corpus(self : Diagram) -> String {
   let corpus = StringBuilder::new()
   corpus.write_string(self.get_corpus())

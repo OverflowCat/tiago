@@ -33,6 +33,8 @@ pub struct SvgConfig {
   padding : Double
   /// Center the outer SVG viewbox like D2's render option.
   center : Bool
+  /// Apply global sketch rendering mode.
+  sketch : Bool
   /// Default font family
   font_family : String
   /// Default font size
@@ -71,6 +73,7 @@ pub fn SvgConfig::new() -> SvgConfig {
   {
     padding: 100.0,
     center: false,
+    sketch: false,
     font_family: "Arial, sans-serif",
     font_size: 16,
     background: theme.background_color(),
@@ -97,6 +100,7 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
   {
     padding: 100.0,
     center: false,
+    sketch: false,
     font_family: font,
     font_size: 16,
     background: theme.background_color(),
@@ -135,6 +139,7 @@ pub fn SvgConfig::with_render_options(
   theme_overrides : @diagram.ThemeOverrides?,
   dark_theme_overrides : @diagram.ThemeOverrides?,
   center : Bool,
+  sketch : Bool,
   scale : Double?,
   no_xml_tag : Bool,
   salt : String?,
@@ -151,6 +156,7 @@ pub fn SvgConfig::with_render_options(
   {
     ..self,
     center,
+    sketch,
     font_family,
     background: active_light_theme.background_color(),
     default_stroke: active_light_theme.stroke_color(),
@@ -209,6 +215,11 @@ fn style_bool(value : @graph.StyleValue?, default : Bool) -> Bool {
     Some(v) => v.as_bool().unwrap_or(default)
     None => default
   }
+}
+
+///|
+fn sketch_enabled(style_value : @graph.StyleValue?, config : SvgConfig) -> Bool {
+  style_bool(style_value, config.sketch)
 }
 
 ///|
@@ -2773,9 +2784,9 @@ fn add_sketch_filter(
   config : SvgConfig,
 ) -> Unit {
   // Check if any object uses sketch mode
-  let mut needs_sketch = false
+  let mut needs_sketch = config.sketch
   for obj in graph.shapes {
-    if style_bool(obj.style.sketch, false) {
+    if sketch_enabled(obj.style.sketch, config) {
       needs_sketch = true
       break
     }
@@ -2783,7 +2794,7 @@ fn add_sketch_filter(
   // Also check edges
   if not(needs_sketch) {
     for edge in graph.connections {
-      if style_bool(edge.style.sketch, false) {
+      if sketch_enabled(edge.style.sketch, config) {
         needs_sketch = true
         break
       }
@@ -3551,7 +3562,8 @@ fn render_svg_object(
     )
   }
   // Apply sketch filter if enabled (only in foreground pass)
-  let use_sketch = style_bool(obj.style.sketch, false) && object_pass_active
+  let use_sketch = sketch_enabled(obj.style.sketch, config) &&
+    object_pass_active
   if use_sketch {
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }
@@ -8205,7 +8217,7 @@ fn render_svg_edge(
     ),
   )
   // Apply sketch filter if enabled
-  let use_sketch = style_bool(edge.style.sketch, false)
+  let use_sketch = sketch_enabled(edge.style.sketch, config)
   if use_sketch {
     svg.open_group_with_filter(defs_id(config, "sketch-filter"))
   }

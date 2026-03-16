@@ -51,6 +51,7 @@ pub struct CompileOptions {
   parse_options : ParseOptions
   theme_name : String?
   dark_theme_id : Int?
+  sketch : Bool?
   theme_overrides : @diagram.ThemeOverrides?
   dark_theme_overrides : @diagram.ThemeOverrides?
   scale : Double?
@@ -71,6 +72,7 @@ pub fn CompileOptions::with_parse_options(Self, ParseOptions) -> Self
 pub fn CompileOptions::with_route_plugin(Self, RoutePlugin?) -> Self
 pub fn CompileOptions::with_salt(Self, String?) -> Self
 pub fn CompileOptions::with_scale(Self, Double?) -> Self
+pub fn CompileOptions::with_sketch(Self, Bool?) -> Self
 pub fn CompileOptions::with_target_spec(Self, String?) -> Self
 pub fn CompileOptions::with_theme_name(Self, String?) -> Self
 pub fn CompileOptions::with_theme_overrides(Self, @diagram.ThemeOverrides?) -> Self

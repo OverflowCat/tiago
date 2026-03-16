@@ -82,6 +82,13 @@ fn build_render_subcommand() -> @argparse.Command {
         env="DIAGO_CENTER",
       ),
       @argparse.FlagArg(
+        "sketch",
+        short='s',
+        long="sketch",
+        about="Render the diagram in global sketch mode",
+        env="DIAGO_SKETCH",
+      ),
+      @argparse.FlagArg(
         "bundle",
         long="bundle",
         about="Bundle image hrefs as data URIs (default: true)",
@@ -404,6 +411,7 @@ fn parse_render_request(
   if first_match_value(matches, "dark-theme-id") is Some(value) {
     dark_theme_id = parse_theme_id_option(value, dark_theme_id)
   }
+  let sketch = matches.flags.get("sketch")
   let mut pad : Double? = None
   if first_match_value(matches, "pad") is Some(value) {
     match parse_uint(value) {
@@ -530,6 +538,7 @@ fn parse_render_request(
     target_spec,
     theme_name,
     dark_theme_id,
+    sketch,
     pad,
     center,
     theme_overrides,

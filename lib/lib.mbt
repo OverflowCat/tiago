@@ -103,6 +103,7 @@ pub struct RenderOptions {
   output_mode : OutputMode
   theme_name : String?
   dark_theme_id : Int?
+  sketch : Bool?
   pad : Double?
   center : Bool?
   theme_overrides : @diagram.ThemeOverrides?
@@ -119,6 +120,7 @@ pub fn RenderOptions::new() -> RenderOptions {
     output_mode: Svg,
     theme_name: None,
     dark_theme_id: None,
+    sketch: None,
     pad: None,
     center: None,
     theme_overrides: None,
@@ -152,6 +154,14 @@ pub fn RenderOptions::with_dark_theme_id(
   dark_theme_id : Int?,
 ) -> RenderOptions {
   { ..self, dark_theme_id, }
+}
+
+///|
+pub fn RenderOptions::with_sketch(
+  self : RenderOptions,
+  sketch : Bool?,
+) -> RenderOptions {
+  { ..self, sketch, }
 }
 
 ///|
@@ -295,6 +305,11 @@ pub fn render(
   match options.output_mode {
     Svg => {
       let render_config = resolve_svg_config(options, diagram.config)
+      let diagram = diagram.with_render_hash_config(
+        render_config.theme_id,
+        render_config.dark_theme_id,
+        render_config.sketch,
+      )
       Ok(@renderer_svg.render(diagram, render_config)) catch {
         e => Err(RenderError(e.to_string()))
       }
@@ -359,6 +374,14 @@ fn resolve_svg_config(
   let effective_dark_theme_id = match options.dark_theme_id {
     Some(v) => Some(v)
     None => source_dark_theme_id
+  }
+  let effective_sketch = match options.sketch {
+    Some(v) => v
+    None =>
+      match source_config {
+        Some(config) => config.sketch.unwrap_or(false)
+        None => false
+      }
   }
   let mut resolved = match options.theme_name {
     Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
@@ -438,7 +461,8 @@ fn resolve_svg_config(
   }
   resolved.with_render_options(
     effective_dark_theme_id, merged_theme_overrides, merged_dark_theme_overrides,
-    effective_center, effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
+    effective_center, effective_sketch, effective_scale, effective_no_xml_tag, effective_salt,
+    effective_omit_version,
   )
 }
 

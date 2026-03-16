@@ -35,6 +35,7 @@ priv struct RenderRequest {
   target_spec : String?
   theme_name : String?
   dark_theme_id : Int?
+  sketch : Bool?
   pad : Double?
   center : Bool?
   theme_overrides : @diagram.ThemeOverrides?
