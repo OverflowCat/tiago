@@ -1,0 +1,83 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/diago/lib"
+
+import {
+  "Milky2018/diago/diagram",
+  "Milky2018/diago/engine_api",
+  "Milky2018/diago/graph",
+}
+
+// Values
+pub fn compile_diagram(@graph.GraphInput, @diagram.Config?, options? : DiagramOptions) -> Result[@diagram.Diagram, LibError]
+
+pub fn render(@diagram.Diagram, options? : RenderOptions) -> Result[String, LibError]
+
+// Errors
+
+// Types and methods
+pub struct DiagramOptions {
+  layout_engine : LayoutEngine
+  direction : @engine_api.Direction
+  target_spec : String?
+  layout_plugin : ((@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String])?
+  route_plugin : ((@graph.GraphInput) -> Result[@graph.GraphInput, String])?
+}
+pub fn DiagramOptions::new() -> Self
+pub fn DiagramOptions::with_direction(Self, @engine_api.Direction) -> Self
+pub fn DiagramOptions::with_layout_engine(Self, LayoutEngine) -> Self
+pub fn DiagramOptions::with_layout_plugin(Self, ((@graph.GraphInput, @engine_api.LayoutConfig, @engine_api.Direction) -> Result[@graph.GraphInput, String])?) -> Self
+pub fn DiagramOptions::with_route_plugin(Self, ((@graph.GraphInput) -> Result[@graph.GraphInput, String])?) -> Self
+pub fn DiagramOptions::with_target_spec(Self, String?) -> Self
+
+pub(all) enum LayoutEngine {
+  Auto
+  Dagre
+  Elk
+  Railway
+}
+pub impl Eq for LayoutEngine
+pub impl Show for LayoutEngine
+
+pub(all) enum LibError {
+  LayoutError(String)
+  RenderError(String)
+  ConfigError(String)
+  TargetError(String)
+}
+pub impl Eq for LibError
+pub impl Show for LibError
+
+pub(all) enum OutputMode {
+  Svg
+  Ascii
+  Unicode
+}
+pub impl Eq for OutputMode
+pub impl Show for OutputMode
+
+pub struct RenderOptions {
+  output_mode : OutputMode
+  theme_name : String?
+  dark_theme_id : Int?
+  theme_overrides : Map[String, String]
+  dark_theme_overrides : Map[String, String]
+  scale : Double?
+  no_xml_tag : Bool?
+  salt : String?
+  omit_version : Bool?
+}
+pub fn RenderOptions::new() -> Self
+pub fn RenderOptions::with_dark_theme_id(Self, Int?) -> Self
+pub fn RenderOptions::with_dark_theme_overrides(Self, Map[String, String]) -> Self
+pub fn RenderOptions::with_no_xml_tag(Self, Bool?) -> Self
+pub fn RenderOptions::with_omit_version(Self, Bool?) -> Self
+pub fn RenderOptions::with_output_mode(Self, OutputMode) -> Self
+pub fn RenderOptions::with_salt(Self, String?) -> Self
+pub fn RenderOptions::with_scale(Self, Double?) -> Self
+pub fn RenderOptions::with_theme_name(Self, String?) -> Self
+pub fn RenderOptions::with_theme_overrides(Self, Map[String, String]) -> Self
+
+// Type aliases
+
+// Traits
+

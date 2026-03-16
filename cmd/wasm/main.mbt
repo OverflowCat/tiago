@@ -157,19 +157,16 @@ fn compile_diago_svg(
   theme_name : String?,
   engine : Int,
 ) -> Result[String, String] {
-  match compile_to_diagram(source, engine) {
-    Ok(diagram) => {
-      let render_config = match theme_name {
-        Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
-        None => @renderer_svg.SvgConfig::new()
-      }
-      try @renderer_svg.render(diagram, render_config) catch {
-        e => Err(e.to_string())
-      } noraise {
-        v => Ok(v)
-      }
-    }
-    Err(e) => Err(e)
+  let diagram = match compile_to_diagram(source, engine) {
+    Ok(diagram) => diagram
+    Err(err) => return Err(err)
+  }
+  let render_options = @lib.RenderOptions::new()
+    .with_output_mode(@lib.Svg)
+    .with_theme_name(theme_name)
+  match @lib.render(diagram, options=render_options) {
+    Ok(svg) => Ok(svg)
+    Err(err) => Err(lib_error_message(err))
   }
 }
 
@@ -180,9 +177,18 @@ fn compile_diago_text(
   config : @renderer_ascii.AsciiConfig,
   engine : Int,
 ) -> Result[String, String] {
+  ignore(config)
   match compile_to_diagram(source, engine) {
-    Ok(diagram) => Ok(@renderer_ascii.render(diagram, config))
-    Err(e) => Err(e)
+    Ok(diagram) =>
+      match
+        @lib.render(
+          diagram,
+          options=@lib.RenderOptions::new().with_output_mode(@lib.Ascii),
+        ) {
+        Ok(text) => Ok(text)
+        Err(err) => Err(lib_error_message(err))
+      }
+    Err(err) => Err(err)
   }
 }
 
@@ -192,42 +198,52 @@ fn compile_to_diagram(
   source : String,
   engine : Int,
 ) -> Result[@diagram.Diagram, String] {
-  let (ast, errors) = @compiler.parse(source)
-  if not(errors.is_empty()) {
-    return Err("Parse errors: \{errors}")
+  let compiled = match @compiler.compile_graph("diagram", source) {
+    Ok(compiled) => compiled
+    Err(err) => return Err(compiler_error_message(err))
   }
-  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
-  let graph_input = @exporter.to_graph("diagram", ir) catch {
-    e => return Err("Graph error: \{e}")
+  let diagram_options = @lib.DiagramOptions::new()
+    .with_layout_engine(resolve_layout_engine(engine))
+    .with_direction(@engine_api.Down)
+  match
+    @lib.compile_diagram(
+      compiled.graph_input(),
+      compiled.source_config(),
+      options=diagram_options,
+    ) {
+    Ok(diagram) => Ok(diagram)
+    Err(err) => Err(lib_error_message(err))
   }
-  let config = @engine_api.LayoutConfig::new()
-  let laid_out_graph = if engine == 1 {
-    @engine_api.layout_with_engine(
-      @engine_elk.ElkEngine::new(),
-      graph_input,
-      config,
-      @engine_api.Down,
-    ) catch {
-      e => return Err("Layout error: \{e}")
-    }
+}
+
+///|
+fn resolve_layout_engine(engine : Int) -> @lib.LayoutEngine {
+  if engine == 1 {
+    @lib.Elk
   } else if engine == 2 {
-    @engine_api.layout_with_engine(
-      @engine_railway.RailwayEngine::new(),
-      graph_input,
-      config,
-      @engine_api.Down,
-    ) catch {
-      e => return Err("Layout error: \{e}")
-    }
+    @lib.Railway
   } else {
-    @engine_api.layout_with_engine(
-      @engine_dagre.DagreEngine::new(),
-      graph_input,
-      config,
-      @engine_api.Down,
-    ) catch {
-      e => return Err("Layout error: \{e}")
-    }
+    @lib.Dagre
   }
-  Ok(@diagram.from_graph(laid_out_graph, None))
+}
+
+///|
+fn compiler_error_message(err : @compiler.CompileError) -> String {
+  match err {
+    @compiler.ParseError(message) => message
+    @compiler.IOError(message) => message
+    @compiler.IrError(message) => message
+    @compiler.GraphError(message) => message
+    @compiler.ConfigError(message) => message
+  }
+}
+
+///|
+fn lib_error_message(err : @lib.LibError) -> String {
+  match err {
+    @lib.LayoutError(message) => message
+    @lib.RenderError(message) => message
+    @lib.ConfigError(message) => message
+    @lib.TargetError(message) => message
+  }
 }

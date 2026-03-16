@@ -282,16 +282,10 @@ pub fn parse(
   source : String,
   options? : ParseOptions = ParseOptions::new(),
 ) -> @ir.Map raise DiagoError {
-  let (ast, errors) = @compiler.parse(source)
-  if !errors.is_empty() {
-    raise ParseError("Parse errors: \{errors}")
-  }
-  let resolver = match options.import_resolver {
-    Some(resolver) => resolver
-    None => default_import_resolver(options.base_path)
-  }
-  @ir.compile_with_imports(ast, resolver) catch {
-    e => raise IrError(e.to_string())
+  match
+    @compiler.compile_ir(source, options=to_compiler_parse_options(options)) {
+    Ok(ir_map) => ir_map
+    Err(err) => raise_diago_compiler_error(err)
   }
 }
 
@@ -300,15 +294,14 @@ pub fn parse_file(
   file_path : String,
   options? : ParseOptions = ParseOptions::new(),
 ) -> @ir.Map raise DiagoError {
-  let source = @fs.read_file_to_string(file_path) catch {
-    e => raise IOError("Error reading file '\{file_path}': \{e}")
+  match
+    @compiler.compile_ir_file(
+      file_path,
+      options=to_compiler_parse_options(options),
+    ) {
+    Ok(ir_map) => ir_map
+    Err(err) => raise_diago_compiler_error(err)
   }
-  let resolved_options = if options.base_path is Some(_) {
-    options
-  } else {
-    { ..options, base_path: get_dir_path(file_path) }
-  }
-  parse(source, options=resolved_options)
 }
 
 ///|
@@ -316,65 +309,23 @@ pub fn compile_diagram(
   source : String,
   options? : CompileOptions = CompileOptions::new(),
 ) -> @diagram.Diagram raise DiagoError {
-  let ir_map = parse(source, options=options.parse_options)
-  let source_config = extract_source_config(ir_map)
-  let effective_layout_engine = resolve_layout_engine(
-    options.layout_engine,
-    source_config,
-  )
-  let graph_input = @exporter.to_graph("diagram", ir_map) catch {
-    e => raise GraphError(e.to_string())
+  let compiled = match
+    @compiler.compile_graph(
+      "diagram",
+      source,
+      options=to_compiler_parse_options(options.parse_options),
+    ) {
+    Ok(compiled) => compiled
+    Err(err) => raise_diago_compiler_error(err)
   }
-  let config = @engine_api.LayoutConfig::new()
-  let laid_out_graph = match options.layout_plugin {
-    Some(plugin) =>
-      match plugin.run(graph_input, config, options.direction) {
-        Ok(graph) => graph
-        Err(e) => raise LayoutError("Layout plugin error: \{e}")
-      }
-    None =>
-      match effective_layout_engine {
-        Auto | Dagre =>
-          @engine_api.layout_with_engine(
-            @engine_dagre.DagreEngine::new(),
-            graph_input,
-            config,
-            options.direction,
-          ) catch {
-            e => raise LayoutError(e.to_string())
-          }
-        Elk =>
-          @engine_api.layout_with_engine(
-            @engine_elk.ElkEngine::new(),
-            graph_input,
-            config,
-            options.direction,
-          ) catch {
-            e => raise LayoutError(e.to_string())
-          }
-        Railway =>
-          @engine_api.layout_with_engine(
-            @engine_railway.RailwayEngine::new(),
-            graph_input,
-            config,
-            options.direction,
-          ) catch {
-            e => raise LayoutError(e.to_string())
-          }
-      }
-  }
-  let routed_graph = match options.route_plugin {
-    Some(plugin) =>
-      match plugin.run(laid_out_graph) {
-        Ok(graph) => graph
-        Err(e) => raise LayoutError("Route plugin error: \{e}")
-      }
-    None => laid_out_graph
-  }
-  let diagram = @diagram.from_graph(routed_graph, source_config)
-  match select_target_board(diagram, options.target_spec) {
-    Ok(board) => board
-    Err(e) => raise TargetError(e)
+  match
+    @lib.compile_diagram(
+      compiled.graph_input(),
+      compiled.source_config(),
+      options=to_lib_diagram_options(options),
+    ) {
+    Ok(diagram) => diagram
+    Err(err) => raise_diago_lib_error(err)
   }
 }
 
@@ -384,15 +335,9 @@ pub fn compile(
   options? : CompileOptions = CompileOptions::new(),
 ) -> String raise DiagoError {
   let diagram = compile_diagram(source, options~)
-  match options.output_mode {
-    Svg => {
-      let render_config = resolve_svg_config(options, diagram.config)
-      @renderer_svg.render(diagram, render_config) catch {
-        e => raise RenderError(e.to_string())
-      }
-    }
-    Ascii => @renderer_ascii.render(diagram, @renderer_ascii.AsciiConfig::new())
-    Unicode => @renderer_unicode.render(diagram)
+  match @lib.render(diagram, options=to_lib_render_options(options)) {
+    Ok(rendered) => rendered
+    Err(err) => raise_diago_lib_error(err)
   }
 }
 
@@ -401,462 +346,122 @@ pub fn compile_file(
   file_path : String,
   options? : CompileOptions = CompileOptions::new(),
 ) -> String raise DiagoError {
-  let source = @fs.read_file_to_string(file_path) catch {
-    e => raise IOError("Error reading file '\{file_path}': \{e}")
+  let compiled = match
+    @compiler.compile_graph_file(
+      "diagram",
+      file_path,
+      options=to_compiler_parse_options(options.parse_options),
+    ) {
+    Ok(compiled) => compiled
+    Err(err) => raise_diago_compiler_error(err)
   }
-  let parse_options = if options.parse_options.base_path is Some(_) {
-    options.parse_options
-  } else {
-    { ..options.parse_options, base_path: get_dir_path(file_path) }
+  let diagram = match
+    @lib.compile_diagram(
+      compiled.graph_input(),
+      compiled.source_config(),
+      options=to_lib_diagram_options(options),
+    ) {
+    Ok(diagram) => diagram
+    Err(err) => raise_diago_lib_error(err)
   }
-  let resolved_options = { ..options, parse_options, }
-  compile(source, options=resolved_options)
-}
-
-///|
-fn resolve_layout_engine(
-  requested_layout_engine : LayoutEngine,
-  source_config : @diagram.Config?,
-) -> LayoutEngine raise DiagoError {
-  if requested_layout_engine != Auto {
-    return requested_layout_engine
-  }
-  match source_config {
-    Some(config) =>
-      match config.layout_engine {
-        Some(layout_name) =>
-          match parse_layout_engine_name(layout_name) {
-            Some(engine) => engine
-            None =>
-              raise ConfigError(
-                "unsupported layout engine '\{layout_name}' from vars.d2-config.layout-engine. Expected dagre, elk, or railway.",
-              )
-          }
-        None => Dagre
-      }
-    None => Dagre
+  match @lib.render(diagram, options=to_lib_render_options(options)) {
+    Ok(rendered) => rendered
+    Err(err) => raise_diago_lib_error(err)
   }
 }
 
 ///|
-fn parse_layout_engine_name(name : String) -> LayoutEngine? {
-  match name.to_lower() {
-    "auto" => Some(Auto)
-    "dagre" => Some(Dagre)
-    "elk" => Some(Elk)
-    "railway" => Some(Railway)
-    _ => None
-  }
+fn to_compiler_parse_options(options : ParseOptions) -> @compiler.ParseOptions {
+  @compiler.ParseOptions::new()
+  .with_base_path(options.base_path)
+  .with_import_resolver(options.import_resolver)
 }
 
 ///|
-fn resolve_svg_config(
-  options : CompileOptions,
-  source_config : @diagram.Config?,
-) -> @renderer_svg.SvgConfig {
-  let source_theme_id = match source_config {
-    Some(config) => config.theme_id
-    None => None
-  }
-  let source_dark_theme_id = match source_config {
-    Some(config) => config.dark_theme_id
-    None => None
-  }
-  let effective_dark_theme_id = match options.dark_theme_id {
-    Some(v) => Some(v)
-    None => source_dark_theme_id
-  }
-  let mut resolved = match options.theme_name {
-    Some(name) => @renderer_svg.SvgConfig::with_theme_name(name)
-    None =>
-      match source_theme_id {
-        Some(theme_id) => @renderer_svg.SvgConfig::with_theme(theme_id)
-        None => @renderer_svg.SvgConfig::new()
-      }
-  }
-  match source_config {
-    Some(config) =>
-      match config.pad {
-        Some(pad_value) => resolved = resolved.with_padding(pad_value)
-        None => ()
-      }
-    None => ()
-  }
-  let merged_theme_overrides : Map[String, String] = {}
-  let merged_dark_theme_overrides : Map[String, String] = {}
-  match source_config {
-    Some(config) => {
-      merge_theme_overrides(merged_theme_overrides, config.theme_overrides)
-      merge_theme_overrides(
-        merged_dark_theme_overrides,
-        config.dark_theme_overrides,
+fn to_lib_diagram_options(options : CompileOptions) -> @lib.DiagramOptions {
+  let mut resolved = @lib.DiagramOptions::new()
+    .with_layout_engine(to_lib_layout_engine(options.layout_engine))
+    .with_direction(options.direction)
+    .with_target_spec(options.target_spec)
+  match options.layout_plugin {
+    Some(plugin) =>
+      resolved = resolved.with_layout_plugin(
+        Some(fn(
+          graph : @graph.GraphInput,
+          config : @engine_api.LayoutConfig,
+          direction : @engine_api.Direction,
+        ) -> Result[@graph.GraphInput, String] {
+          plugin.run(graph, config, direction)
+        }),
       )
-    }
     None => ()
   }
-  merge_theme_overrides(merged_theme_overrides, options.theme_overrides)
-  merge_theme_overrides(
-    merged_dark_theme_overrides,
-    options.dark_theme_overrides,
-  )
-  let effective_scale = match options.scale {
-    Some(v) => Some(v)
-    None =>
-      match source_config {
-        Some(config) => config.scale
-        None => None
-      }
+  match options.route_plugin {
+    Some(plugin) =>
+      resolved = resolved.with_route_plugin(
+        Some(fn(
+          graph : @graph.GraphInput,
+        ) -> Result[@graph.GraphInput, String] {
+          plugin.run(graph)
+        }),
+      )
+    None => ()
   }
-  let effective_no_xml_tag = match options.no_xml_tag {
-    Some(v) => v
-    None =>
-      match source_config {
-        Some(config) => config.no_xml_tag.unwrap_or(false)
-        None => false
-      }
-  }
-  let effective_salt = match options.salt {
-    Some(v) => Some(v)
-    None =>
-      match source_config {
-        Some(config) => config.salt
-        None => None
-      }
-  }
-  let effective_omit_version = match options.omit_version {
-    Some(v) => v
-    None =>
-      match source_config {
-        Some(config) => config.omit_version.unwrap_or(false)
-        None => false
-      }
-  }
-  resolved.with_render_options(
-    effective_dark_theme_id, merged_theme_overrides, merged_dark_theme_overrides,
-    effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
-  )
+  resolved
 }
 
 ///|
-fn merge_theme_overrides(
-  dst : Map[String, String],
-  src : Map[String, String],
-) -> Unit {
-  for key, value in src {
-    dst[key] = value
+fn to_lib_render_options(options : CompileOptions) -> @lib.RenderOptions {
+  @lib.RenderOptions::new()
+  .with_output_mode(to_lib_output_mode(options.output_mode))
+  .with_theme_name(options.theme_name)
+  .with_dark_theme_id(options.dark_theme_id)
+  .with_theme_overrides(options.theme_overrides)
+  .with_dark_theme_overrides(options.dark_theme_overrides)
+  .with_scale(options.scale)
+  .with_no_xml_tag(options.no_xml_tag)
+  .with_salt(options.salt)
+  .with_omit_version(options.omit_version)
+}
+
+///|
+fn to_lib_layout_engine(layout_engine : LayoutEngine) -> @lib.LayoutEngine {
+  match layout_engine {
+    Auto => @lib.Auto
+    Dagre => @lib.Dagre
+    Elk => @lib.Elk
+    Railway => @lib.Railway
   }
 }
 
 ///|
-fn compile_theme_overrides_map(
-  overrides_map : @ir.Map,
-) -> Result[Map[String, String], String] {
-  let overrides : Map[String, String] = {}
-  let errors : Array[String] = []
-  for field in overrides_map.fields {
-    if field.primary is Some(value) {
-      let raw_key = field.name
-      let key = raw_key.to_upper()
-      if not(is_valid_theme_override_key(key)) {
-        errors.push("\"\{raw_key}\" is not a valid theme code")
-        continue
-      }
-      let color_value = value.to_string()
-      if not(is_valid_theme_override_color(color_value)) {
-        errors.push(
-          "expected \"\{raw_key}\" to be a valid named color (\"orange\") or a hex code (\"#f0ff3a\")",
-        )
-        continue
-      }
-      overrides[key] = color_value
-    }
-  }
-  if not(errors.is_empty()) {
-    return Err(errors.join("; "))
-  }
-  Ok(overrides)
-}
-
-///|
-fn is_valid_theme_override_key(key : String) -> Bool {
-  match key {
-    "N1"
-    | "N2"
-    | "N3"
-    | "N4"
-    | "N5"
-    | "N6"
-    | "N7"
-    | "B1"
-    | "B2"
-    | "B3"
-    | "B4"
-    | "B5"
-    | "B6"
-    | "AA2"
-    | "AA4"
-    | "AA5"
-    | "AB4"
-    | "AB5" => true
-    _ => false
+fn to_lib_output_mode(output_mode : OutputMode) -> @lib.OutputMode {
+  match output_mode {
+    Svg => @lib.Svg
+    Ascii => @lib.Ascii
+    Unicode => @lib.Unicode
   }
 }
 
 ///|
-fn is_valid_theme_override_color(value : String) -> Bool {
-  is_css_named_color(value) || is_hex_color(value)
-}
-
-///|
-fn is_css_named_color(value : String) -> Bool {
-  let lower = value.to_lower()
-  for color in css_named_colors {
-    if lower == color {
-      return true
-    }
-  }
-  false
-}
-
-///|
-fn is_hex_color(value : String) -> Bool {
-  if not(value.has_prefix("#")) {
-    return false
-  }
-  let n = value.length()
-  if n != 4 && n != 7 {
-    return false
-  }
-  for i in 1..<n {
-    match value[i].to_char() {
-      Some(c) => if not(is_hex_digit(c)) { return false }
-      None => return false
-    }
-  }
-  true
-}
-
-///|
-fn is_hex_digit(c : Char) -> Bool {
-  ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
-}
-
-///|
-let css_named_colors : Array[String] = [
-  "currentcolor", "transparent", "aliceblue", "antiquewhite", "aqua", "aquamarine",
-  "azure", "beige", "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown",
-  "burlywood", "cadetblue", "chartreuse", "chocolate", "coral", "cornflowerblue",
-  "cornsilk", "crimson", "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray",
-  "darkgrey", "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange",
-  "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray",
-  "darkslategrey", "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray",
-  "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia",
-  "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "grey", "green", "greenyellow",
-  "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender", "lavenderblush",
-  "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow",
-  "lightgray", "lightgrey", "lightgreen", "lightpink", "lightsalmon", "lightseagreen",
-  "lightskyblue", "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow",
-  "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", "mediumblue",
-  "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen",
-  "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose",
-  "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab", "orange", "orangered",
-  "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip",
-  "peachpuff", "peru", "pink", "plum", "powderblue", "purple", "rebeccapurple", "red",
-  "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell",
-  "sienna", "silver", "skyblue", "slateblue", "slategray", "slategrey", "snow", "springgreen",
-  "steelblue", "tan", "teal", "thistle", "tomato", "turquoise", "violet", "wheat",
-  "white", "whitesmoke", "yellow", "yellowgreen",
-]
-
-///|
-fn extract_source_config(ir_map : @ir.Map) -> @diagram.Config? raise DiagoError {
-  let vars_map = match ir_map.get_field("vars") {
-    Some(field) =>
-      match field.map() {
-        Some(map) => map
-        None => return None
-      }
-    None => return None
-  }
-  let config_map = match vars_map.get_field("d2-config") {
-    Some(field) =>
-      match field.map() {
-        Some(map) => map
-        None => return None
-      }
-    None => return None
-  }
-  let mut sketch : Bool? = None
-  let mut theme_id : Int? = None
-  let mut dark_theme_id : Int? = None
-  let theme_overrides : Map[String, String] = {}
-  let dark_theme_overrides : Map[String, String] = {}
-  let mut pad : Double? = None
-  let mut center : Bool? = None
-  let mut layout_engine : String? = None
-  let mut scale : Double? = None
-  let mut no_xml_tag : Bool? = None
-  let mut salt : String? = None
-  let mut omit_version : Bool? = None
-  let data : Map[String, String] = {}
-  if config_map.get_field("sketch") is Some(field) {
-    if field.primary is Some(value) {
-      sketch = value.as_bool()
-    }
-  }
-  if config_map.get_field("theme-id") is Some(field) {
-    if field.primary is Some(value) {
-      theme_id = value.as_int()
-    }
-  }
-  if config_map.get_field("dark-theme-id") is Some(field) {
-    if field.primary is Some(value) {
-      dark_theme_id = value.as_int()
-    }
-  }
-  if config_map.get_field("theme-overrides") is Some(theme_overrides_field) {
-    if theme_overrides_field.map() is Some(overrides_map) {
-      let overrides = match compile_theme_overrides_map(overrides_map) {
-        Ok(parsed) => parsed
-        Err(msg) => raise ConfigError(msg)
-      }
-      merge_theme_overrides(theme_overrides, overrides)
-    }
-  }
-  if config_map.get_field("dark-theme-overrides")
-    is Some(dark_theme_overrides_field) {
-    if dark_theme_overrides_field.map() is Some(overrides_map) {
-      let overrides = match compile_theme_overrides_map(overrides_map) {
-        Ok(parsed) => parsed
-        Err(msg) => raise ConfigError(msg)
-      }
-      merge_theme_overrides(dark_theme_overrides, overrides)
-    }
-  }
-  if config_map.get_field("pad") is Some(field) {
-    if field.primary is Some(value) {
-      if value.as_int() is Some(int_pad) {
-        pad = Some(int_pad.to_double())
-      }
-    }
-  }
-  if config_map.get_field("center") is Some(field) {
-    if field.primary is Some(value) {
-      center = value.as_bool()
-    }
-  }
-  if config_map.get_field("layout-engine") is Some(field) {
-    if field.primary is Some(value) {
-      layout_engine = Some(value.to_string())
-    }
-  }
-  if config_map.get_field("scale") is Some(field) {
-    if field.primary is Some(value) {
-      scale = value.as_double()
-    }
-  }
-  if config_map.get_field("no-xml-tag") is Some(field) {
-    if field.primary is Some(value) {
-      no_xml_tag = value.as_bool()
-    }
-  }
-  if config_map.get_field("salt") is Some(field) {
-    if field.primary is Some(value) {
-      salt = Some(value.to_string())
-    }
-  }
-  if config_map.get_field("omit-version") is Some(field) {
-    if field.primary is Some(value) {
-      omit_version = value.as_bool()
-    }
-  }
-  if config_map.get_field("data") is Some(data_field) {
-    if data_field.map() is Some(data_map) {
-      for field in data_map.fields {
-        if field.primary is Some(value) {
-          data[field.name] = value.to_string()
-        }
-      }
-    }
-  }
-  Some(
-    @diagram.Config::from_parts(
-      sketch, theme_id, dark_theme_id, theme_overrides, dark_theme_overrides, pad,
-      center, layout_engine, scale, no_xml_tag, salt, omit_version, data,
-    ),
-  )
-}
-
-///|
-fn select_target_board(
-  diagram : @diagram.Diagram,
-  target_spec : String?,
-) -> Result[@diagram.Diagram, String] {
-  match target_spec {
-    None => Ok(diagram)
-    Some(spec) => {
-      let path = parse_target_path(spec)
-      if path.length() == 0 {
-        return Ok(diagram)
-      }
-      match diagram.get_board(path) {
-        Some(board) => Ok(board)
-        None => Err("Target board not found: \{spec}")
-      }
-    }
+fn[T] raise_diago_compiler_error(
+  err : @compiler.CompileError,
+) -> T raise DiagoError {
+  match err {
+    @compiler.ParseError(message) => raise ParseError(message)
+    @compiler.IOError(message) => raise IOError(message)
+    @compiler.IrError(message) => raise IrError(message)
+    @compiler.GraphError(message) => raise GraphError(message)
+    @compiler.ConfigError(message) => raise ConfigError(message)
   }
 }
 
 ///|
-fn parse_target_path(spec : String) -> Array[String] {
-  let segments : Array[String] = []
-  let current = StringBuilder::new()
-  for c in spec {
-    if c == '.' {
-      push_target_segment(segments, current.to_string())
-      current.reset()
-    } else {
-      current.write_char(c)
-    }
-  }
-  push_target_segment(segments, current.to_string())
-  segments
-}
-
-///|
-fn push_target_segment(segments : Array[String], segment : String) -> Unit {
-  if segment.length() == 0 || segment == "*" {
-    return
-  }
-  segments.push(segment)
-}
-
-///|
-fn default_import_resolver(base_path : String?) -> @ir.ImportResolver {
-  @ir.ImportResolver::new(fn(import_path) {
-    let full_path = match base_path {
-      Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()
-      None => import_path
-    }
-    let path_with_ext = if full_path.has_suffix(".d2") {
-      full_path
-    } else {
-      full_path + ".d2"
-    }
-    Some(@fs.read_file_to_string(path_with_ext)) catch {
-      _ => None
-    }
-  })
-}
-
-///|
-fn get_dir_path(file_path : String) -> String? {
-  let path = @path.Path(file_path)
-  let dir = path.dirname()
-  let dir_str = dir.to_string()
-  if dir_str.length() > 0 {
-    Some(dir_str)
-  } else {
-    None
+fn[T] raise_diago_lib_error(err : @lib.LibError) -> T raise DiagoError {
+  match err {
+    @lib.LayoutError(message) => raise LayoutError(message)
+    @lib.RenderError(message) => raise RenderError(message)
+    @lib.ConfigError(message) => raise ConfigError(message)
+    @lib.TargetError(message) => raise TargetError(message)
   }
 }
