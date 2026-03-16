@@ -63,8 +63,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: `NodePath`, `Map::get_node`, root-based `parent(...)` lookup, deep copy helpers, AST/reference context, and glob/lazy-glob metadata.
   - Remaining imported-source traceability is tracked by the next checklist item.
 
-- [ ] Add import-aware AST/source tracing to IR nodes.
-  - Done when imported fields/edges can be traced back to both local and imported syntax in parity-sensitive editor features.
+- [x] Add import-aware AST/source tracing to IR nodes.
+  - Landed in diago: `Map/Field/Edge.import_ast()` now preserves the local import syntax while imported references still retain imported-file `source_path`.
+  - Verified for both `field: @import` and `...@import` flows, including imported edges.
 
 - [ ] Align IR field/edge naming and path semantics with D2.
   - In D2, key/value identity and syntax form are preserved more aggressively.

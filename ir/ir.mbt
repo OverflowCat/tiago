@@ -45,6 +45,7 @@ pub struct Map {
   fields : Array[Field]
   edges : Array[Edge]
   ast : @ast.Node?
+  import_ast : @ast.Node?
   source_path : String?
   path : NodePath?
 } derive(Eq, Show)
@@ -56,6 +57,7 @@ pub struct Field {
   primary : Scalar?
   composite : Composite?
   references : Array[FieldReference]
+  import_ast : @ast.Node?
   path : NodePath?
 } derive(Eq, Show)
 
@@ -90,6 +92,7 @@ pub struct Edge {
   primary : Scalar?
   map : Map?
   references : Array[EdgeReference]
+  import_ast : @ast.Node?
   path : NodePath?
 } derive(Eq, Show)
 
@@ -262,6 +265,28 @@ pub fn Node::ast(self : Node) -> @ast.Node? {
 }
 
 ///|
+pub fn Node::import_ast(self : Node) -> @ast.Node? {
+  match self {
+    Scalar(_) => None
+    Field(f) => f.import_ast()
+    Edge(e) => e.import_ast()
+    IRArray(_) => None
+    Map(m) => m.import_ast()
+    Composite(c) =>
+      match c {
+        Array(_) => None
+        Map(m) => m.import_ast()
+      }
+    Value(v) =>
+      match v {
+        Scalar(_) => None
+        Array(_) => None
+        Map(m) => m.import_ast()
+      }
+  }
+}
+
+///|
 pub fn Node::last_ref(self : Node) -> Reference? {
   match self {
     Field(f) => f.last_ref()
@@ -417,7 +442,14 @@ pub fn Scalar::string(s : String) -> Scalar {
 
 ///|
 pub fn Map::new() -> Map {
-  { fields: [], edges: [], ast: None, source_path: None, path: None }
+  {
+    fields: [],
+    edges: [],
+    ast: None,
+    import_ast: None,
+    source_path: None,
+    path: None,
+  }
 }
 
 ///|
@@ -426,6 +458,7 @@ pub fn Map::from_ast(ast : @ast.Map, source_path? : String? = None) -> Map {
     fields: [],
     edges: [],
     ast: Some(@ast.Node::Map(ast)),
+    import_ast: None,
     source_path,
     path: None,
   }
@@ -438,12 +471,19 @@ pub fn Field::new(
   composite : Composite?,
   references : Array[FieldReference],
 ) -> Field {
-  { name, primary, composite, references, path: None }
+  { name, primary, composite, references, import_ast: None, path: None }
 }
 
 ///|
 pub fn Field::simple(name : String) -> Field {
-  { name, primary: None, composite: None, references: [], path: None }
+  {
+    name,
+    primary: None,
+    composite: None,
+    references: [],
+    import_ast: None,
+    path: None,
+  }
 }
 
 ///|
@@ -467,7 +507,7 @@ pub fn Edge::new(
   map : Map?,
   references : Array[EdgeReference],
 ) -> Edge {
-  { id, primary, map, references, path: None }
+  { id, primary, map, references, import_ast: None, path: None }
 }
 
 ///|
@@ -852,7 +892,14 @@ fn reindex_map(m : Map, path : NodePath) -> Map {
     let edge_path = path.append(NodePathSegment::EdgeStep(edge.id.copy()))
     edges.push(reindex_edge(edge, edge_path))
   }
-  { fields, edges, ast: m.ast, source_path: m.source_path, path: Some(path) }
+  {
+    fields,
+    edges,
+    ast: m.ast,
+    import_ast: m.import_ast,
+    source_path: m.source_path,
+    path: Some(path),
+  }
 }
 
 ///|
@@ -872,6 +919,7 @@ fn reindex_field(field : Field, path : NodePath) -> Field {
     primary,
     composite,
     references: field.references.copy(),
+    import_ast: field.import_ast,
     path: Some(path),
   }
 }
@@ -893,6 +941,7 @@ fn reindex_edge(edge : Edge, path : NodePath) -> Edge {
     primary,
     map,
     references: edge.references.copy(),
+    import_ast: edge.import_ast,
     path: Some(path),
   }
 }
@@ -988,6 +1037,7 @@ fn copy_field_detached(field : Field) -> Field {
     primary,
     composite,
     references: field.references.copy(),
+    import_ast: field.import_ast,
     path: None,
   }
 }
@@ -1007,6 +1057,7 @@ fn copy_edge_detached(edge : Edge) -> Edge {
     primary,
     map,
     references: edge.references.copy(),
+    import_ast: edge.import_ast,
     path: None,
   }
 }
@@ -1021,7 +1072,68 @@ fn copy_map_detached(m : Map) -> Map {
   for edge in m.edges {
     edges.push(copy_edge_detached(edge))
   }
-  { fields, edges, ast: m.ast, source_path: m.source_path, path: None }
+  {
+    fields,
+    edges,
+    ast: m.ast,
+    import_ast: m.import_ast,
+    source_path: m.source_path,
+    path: None,
+  }
+}
+
+///|
+fn with_import_ast_map(m : Map, import_ast : @ast.Node) -> Map {
+  let fields : Array[Field] = []
+  for field in m.fields {
+    fields.push(with_import_ast_field(field, import_ast))
+  }
+  let edges : Array[Edge] = []
+  for edge in m.edges {
+    edges.push(with_import_ast_edge(edge, import_ast))
+  }
+  {
+    fields,
+    edges,
+    ast: m.ast,
+    import_ast: Some(import_ast),
+    source_path: m.source_path,
+    path: m.path,
+  }
+}
+
+///|
+fn with_import_ast_field(field : Field, import_ast : @ast.Node) -> Field {
+  let composite = match field.composite {
+    Some(Composite::Map(map)) =>
+      Some(Composite::Map(with_import_ast_map(map, import_ast)))
+    Some(other) => Some(other)
+    None => None
+  }
+  {
+    name: field.name,
+    primary: field.primary,
+    composite,
+    references: field.references.copy(),
+    import_ast: Some(import_ast),
+    path: field.path,
+  }
+}
+
+///|
+fn with_import_ast_edge(edge : Edge, import_ast : @ast.Node) -> Edge {
+  let map = match edge.map {
+    Some(child) => Some(with_import_ast_map(child, import_ast))
+    None => None
+  }
+  {
+    id: edge.id.copy(),
+    primary: edge.primary,
+    map,
+    references: edge.references.copy(),
+    import_ast: Some(import_ast),
+    path: edge.path,
+  }
 }
 
 // ============================================================================
@@ -1398,6 +1510,11 @@ pub fn Field::ast(self : Field) -> @ast.Node? {
 }
 
 ///|
+pub fn Field::import_ast(self : Field) -> @ast.Node? {
+  self.import_ast
+}
+
+///|
 pub fn Field::path(self : Field) -> NodePath? {
   self.path
 }
@@ -1452,6 +1569,11 @@ pub fn Edge::ast(self : Edge) -> @ast.Node? {
 }
 
 ///|
+pub fn Edge::import_ast(self : Edge) -> @ast.Node? {
+  self.import_ast
+}
+
+///|
 pub fn Edge::path(self : Edge) -> NodePath? {
   self.path
 }
@@ -1469,6 +1591,11 @@ pub fn Edge::copy(self : Edge) -> Edge {
 ///|
 pub fn Map::ast(self : Map) -> @ast.Node? {
   self.ast
+}
+
+///|
+pub fn Map::import_ast(self : Map) -> @ast.Node? {
+  self.import_ast
 }
 
 ///|

@@ -77,6 +77,31 @@ fn compile_import(
   resolver : ImportResolver,
   import_stack : Array[String],
 ) -> Unit raise CompileError {
+  let (_, _, display) = split_import_file_and_selector(imp)
+  let (import_ir, selector) = compile_import_target(imp, resolver, import_stack)
+  if imp.spread {
+    // Spread import in map context: only maps are allowed.
+    let m2 = select_map_for_spread(import_ir, selector) catch {
+      _ =>
+        raise CompileError::ImportError("cannot spread import non map into map")
+    }
+    merge_into_map(ir, m2)
+    return
+  }
+
+  // Non-spread import at map node level: create field named by the imported file key.
+  let (primary, composite) = select_primary_and_composite(import_ir, selector)
+  let field_name = extract_filename(display)
+  let field0 = ir.ensure_field(field_name)
+  ir.set_field(Field::new(field0.name, primary, composite, field0.references))
+}
+
+///|
+fn compile_import_target(
+  imp : @ast.Import,
+  resolver : ImportResolver,
+  import_stack : Array[String],
+) -> (Map, Array[String]) raise CompileError {
   let (file_key, selector, display) = split_import_file_and_selector(imp)
   let (content, canonical) = resolve_import_content(resolver, file_key) catch {
     _ =>
@@ -104,21 +129,7 @@ fn compile_import(
     stack2,
     source_path=Some(canonical),
   )
-  if imp.spread {
-    // Spread import in map context: only maps are allowed.
-    let m2 = select_map_for_spread(import_ir, selector) catch {
-      _ =>
-        raise CompileError::ImportError("cannot spread import non map into map")
-    }
-    merge_into_map(ir, m2)
-    return
-  }
-
-  // Non-spread import at map node level: create field named by the imported file key.
-  let (primary, composite) = select_primary_and_composite(import_ir, selector)
-  let field_name = extract_filename(display)
-  let field0 = ir.ensure_field(field_name)
-  ir.set_field(Field::new(field0.name, primary, composite, field0.references))
+  (with_import_ast_map(import_ir, @ast.Node::Import(imp)), selector)
 }
 
 ///|
@@ -450,34 +461,8 @@ fn compile_value_with_imports(
       )
     }
     @ast.Value::Import(imp) => {
-      let (file_key, selector, display) = split_import_file_and_selector(imp)
-      let (content, canonical) = resolve_import_content(resolver, file_key) catch {
-        _ =>
-          raise CompileError::ImportError(
-            "could not resolve import '\{display}'",
-          )
-      }
-      if contains(import_stack, canonical) {
-        raise CompileError::ImportError(
-          "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
-        )
-      }
-      let stack2 = import_stack.copy()
-      stack2.push(canonical)
-      let (import_ast, errors) = @parser.parse(content)
-      if !errors.is_empty() {
-        raise CompileError::ImportError(
-          "parse error in imported file '\{display}'",
-        )
-      }
-      let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
-      compile_map_nodes_with_imports(
-        import_ir,
-        import_ast,
-        import_ast.nodes,
-        resolver,
-        stack2,
-        source_path=Some(canonical),
+      let (import_ir, selector) = compile_import_target(
+        imp, resolver, import_stack,
       )
       let (primary, composite) = select_primary_and_composite(
         import_ir, selector,
@@ -529,34 +514,8 @@ fn compile_array_with_imports(
       @ast.ArrayNode::Substitution(sub) =>
         values.push(Value::Scalar(substitution_scalar(sub, source_path)))
       @ast.ArrayNode::Import(imp) => {
-        let (file_key, selector, display) = split_import_file_and_selector(imp)
-        let (content, canonical) = resolve_import_content(resolver, file_key) catch {
-          _ =>
-            raise CompileError::ImportError(
-              "could not resolve import '\{display}'",
-            )
-        }
-        if contains(import_stack, canonical) {
-          raise CompileError::ImportError(
-            "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
-          )
-        }
-        let stack2 = import_stack.copy()
-        stack2.push(canonical)
-        let (import_ast, errors) = @parser.parse(content)
-        if !errors.is_empty() {
-          raise CompileError::ImportError(
-            "parse error in imported file '\{display}'",
-          )
-        }
-        let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
-        compile_map_nodes_with_imports(
-          import_ir,
-          import_ast,
-          import_ast.nodes,
-          resolver,
-          stack2,
-          source_path=Some(canonical),
+        let (import_ir, selector) = compile_import_target(
+          imp, resolver, import_stack,
         )
         if imp.spread {
           // Only allow spreading arrays into arrays (d2 parity).
@@ -620,34 +579,8 @@ fn compile_ast_value_with_imports(
         compile_array_with_imports(a, resolver, import_stack, source_path),
       )
     @ast.Value::Import(imp) => {
-      let (file_key, selector, display) = split_import_file_and_selector(imp)
-      let (content, canonical) = resolve_import_content(resolver, file_key) catch {
-        _ =>
-          raise CompileError::ImportError(
-            "could not resolve import '\{display}'",
-          )
-      }
-      if contains(import_stack, canonical) {
-        raise CompileError::ImportError(
-          "detected cyclic import chain: \{format_cycle(import_stack, canonical)}",
-        )
-      }
-      let stack2 = import_stack.copy()
-      stack2.push(canonical)
-      let (import_ast, errors) = @parser.parse(content)
-      if !errors.is_empty() {
-        raise CompileError::ImportError(
-          "parse error in imported file '\{display}'",
-        )
-      }
-      let import_ir = Map::from_ast(import_ast, source_path=Some(canonical))
-      compile_map_nodes_with_imports(
-        import_ir,
-        import_ast,
-        import_ast.nodes,
-        resolver,
-        stack2,
-        source_path=Some(canonical),
+      let (import_ir, selector) = compile_import_target(
+        imp, resolver, import_stack,
       )
       let (primary, composite) = select_primary_and_composite(
         import_ir, selector,

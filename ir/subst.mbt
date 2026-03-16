@@ -81,7 +81,14 @@ fn Map::resolve_substitutions_with_stack(
       Some(m) => m.resolve_substitutions_with_stack(local_stack, false)
       None => ()
     }
-    self.edges[ei] = Edge::new(edge.id, primary, map, edge.references)
+    self.edges[ei] = {
+      id: edge.id,
+      primary,
+      map,
+      references: edge.references,
+      import_ast: edge.import_ast,
+      path: edge.path,
+    }
   }
 }
 
@@ -132,12 +139,14 @@ fn resolve_field_primary_substitutions(
   if removed {
     return true
   }
-  m.fields[field_index] = Field::new(
-    field.name,
-    updated_field.0,
-    updated_field.1,
-    field.references,
-  )
+  m.fields[field_index] = {
+    name: field.name,
+    primary: updated_field.0,
+    composite: updated_field.1,
+    references: field.references,
+    import_ast: field.import_ast,
+    path: field.path,
+  }
   false
 }
 
@@ -907,7 +916,17 @@ fn overlay_field(base : Field, overlay : Field) -> Field {
   for r in overlay.references {
     refs.push(r)
   }
-  Field::new(base.name, primary, composite, refs)
+  {
+    name: base.name,
+    primary,
+    composite,
+    references: refs,
+    import_ast: match overlay.import_ast {
+      Some(node) => Some(node)
+      None => base.import_ast
+    },
+    path: base.path,
+  }
 }
 
 ///|
@@ -932,7 +951,17 @@ fn overlay_edge(base : Edge, overlay : Edge) -> Edge {
   for r in overlay.references {
     refs.push(r)
   }
-  Edge::new(clone_edge_id(base.id), primary, map, refs)
+  {
+    id: clone_edge_id(base.id),
+    primary,
+    map,
+    references: refs,
+    import_ast: match overlay.import_ast {
+      Some(node) => Some(node)
+      None => base.import_ast
+    },
+    path: base.path,
+  }
 }
 
 ///|
@@ -980,6 +1009,7 @@ fn clone_map(m : Map) -> Map {
     fields: [],
     edges: [],
     ast: m.ast,
+    import_ast: m.import_ast,
     source_path: m.source_path,
     path: m.path,
   }
@@ -1007,6 +1037,7 @@ fn clone_field(f : Field) -> Field {
     primary,
     composite,
     references: f.references.copy(),
+    import_ast: f.import_ast,
     path: f.path,
   }
 }
@@ -1038,6 +1069,7 @@ fn clone_edge(e : Edge) -> Edge {
     primary,
     map,
     references: e.references.copy(),
+    import_ast: e.import_ast,
     path: e.path,
   }
 }

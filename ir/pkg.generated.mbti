@@ -47,10 +47,12 @@ pub struct Edge {
   primary : Scalar?
   map : Map?
   references : Array[EdgeReference]
+  import_ast : @ast.Node?
   path : NodePath?
 }
 pub fn Edge::ast(Self) -> @ast.Node?
 pub fn Edge::copy(Self) -> Self
+pub fn Edge::import_ast(Self) -> @ast.Node?
 pub fn Edge::last_primary_key(Self) -> @ast.Key?
 pub fn Edge::last_primary_ref(Self) -> Reference?
 pub fn Edge::last_ref(Self) -> Reference?
@@ -97,6 +99,7 @@ pub struct Field {
   primary : Scalar?
   composite : Composite?
   references : Array[FieldReference]
+  import_ast : @ast.Node?
   path : NodePath?
 }
 pub fn Field::array(Self) -> IRArray?
@@ -104,6 +107,7 @@ pub fn Field::ast(Self) -> @ast.Node?
 pub fn Field::copy(Self) -> Self
 pub fn Field::has_composite(Self) -> Bool
 pub fn Field::has_primary(Self) -> Bool
+pub fn Field::import_ast(Self) -> @ast.Node?
 pub fn Field::last_primary_key(Self) -> @ast.Key?
 pub fn Field::last_primary_ref(Self) -> Reference?
 pub fn Field::last_ref(Self) -> Reference?
@@ -164,6 +168,7 @@ pub struct Map {
   fields : Array[Field]
   edges : Array[Edge]
   ast : @ast.Node?
+  import_ast : @ast.Node?
   source_path : String?
   path : NodePath?
 }
@@ -180,6 +185,7 @@ pub fn Map::from_ast(@ast.Map, source_path? : String?) -> Self
 pub fn Map::get_field(Self, String) -> Field?
 pub fn Map::get_node(Self, NodePath) -> Node?
 pub fn Map::has_field(Self, String) -> Bool
+pub fn Map::import_ast(Self) -> @ast.Node?
 pub fn Map::multi_glob(Self, Array[String]) -> (Array[Field], Bool)
 pub fn Map::new() -> Self
 pub fn Map::parent(Self, Self) -> Node?
@@ -203,6 +209,7 @@ pub(all) enum Node {
 pub fn Node::ast(Self) -> @ast.Node?
 pub fn Node::children(Self) -> Array[Self]
 pub fn Node::copy(Self) -> Self
+pub fn Node::import_ast(Self) -> @ast.Node?
 pub fn Node::last_primary_key(Self) -> @ast.Key?
 pub fn Node::last_primary_ref(Self) -> Reference?
 pub fn Node::last_ref(Self) -> Reference?

@@ -500,6 +500,7 @@ fn clone_field_for_properties(f : Field) -> Field {
     primary: f.primary,
     composite,
     references: f.references.copy(),
+    import_ast: f.import_ast,
     path: f.path,
   }
 }
@@ -510,6 +511,7 @@ fn clone_map_for_properties(m : Map) -> Map {
     fields: [],
     edges: [],
     ast: m.ast,
+    import_ast: m.import_ast,
     source_path: m.source_path,
     path: m.path,
   }

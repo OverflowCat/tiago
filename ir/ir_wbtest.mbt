@@ -461,6 +461,61 @@ test "compile with imports tracks source path in references" {
 }
 
 ///|
+test "compile with imports tracks import AST on imported maps fields and edges" {
+  let resolver = ImportResolver::new(fn(path) {
+    match path {
+      "inner.d2" =>
+        Some(
+          (
+            #|service.api: ok
+            #|service -> db: call
+          ),
+        )
+      _ => None
+    }
+  })
+  let (ast, _) = @parser.parse("common: @inner")
+  let import_node = match ast.nodes[0] {
+    @ast.MapNode::Key(key) =>
+      match key.value {
+        Some(@ast.Value::Import(imp)) => @ast.Node::Import(imp)
+        _ => fail("expected import value")
+      }
+    _ => fail("expected key node")
+  }
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("common") is Some(common_field) else {
+    fail("expected common field")
+  }
+  assert_eq(common_field.import_ast(), None)
+  guard common_field.map() is Some(common_map) else {
+    fail("expected imported map")
+  }
+  assert_eq(common_map.import_ast(), Some(import_node))
+  guard common_map.get_field("service") is Some(service_field) else {
+    fail("expected service field")
+  }
+  assert_eq(service_field.import_ast(), Some(import_node))
+  guard service_field.last_ref() is Some(Reference::FieldRef(field_ref)) else {
+    fail("expected service field ref")
+  }
+  guard field_ref.context() is Some(field_ctx) else {
+    fail("expected service field context")
+  }
+  assert_eq(field_ctx.source_path, Some("inner.d2"))
+  assert_eq(common_map.edges.length(), 1)
+  let imported_edge = common_map.edges[0]
+  assert_eq(imported_edge.import_ast(), Some(import_node))
+  guard imported_edge.last_ref() is Some(Reference::EdgeRef(edge_ref)) else {
+    fail("expected edge ref")
+  }
+  guard edge_ref.context() is Some(edge_ctx) else {
+    fail("expected edge context")
+  }
+  assert_eq(edge_ctx.source_path, Some("inner.d2"))
+}
+
+///|
 test "compile with imports - spread" {
   let source = "...@common"
   let (ast, _) = @parser.parse(source)
@@ -476,6 +531,60 @@ test "compile with imports - spread" {
   // Should have "server" and "database" directly at the root level
   assert_true(ir.has_field("server"))
   assert_true(ir.has_field("database"))
+}
+
+///|
+test "compile with spread imports tracks import AST on merged fields and edges" {
+  let resolver = ImportResolver::new(fn(path) {
+    match path {
+      "common.d2" =>
+        Some(
+          (
+            #|alpha.beta: ok
+            #|alpha -> beta
+          ),
+        )
+      _ => None
+    }
+  })
+  let (ast, _) = @parser.parse("...@common")
+  let import_node = match ast.nodes[0] {
+    @ast.MapNode::Import(imp) => @ast.Node::Import(imp)
+    _ => fail("expected import node")
+  }
+  let ir = compile_with_imports(ast, resolver)
+  guard ir.get_field("alpha") is Some(alpha_field) else {
+    fail("expected alpha field")
+  }
+  assert_eq(alpha_field.import_ast(), Some(import_node))
+  guard alpha_field.last_ref() is Some(Reference::FieldRef(alpha_ref)) else {
+    fail("expected alpha ref")
+  }
+  guard alpha_ref.context() is Some(alpha_ctx) else {
+    fail("expected alpha context")
+  }
+  assert_eq(alpha_ctx.source_path, Some("common.d2"))
+  guard alpha_field.map() is Some(alpha_map) else { fail("expected alpha map") }
+  guard alpha_map.get_field("beta") is Some(beta_field) else {
+    fail("expected beta field")
+  }
+  guard beta_field.last_ref() is Some(Reference::FieldRef(beta_ref)) else {
+    fail("expected beta ref")
+  }
+  guard beta_ref.context() is Some(beta_ctx) else {
+    fail("expected beta context")
+  }
+  assert_eq(beta_ctx.source_path, Some("common.d2"))
+  assert_eq(ir.edges.length(), 1)
+  let imported_edge = ir.edges[0]
+  assert_eq(imported_edge.import_ast(), Some(import_node))
+  guard imported_edge.last_ref() is Some(Reference::EdgeRef(edge_ref)) else {
+    fail("expected edge ref")
+  }
+  guard edge_ref.context() is Some(edge_ctx) else {
+    fail("expected edge context")
+  }
+  assert_eq(edge_ctx.source_path, Some("common.d2"))
 }
 
 ///|
