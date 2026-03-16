@@ -87,6 +87,8 @@ priv struct Object {
   mut tooltip : String?
   mut link : String?
   classes : Array[String]
+  mut language : String?
+  sql_constraints : Array[String]
   mut width : Double?
   mut height : Double?
   mut grid_rows : Int?
@@ -116,6 +118,8 @@ fn Object::new(id : String) -> Object {
     tooltip: None,
     link: None,
     classes: [],
+    language: None,
+    sql_constraints: [],
     width: None,
     height: None,
     grid_rows: None,
@@ -323,6 +327,7 @@ priv struct Graph {
   scenarios : Array[Scenario]
   steps : Array[Step]
   mut legend : Legend?
+  mut is_folder_only : Bool
 } derive(Show)
 
 ///|
@@ -370,6 +375,7 @@ fn Graph::new(name : String) -> Graph {
     scenarios: [],
     steps: [],
     legend: None,
+    is_folder_only: false,
   }
 }
 
@@ -484,6 +490,10 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
   for c in obj.classes {
     classes.push(c)
   }
+  let sql_constraints : Array[String] = []
+  for constraint in obj.sql_constraints {
+    sql_constraints.push(constraint)
+  }
   let box = match (obj.width, obj.height) {
     (None, None) => None
     (Some(w), Some(h)) => Some(@graph.Box::new(0.0, 0.0, w, h))
@@ -514,6 +524,8 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     obj.top,
     obj.left,
     direction=obj.direction,
+    language=obj.language,
+    sql_constraints~,
   )
 }
 
@@ -588,6 +600,10 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
   for c in graph.root.classes {
     root_classes.push(c)
   }
+  let root_sql_constraints : Array[String] = []
+  for constraint in graph.root.sql_constraints {
+    root_sql_constraints.push(constraint)
+  }
   let root_box = match (graph.root.width, graph.root.height) {
     (None, None) => None
     (Some(w), Some(h)) => Some(@graph.Box::new(0.0, 0.0, w, h))
@@ -618,6 +634,8 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
     graph.root.top,
     graph.root.left,
     direction=graph.root.direction,
+    language=graph.root.language,
+    sql_constraints=root_sql_constraints,
   )
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
@@ -654,6 +672,7 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
     scenarios,
     steps,
     legend,
+    is_folder_only=graph.is_folder_only,
   )
 }
 
@@ -722,6 +741,9 @@ fn compile_board_graph(
   apply_sequence_defaults(graph)
   apply_d2_color_defaults(graph)
   compile_legend(graph, ir, classes)
+  if graph.objects.is_empty() {
+    graph.is_folder_only = true
+  }
 }
 
 ///|
@@ -831,6 +853,7 @@ fn compile_children(
           let constraints = extract_sql_constraints(inner)
           for c in constraints {
             if c.length() > 0 {
+              child.sql_constraints.push(c)
               child.classes.push("sql_constraint:" + c)
             }
           }
@@ -884,6 +907,7 @@ fn normalize_block_string_language(tag : String) -> String {
 
 ///|
 fn set_object_language(obj : Object, language : String?) -> Unit {
+  obj.language = language
   let kept : Array[String] = []
   for c in obj.classes {
     if !c.has_prefix("lang:") {

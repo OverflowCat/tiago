@@ -882,13 +882,7 @@ fn d2_hash_shape_label_position(shape : Shape, config : SvgConfig) -> String? {
 
 ///|
 fn d2_hash_sql_constraints(child : Shape) -> String {
-  let constraints : Array[String] = []
-  for cls in child.classes {
-    match strip_prefix(cls, SQL_CONSTRAINT_PREFIX) {
-      Some(v) => constraints.push(v)
-      None => ()
-    }
-  }
+  let constraints = shape_sql_constraints(child)
   if constraints.is_empty() {
     "null"
   } else {

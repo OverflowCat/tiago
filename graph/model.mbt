@@ -16,6 +16,13 @@
 /// Immutable data model for functional architecture
 
 ///|
+/// Graph-scoped metadata values aligned with D2's current config data shape.
+pub(all) enum GraphDataValue {
+  Text(String)
+  StringArray(Array[String])
+} derive(Eq, Show)
+
+///|
 /// Immutable legend configuration
 pub struct LegendModel {
   title : String?
@@ -149,6 +156,8 @@ pub struct ObjectModel {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?
@@ -177,6 +186,8 @@ pub fn ObjectModel::new(id : String) -> ObjectModel {
     tooltip: None,
     link: None,
     classes: [],
+    language: None,
+    sql_constraints: [],
     grid_rows: None,
     grid_columns: None,
     grid_gap: None,
@@ -276,6 +287,8 @@ pub struct GraphModel {
   scenarios : Array[ScenarioModel]
   steps : Array[StepModel]
   legend : LegendModel?
+  is_folder_only : Bool
+  data : Map[String, GraphDataValue]
 } derive(Show)
 
 ///|
@@ -317,6 +330,8 @@ pub fn GraphModel::new(name : String) -> GraphModel {
     scenarios: [],
     steps: [],
     legend: None,
+    is_folder_only: false,
+    data: {},
   }
 }
 

@@ -77,8 +77,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 ## 3. Graph Model And Board Semantics
 
-- [ ] Expand `graph` to carry D2-level metadata.
-  - D2 reference fields include `AST`, `BaseAST`, `Theme`, `Data`, board parentage, folder-only flags, references, `ID` vs `IDVal`, per-object source links, and richer attribute/style state.
+- [x] Expand `graph` to carry D2-level metadata.
+  - Landed in diago: graph inputs/models now preserve D2-style folder-only board metadata, graph-scoped config `data`, and explicit object metadata for language and SQL constraints instead of relying only on encoded class names.
+  - Remaining graph parity items still tracked separately below: `ID` vs `IDVal`, object/edge reference tracking, and broader board compilation semantics.
 
 - [ ] Align object identity semantics with D2's `ID` vs `IDVal` split.
   - Done when syntax-preserving IDs and semantic IDs are both available where needed.

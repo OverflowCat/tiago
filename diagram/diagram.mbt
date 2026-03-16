@@ -116,6 +116,8 @@ pub struct Shape {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?
@@ -163,6 +165,7 @@ pub struct Connection {
 pub struct Diagram {
   name : String
   config : Config?
+  is_folder_only : Bool
   root : Shape
   shapes : Array[Shape]
   connections : Array[Connection]
@@ -428,6 +431,8 @@ fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
     tooltip: obj.tooltip,
     link: obj.link,
     classes: obj.classes,
+    language: obj.language,
+    sql_constraints: obj.sql_constraints,
     grid_rows: obj.grid_rows,
     grid_columns: obj.grid_columns,
     grid_gap: obj.grid_gap,
@@ -717,6 +722,7 @@ pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
   {
     name: graph.name,
     config,
+    is_folder_only: graph.is_folder_only,
     root: shape_from_object(graph.root),
     shapes,
     connections,

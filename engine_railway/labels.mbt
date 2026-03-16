@@ -450,16 +450,21 @@ fn estimate_sql_table_size(
 ///|
 fn sql_table_constraint_abbr_from_object(obj : @graph.ObjectInput) -> String {
   let constraints : Array[String] = []
-  for cls in obj.classes {
-    if cls.has_prefix(SQL_CONSTRAINT_PREFIX) {
-      let buf = StringBuilder::new()
-      for i = SQL_CONSTRAINT_PREFIX.length(); i < cls.length(); i = i + 1 {
-        match cls[i].to_char() {
-          Some(ch) => buf.write_char(ch)
-          None => ()
+  for constraint in obj.sql_constraints {
+    constraints.push(constraint)
+  }
+  if constraints.is_empty() {
+    for cls in obj.classes {
+      if cls.has_prefix(SQL_CONSTRAINT_PREFIX) {
+        let buf = StringBuilder::new()
+        for i = SQL_CONSTRAINT_PREFIX.length(); i < cls.length(); i = i + 1 {
+          match cls[i].to_char() {
+            Some(ch) => buf.write_char(ch)
+            None => ()
+          }
         }
+        constraints.push(buf.to_string())
       }
-      constraints.push(buf.to_string())
     }
   }
   let out : Array[String] = []

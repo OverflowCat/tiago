@@ -126,9 +126,25 @@ pub fn compile_graph(
     Ok(config) => config
     Err(err) => return Err(err)
   }
-  let graph_input = @exporter.to_graph(name, ir_map) catch {
+  let base_graph_input = @exporter.to_graph(name, ir_map) catch {
     e => return Err(GraphError(e.to_string()))
   }
+  let graph_input = @graph.GraphInput::from_parts(
+    base_graph_input.name,
+    base_graph_input.root,
+    base_graph_input.objects,
+    base_graph_input.edges,
+    base_graph_input.sequence_fragments,
+    base_graph_input.activation_boxes,
+    base_graph_input.sequence_notes,
+    base_graph_input.sequence_fragments_layout,
+    base_graph_input.layers,
+    base_graph_input.scenarios,
+    base_graph_input.steps,
+    base_graph_input.legend,
+    is_folder_only=base_graph_input.is_folder_only,
+    data=graph_data_from_source_config(source_config),
+  )
   Ok({ ir_map, graph_input, source_config })
 }
 

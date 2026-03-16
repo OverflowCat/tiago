@@ -45,3 +45,78 @@ test "classes block is treated as reserved during object compilation" {
   assert_eq(graph.objects.length(), 1)
   assert_eq(graph.objects[0].id, "alice")
 }
+
+///|
+test "board graphs carry folder-only metadata" {
+  let layer_body = @ir.Map::new()
+  layer_body.add_field(
+    @ir.Field::new("service", None, Some(@ir.Composite::Map(@ir.Map::new())), []),
+  )
+  let layers_map = @ir.Map::new()
+  layers_map.add_field(
+    @ir.Field::new("one", None, Some(@ir.Composite::Map(layer_body)), []),
+  )
+  let ir = @ir.Map::new()
+  ir.add_field(
+    @ir.Field::new("layers", None, Some(@ir.Composite::Map(layers_map)), []),
+  )
+
+  let graph = compile("root", ir) catch { e => fail(e.to_string()) }
+  assert_true(graph.is_folder_only)
+  assert_eq(graph.layers.length(), 1)
+  assert_false(graph.layers[0].graph.is_folder_only)
+  assert_true(graph.layers[0].graph.find_object("service") is Some(_))
+}
+
+///|
+test "graph objects preserve explicit language and sql constraints" {
+  let code_body = @ir.Map::new()
+  code_body.add_field(
+    @ir.Field::new("shape", Some(@ir.Scalar::string("code")), None, []),
+  )
+  let column_body = @ir.Map::new()
+  column_body.add_field(
+    @ir.Field::new(
+      "constraint",
+      None,
+      Some(
+        @ir.Composite::Array(
+          @ir.IRArray::new([
+            @ir.Value::Scalar(@ir.Scalar::string("primary_key")),
+            @ir.Value::Scalar(@ir.Scalar::string("unique")),
+          ]),
+        ),
+      ),
+      [],
+    ),
+  )
+  let table_body = @ir.Map::new()
+  table_body.add_field(
+    @ir.Field::new("shape", Some(@ir.Scalar::string("sql_table")), None, []),
+  )
+  table_body.add_field(
+    @ir.Field::new("id", None, Some(@ir.Composite::Map(column_body)), []),
+  )
+  let ir = @ir.Map::new()
+  ir.add_field(
+    @ir.Field::new(
+      "snippet",
+      Some(@ir.Scalar::string("select 1")),
+      Some(@ir.Composite::Map(code_body)),
+      [],
+    ),
+  )
+  ir.add_field(
+    @ir.Field::new("orders", None, Some(@ir.Composite::Map(table_body)), []),
+  )
+
+  let graph = compile("root", ir) catch { e => fail(e.to_string()) }
+  guard graph.find_object("snippet") is Some(snippet) else {
+    fail("expected code object")
+  }
+  guard graph.find_object("orders.id") is Some(column) else {
+    fail("expected sql column object")
+  }
+  assert_eq(snippet.language, Some("text"))
+  assert_eq(column.sql_constraints, ["primary_key", "unique"])
+}

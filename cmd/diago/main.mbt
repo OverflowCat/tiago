@@ -1064,9 +1064,25 @@ fn compile_to_diagram(
     Ok(engine) => engine
     Err(e) => return Err(e)
   }
-  let graph_input = @exporter.to_graph("diagram", ir) catch {
+  let base_graph_input = @exporter.to_graph("diagram", ir) catch {
     e => return Err("Graph error: \{e}")
   }
+  let graph_input = @graph.GraphInput::from_parts(
+    base_graph_input.name,
+    base_graph_input.root,
+    base_graph_input.objects,
+    base_graph_input.edges,
+    base_graph_input.sequence_fragments,
+    base_graph_input.activation_boxes,
+    base_graph_input.sequence_notes,
+    base_graph_input.sequence_fragments_layout,
+    base_graph_input.layers,
+    base_graph_input.scenarios,
+    base_graph_input.steps,
+    base_graph_input.legend,
+    is_folder_only=base_graph_input.is_folder_only,
+    data=graph_data_from_source_config(source_config),
+  )
   let config = @engine_api.LayoutConfig::new()
   let laid_out_graph = match effective_layout_engine {
     LayoutEngineChoice::Dagre =>
@@ -1362,6 +1378,31 @@ fn compile_config_data_map(
     } else if field.has_composite() {
       data[field.name] = @diagram.ConfigDataValue::StringArray([])
     }
+  }
+  data
+}
+
+///|
+fn graph_data_from_source_config(
+  config : @diagram.Config?,
+) -> Map[String, @graph.GraphDataValue] {
+  let data : Map[String, @graph.GraphDataValue] = {}
+  match config {
+    Some(config) =>
+      for key, value in config.data {
+        data[key] = match value {
+          @diagram.ConfigDataValue::Text(text) =>
+            @graph.GraphDataValue::Text(text)
+          @diagram.ConfigDataValue::StringArray(items) => {
+            let copied : Array[String] = []
+            for item in items {
+              copied.push(item)
+            }
+            @graph.GraphDataValue::StringArray(copied)
+          }
+        }
+      }
+    None => ()
   }
   data
 }

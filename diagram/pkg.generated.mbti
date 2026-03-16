@@ -67,6 +67,7 @@ pub impl Show for Connection
 pub struct Diagram {
   name : String
   config : Config?
+  is_folder_only : Bool
   root : Shape
   shapes : Array[Shape]
   connections : Array[Connection]
@@ -103,6 +104,8 @@ pub struct Shape {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?

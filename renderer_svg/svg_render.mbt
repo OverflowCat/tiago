@@ -3066,6 +3066,10 @@ fn has_class(obj : Shape, class_name : String) -> Bool {
 
 ///|
 fn object_language(obj : Shape) -> String? {
+  match obj.language {
+    Some(language) => return Some(language)
+    None => ()
+  }
   for c in obj.classes {
     if c.has_prefix("lang:") {
       let tag = code_slice(c, 5, c.length())
@@ -3075,6 +3079,24 @@ fn object_language(obj : Shape) -> String? {
     }
   }
   None
+}
+
+///|
+fn shape_sql_constraints(obj : Shape) -> Array[String] {
+  let constraints : Array[String] = []
+  for constraint in obj.sql_constraints {
+    constraints.push(constraint)
+  }
+  if !constraints.is_empty() {
+    return constraints
+  }
+  for cls in obj.classes {
+    match strip_prefix(cls, SQL_CONSTRAINT_PREFIX) {
+      Some(v) => constraints.push(v)
+      None => ()
+    }
+  }
+  constraints
 }
 
 ///|
@@ -3966,13 +3988,7 @@ fn strip_prefix(s : String, prefix : String) -> String? {
 
 ///|
 fn sql_table_constraint_abbr(child : Shape) -> String {
-  let constraints : Array[String] = []
-  for cls in child.classes {
-    match strip_prefix(cls, SQL_CONSTRAINT_PREFIX) {
-      Some(v) => constraints.push(v)
-      None => ()
-    }
-  }
+  let constraints = shape_sql_constraints(child)
   let abbrs : Array[String] = []
   for c in constraints {
     let abbr = match c {

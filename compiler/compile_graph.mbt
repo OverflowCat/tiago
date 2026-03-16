@@ -197,6 +197,31 @@ fn compile_config_data_map(
 }
 
 ///|
+fn graph_data_from_source_config(
+  config : @diagram.Config?,
+) -> Map[String, @graph.GraphDataValue] {
+  let data : Map[String, @graph.GraphDataValue] = {}
+  match config {
+    Some(config) =>
+      for key, value in config.data {
+        data[key] = match value {
+          @diagram.ConfigDataValue::Text(text) =>
+            @graph.GraphDataValue::Text(text)
+          @diagram.ConfigDataValue::StringArray(items) => {
+            let copied : Array[String] = []
+            for item in items {
+              copied.push(item)
+            }
+            @graph.GraphDataValue::StringArray(copied)
+          }
+        }
+      }
+    None => ()
+  }
+  data
+}
+
+///|
 fn extract_source_config(
   ir_map : @ir.Map,
 ) -> Result[@diagram.Config?, CompileError] {

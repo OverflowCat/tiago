@@ -33,6 +33,8 @@ pub struct GraphInput {
   scenarios : Array[ScenarioInput]
   steps : Array[StepInput]
   legend : LegendInput?
+  is_folder_only : Bool
+  data : Map[String, GraphDataValue]
 } derive(Show)
 
 ///|
@@ -51,6 +53,8 @@ pub fn GraphInput::new(name : String) -> GraphInput {
     scenarios: [],
     steps: [],
     legend: None,
+    is_folder_only: false,
+    data: {},
   }
 }
 
@@ -68,6 +72,8 @@ pub fn GraphInput::from_parts(
   scenarios : Array[ScenarioInput],
   steps : Array[StepInput],
   legend : LegendInput?,
+  is_folder_only? : Bool = false,
+  data? : Map[String, GraphDataValue] = {},
 ) -> GraphInput {
   {
     name,
@@ -82,6 +88,8 @@ pub fn GraphInput::from_parts(
     scenarios,
     steps,
     legend,
+    is_folder_only,
+    data,
   }
 }
 
@@ -121,6 +129,20 @@ pub fn GraphInput::get_objects(self : GraphInput) -> Array[ObjectInput] {
 ///|
 pub fn GraphInput::get_edges(self : GraphInput) -> Array[EdgeInput] {
   self.edges
+}
+
+///|
+fn copy_graph_data_value(value : GraphDataValue) -> GraphDataValue {
+  match value {
+    Text(text) => Text(text)
+    StringArray(values) => {
+      let copied : Array[String] = []
+      for item in values {
+        copied.push(item)
+      }
+      StringArray(copied)
+    }
+  }
 }
 
 ///|
@@ -203,6 +225,8 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 /// * `tooltip` : Optional tooltip text.
 /// * `link` : Optional hyperlink URL.
 /// * `classes` : Array of CSS class names for styling.
+/// * `language` : Optional language tag preserved for code/text handling.
+/// * `sql_constraints` : Optional SQL constraints preserved for class/sql_table children.
 /// * `grid_rows` : Optional number of grid rows for layout.
 /// * `grid_columns` : Optional number of grid columns for layout.
 /// * `grid_gap` : Optional spacing between grid items.
@@ -228,6 +252,8 @@ pub struct ObjectInput {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?
@@ -256,6 +282,8 @@ pub fn ObjectInput::new(id : String) -> ObjectInput {
     tooltip: None,
     link: None,
     classes: [],
+    language: None,
+    sql_constraints: [],
     grid_rows: None,
     grid_columns: None,
     grid_gap: None,
@@ -295,6 +323,8 @@ pub fn ObjectInput::from_parts(
   top : Int?,
   left : Int?,
   direction? : String? = None,
+  language? : String? = None,
+  sql_constraints? : Array[String] = [],
 ) -> ObjectInput {
   {
     id,
@@ -309,6 +339,8 @@ pub fn ObjectInput::from_parts(
     tooltip,
     link,
     classes,
+    language,
+    sql_constraints,
     grid_rows,
     grid_columns,
     grid_gap,
@@ -813,6 +845,10 @@ pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
   for step in graph.steps {
     steps.push(StepInput::new(step.name, GraphInput::from_model(step.graph)))
   }
+  let data : Map[String, GraphDataValue] = {}
+  for key, value in graph.data {
+    data[key] = copy_graph_data_value(value)
+  }
   {
     name: graph.name,
     root: ObjectInput::from_model(graph.root),
@@ -829,6 +865,8 @@ pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
       Some(l) => Some(LegendInput::from_model(l))
       None => None
     },
+    is_folder_only: graph.is_folder_only,
+    data,
   }
 }
 
@@ -841,6 +879,10 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
   let classes : Array[String] = []
   for c in obj.classes {
     classes.push(c)
+  }
+  let sql_constraints : Array[String] = []
+  for constraint in obj.sql_constraints {
+    sql_constraints.push(constraint)
   }
   ObjectInput::from_parts(
     obj.id,
@@ -866,6 +908,8 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     obj.top,
     obj.left,
     direction=obj.direction,
+    language=obj.language,
+    sql_constraints~,
   )
 }
 

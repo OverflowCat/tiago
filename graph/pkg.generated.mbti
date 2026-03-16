@@ -139,6 +139,13 @@ pub struct FragmentOperandModel {
 }
 pub impl Show for FragmentOperandModel
 
+pub(all) enum GraphDataValue {
+  Text(String)
+  StringArray(Array[String])
+}
+pub impl Eq for GraphDataValue
+pub impl Show for GraphDataValue
+
 pub struct GraphInput {
   name : String
   root : ObjectInput
@@ -152,11 +159,13 @@ pub struct GraphInput {
   scenarios : Array[ScenarioInput]
   steps : Array[StepInput]
   legend : LegendInput?
+  is_folder_only : Bool
+  data : Map[String, GraphDataValue]
 }
 pub fn GraphInput::children_of(Self, ObjectInput) -> Array[ObjectInput]
 pub fn GraphInput::find_object(Self, String) -> ObjectInput?
 pub fn GraphInput::from_model(GraphModel) -> Self
-pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[(String, Box)], Array[(String, String, Box)], Array[SequenceFragmentLayout], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?) -> Self
+pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[(String, Box)], Array[(String, String, Box)], Array[SequenceFragmentLayout], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?, is_folder_only? : Bool, data? : Map[String, GraphDataValue]) -> Self
 pub fn GraphInput::get_edges(Self) -> Array[EdgeInput]
 pub fn GraphInput::get_objects(Self) -> Array[ObjectInput]
 pub fn GraphInput::new(String) -> Self
@@ -174,6 +183,8 @@ pub struct GraphModel {
   scenarios : Array[ScenarioModel]
   steps : Array[StepModel]
   legend : LegendModel?
+  is_folder_only : Bool
+  data : Map[String, GraphDataValue]
 }
 pub fn GraphModel::add_edge(Self, EdgeModel) -> Self
 pub fn GraphModel::add_object(Self, ObjectModel) -> Self
@@ -313,6 +324,8 @@ pub struct ObjectInput {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?
@@ -326,7 +339,7 @@ pub struct ObjectInput {
   direction : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String]) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
 pub fn ObjectInput::new(String) -> Self
@@ -346,6 +359,8 @@ pub struct ObjectModel {
   tooltip : String?
   link : String?
   classes : Array[String]
+  language : String?
+  sql_constraints : Array[String]
   grid_rows : Int?
   grid_columns : Int?
   grid_gap : Double?
