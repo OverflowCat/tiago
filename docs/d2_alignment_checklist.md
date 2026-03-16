@@ -71,9 +71,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: `Field` now preserves `name_syntax`, reserved-keyword lookups are quote-aware, bare keys retain non-primary references, `NodePath` field steps keep quotedness, import selectors preserve syntax, and `EdgeID` now retains source/destination path syntax alongside scalar path strings.
   - Follow-through included glob/property/exporter updates so quoted reserved names are no longer treated like unquoted semantic keywords.
 
-- [ ] Upgrade `vars.d2-config.data` handling from `Map[String, String]`-like behavior to D2-compatible value support.
-  - D2 can carry richer `data` values, including arrays.
-  - diago currently narrows this too early.
+- [x] Upgrade `vars.d2-config.data` handling from `Map[String, String]`-like behavior to D2-compatible value support.
+  - Landed in diago: `diagram.Config.data` now carries typed values that preserve D2's current `compileConfig` output shape: scalar strings and scalar string-arrays.
+  - `compiler`, `cmd/diago`, and SVG config hashing now all preserve array-valued `vars.d2-config.data` entries instead of collapsing them to strings or dropping them.
 
 ## 3. Graph Model And Board Semantics
 

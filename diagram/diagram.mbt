@@ -19,6 +19,13 @@
 /// implementations: it is the only input type renderers should consume.
 
 ///|
+/// Typed values preserved from `vars.d2-config.data`.
+pub(all) enum ConfigDataValue {
+  Text(String)
+  StringArray(Array[String])
+} derive(Eq, Show)
+
+///|
 /// Configuration extracted from source (vars/config).
 ///
 /// Caller-provided options may override these values.
@@ -35,7 +42,7 @@ pub struct Config {
   no_xml_tag : Bool?
   salt : String?
   omit_version : Bool?
-  data : Map[String, String]
+  data : Map[String, ConfigDataValue]
 } derive(Show)
 
 ///|
@@ -71,7 +78,7 @@ pub fn Config::from_parts(
   no_xml_tag : Bool?,
   salt : String?,
   omit_version : Bool?,
-  data : Map[String, String],
+  data : Map[String, ConfigDataValue],
 ) -> Config {
   {
     sketch,

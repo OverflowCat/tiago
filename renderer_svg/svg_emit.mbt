@@ -1343,6 +1343,25 @@ fn d2_hash_string_map(m : Map[String, String]) -> String {
 }
 
 ///|
+fn d2_hash_config_data_map(m : Map[String, @diagram.ConfigDataValue]) -> String {
+  let keys : Array[String] = []
+  for key, _ in m {
+    keys.push(key)
+  }
+  keys.sort_by(fn(a, b) { a.compare(b) })
+  let fields : Array[D2JsonField] = []
+  for key in keys {
+    let value = match m[key] {
+      @diagram.ConfigDataValue::Text(text) => d2_json_string(text)
+      @diagram.ConfigDataValue::StringArray(items) =>
+        d2_json_string_array(items)
+    }
+    fields.push(d2_json_field(key, value))
+  }
+  d2_json_object(fields)
+}
+
+///|
 fn d2_hash_config_json(graph : Diagram) -> String? {
   match graph.config {
     Some(cfg) => {
@@ -1406,7 +1425,7 @@ fn d2_hash_config_json(graph : Diagram) -> String? {
         )
       }
       if !cfg.data.is_empty() {
-        fields.push(d2_json_field("data", d2_hash_string_map(cfg.data)))
+        fields.push(d2_json_field("data", d2_hash_config_data_map(cfg.data)))
       }
       Some(d2_json_object(fields))
     }

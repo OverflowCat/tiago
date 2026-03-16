@@ -1344,6 +1344,29 @@ let css_named_colors : Array[String] = [
 ]
 
 ///|
+fn compile_config_data_map(
+  data_map : @ir.Map,
+) -> Map[String, @diagram.ConfigDataValue] {
+  let data : Map[String, @diagram.ConfigDataValue] = {}
+  for field in data_map.fields {
+    if field.primary is Some(value) {
+      data[field.name] = @diagram.ConfigDataValue::Text(value.to_string())
+    } else if field.array() is Some(array) {
+      let values : Array[String] = []
+      for item in array.values {
+        if item.as_scalar() is Some(scalar) {
+          values.push(scalar.to_string())
+        }
+      }
+      data[field.name] = @diagram.ConfigDataValue::StringArray(values)
+    } else if field.has_composite() {
+      data[field.name] = @diagram.ConfigDataValue::StringArray([])
+    }
+  }
+  data
+}
+
+///|
 fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
   let vars_map = match ir_map.get_field("vars") {
     Some(field) =>
@@ -1373,7 +1396,7 @@ fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
   let mut no_xml_tag : Bool? = None
   let mut salt : String? = None
   let mut omit_version : Bool? = None
-  let data : Map[String, String] = {}
+  let data : Map[String, @diagram.ConfigDataValue] = {}
   if config_map.get_field("sketch") is Some(field) {
     if field.primary is Some(value) {
       sketch = value.as_bool()
@@ -1447,10 +1470,8 @@ fn extract_source_config(ir_map : @ir.Map) -> Result[@diagram.Config?, String] {
   }
   if config_map.get_field("data") is Some(data_field) {
     if data_field.map() is Some(data_map) {
-      for field in data_map.fields {
-        if field.primary is Some(value) {
-          data[field.name] = value.to_string()
-        }
+      for key, value in compile_config_data_map(data_map) {
+        data[key] = value
       }
     }
   }

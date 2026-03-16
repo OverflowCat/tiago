@@ -145,6 +145,7 @@ test "extract vars d2-config into diagram config" {
     #|    omit-version: true
     #|    data: {
     #|      owner: platform
+    #|      later: [1, 5, 2]
     #|    }
     #|  }
     #|}
@@ -171,9 +172,39 @@ test "extract vars d2-config into diagram config" {
       assert_eq(config.no_xml_tag, Some(true))
       assert_eq(config.salt, Some("custom-salt"))
       assert_eq(config.omit_version, Some(true))
-      assert_eq(config.data["owner"], "platform")
+      assert_eq(
+        config.data["owner"],
+        @diagram.ConfigDataValue::Text("platform"),
+      )
+      assert_eq(
+        config.data["later"],
+        @diagram.ConfigDataValue::StringArray(["1", "5", "2"]),
+      )
     }
   }
+}
+
+///|
+test "vars d2-config data arrays do not break svg rendering" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    data: {
+    #|      later: [1, 5, 2]
+    #|    }
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  assert_true(svg.contains("<svg"))
 }
 
 ///|

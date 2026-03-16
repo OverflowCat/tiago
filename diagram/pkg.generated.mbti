@@ -24,11 +24,18 @@ pub struct Config {
   no_xml_tag : Bool?
   salt : String?
   omit_version : Bool?
-  data : Map[String, String]
+  data : Map[String, ConfigDataValue]
 }
-pub fn Config::from_parts(Bool?, Int?, Int?, Map[String, String], Map[String, String], Double?, Bool?, String?, Double?, Bool?, String?, Bool?, Map[String, String]) -> Self
+pub fn Config::from_parts(Bool?, Int?, Int?, Map[String, String], Map[String, String], Double?, Bool?, String?, Double?, Bool?, String?, Bool?, Map[String, ConfigDataValue]) -> Self
 pub fn Config::new() -> Self
 pub impl Show for Config
+
+pub(all) enum ConfigDataValue {
+  Text(String)
+  StringArray(Array[String])
+}
+pub impl Eq for ConfigDataValue
+pub impl Show for ConfigDataValue
 
 pub struct Connection {
   index : Int
