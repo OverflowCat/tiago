@@ -617,11 +617,6 @@ const D2_GRID_ATTEMPT_LIMIT : Int = 100000
 const D2_GRID_SKIP_LIMIT : Int = 10000000
 
 ///|
-priv struct RootGridSemanticLayout {
-  child_boxes : Map[String, @graph.Box]
-}
-
-///|
 priv struct GridSemanticContext {
   groups : Map[String, Array[String]]
   child_ids : Map[String, Bool]
@@ -1252,11 +1247,11 @@ fn root_grid_best_layout(
 }
 
 ///|
-fn estimate_root_grid_semantic_layout(
+pub fn estimate_root_grid_child_boxes(
   parent : @graph.ObjectInput,
   child_ids : Array[String],
   child_size_by_id : Map[String, (Double, Double)],
-) -> RootGridSemanticLayout? {
+) -> Map[String, @graph.Box]? {
   if child_ids.is_empty() {
     return None
   }
@@ -1593,7 +1588,7 @@ fn estimate_root_grid_semantic_layout(
   }
   ignore(total_width)
   ignore(total_height)
-  Some({ child_boxes, })
+  Some(child_boxes)
 }
 
 ///|
@@ -1627,9 +1622,9 @@ fn restore_grid_semantics(
         child_size_by_id[child_id] = semantic_object_size(child, config)
       }
       match
-        estimate_root_grid_semantic_layout(parent, child_ids, child_size_by_id) {
-        Some(root_layout) =>
-          for child_id, box in root_layout.child_boxes {
+        estimate_root_grid_child_boxes(parent, child_ids, child_size_by_id) {
+        Some(child_boxes) =>
+          for child_id, box in child_boxes {
             override_boxes[child_id] = box
           }
         None => ()

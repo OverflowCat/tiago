@@ -8,6 +8,8 @@ import {
 // Values
 pub fn cycle_detected(String) -> LayoutError
 
+pub fn estimate_root_grid_child_boxes(@graph.ObjectInput, Array[String], Map[String, (Double, Double)]) -> Map[String, @graph.Box]?
+
 pub fn invalid_graph(String) -> LayoutError
 
 pub fn[Engine : LayoutEngine] layout_with_engine(Engine, @graph.GraphInput, LayoutConfig, Direction) -> @graph.GraphInput raise LayoutError

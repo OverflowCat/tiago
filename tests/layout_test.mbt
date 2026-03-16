@@ -171,6 +171,96 @@ test "quoted syntax identities survive dagre elk and railway layout" {
 }
 
 ///|
+test "d2 nested_layout_bug root grid keeps nested container as a grid cell" {
+  let source =
+    #|grid-rows: 1
+    #|grid-columns: 2
+    #|a
+    #|b: {
+    #|  grid-rows: 1
+    #|  grid-columns: 1
+    #|  AA.BB
+    #|}
+    #|a -> b.AA
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_root_grid_nested_layout_like_d2(dagre, "dagre")
+  assert_root_grid_nested_layout_like_d2(elk, "elk")
+}
+
+///|
+fn assert_root_grid_nested_layout_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let a = graph.find_object("a").unwrap()
+  let b = graph.find_object("b").unwrap()
+  let aa = graph.find_object("b.AA").unwrap()
+  let bb = graph.find_object("b.AA.BB").unwrap()
+
+  match (a.get_box(), b.get_box(), aa.get_box(), bb.get_box()) {
+    (Some(a_box), Some(b_box), Some(aa_box), Some(bb_box)) => {
+      assert_true(
+        a_box.x < b_box.x,
+        msg="\{engine_name} should place root grid children in separate columns",
+      )
+      assert_true(
+        (a_box.y - b_box.y).abs() < 1.0,
+        msg="\{engine_name} root grid children should stay on the same row",
+      )
+      assert_true(
+        b_box.contains(aa_box.center()),
+        msg="\{engine_name} nested grid container child should remain inside b",
+      )
+      assert_true(
+        aa_box.contains(bb_box.center()),
+        msg="\{engine_name} nested grandchild should remain inside b.AA",
+      )
+    }
+    _ => fail("\{engine_name} expected boxes for a, b, b.AA, and b.AA.BB")
+  }
+
+  let mut matched_edge : @graph.EdgeInput? = None
+  for edge in graph.edges {
+    if edge.src_id == "a" && edge.dst_id == "b.AA" {
+      matched_edge = Some(edge)
+      break
+    }
+  }
+  guard matched_edge is Some(edge) else {
+    fail("\{engine_name} expected a -> b.AA edge")
+  }
+  assert_true(
+    edge.route.length() >= 2,
+    msg="\{engine_name} expected routed cross-cell edge",
+  )
+  let start = edge.route[0]
+  let finish = edge.route[edge.route.length() - 1]
+  assert_true(
+    start.x < finish.x,
+    msg="\{engine_name} expected cross-cell edge to route left-to-right",
+  )
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {

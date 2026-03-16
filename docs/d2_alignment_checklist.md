@@ -111,6 +111,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 - [ ] Align the high-level nested layout orchestration model with D2.
   - D2 reference: `d2layouts.LayoutNested`, extracted subgraphs, child-order restore, constant-near handling, nested grid and sequence passes, routing after layout.
   - Landed in diago: the D2 constant-near branch is now partially mirrored for Dagre and ELK. Top-level constant-near containers now move their descendant subgraph together, keep internal edges aligned with the moved subtree, and reroute cross-subgraph edges after the near placement instead of leaving stale pre-near routes behind.
+  - Landed in diago: Dagre and ELK now also mirror one D2 root-grid slice that previously depended on `LayoutNested` extraction. When a root grid child remains in the core layout because incident edges block the old semantic detachment path, diago now reapplies D2-style root grid placement after core layout, shifts nested descendants with their grid cell, and reroutes cross-cell edges with the same default-router strategy used by upstream nested reinjection. This is locked against the upstream `nested_layout_bug.d2` fixture.
   - Remaining gaps: full `ExtractSubgraph` / `InjectNested` style orchestration, child-order preservation/restoration, and the dedicated nested grid / sequence control flow still remain distributed across `engine_api`, `graph`, and engine-specific code.
 
 - [x] Add or verify explicit support for D2 layout capability checks.
@@ -127,6 +128,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align grid diagram behavior with D2.
   - Verify row/column layout rules, gap semantics, spans, nested containers, label/icon padding, and edge routing through grid content.
+  - Landed in diago: root-grid layouts with incident child edges now preserve D2's nested-cell behavior for Dagre and ELK, including the upstream `nested_layout_bug.d2` case where a nested grid container must still occupy a grid column and cross-cell edges are rerouted after the cell reposition.
 
 - [ ] Align sequence diagram behavior with D2.
   - Verify actor spacing, group handling, lifelines, message routing, notes, and nested sequence behavior.

@@ -320,6 +320,7 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
     patch, graph, edge_id_by_index, edge_endpoints_by_index, node_box_by_id, routes_by_edge_id,
     direction,
   )
+  apply_root_grid_positions_like_d2(patch, graph)
   apply_constant_near_positions(patch, graph)
   recompute_edge_label_boxes(patch, graph)
 
@@ -1758,6 +1759,242 @@ fn apply_constant_near_positions(
   }
   reroute_constant_near_cross_edges(patch, graph, near_key_by_id)
   clip_patch_routes_after_constant_near(patch, graph)
+}
+
+///|
+fn apply_root_grid_positions_like_d2(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+) -> Unit {
+  if graph.root.grid_rows is None && graph.root.grid_columns is None {
+    return
+  }
+  let root_child_ids = graph.root.child_ids
+  if root_child_ids.is_empty() {
+    return
+  }
+
+  let (object_by_id, parent_id_by_child_id) = build_object_maps(graph)
+  let child_size_by_id : Map[String, (Double, Double)] = {}
+  for child_id in root_child_ids {
+    guard object_by_id.contains(child_id) else { return }
+    match patch.nodes.get(child_id) {
+      Some(box) => child_size_by_id[child_id] = (box.width, box.height)
+      None => return
+    }
+  }
+
+  let child_boxes = match
+    @engine_api.estimate_root_grid_child_boxes(
+      graph.root,
+      root_child_ids,
+      child_size_by_id,
+    ) {
+    Some(v) => v
+    None => return
+  }
+
+  for child_id in root_child_ids {
+    let new_box = match child_boxes.get(child_id) {
+      Some(v) => v
+      None => continue
+    }
+    let old_box = match patch.nodes.get(child_id) {
+      Some(v) => v
+      None => continue
+    }
+    let dx = new_box.x - old_box.x
+    let dy = new_box.y - old_box.y
+    if approx_eq(dx, 0.0) && approx_eq(dy, 0.0) {
+      continue
+    }
+    patch.nodes[child_id] = new_box
+    match patch.node_labels.get(child_id) {
+      Some(label_box) =>
+        patch.node_labels[child_id] = shift_box(label_box, dx, dy)
+      None => ()
+    }
+    shift_root_grid_subtree(
+      patch, graph, child_id, dx, dy, parent_id_by_child_id,
+    )
+  }
+
+  reroute_root_grid_cross_edges(
+    patch, graph, object_by_id, parent_id_by_child_id,
+  )
+  clip_patch_routes_after_constant_near(patch, graph)
+}
+
+///|
+fn shift_root_grid_subtree(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  root_child_id : String,
+  dx : Double,
+  dy : Double,
+  parent_id_by_child_id : Map[String, String],
+) -> Unit {
+  if approx_eq(dx, 0.0) && approx_eq(dy, 0.0) {
+    return
+  }
+  for obj in graph.objects {
+    if obj.id == root_child_id ||
+      !is_inside_root_grid_subtree(obj.id, root_child_id, parent_id_by_child_id) {
+      continue
+    }
+    match patch.nodes.get(obj.id) {
+      Some(box) => patch.nodes[obj.id] = shift_box(box, dx, dy)
+      None => ()
+    }
+    match patch.node_labels.get(obj.id) {
+      Some(label_box) =>
+        patch.node_labels[obj.id] = shift_box(label_box, dx, dy)
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    if !belongs_to_root_grid_subtree(
+        edge.src_id,
+        root_child_id,
+        parent_id_by_child_id,
+      ) ||
+      !belongs_to_root_grid_subtree(
+        edge.dst_id,
+        root_child_id,
+        parent_id_by_child_id,
+      ) {
+      continue
+    }
+    match patch.edges.get(edge.index) {
+      Some(route) => patch.edges[edge.index] = shift_route(route, dx, dy)
+      None => ()
+    }
+    match patch.edge_bend_points.get(edge.index) {
+      Some(bend_points) =>
+        patch.edge_bend_points[edge.index] = shift_route(bend_points, dx, dy)
+      None => ()
+    }
+  }
+}
+
+///|
+fn reroute_root_grid_cross_edges(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> Unit {
+  let root_child_ids : Map[String, Bool] = {}
+  for child_id in graph.root.child_ids {
+    root_child_ids[child_id] = true
+  }
+  let node_ids : Map[String, Bool] = {}
+  for id, _ in patch.nodes {
+    node_ids[id] = true
+  }
+  for edge in graph.edges {
+    let src_root = root_grid_owner_id(
+      edge.src_id,
+      root_child_ids,
+      parent_id_by_child_id,
+    )
+    let dst_root = root_grid_owner_id(
+      edge.dst_id,
+      root_child_ids,
+      parent_id_by_child_id,
+    )
+    let needs_reroute = match (src_root, dst_root) {
+      (Some(src_id), Some(dst_id)) => src_id != dst_id
+      _ => false
+    }
+    if !needs_reroute {
+      continue
+    }
+    let src_id = match
+      resolve_edge_endpoint_id(
+        edge.src_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    let dst_id = match
+      resolve_edge_endpoint_id(
+        edge.dst_id,
+        node_ids,
+        object_by_id,
+        parent_id_by_child_id,
+      ) {
+      Some(id) => id
+      None => continue
+    }
+    let src_box = match patch.nodes.get(src_id) {
+      Some(box) => box
+      None => continue
+    }
+    let dst_box = match patch.nodes.get(dst_id) {
+      Some(box) => box
+      None => continue
+    }
+    patch.edges[edge.index] = [src_box.center(), dst_box.center()]
+    patch.edge_bend_points.remove(edge.index)
+    patch.edge_curves[edge.index] = false
+  }
+}
+
+///|
+fn belongs_to_root_grid_subtree(
+  obj_id : String,
+  root_child_id : String,
+  parent_id_by_child_id : Map[String, String],
+) -> Bool {
+  obj_id == root_child_id ||
+  is_inside_root_grid_subtree(obj_id, root_child_id, parent_id_by_child_id)
+}
+
+///|
+fn is_inside_root_grid_subtree(
+  obj_id : String,
+  root_child_id : String,
+  parent_id_by_child_id : Map[String, String],
+) -> Bool {
+  let mut current = obj_id
+  while true {
+    let parent_id = match parent_id_by_child_id.get(current) {
+      Some(v) => v
+      None => return false
+    }
+    if parent_id == root_child_id {
+      return true
+    }
+    current = parent_id
+  }
+  false
+}
+
+///|
+fn root_grid_owner_id(
+  obj_id : String,
+  root_child_ids : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+) -> String? {
+  if root_child_ids.contains(obj_id) {
+    return Some(obj_id)
+  }
+  let mut current = obj_id
+  while true {
+    let parent_id = match parent_id_by_child_id.get(current) {
+      Some(v) => v
+      None => return None
+    }
+    if root_child_ids.contains(parent_id) {
+      return Some(parent_id)
+    }
+    current = parent_id
+  }
+  None
 }
 
 ///|
