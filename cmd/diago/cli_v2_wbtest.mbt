@@ -258,6 +258,29 @@ test "precedence: env layout overrides invalid vars.d2-config layout-engine" {
 }
 
 ///|
+test "compile_source reports invalid target syntax" {
+  let source =
+    #|layers: {
+    #|  core: {
+    #|    a -> b
+    #|  }
+    #|}
+  let result = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    Some("layers.\"core"),
+  )
+  match result {
+    Err(message) => assert_true(message.contains("Invalid target"))
+    Ok(_) => fail("expected invalid target error")
+  }
+}
+
+///|
 test "fmt default writes formatted output in place" {
   let path = ".diago_cli_v2_fmt_in_place.d2"
   cleanup_file(path)

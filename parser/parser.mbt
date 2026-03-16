@@ -49,6 +49,33 @@ pub fn parse_with_path(
 }
 
 ///|
+/// Parse a standalone D2 key path.
+pub fn parse_key_path(source : String) -> Result[@ast.KeyPath, ParseErrors] {
+  let (tokens, lex_errors) = @lexer.tokenize(source)
+  let parser = Parser::new(source, tokens)
+  for err in lex_errors {
+    parser.errors.add(err.range, err.message)
+  }
+  parser.skip_trivia()
+  let key_path = match parser.parse_key_path() {
+    Some(key_path) => key_path
+    None => {
+      parser.error("expected key path")
+      return Err(parser.errors)
+    }
+  }
+  parser.skip_trivia()
+  if !parser.peek_is_eof() {
+    parser.error("unexpected trailing tokens after key path")
+  }
+  if parser.errors.is_empty() {
+    Ok(key_path)
+  } else {
+    Err(parser.errors)
+  }
+}
+
+///|
 pub fn Parser::new(source : String, tokens : Array[@lexer.Token]) -> Parser {
   {
     source,

@@ -60,6 +60,22 @@ test "parse nested key path" {
 }
 
 ///|
+test "parse_key_path parses quoted board paths" {
+  let result = parse_key_path("layers.\"cat.go\".'step 1'")
+  guard result is Ok(key_path) else { fail("expected key path") }
+  assert_eq(key_path.to_strings(), ["layers", "cat.go", "step 1"])
+}
+
+///|
+test "parse_key_path rejects trailing tokens" {
+  let result = parse_key_path("layers.cat:")
+  guard result is Err(errors) else { fail("expected parse error") }
+  assert_true(
+    errors.to_string().contains("unexpected trailing tokens after key path"),
+  )
+}
+
+///|
 test "parse simple edge" {
   let (ast, errors) = parse("a -> b")
   assert_true(errors.is_empty())

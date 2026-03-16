@@ -208,6 +208,68 @@ test "board keywords must be declared at a board root scope" {
 }
 
 ///|
+test "board links canonicalize quoted board targets" {
+  let source =
+    #|x.link: layers."cat.go"
+    #|layers: {
+    #|  "cat.go": {
+    #|    y
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.find_object("x") is Some(x) else {
+    fail("expected linked object")
+  }
+  assert_eq(x.link, Some("root.layers.\"cat.go\""))
+}
+
+///|
+test "board links resolve relative underscores and discard invalid links" {
+  let source =
+    #|question.link: layers.cat
+    #|plain.link: two
+    #|layers: {
+    #|  cat: {
+    #|    meow
+    #|    layers: {
+    #|      kitten: {
+    #|        up.link: _
+    #|        self.link: _.layers.kitten
+    #|        missing.link: _._._
+    #|        remote.link: https://example.com/docs
+    #|      }
+    #|    }
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.find_object("question") is Some(question) else {
+    fail("expected question object")
+  }
+  guard graph.find_object("plain") is Some(plain) else {
+    fail("expected plain object")
+  }
+  let kitten_board = graph.layers[0].graph.layers[0].graph
+  guard kitten_board.find_object("up") is Some(up) else {
+    fail("expected relative-link object")
+  }
+  guard kitten_board.find_object("self") is Some(self) else {
+    fail("expected self-link object")
+  }
+  guard kitten_board.find_object("missing") is Some(missing) else {
+    fail("expected missing-link object")
+  }
+  guard kitten_board.find_object("remote") is Some(remote) else {
+    fail("expected remote-link object")
+  }
+  assert_eq(question.link, Some("root.layers.cat"))
+  assert_eq(plain.link, None)
+  assert_eq(up.link, Some("root.layers.cat"))
+  assert_eq(self.link, None)
+  assert_eq(missing.link, None)
+  assert_eq(remote.link, Some("https://example.com/docs"))
+}
+
+///|
 test "graph objects preserve explicit language and sql constraints" {
   let code_body = @ir.Map::new()
   code_body.add_field(

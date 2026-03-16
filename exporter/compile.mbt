@@ -819,6 +819,7 @@ pub fn compile(
   let graph = Graph::new(name)
   let classes = extract_classes(ir)
   compile_board_graph(graph, ir, classes)
+  canonicalize_board_links_recursive(graph, graph, ["root"])
   // D2 parity: SQL table column endpoints are represented as table endpoints
   // with source/target column indices.
   normalize_sql_table_edge_endpoints_recursive(graph)
@@ -970,6 +971,365 @@ fn has_board_name(graph : Graph, board_name : String) -> Bool {
     }
   }
   false
+}
+
+///|
+fn canonicalize_board_links_recursive(
+  graph : Graph,
+  root_graph : Graph,
+  board_path : Array[String],
+) -> Unit {
+  for obj in graph.objects {
+    canonicalize_object_board_links(obj, root_graph, board_path)
+  }
+  for layer in graph.layers {
+    canonicalize_board_links_recursive(
+      layer.graph,
+      root_graph,
+      append_board_path(board_path, "layers", layer.name),
+    )
+  }
+  for scenario in graph.scenarios {
+    canonicalize_board_links_recursive(
+      scenario.graph,
+      root_graph,
+      append_board_path(board_path, "scenarios", scenario.name),
+    )
+  }
+  for step in graph.steps {
+    canonicalize_board_links_recursive(
+      step.graph,
+      root_graph,
+      append_board_path(board_path, "steps", step.name),
+    )
+  }
+}
+
+///|
+fn canonicalize_object_board_links(
+  obj : Object,
+  root_graph : Graph,
+  board_path : Array[String],
+) -> Unit {
+  match obj.link {
+    Some(link) =>
+      obj.link = canonicalize_board_link(link, root_graph, board_path)
+    None => ()
+  }
+  for child in obj.children {
+    canonicalize_object_board_links(child, root_graph, board_path)
+  }
+}
+
+///|
+fn canonicalize_board_link(
+  link : String,
+  root_graph : Graph,
+  board_path : Array[String],
+) -> String? {
+  if is_remote_or_absolute_link(link) {
+    return Some(link)
+  }
+  let key_path = match @parser.parse_key_path(link) {
+    Ok(key_path) => key_path
+    Err(_) => return Some(link)
+  }
+  let path = board_link_path_segments(key_path)
+  if path.is_empty() {
+    return Some(link)
+  }
+  let resolved_path = if is_relative_board_link_path(path) {
+    match resolve_relative_board_link_path(path, board_path) {
+      Some(resolved_path) => resolved_path
+      None => return None
+    }
+  } else {
+    path
+  }
+  if !is_root_board_link_path(resolved_path) {
+    return None
+  }
+  if !has_board_path(root_graph, resolved_path, 0) {
+    return None
+  }
+  if board_path_matches_link_path(board_path, resolved_path) {
+    return None
+  }
+  Some(format_board_link_path(resolved_path))
+}
+
+///|
+fn append_board_path(
+  board_path : Array[String],
+  board_kind : String,
+  board_name : String,
+) -> Array[String] {
+  let next : Array[String] = []
+  for segment in board_path {
+    next.push(segment)
+  }
+  next.push(board_kind)
+  next.push(board_name)
+  next
+}
+
+///|
+fn board_link_path_segments(key_path : @ast.KeyPath) -> Array[(String, Bool)] {
+  let path : Array[(String, Bool)] = []
+  for segment in key_path.path {
+    let unquoted = match segment {
+      @ast.StringValue::Unquoted(_) => true
+      _ => false
+    }
+    let value = normalize_board_link_segment_value(segment.content(), unquoted)
+    path.push((value, unquoted))
+  }
+  path
+}
+
+///|
+fn normalize_board_link_segment_value(
+  value : String,
+  unquoted : Bool,
+) -> String {
+  if !unquoted {
+    return value
+  }
+  let lower = value.to_lower()
+  if lower == "root" ||
+    lower == "layers" ||
+    lower == "scenarios" ||
+    lower == "steps" ||
+    lower == "_" {
+    lower
+  } else {
+    value
+  }
+}
+
+///|
+fn is_relative_board_link_path(path : Array[(String, Bool)]) -> Bool {
+  if path.is_empty() {
+    return false
+  }
+  let (head, unquoted) = path[0]
+  unquoted &&
+  (head == "layers" || head == "scenarios" || head == "steps" || head == "_")
+}
+
+///|
+fn resolve_relative_board_link_path(
+  path : Array[(String, Bool)],
+  board_path : Array[String],
+) -> Array[(String, Bool)]? {
+  let resolved : Array[String] = []
+  for segment in board_path {
+    resolved.push(segment)
+  }
+  let mut index = 0
+  while index < path.length() {
+    let (segment, unquoted) = path[index]
+    if segment == "_" && unquoted {
+      if resolved.length() < 2 {
+        return None
+      }
+      ignore(resolved.pop())
+      ignore(resolved.pop())
+      index += 1
+      continue
+    }
+    break
+  }
+  let out : Array[(String, Bool)] = []
+  for segment in resolved {
+    out.push((segment, true))
+  }
+  for i = index; i < path.length(); i = i + 1 {
+    let (segment, unquoted) = path[i]
+    out.push((segment, unquoted))
+  }
+  Some(out)
+}
+
+///|
+fn is_root_board_link_path(path : Array[(String, Bool)]) -> Bool {
+  if path.is_empty() {
+    return false
+  }
+  let (head, unquoted) = path[0]
+  head == "root" && unquoted
+}
+
+///|
+fn has_board_path(
+  graph : Graph,
+  path : Array[(String, Bool)],
+  index : Int,
+) -> Bool {
+  if index >= path.length() {
+    return true
+  }
+  let (head, head_unquoted) = path[index]
+  if head == "root" && head_unquoted {
+    return has_board_path(graph, path, index + 1)
+  }
+  if index == path.length() - 1 {
+    return graph.name == head
+  }
+  if !head_unquoted || index + 1 >= path.length() {
+    return false
+  }
+  let (board_name, _) = path[index + 1]
+  match head {
+    "layers" => {
+      for layer in graph.layers {
+        if layer.name == board_name {
+          return has_board_path(layer.graph, path, index + 2)
+        }
+      }
+      false
+    }
+    "scenarios" => {
+      for scenario in graph.scenarios {
+        if scenario.name == board_name {
+          return has_board_path(scenario.graph, path, index + 2)
+        }
+      }
+      false
+    }
+    "steps" => {
+      for step in graph.steps {
+        if step.name == board_name {
+          return has_board_path(step.graph, path, index + 2)
+        }
+      }
+      false
+    }
+    _ => false
+  }
+}
+
+///|
+fn board_path_matches_link_path(
+  board_path : Array[String],
+  link_path : Array[(String, Bool)],
+) -> Bool {
+  if board_path.length() != link_path.length() {
+    return false
+  }
+  for i = 0; i < board_path.length(); i = i + 1 {
+    let (segment, _) = link_path[i]
+    if board_path[i] != segment {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn format_board_link_path(path : Array[(String, Bool)]) -> String {
+  let buf = StringBuilder::new()
+  for i, entry in path {
+    let (segment, _) = entry
+    if i > 0 {
+      buf.write_char('.')
+    }
+    if i == 0 {
+      buf.write_string("root")
+    } else if i % 2 == 1 {
+      buf.write_string(segment.to_lower())
+    } else {
+      buf.write_string(d2_format_board_name_segment(segment))
+    }
+  }
+  buf.to_string()
+}
+
+///|
+fn d2_format_board_name_segment(s : String) -> String {
+  if s.length() == 0 {
+    return "\"\""
+  }
+  let key_specials = "#;\n\\{}[]'\"|:.-<>*&()@&"
+  let chars = s.to_array()
+  for i, r in chars {
+    if r == '-' {
+      if i + 1 < chars.length() && chars[i + 1] != '-' {
+        continue
+      }
+    }
+    if d2_contains_char(key_specials, r) {
+      return d2_quote_key_segment(s)
+    }
+  }
+  if d2_has_surrounding_whitespace(s) || d2_is_reserved_for_unquoted_key(s) {
+    return d2_quote_key_segment(s)
+  }
+  d2_escape_unquoted_key_value(s)
+}
+
+///|
+fn d2_quote_key_segment(s : String) -> String {
+  if !d2_contains_char(s, '"') || d2_contains_char(s, '\n') {
+    "\"\{d2_escape_double_quoted_value(s)}\""
+  } else {
+    "'\{d2_escape_single_quoted_value(s)}'"
+  }
+}
+
+///|
+fn is_remote_or_absolute_link(s : String) -> Bool {
+  if s.has_prefix("/") {
+    return true
+  }
+  match string_index_of_char(s, ':') {
+    Some(index) => index > 0 && is_uri_scheme(s[:index].to_string())
+    None => false
+  }
+}
+
+///|
+fn string_index_of_char(s : String, target : Char) -> Int? {
+  let mut index = 0
+  for ch in s {
+    if ch == target {
+      return Some(index)
+    }
+    index += 1
+  }
+  None
+}
+
+///|
+fn is_uri_scheme(s : String) -> Bool {
+  if s.length() == 0 {
+    return false
+  }
+  let chars = s.to_array()
+  if !is_ascii_alpha(chars[0]) {
+    return false
+  }
+  for i = 1; i < chars.length(); i = i + 1 {
+    let ch = chars[i]
+    if !is_ascii_alpha(ch) &&
+      !is_ascii_digit(ch) &&
+      ch != '+' &&
+      ch != '-' &&
+      ch != '.' {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn is_ascii_alpha(ch : Char) -> Bool {
+  ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')
+}
+
+///|
+fn is_ascii_digit(ch : Char) -> Bool {
+  '0' <= ch && ch <= '9'
 }
 
 ///|

@@ -1534,7 +1534,10 @@ fn select_target_board(
   match target_spec {
     None => Ok(diagram)
     Some(spec) => {
-      let path = parse_target_path(spec)
+      let path = match parse_target_path(spec) {
+        Ok(path) => path
+        Err(message) => return Err(message)
+      }
       if path.length() == 0 {
         return Ok(diagram)
       }
@@ -1547,27 +1550,22 @@ fn select_target_board(
 }
 
 ///|
-fn parse_target_path(spec : String) -> Array[String] {
-  let segments : Array[String] = []
-  let current = StringBuilder::new()
-  for c in spec {
-    if c == '.' {
-      push_target_segment(segments, current.to_string())
-      current.reset()
-    } else {
-      current.write_char(c)
-    }
+fn parse_target_path(spec : String) -> Result[Array[String], String] {
+  if spec.length() == 0 || spec == "*" {
+    return Ok([])
   }
-  push_target_segment(segments, current.to_string())
-  segments
-}
-
-///|
-fn push_target_segment(segments : Array[String], segment : String) -> Unit {
-  if segment.length() == 0 || segment == "*" {
-    return
+  let target = if spec.has_suffix(".*") {
+    spec[:spec.length() - 2].to_string()
+  } else {
+    spec
   }
-  segments.push(segment)
+  if target.length() == 0 {
+    return Ok([])
+  }
+  match @parser.parse_key_path(target) {
+    Ok(key_path) => Ok(key_path.to_strings())
+    Err(_) => Err("Invalid target: \{spec}")
+  }
 }
 
 ///|

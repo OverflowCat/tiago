@@ -92,6 +92,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [x] Implement or verify D2-style board compilation semantics.
   - Landed in diago: board compilation now distinguishes isolated `layers` from inherited `scenarios` / `steps`, preserves D2-style folder-only behavior, applies board primary labels, rejects duplicate board names across kinds, and reports board keywords outside board-root scope.
+  - Landed in diago: board links now canonicalize and validate against the compiled board tree, including D2-style relative `_` resolution, self-link removal, missing-board rejection, and quote-aware board paths.
 
 - [ ] Align legend compilation behavior.
   - D2 builds legends from `vars.d2-legend` with explicit filtering and synthetic layout defaults.
@@ -133,6 +134,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align `diagram` with D2's `d2target` model where behavior depends on target-level fields.
   - Includes root shape behavior, nested board packaging, config hashing inputs, legend structure, and board traversal APIs.
+  - Landed in diago: target board selection is now parser-backed and quote-aware instead of using raw `.` splitting.
 
 - [ ] Align SVG render configuration semantics with D2.
   - Verify `theme`, `dark-theme`, `pad`, `center`, `scale`, `no-xml-tag`, `salt`, `omit-version`, and bundled asset behavior.
@@ -167,6 +169,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align CLI flag surface and semantics.
   - Verify layout selection, theme flags, dark theme, pad, center, scale, watch, bundle, force appendix, font overrides, output format, target board selection, and timeout behavior.
+  - Landed in diago: target board flags now reject invalid D2 path syntax and accept quoted board names.
 
 - [ ] Align watch mode behavior with D2.
   - D2 has a richer embedded watch server and reload protocol.

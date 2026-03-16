@@ -165,6 +165,40 @@ test "compile_diagram supports board target selection" {
 }
 
 ///|
+test "compile_diagram target selection is quote-aware" {
+  let source =
+    #|layers: {
+    #|  "cat.go": {
+    #|    a -> b
+    #|  }
+    #|}
+  let diagram = compile_diagram(
+    source,
+    options=CompileOptions::new().with_target_spec(Some("layers.\"cat.go\".*")),
+  )
+  assert_true(diagram.find_object("a") is Some(_))
+  assert_true(diagram.find_object("b") is Some(_))
+}
+
+///|
+test "compile_diagram reports invalid target syntax" {
+  let source =
+    #|layers: {
+    #|  core: {
+    #|    a -> b
+    #|  }
+    #|}
+  let result = try? compile_diagram(
+    source,
+    options=CompileOptions::new().with_target_spec(Some("layers.\"core")),
+  )
+  match result {
+    Err(TargetError(message)) => assert_true(message.contains("Invalid target"))
+    _ => fail("expected invalid target error")
+  }
+}
+
+///|
 test "compile supports custom layout plugin hook" {
   let source =
     #|a -> b

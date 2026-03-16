@@ -9,6 +9,8 @@ import {
 // Values
 pub fn parse(String) -> (@ast.Map, ParseErrors)
 
+pub fn parse_key_path(String) -> Result[@ast.KeyPath, ParseErrors]
+
 pub fn parse_with_path(String, String) -> (@ast.Map, ParseErrors)
 
 // Errors
