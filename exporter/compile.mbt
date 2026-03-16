@@ -2844,6 +2844,7 @@ fn validate_link_safety(obj : Object) -> Unit raise GraphCompileError {
 ///|
 fn validate_semantics(graph : Graph) -> Unit raise GraphCompileError {
   validate_near_rules(graph)
+  validate_edge_rules(graph)
   validate_position_rules(graph)
   for layer in graph.layers {
     validate_semantics(layer.graph)
@@ -2858,9 +2859,9 @@ fn validate_semantics(graph : Graph) -> Unit raise GraphCompileError {
 
 ///|
 fn validate_near_rules(graph : Graph) -> Unit raise GraphCompileError {
-  let object_ids : Map[String, Bool] = {}
+  let object_by_abs_id_syntax : Map[String, Object] = {}
   for obj in graph.objects {
-    object_ids[obj.id] = true
+    object_by_abs_id_syntax[obj.abs_id_syntax] = obj
   }
   for obj in graph.objects {
     match obj.near {
@@ -2875,18 +2876,122 @@ fn validate_near_rules(graph : Graph) -> Unit raise GraphCompileError {
           }
           continue
         }
-        if !object_ids.contains(near_raw) {
+        guard object_by_abs_id_syntax.get(near_raw) is Some(near_obj) else {
           raise Semantic(
             "near key \"\{near_raw}\" must be the absolute path to a shape or one of the following constants: \{near_constants_message()}",
           )
         }
-        if near_raw == obj.id || obj.id.has_prefix(near_raw + ".") {
+        if is_descendant_or_same_abs_id_syntax(obj.abs_id_syntax, near_raw) {
           raise Semantic("near keys cannot be set to an ancestor")
         }
-        if near_raw.has_prefix(obj.id + ".") {
+        if is_descendant_or_same_abs_id_syntax(near_raw, obj.abs_id_syntax) {
           raise Semantic("near keys cannot be set to an descendant")
         }
+        if is_inside_sequence_diagram_by_abs_id_syntax(
+            graph,
+            object_by_abs_id_syntax,
+            near_obj.abs_id_syntax,
+          ) {
+          raise Semantic(
+            "near keys cannot be set to an object within sequence diagrams",
+          )
+        }
+        match near_obj.near {
+          Some(near_obj_near) =>
+            if is_near_constant(near_obj_near.to_lower()) {
+              raise Semantic(
+                "near keys cannot be set to an object with a constant near key",
+              )
+            }
+          None => ()
+        }
+        if has_grid_diagram_ancestor_by_abs_id_syntax(
+            object_by_abs_id_syntax,
+            near_obj.abs_id_syntax,
+          ) {
+          raise Semantic(
+            "near keys cannot be set to descendants of special objects, like grid cells",
+          )
+        }
+        if has_sequence_diagram_ancestor_by_abs_id_syntax(
+            object_by_abs_id_syntax,
+            near_obj.abs_id_syntax,
+          ) {
+          raise Semantic(
+            "near keys cannot be set to descendants of special objects, like sequence diagram actors",
+          )
+        }
       }
+    }
+  }
+}
+
+///|
+fn validate_edge_rules(graph : Graph) -> Unit raise GraphCompileError {
+  let object_by_abs_id_syntax : Map[String, Object] = {}
+  for obj in graph.objects {
+    object_by_abs_id_syntax[obj.abs_id_syntax] = obj
+  }
+  for edge in graph.edges {
+    guard object_by_abs_id_syntax.get(edge.src_id_syntax) is Some(src) else {
+      continue
+    }
+    guard object_by_abs_id_syntax.get(edge.dst_id_syntax) is Some(dst) else {
+      continue
+    }
+    if is_constant_near_object(src) &&
+      is_descendant_or_same_abs_id_syntax(dst.abs_id_syntax, src.abs_id_syntax) {
+      raise Semantic(
+        "edge from constant near \"\{src.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if is_constant_near_object(dst) &&
+      is_descendant_or_same_abs_id_syntax(src.abs_id_syntax, dst.abs_id_syntax) {
+      raise Semantic(
+        "edge from constant near \"\{dst.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if is_grid_diagram_object(src) &&
+      is_descendant_or_same_abs_id_syntax(dst.abs_id_syntax, src.abs_id_syntax) {
+      raise Semantic(
+        "edge from grid diagram \"\{src.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if is_grid_diagram_object(dst) &&
+      is_descendant_or_same_abs_id_syntax(src.abs_id_syntax, dst.abs_id_syntax) {
+      raise Semantic(
+        "edge from grid diagram \"\{dst.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if parent_is_grid_diagram_by_abs_id_syntax(
+        object_by_abs_id_syntax,
+        src.abs_id_syntax,
+      ) &&
+      is_descendant_or_same_abs_id_syntax(dst.abs_id_syntax, src.abs_id_syntax) {
+      raise Semantic(
+        "edge from grid cell \"\{src.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if parent_is_grid_diagram_by_abs_id_syntax(
+        object_by_abs_id_syntax,
+        dst.abs_id_syntax,
+      ) &&
+      is_descendant_or_same_abs_id_syntax(src.abs_id_syntax, dst.abs_id_syntax) {
+      raise Semantic(
+        "edge from grid cell \"\{dst.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if is_sequence_diagram_object(src) &&
+      is_descendant_or_same_abs_id_syntax(dst.abs_id_syntax, src.abs_id_syntax) {
+      raise Semantic(
+        "edge from sequence diagram \"\{src.abs_id_syntax}\" cannot enter itself",
+      )
+    }
+    if is_sequence_diagram_object(dst) &&
+      is_descendant_or_same_abs_id_syntax(src.abs_id_syntax, dst.abs_id_syntax) {
+      raise Semantic(
+        "edge from sequence diagram \"\{dst.abs_id_syntax}\" cannot enter itself",
+      )
     }
   }
 }
@@ -2955,6 +3060,130 @@ fn has_sequence_diagram_ancestor(
           }
         None => false
       }
+  }
+}
+
+///|
+fn is_descendant_or_same_abs_id_syntax(
+  abs_id_syntax : String,
+  ancestor_abs_id_syntax : String,
+) -> Bool {
+  if abs_id_syntax == ancestor_abs_id_syntax {
+    return true
+  }
+  match parent_abs_id_syntax_of(abs_id_syntax) {
+    Some(parent_abs_id_syntax) =>
+      is_descendant_or_same_abs_id_syntax(
+        parent_abs_id_syntax, ancestor_abs_id_syntax,
+      )
+    None => false
+  }
+}
+
+///|
+fn parent_abs_id_syntax_of(abs_id_syntax : String) -> String? {
+  let segments = @graph.split_syntax_path(abs_id_syntax)
+  if segments.length() <= 1 {
+    return None
+  }
+  let out = StringBuilder::new()
+  for i = 0; i < segments.length() - 1; i = i + 1 {
+    if i > 0 {
+      out.write_string(".")
+    }
+    out.write_string(segments[i])
+  }
+  Some(out.to_string())
+}
+
+///|
+fn has_sequence_diagram_ancestor_by_abs_id_syntax(
+  object_by_abs_id_syntax : Map[String, Object],
+  abs_id_syntax : String,
+) -> Bool {
+  match parent_abs_id_syntax_of(abs_id_syntax) {
+    None => false
+    Some(parent_abs_id_syntax) =>
+      match object_by_abs_id_syntax.get(parent_abs_id_syntax) {
+        Some(parent) =>
+          if is_sequence_diagram_object(parent) {
+            true
+          } else {
+            has_sequence_diagram_ancestor_by_abs_id_syntax(
+              object_by_abs_id_syntax, parent_abs_id_syntax,
+            )
+          }
+        None => false
+      }
+  }
+}
+
+///|
+fn is_inside_sequence_diagram_by_abs_id_syntax(
+  graph : Graph,
+  object_by_abs_id_syntax : Map[String, Object],
+  abs_id_syntax : String,
+) -> Bool {
+  if graph.root.shape_type == ShapeType::SequenceDiagram {
+    return true
+  }
+  has_sequence_diagram_ancestor_by_abs_id_syntax(
+    object_by_abs_id_syntax, abs_id_syntax,
+  )
+}
+
+///|
+fn has_grid_diagram_ancestor_by_abs_id_syntax(
+  object_by_abs_id_syntax : Map[String, Object],
+  abs_id_syntax : String,
+) -> Bool {
+  match parent_abs_id_syntax_of(abs_id_syntax) {
+    None => false
+    Some(parent_abs_id_syntax) =>
+      match object_by_abs_id_syntax.get(parent_abs_id_syntax) {
+        Some(parent) =>
+          if is_grid_diagram_object(parent) {
+            true
+          } else {
+            has_grid_diagram_ancestor_by_abs_id_syntax(
+              object_by_abs_id_syntax, parent_abs_id_syntax,
+            )
+          }
+        None => false
+      }
+  }
+}
+
+///|
+fn parent_is_grid_diagram_by_abs_id_syntax(
+  object_by_abs_id_syntax : Map[String, Object],
+  abs_id_syntax : String,
+) -> Bool {
+  match parent_abs_id_syntax_of(abs_id_syntax) {
+    Some(parent_abs_id_syntax) =>
+      match object_by_abs_id_syntax.get(parent_abs_id_syntax) {
+        Some(parent) => is_grid_diagram_object(parent)
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn is_grid_diagram_object(obj : Object) -> Bool {
+  obj.grid_columns is Some(_) || obj.grid_rows is Some(_)
+}
+
+///|
+fn is_sequence_diagram_object(obj : Object) -> Bool {
+  obj.shape_type == ShapeType::SequenceDiagram
+}
+
+///|
+fn is_constant_near_object(obj : Object) -> Bool {
+  match obj.near {
+    Some(near) => is_near_constant(near.to_lower())
+    None => false
   }
 }
 

@@ -270,6 +270,120 @@ test "board links resolve relative underscores and discard invalid links" {
 }
 
 ///|
+test "near keys cannot target descendants of grid diagrams" {
+  let source =
+    #|x.near: z.x
+    #|z: {
+    #|  grid-rows: 1
+    #|  x
+    #|}
+  match compile_source_graph(source) {
+    Err(err) =>
+      assert_true(
+        err.contains(
+          "near keys cannot be set to descendants of special objects, like grid cells",
+        ),
+      )
+    Ok(_) => fail("expected near_special error")
+  }
+}
+
+///|
+test "near keys cannot target objects within sequence diagrams" {
+  let source =
+    #|x: {
+    #|  shape: sequence_diagram
+    #|  a
+    #|}
+    #|b.near: x.a
+  match compile_source_graph(source) {
+    Err(err) =>
+      assert_true(
+        err.contains(
+          "near keys cannot be set to an object within sequence diagrams",
+        ),
+      )
+    Ok(_) => fail("expected near_sequence error")
+  }
+}
+
+///|
+test "near keys cannot target objects with constant near keys" {
+  let source =
+    #|title: Title {
+    #|  near: top-center
+    #|}
+    #|
+    #|obj {
+    #|  near: title
+    #|}
+  match compile_source_graph(source) {
+    Err(err) =>
+      assert_true(
+        err.contains(
+          "near keys cannot be set to an object with a constant near key",
+        ),
+      )
+    Ok(_) => fail("expected near_near_const error")
+  }
+}
+
+///|
+test "edges from constant near containers cannot enter themselves" {
+  let source =
+    #|tl: {
+    #|  near: top-left
+    #|  a
+    #|}
+    #|tl -> tl.a
+  match compile_source_graph(source) {
+    Err(err) => assert_true(err.contains("edge from constant near"))
+    Ok(_) => fail("expected constant near edge error")
+  }
+}
+
+///|
+test "edges from grid diagrams and cells cannot enter themselves" {
+  let grid_source =
+    #|grid: {
+    #|  grid-rows: 1
+    #|  cell
+    #|}
+    #|grid -> grid.cell
+  match compile_source_graph(grid_source) {
+    Err(err) => assert_true(err.contains("edge from grid diagram"))
+    Ok(_) => fail("expected grid diagram edge error")
+  }
+
+  let cell_source =
+    #|grid: {
+    #|  grid-rows: 1
+    #|  cell: {
+    #|    c
+    #|  }
+    #|}
+    #|grid.cell -> grid.cell.c
+  match compile_source_graph(cell_source) {
+    Err(err) => assert_true(err.contains("edge from grid cell"))
+    Ok(_) => fail("expected grid cell edge error")
+  }
+}
+
+///|
+test "edges from sequence diagrams cannot enter themselves" {
+  let source =
+    #|seq: {
+    #|  shape: sequence_diagram
+    #|  e
+    #|}
+    #|seq -> seq.e
+  match compile_source_graph(source) {
+    Err(err) => assert_true(err.contains("edge from sequence diagram"))
+    Ok(_) => fail("expected sequence diagram edge error")
+  }
+}
+
+///|
 test "label icon and tooltip near fields follow d2 position semantics" {
   let source =
     #|hey: {

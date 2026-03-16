@@ -133,6 +133,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Align `near` behavior with D2.
   - Includes constant-near, object-near, and interactions with layout engines that may or may not support full D2 semantics.
+  - Landed in diago: compiler-side near validation now mirrors the upstream D2 checks for targeting constant-near objects, targeting grid descendants, targeting objects inside sequence diagrams, and rejecting self-entering edges from constant-near containers, grid diagrams, grid cells, and sequence diagrams.
   - Landed in diago: D2-style constant-near placement for Dagre and ELK now keeps near containers, descendants, internal edges, and cross-subgraph edges coherent after the near move, matching the `d2near.Layout` + post-injection reroute behavior more closely.
   - Landed in diago: the `d2near.place(...)` outside-label compensation branches are now mirrored for Dagre and ELK as well, so constant-near boxes offset for `OUTSIDE_*` / `BORDER_*` label positions on the same `_TOP_` / `_LEFT_` / `_RIGHT_` / `_BOTTOM_` conditions as upstream.
   - Remaining gaps: object-near is still only guarded by the new D2 feature checks, and full nested/grid/sequence interactions still depend on the unfinished `LayoutNested` orchestration parity work above.
