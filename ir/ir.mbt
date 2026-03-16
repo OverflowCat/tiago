@@ -27,6 +27,7 @@ pub struct Scalar {
   range : @lexer.Range
   ast : @ast.Node?
   source_path : String?
+  path : NodePath?
 } derive(Eq, Show)
 
 ///|
@@ -45,6 +46,7 @@ pub struct Map {
   edges : Array[Edge]
   ast : @ast.Node?
   source_path : String?
+  path : NodePath?
 } derive(Eq, Show)
 
 ///|
@@ -54,6 +56,7 @@ pub struct Field {
   primary : Scalar?
   composite : Composite?
   references : Array[FieldReference]
+  path : NodePath?
 } derive(Eq, Show)
 
 ///|
@@ -69,6 +72,7 @@ pub struct IRArray {
   values : Array[Value]
   ast : @ast.Node?
   source_path : String?
+  path : NodePath?
 } derive(Eq, Show)
 
 ///|
@@ -86,6 +90,7 @@ pub struct Edge {
   primary : Scalar?
   map : Map?
   references : Array[EdgeReference]
+  path : NodePath?
 } derive(Eq, Show)
 
 ///|
@@ -97,6 +102,22 @@ pub struct EdgeID {
   dst_arrow : Bool
   index : Int?
   glob : Bool
+} derive(Eq, Show)
+
+///|
+/// Stable path to an IR node inside a compiled map.
+pub(all) enum NodePathSegment {
+  FieldStep(String)
+  EdgeStep(EdgeID)
+  PrimaryStep
+  CompositeStep
+  ArrayItemStep(Int)
+} derive(Eq, Show)
+
+///|
+/// Stable path to an IR node inside a compiled map.
+pub struct NodePath {
+  segments : Array[NodePathSegment]
 } derive(Eq, Show)
 
 ///|
@@ -267,6 +288,75 @@ pub fn Node::last_primary_key(self : Node) -> @ast.Key? {
   }
 }
 
+///|
+pub fn NodePath::root() -> NodePath {
+  { segments: [] }
+}
+
+///|
+pub fn NodePath::append(self : NodePath, segment : NodePathSegment) -> NodePath {
+  let segments = self.segments.copy()
+  segments.push(segment)
+  { segments, }
+}
+
+///|
+pub fn NodePath::parent(self : NodePath) -> NodePath? {
+  if self.segments.is_empty() {
+    return None
+  }
+  let segments = self.segments.copy()
+  let _ = segments.remove(segments.length() - 1)
+  Some({ segments, })
+}
+
+///|
+pub fn Node::path(self : Node) -> NodePath? {
+  match self {
+    Scalar(s) => s.path()
+    Field(f) => f.path()
+    Edge(e) => e.path()
+    IRArray(a) => a.path()
+    Map(m) => m.path()
+    Composite(c) =>
+      match c {
+        Array(a) => a.path()
+        Map(m) => m.path()
+      }
+    Value(v) =>
+      match v {
+        Scalar(s) => s.path()
+        Array(a) => a.path()
+        Map(m) => m.path()
+      }
+  }
+}
+
+///|
+pub fn Node::parent(self : Node, root : Map) -> Node? {
+  match self.path() {
+    Some(path) =>
+      match path.parent() {
+        Some(parent) => root.get_node(parent)
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+pub fn Node::copy(self : Node) -> Node {
+  match self {
+    Scalar(s) => Node::Scalar(s.copy())
+    Field(f) => Node::Field(f.copy())
+    Edge(e) => Node::Edge(e.copy())
+    IRArray(a) => Node::IRArray(a.copy())
+    Map(m) => Node::Map(m.copy())
+    Composite(c) => Node::Composite(copy_composite_detached(c))
+    Value(v) => Node::Value(copy_value_detached(v))
+  }
+}
+
 // ============================================================================
 // Constructors
 // ============================================================================
@@ -279,7 +369,7 @@ fn default_range() -> @lexer.Range {
 
 ///|
 pub fn Scalar::at(range : @lexer.Range, value : ScalarValue) -> Scalar {
-  { value, range, ast: None, source_path: None }
+  { value, range, ast: None, source_path: None, path: None }
 }
 
 ///|
@@ -288,7 +378,7 @@ pub fn Scalar::from_ast(
   value : ScalarValue,
   source_path? : String? = None,
 ) -> Scalar {
-  { value, range: ast.range(), ast: Some(ast), source_path }
+  { value, range: ast.range(), ast: Some(ast), source_path, path: None }
 }
 
 ///|
@@ -327,12 +417,18 @@ pub fn Scalar::string(s : String) -> Scalar {
 
 ///|
 pub fn Map::new() -> Map {
-  { fields: [], edges: [], ast: None, source_path: None }
+  { fields: [], edges: [], ast: None, source_path: None, path: None }
 }
 
 ///|
 pub fn Map::from_ast(ast : @ast.Map, source_path? : String? = None) -> Map {
-  { fields: [], edges: [], ast: Some(@ast.Node::Map(ast)), source_path }
+  {
+    fields: [],
+    edges: [],
+    ast: Some(@ast.Node::Map(ast)),
+    source_path,
+    path: None,
+  }
 }
 
 ///|
@@ -342,17 +438,17 @@ pub fn Field::new(
   composite : Composite?,
   references : Array[FieldReference],
 ) -> Field {
-  { name, primary, composite, references }
+  { name, primary, composite, references, path: None }
 }
 
 ///|
 pub fn Field::simple(name : String) -> Field {
-  { name, primary: None, composite: None, references: [] }
+  { name, primary: None, composite: None, references: [], path: None }
 }
 
 ///|
 pub fn IRArray::new(values : Array[Value]) -> IRArray {
-  { values, ast: None, source_path: None }
+  { values, ast: None, source_path: None, path: None }
 }
 
 ///|
@@ -361,7 +457,7 @@ pub fn IRArray::from_ast(
   values : Array[Value],
   source_path? : String? = None,
 ) -> IRArray {
-  { values, ast: Some(@ast.Node::ArrayValue(ast)), source_path }
+  { values, ast: Some(@ast.Node::ArrayValue(ast)), source_path, path: None }
 }
 
 ///|
@@ -371,7 +467,7 @@ pub fn Edge::new(
   map : Map?,
   references : Array[EdgeReference],
 ) -> Edge {
-  { id, primary, map, references }
+  { id, primary, map, references, path: None }
 }
 
 ///|
@@ -589,6 +685,343 @@ pub fn Map::find_edges(self : Map, id : EdgeID) -> Array[Edge] {
     }
   }
   result
+}
+
+///|
+pub fn Map::get_node(self : Map, path : NodePath) -> Node? {
+  get_node_from_map(self, path.segments, 0)
+}
+
+///|
+pub fn Map::reindex_paths(self : Map) -> Map {
+  reindex_map(self, NodePath::root())
+}
+
+///|
+fn get_node_from_map(
+  m : Map,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  if index == segments.length() {
+    return Some(Node::Map(m))
+  }
+  match segments[index] {
+    NodePathSegment::FieldStep(name) =>
+      match m.get_field(name) {
+        Some(field) => get_node_from_field(field, segments, index + 1)
+        None => None
+      }
+    NodePathSegment::EdgeStep(id) =>
+      match get_edge_by_id(m, id) {
+        Some(edge) => get_node_from_edge(edge, segments, index + 1)
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn get_node_from_field(
+  field : Field,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  if index == segments.length() {
+    return Some(Node::Field(field))
+  }
+  match segments[index] {
+    NodePathSegment::PrimaryStep =>
+      match field.primary {
+        Some(scalar) =>
+          if index + 1 == segments.length() {
+            Some(Node::Scalar(scalar))
+          } else {
+            None
+          }
+        None => None
+      }
+    NodePathSegment::CompositeStep =>
+      match field.composite {
+        Some(composite) =>
+          get_node_from_composite(composite, segments, index + 1)
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn get_node_from_edge(
+  edge : Edge,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  if index == segments.length() {
+    return Some(Node::Edge(edge))
+  }
+  match segments[index] {
+    NodePathSegment::PrimaryStep =>
+      match edge.primary {
+        Some(scalar) =>
+          if index + 1 == segments.length() {
+            Some(Node::Scalar(scalar))
+          } else {
+            None
+          }
+        None => None
+      }
+    NodePathSegment::CompositeStep =>
+      match edge.map {
+        Some(map) => get_node_from_map(map, segments, index + 1)
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn get_node_from_composite(
+  composite : Composite,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  match composite {
+    Composite::Array(array) => get_node_from_array(array, segments, index)
+    Composite::Map(map) => get_node_from_map(map, segments, index)
+  }
+}
+
+///|
+fn get_node_from_array(
+  array : IRArray,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  if index == segments.length() {
+    return Some(Node::IRArray(array))
+  }
+  match segments[index] {
+    NodePathSegment::ArrayItemStep(item_index) =>
+      if item_index < 0 || item_index >= array.values.length() {
+        None
+      } else {
+        get_node_from_value(array.values[item_index], segments, index + 1)
+      }
+    _ => None
+  }
+}
+
+///|
+fn get_node_from_value(
+  value : Value,
+  segments : Array[NodePathSegment],
+  index : Int,
+) -> Node? {
+  match value {
+    Value::Scalar(scalar) =>
+      if index == segments.length() {
+        Some(Node::Scalar(scalar))
+      } else {
+        None
+      }
+    Value::Map(map) => get_node_from_map(map, segments, index)
+    Value::Array(array) => get_node_from_array(array, segments, index)
+  }
+}
+
+///|
+fn get_edge_by_id(m : Map, id : EdgeID) -> Edge? {
+  for edge in m.edges {
+    if edge.id == id {
+      return Some(edge)
+    }
+  }
+  None
+}
+
+///|
+fn reindex_map(m : Map, path : NodePath) -> Map {
+  let fields : Array[Field] = []
+  for field in m.fields {
+    let field_path = path.append(NodePathSegment::FieldStep(field.name))
+    fields.push(reindex_field(field, field_path))
+  }
+  let edges : Array[Edge] = []
+  for edge in m.edges {
+    let edge_path = path.append(NodePathSegment::EdgeStep(edge.id.copy()))
+    edges.push(reindex_edge(edge, edge_path))
+  }
+  { fields, edges, ast: m.ast, source_path: m.source_path, path: Some(path) }
+}
+
+///|
+fn reindex_field(field : Field, path : NodePath) -> Field {
+  let primary = match field.primary {
+    Some(scalar) =>
+      Some(reindex_scalar(scalar, path.append(NodePathSegment::PrimaryStep)))
+    None => None
+  }
+  let composite = match field.composite {
+    Some(node) =>
+      Some(reindex_composite(node, path.append(NodePathSegment::CompositeStep)))
+    None => None
+  }
+  {
+    name: field.name,
+    primary,
+    composite,
+    references: field.references.copy(),
+    path: Some(path),
+  }
+}
+
+///|
+fn reindex_edge(edge : Edge, path : NodePath) -> Edge {
+  let primary = match edge.primary {
+    Some(scalar) =>
+      Some(reindex_scalar(scalar, path.append(NodePathSegment::PrimaryStep)))
+    None => None
+  }
+  let map = match edge.map {
+    Some(child) =>
+      Some(reindex_map(child, path.append(NodePathSegment::CompositeStep)))
+    None => None
+  }
+  {
+    id: edge.id.copy(),
+    primary,
+    map,
+    references: edge.references.copy(),
+    path: Some(path),
+  }
+}
+
+///|
+fn reindex_scalar(scalar : Scalar, path : NodePath) -> Scalar {
+  {
+    value: scalar.value,
+    range: scalar.range,
+    ast: scalar.ast,
+    source_path: scalar.source_path,
+    path: Some(path),
+  }
+}
+
+///|
+fn reindex_composite(composite : Composite, path : NodePath) -> Composite {
+  match composite {
+    Composite::Array(array) => Composite::Array(reindex_array(array, path))
+    Composite::Map(map) => Composite::Map(reindex_map(map, path))
+  }
+}
+
+///|
+fn reindex_value(value : Value, path : NodePath) -> Value {
+  match value {
+    Value::Scalar(scalar) => Value::Scalar(reindex_scalar(scalar, path))
+    Value::Map(map) => Value::Map(reindex_map(map, path))
+    Value::Array(array) => Value::Array(reindex_array(array, path))
+  }
+}
+
+///|
+fn reindex_array(array : IRArray, path : NodePath) -> IRArray {
+  let values : Array[Value] = []
+  for i, value in array.values {
+    values.push(
+      reindex_value(value, path.append(NodePathSegment::ArrayItemStep(i))),
+    )
+  }
+  { values, ast: array.ast, source_path: array.source_path, path: Some(path) }
+}
+
+///|
+fn copy_scalar_detached(scalar : Scalar) -> Scalar {
+  {
+    value: scalar.value,
+    range: scalar.range,
+    ast: scalar.ast,
+    source_path: scalar.source_path,
+    path: None,
+  }
+}
+
+///|
+fn copy_composite_detached(composite : Composite) -> Composite {
+  match composite {
+    Composite::Array(array) => Composite::Array(copy_array_detached(array))
+    Composite::Map(map) => Composite::Map(copy_map_detached(map))
+  }
+}
+
+///|
+fn copy_value_detached(value : Value) -> Value {
+  match value {
+    Value::Scalar(scalar) => Value::Scalar(copy_scalar_detached(scalar))
+    Value::Map(map) => Value::Map(copy_map_detached(map))
+    Value::Array(array) => Value::Array(copy_array_detached(array))
+  }
+}
+
+///|
+fn copy_array_detached(array : IRArray) -> IRArray {
+  let values : Array[Value] = []
+  for value in array.values {
+    values.push(copy_value_detached(value))
+  }
+  { values, ast: array.ast, source_path: array.source_path, path: None }
+}
+
+///|
+fn copy_field_detached(field : Field) -> Field {
+  let primary = match field.primary {
+    Some(scalar) => Some(copy_scalar_detached(scalar))
+    None => None
+  }
+  let composite = match field.composite {
+    Some(node) => Some(copy_composite_detached(node))
+    None => None
+  }
+  {
+    name: field.name,
+    primary,
+    composite,
+    references: field.references.copy(),
+    path: None,
+  }
+}
+
+///|
+fn copy_edge_detached(edge : Edge) -> Edge {
+  let primary = match edge.primary {
+    Some(scalar) => Some(copy_scalar_detached(scalar))
+    None => None
+  }
+  let map = match edge.map {
+    Some(child) => Some(copy_map_detached(child))
+    None => None
+  }
+  {
+    id: edge.id.copy(),
+    primary,
+    map,
+    references: edge.references.copy(),
+    path: None,
+  }
+}
+
+///|
+fn copy_map_detached(m : Map) -> Map {
+  let fields : Array[Field] = []
+  for field in m.fields {
+    fields.push(copy_field_detached(field))
+  }
+  let edges : Array[Edge] = []
+  for edge in m.edges {
+    edges.push(copy_edge_detached(edge))
+  }
+  { fields, edges, ast: m.ast, source_path: m.source_path, path: None }
 }
 
 // ============================================================================
@@ -865,6 +1298,21 @@ pub fn Scalar::source_path(self : Scalar) -> String? {
 }
 
 ///|
+pub fn Scalar::path(self : Scalar) -> NodePath? {
+  self.path
+}
+
+///|
+pub fn Scalar::parent(self : Scalar, root : Map) -> Node? {
+  Node::Scalar(self).parent(root)
+}
+
+///|
+pub fn Scalar::copy(self : Scalar) -> Scalar {
+  copy_scalar_detached(self)
+}
+
+///|
 /// Check if scalar is a number
 pub fn Scalar::is_number(self : Scalar) -> Bool {
   self.value is Number(_)
@@ -950,6 +1398,21 @@ pub fn Field::ast(self : Field) -> @ast.Node? {
 }
 
 ///|
+pub fn Field::path(self : Field) -> NodePath? {
+  self.path
+}
+
+///|
+pub fn Field::parent(self : Field, root : Map) -> Node? {
+  Node::Field(self).parent(root)
+}
+
+///|
+pub fn Field::copy(self : Field) -> Field {
+  copy_field_detached(self)
+}
+
+///|
 pub fn Edge::last_ref(self : Edge) -> Reference? {
   if self.references.is_empty() {
     None
@@ -989,6 +1452,21 @@ pub fn Edge::ast(self : Edge) -> @ast.Node? {
 }
 
 ///|
+pub fn Edge::path(self : Edge) -> NodePath? {
+  self.path
+}
+
+///|
+pub fn Edge::parent(self : Edge, root : Map) -> Node? {
+  Node::Edge(self).parent(root)
+}
+
+///|
+pub fn Edge::copy(self : Edge) -> Edge {
+  copy_edge_detached(self)
+}
+
+///|
 pub fn Map::ast(self : Map) -> @ast.Node? {
   self.ast
 }
@@ -999,6 +1477,21 @@ pub fn Map::source_path(self : Map) -> String? {
 }
 
 ///|
+pub fn Map::path(self : Map) -> NodePath? {
+  self.path
+}
+
+///|
+pub fn Map::parent(self : Map, root : Map) -> Node? {
+  Node::Map(self).parent(root)
+}
+
+///|
+pub fn Map::copy(self : Map) -> Map {
+  reindex_map(self, NodePath::root())
+}
+
+///|
 pub fn IRArray::ast(self : IRArray) -> @ast.Node? {
   self.ast
 }
@@ -1006,4 +1499,19 @@ pub fn IRArray::ast(self : IRArray) -> @ast.Node? {
 ///|
 pub fn IRArray::source_path(self : IRArray) -> String? {
   self.source_path
+}
+
+///|
+pub fn IRArray::path(self : IRArray) -> NodePath? {
+  self.path
+}
+
+///|
+pub fn IRArray::parent(self : IRArray, root : Map) -> Node? {
+  Node::IRArray(self).parent(root)
+}
+
+///|
+pub fn IRArray::copy(self : IRArray) -> IRArray {
+  copy_array_detached(self)
 }

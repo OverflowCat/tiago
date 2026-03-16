@@ -37,7 +37,7 @@ pub fn compile(ast : @ast.Map) -> Map raise CompileError {
   compile_map_nodes(ir, ast, ast.nodes)
   // Resolve variable substitutions
   ir.resolve_substitutions()
-  ir
+  ir.reindex_paths()
 }
 
 ///|

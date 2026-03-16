@@ -58,9 +58,10 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 ## 2. IR And Semantic Model Parity
 
-- [ ] Expand `ir` to match D2's node/reference model more closely.
-  - D2 reference: `d2ir.Node`, `Copy(newParent)`, `Parent()`, `AST()`, `LastRef()`, `LastPrimaryRef()`, `LastPrimaryKey()`, import AST, reference context, glob and lazy-glob tracking.
-  - diago today: `ir` has nodes and ranges, but not the same depth of parent/context/reference semantics.
+- [x] Expand `ir` to match D2's node/reference model more closely.
+  - D2 reference: `d2ir.Node`, `Copy(newParent)`, `Parent()`, `AST()`, `LastRef()`, `LastPrimaryRef()`, `LastPrimaryKey()`, reference context, glob and lazy-glob tracking.
+  - Landed in diago: `NodePath`, `Map::get_node`, root-based `parent(...)` lookup, deep copy helpers, AST/reference context, and glob/lazy-glob metadata.
+  - Remaining imported-source traceability is tracked by the next checklist item.
 
 - [ ] Add import-aware AST/source tracing to IR nodes.
   - Done when imported fields/edges can be traced back to both local and imported syntax in parity-sensitive editor features.

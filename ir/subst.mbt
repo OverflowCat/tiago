@@ -957,7 +957,13 @@ fn overlay_map(base : Map, overlay : Map) -> Unit {
 
 ///|
 fn clone_scalar(s : Scalar) -> Scalar {
-  { value: s.value, range: s.range, ast: s.ast, source_path: s.source_path }
+  {
+    value: s.value,
+    range: s.range,
+    ast: s.ast,
+    source_path: s.source_path,
+    path: s.path,
+  }
 }
 
 ///|
@@ -975,6 +981,7 @@ fn clone_map(m : Map) -> Map {
     edges: [],
     ast: m.ast,
     source_path: m.source_path,
+    path: m.path,
   }
   for f in m.fields {
     out.fields.push(clone_field(f))
@@ -995,7 +1002,13 @@ fn clone_field(f : Field) -> Field {
     Some(c) => Some(clone_composite(c))
     None => None
   }
-  Field::new(f.name, primary, composite, f.references.copy())
+  {
+    name: f.name,
+    primary,
+    composite,
+    references: f.references.copy(),
+    path: f.path,
+  }
 }
 
 ///|
@@ -1020,7 +1033,13 @@ fn clone_edge(e : Edge) -> Edge {
     Some(m) => Some(clone_map(m))
     None => None
   }
-  Edge::new(clone_edge_id(e.id), primary, map, e.references.copy())
+  {
+    id: clone_edge_id(e.id),
+    primary,
+    map,
+    references: e.references.copy(),
+    path: e.path,
+  }
 }
 
 ///|
@@ -1038,5 +1057,5 @@ fn clone_array(a : IRArray) -> IRArray {
   for v in a.values {
     values.push(clone_value(v))
   }
-  { values, ast: a.ast, source_path: a.source_path }
+  { values, ast: a.ast, source_path: a.source_path, path: a.path }
 }

@@ -478,7 +478,7 @@ fn clone_irarray_for_properties(a : IRArray) -> IRArray {
   for v in a.values {
     values.push(clone_value_for_properties(v))
   }
-  { values, ast: a.ast, source_path: a.source_path }
+  { values, ast: a.ast, source_path: a.source_path, path: a.path }
 }
 
 ///|
@@ -495,7 +495,13 @@ fn clone_field_for_properties(f : Field) -> Field {
     Some(c) => Some(clone_composite_for_properties(c))
     None => None
   }
-  Field::new(f.name, f.primary, composite, f.references.copy())
+  {
+    name: f.name,
+    primary: f.primary,
+    composite,
+    references: f.references.copy(),
+    path: f.path,
+  }
 }
 
 ///|
@@ -505,6 +511,7 @@ fn clone_map_for_properties(m : Map) -> Map {
     edges: [],
     ast: m.ast,
     source_path: m.source_path,
+    path: m.path,
   }
   for f in m.fields {
     out.add_field(clone_field_for_properties(f))

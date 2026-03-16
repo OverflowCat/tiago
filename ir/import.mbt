@@ -39,7 +39,7 @@ pub fn compile_with_imports(
   compile_map_nodes_with_imports(ir, ast, ast.nodes, resolver, [])
   // Resolve variable substitutions
   ir.resolve_substitutions()
-  ir
+  ir.reindex_paths()
 }
 
 ///|

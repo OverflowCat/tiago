@@ -759,3 +759,182 @@ test "compile vars - spread non-array into array errors (d2 parity)" {
     _ => fail("expected InvalidSubstitution")
   }
 }
+
+///|
+test "compiled IR assigns node paths and parent lookups" {
+  let source =
+    #|a: {
+    #|  b: hello
+    #|  c: {
+    #|    d: world
+    #|  }
+    #|  xs: [1, 2]
+    #|}
+    #|a -> z: edge
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  let root_path = NodePath::root()
+  assert_eq(ir.path(), Some(root_path))
+
+  guard ir.get_field("a") is Some(a_field) else { fail("expected a field") }
+  let a_field_path = root_path.append(NodePathSegment::FieldStep("a"))
+  assert_eq(a_field.path(), Some(a_field_path))
+  guard a_field.parent(ir) is Some(Node::Map(parent_map)) else {
+    fail("expected map parent")
+  }
+  assert_eq(parent_map.path(), Some(root_path))
+
+  guard a_field.map() is Some(a_map) else { fail("expected a map") }
+  let a_map_path = a_field_path.append(NodePathSegment::CompositeStep)
+  assert_eq(a_map.path(), Some(a_map_path))
+  guard a_map.parent(ir) is Some(Node::Field(parent_field)) else {
+    fail("expected field parent")
+  }
+  assert_eq(parent_field.name, "a")
+
+  guard a_map.get_field("b") is Some(b_field) else { fail("expected b field") }
+  let b_field_path = a_map_path.append(NodePathSegment::FieldStep("b"))
+  assert_eq(b_field.path(), Some(b_field_path))
+  guard b_field.primary is Some(b_scalar) else { fail("expected b scalar") }
+  let b_scalar_path = b_field_path.append(NodePathSegment::PrimaryStep)
+  assert_eq(b_scalar.path(), Some(b_scalar_path))
+  guard b_scalar.parent(ir) is Some(Node::Field(parent_of_b_scalar)) else {
+    fail("expected b scalar parent")
+  }
+  assert_eq(parent_of_b_scalar.name, "b")
+
+  guard a_map.get_field("c") is Some(c_field) else { fail("expected c field") }
+  guard c_field.map() is Some(c_map) else { fail("expected c map") }
+  let c_map_path = a_map_path
+    .append(NodePathSegment::FieldStep("c"))
+    .append(NodePathSegment::CompositeStep)
+  assert_eq(c_map.path(), Some(c_map_path))
+  guard c_map.parent(ir) is Some(Node::Field(parent_of_c_map)) else {
+    fail("expected c map parent")
+  }
+  assert_eq(parent_of_c_map.name, "c")
+
+  guard a_map.get_field("xs") is Some(xs_field) else {
+    fail("expected xs field")
+  }
+  guard xs_field.array() is Some(xs_array) else { fail("expected xs array") }
+  let xs_array_path = a_map_path
+    .append(NodePathSegment::FieldStep("xs"))
+    .append(NodePathSegment::CompositeStep)
+  assert_eq(xs_array.path(), Some(xs_array_path))
+  guard xs_array.parent(ir) is Some(Node::Field(parent_of_xs_array)) else {
+    fail("expected xs array parent")
+  }
+  assert_eq(parent_of_xs_array.name, "xs")
+  guard xs_array.values[0] is Value::Scalar(first_item) else {
+    fail("expected first array item")
+  }
+  let first_item_path = xs_array_path.append(NodePathSegment::ArrayItemStep(0))
+  assert_eq(first_item.path(), Some(first_item_path))
+  guard first_item.parent(ir) is Some(Node::IRArray(parent_array)) else {
+    fail("expected array parent")
+  }
+  assert_eq(parent_array.path(), Some(xs_array_path))
+
+  assert_eq(ir.edges.length(), 1)
+  let edge = ir.edges[0]
+  let edge_path = root_path.append(NodePathSegment::EdgeStep(edge.id.copy()))
+  assert_eq(edge.path(), Some(edge_path))
+  guard edge.parent(ir) is Some(Node::Map(parent_of_edge)) else {
+    fail("expected edge parent")
+  }
+  assert_eq(parent_of_edge.path(), Some(root_path))
+  guard edge.primary is Some(edge_scalar) else { fail("expected edge scalar") }
+  let edge_scalar_path = edge_path.append(NodePathSegment::PrimaryStep)
+  assert_eq(edge_scalar.path(), Some(edge_scalar_path))
+  guard edge_scalar.parent(ir) is Some(Node::Edge(parent_edge)) else {
+    fail("expected edge scalar parent")
+  }
+  assert_eq(parent_edge.id, edge.id)
+}
+
+///|
+test "map get_node resolves nodes by stored path" {
+  let source =
+    #|a: {
+    #|  c: {
+    #|    d: world
+    #|  }
+    #|  xs: [1, 2]
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("a") is Some(a_field) else { fail("expected a field") }
+  guard a_field.map() is Some(a_map) else { fail("expected a map") }
+  guard a_map.get_field("c") is Some(c_field) else { fail("expected c field") }
+  guard c_field.map() is Some(c_map) else { fail("expected c map") }
+  guard c_map.get_field("d") is Some(d_field) else { fail("expected d field") }
+  guard d_field.primary is Some(d_scalar) else { fail("expected d scalar") }
+  guard d_scalar.path() is Some(d_scalar_path) else {
+    fail("expected scalar path")
+  }
+  guard ir.get_node(d_scalar_path) is Some(Node::Scalar(looked_up_scalar)) else {
+    fail("expected scalar lookup")
+  }
+  assert_eq(looked_up_scalar.to_string(), "world")
+
+  guard a_map.get_field("xs") is Some(xs_field) else {
+    fail("expected xs field")
+  }
+  guard xs_field.array() is Some(xs_array) else { fail("expected xs array") }
+  guard xs_array.path() is Some(xs_array_path) else {
+    fail("expected array path")
+  }
+  guard ir.get_node(xs_array_path) is Some(Node::IRArray(looked_up_array)) else {
+    fail("expected array lookup")
+  }
+  assert_eq(looked_up_array.values.length(), 2)
+}
+
+///|
+test "map copy deep clones nested values and reindexes paths" {
+  let source =
+    #|a: {
+    #|  b: hello
+    #|  xs: [1, 2]
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  let copied = ir.copy()
+
+  ir.add_field(Field::simple("fresh"))
+  guard ir.get_field("a") is Some(original_a) else { fail("expected a field") }
+  guard original_a.map() is Some(original_a_map) else { fail("expected a map") }
+  let _ = original_a_map.delete_field("b")
+  guard original_a_map.get_field("xs") is Some(original_xs_field) else {
+    fail("expected xs field")
+  }
+  guard original_xs_field.array() is Some(original_xs_array) else {
+    fail("expected xs array")
+  }
+  original_xs_array.values.push(Value::Scalar(Scalar::number("3")))
+
+  assert_eq(copied.get_field("fresh"), None)
+  guard copied.get_field("a") is Some(copied_a) else {
+    fail("expected copied a")
+  }
+  guard copied_a.map() is Some(copied_a_map) else {
+    fail("expected copied a map")
+  }
+  assert_true(copied_a_map.get_field("b") is Some(_))
+  guard copied_a_map.get_field("xs") is Some(copied_xs_field) else {
+    fail("expected copied xs field")
+  }
+  guard copied_xs_field.array() is Some(copied_xs_array) else {
+    fail("expected copied xs array")
+  }
+  assert_eq(copied_xs_array.values.length(), 2)
+  assert_eq(copied.path(), Some(NodePath::root()))
+  guard copied_xs_array.values[0] is Value::Scalar(copied_item) else {
+    fail("expected copied item")
+  }
+  guard copied_item.parent(copied) is Some(Node::IRArray(parent_array)) else {
+    fail("expected copied item parent")
+  }
+  assert_eq(parent_array.values.length(), 2)
+}
