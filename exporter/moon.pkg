@@ -4,3 +4,7 @@ import {
   "Milky2018/diago/lexer",
   "moonbitlang/core/strconv",
 }
+
+import {
+  "Milky2018/diago/parser",
+} for "wbtest"

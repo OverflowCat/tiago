@@ -13,6 +13,20 @@
 // limitations under the License.
 
 ///|
+fn compile_source_graph(source : String) -> Result[@graph.GraphInput, String] {
+  let (ast, errors) = @parser.parse(source)
+  if !errors.is_empty() {
+    return Err("Parse errors: \{errors}")
+  }
+  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  let result = try? compile("root", ir)
+  match result {
+    Ok(graph) => Ok(graph)
+    Err(err) => Err(err.to_string())
+  }
+}
+
+///|
 test "classes block is treated as reserved during object compilation" {
   let class_def = @ir.Map::new()
   class_def.add_field(
@@ -66,6 +80,131 @@ test "board graphs carry folder-only metadata" {
   assert_eq(graph.layers.length(), 1)
   assert_false(graph.layers[0].graph.is_folder_only)
   assert_true(graph.layers[0].graph.find_object("service") is Some(_))
+}
+
+///|
+test "scenarios and steps inherit base board objects while layers stay isolated" {
+  let source =
+    #|x: {
+    #|  style.opacity: 0.5
+    #|}
+    #|scenarios: {
+    #|  scene: {}
+    #|}
+    #|steps: {
+    #|  1: {}
+    #|}
+    #|layers: {
+    #|  alt: {
+    #|    x
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  guard graph.scenarios[0].graph.find_object("x") is Some(scenario_x) else {
+    fail("expected inherited scenario object")
+  }
+  guard graph.steps[0].graph.find_object("x") is Some(step_x) else {
+    fail("expected inherited step object")
+  }
+  guard graph.layers[0].graph.find_object("x") is Some(layer_x) else {
+    fail("expected layer object")
+  }
+  assert_false(graph.scenarios[0].graph.is_folder_only)
+  assert_false(graph.steps[0].graph.is_folder_only)
+  assert_eq(
+    scenario_x.style.opacity,
+    Some(@graph.StyleValue::from_string("0.5")),
+  )
+  assert_eq(step_x.style.opacity, Some(@graph.StyleValue::from_string("0.5")))
+  assert_eq(layer_x.style.opacity, None)
+}
+
+///|
+test "scenario overlays preserve base objects and apply overrides" {
+  let source =
+    #|a
+    #|x
+    #|a -> x
+    #|scenarios: {
+    #|  focus: {
+    #|    x.style.opacity: 0.1
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  let scenario = graph.scenarios[0].graph
+  assert_eq(scenario.objects.length(), 2)
+  assert_eq(scenario.edges.length(), 1)
+  guard scenario.find_object("x") is Some(x) else {
+    fail("expected overlaid object")
+  }
+  assert_eq(x.style.opacity, Some(@graph.StyleValue::from_string("0.1")))
+}
+
+///|
+test "board primary labels override explicit labels and base labels are not inherited" {
+  let source =
+    #|label: hi
+    #|layers: {
+    #|  1: one {
+    #|    RJ
+    #|  }
+    #|  2: {
+    #|    label: two
+    #|    RJ
+    #|  }
+    #|}
+    #|scenarios: {
+    #|  x: b {
+    #|    k
+    #|  }
+    #|}
+    #|steps: {
+    #|  s1: {
+    #|    RJ
+    #|  }
+    #|}
+  let graph = compile_source_graph(source).unwrap()
+  assert_eq(graph.layers[0].graph.root.label, "one")
+  assert_eq(graph.layers[1].graph.root.label, "two")
+  assert_eq(graph.scenarios[0].graph.root.label, "b")
+  assert_eq(graph.steps[0].graph.root.label, "root")
+}
+
+///|
+test "duplicate board names across kinds raise semantic error" {
+  let source =
+    #|layers: {
+    #|  one: {
+    #|    santa
+    #|  }
+    #|}
+    #|steps: {
+    #|  one: {
+    #|    clause
+    #|  }
+    #|}
+  match compile_source_graph(source) {
+    Err(err) =>
+      assert_true(err.contains("board name one already used by another board"))
+    Ok(_) => fail("expected duplicate board name error")
+  }
+}
+
+///|
+test "board keywords must be declared at a board root scope" {
+  let source =
+    #|x: {
+    #|  steps: {
+    #|    1: {
+    #|      a
+    #|    }
+    #|  }
+    #|}
+  match compile_source_graph(source) {
+    Err(err) =>
+      assert_true(err.contains("steps must be declared at a board root scope"))
+    Ok(_) => fail("expected board root scope error")
+  }
 }
 
 ///|

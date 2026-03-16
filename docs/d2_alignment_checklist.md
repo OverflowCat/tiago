@@ -90,8 +90,8 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: object and edge references now flow from IR into graph inputs/models, are preserved through layout canonicalization and graph cloning helpers, and are used to restore D2-style source-order sorting.
   - This closes the graph-side prerequisite for broader `d2lsp` / `d2oracle` parity work, though the tooling surface itself is still tracked separately below.
 
-- [ ] Implement or verify D2-style board compilation semantics.
-  - Includes `layers`, `scenarios`, `steps`, inherited/base board behavior, and "folder only" boards.
+- [x] Implement or verify D2-style board compilation semantics.
+  - Landed in diago: board compilation now distinguishes isolated `layers` from inherited `scenarios` / `steps`, preserves D2-style folder-only behavior, applies board primary labels, rejects duplicate board names across kinds, and reports board keywords outside board-root scope.
 
 - [ ] Align legend compilation behavior.
   - D2 builds legends from `vars.d2-legend` with explicit filtering and synthetic layout defaults.

@@ -874,6 +874,105 @@ fn compile_board_graph(
 }
 
 ///|
+fn compile_boards_field(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+  field_name : String,
+  inherit_base : Bool,
+) -> Unit raise GraphCompileError {
+  match ir.get_field(field_name) {
+    Some(board_field_container) =>
+      match board_field_container.composite {
+        Some(@ir.Composite::Map(boards_map)) =>
+          for board_field in boards_map.fields {
+            if has_board_name(graph, board_field.name) {
+              raise Semantic(
+                "board name \{board_field.name} already used by another board",
+              )
+            }
+            let board_ir = compile_board_ir(ir, board_field, inherit_base)
+            let board_graph = Graph::new(board_field.name)
+            compile_board_graph(board_graph, board_ir, classes)
+            apply_board_primary_label(board_graph, board_field)
+            add_board(graph, field_name, board_field.name, board_graph)
+          }
+        _ => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn compile_board_ir(
+  current_ir : @ir.Map,
+  board_field : @ir.Field,
+  inherit_base : Bool,
+) -> @ir.Map {
+  let overlay = match board_field.composite {
+    Some(@ir.Composite::Map(board_ir)) => board_ir.copy()
+    _ => @ir.Map::new()
+  }
+  if !inherit_base {
+    return overlay
+  }
+  inheritable_board_ir(current_ir).overlay(overlay)
+}
+
+///|
+fn inheritable_board_ir(ir : @ir.Map) -> @ir.Map {
+  let inherited = ir.copy()
+  let _ = inherited.delete_field("label")
+  let _ = inherited.delete_field("layers")
+  let _ = inherited.delete_field("scenarios")
+  let _ = inherited.delete_field("steps")
+  inherited
+}
+
+///|
+fn apply_board_primary_label(graph : Graph, board_field : @ir.Field) -> Unit {
+  match board_field.primary {
+    Some(s) => set_object_label_from_scalar(graph.root, s)
+    None => ()
+  }
+}
+
+///|
+fn add_board(
+  graph : Graph,
+  field_name : String,
+  board_name : String,
+  board_graph : Graph,
+) -> Unit {
+  match field_name {
+    "layers" => graph.add_layer(Layer::new(board_name, board_graph))
+    "scenarios" => graph.add_scenario(Scenario::new(board_name, board_graph))
+    "steps" => graph.add_step(Step::new(board_name, board_graph))
+    _ => ()
+  }
+}
+
+///|
+fn has_board_name(graph : Graph, board_name : String) -> Bool {
+  for layer in graph.layers {
+    if layer.name == board_name {
+      return true
+    }
+  }
+  for scenario in graph.scenarios {
+    if scenario.name == board_name {
+      return true
+    }
+  }
+  for step in graph.steps {
+    if step.name == board_name {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn compile_objects(
   graph : Graph,
   ir : @ir.Map,
@@ -910,6 +1009,7 @@ fn compile_objects(
         // Apply class properties first (if specified)
         apply_class(obj, inner, classes)
         // Check for special fields (can override class)
+        validate_board_root_scope(inner)
         process_special_fields(obj, inner)
         // D2 registers objects in encounter order before descending.
         graph.add_object(obj)
@@ -953,7 +1053,10 @@ fn apply_class(
       for class_name in class_names_from_field(class_field) {
         obj.classes.push(class_name)
         match classes.get(class_name) {
-          Some(class_def) => process_special_fields(obj, class_def)
+          Some(class_def) => {
+            validate_board_root_scope(class_def)
+            process_special_fields(obj, class_def)
+          }
           None => ()
         }
       }
@@ -992,6 +1095,7 @@ fn compile_children(
         // Apply class properties first (if specified)
         apply_class(child, inner, classes)
         // Check for special fields (can override class)
+        validate_board_root_scope(inner)
         process_special_fields(child, inner)
         if parent.shape_type == ShapeType::SqlTable {
           let constraints = extract_sql_constraints(inner)
@@ -2225,6 +2329,15 @@ fn validate_reserved_fields(ir : @ir.Map) -> Unit raise GraphCompileError {
 }
 
 ///|
+fn validate_board_root_scope(ir : @ir.Map) -> Unit raise GraphCompileError {
+  for field in ir.fields {
+    if field.is_board_keyword_name() {
+      raise Semantic("\{field.name} must be declared at a board root scope")
+    }
+  }
+}
+
+///|
 fn is_http_url(s : String) -> Bool {
   let lower = s.to_lower()
   lower.has_prefix("http://") || lower.has_prefix("https://")
@@ -2858,24 +2971,7 @@ fn compile_layers(
   ir : @ir.Map,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
-  match ir.get_field("layers") {
-    Some(f) =>
-      match f.composite {
-        Some(@ir.Composite::Map(layers_map)) =>
-          for field in layers_map.fields {
-            match field.composite {
-              Some(@ir.Composite::Map(layer_ir)) => {
-                let layer_graph = Graph::new(field.name)
-                compile_board_graph(layer_graph, layer_ir, classes)
-                graph.add_layer(Layer::new(field.name, layer_graph))
-              }
-              _ => ()
-            }
-          }
-        _ => ()
-      }
-    None => ()
-  }
+  compile_boards_field(graph, ir, classes, "layers", false)
 }
 
 ///|
@@ -2885,24 +2981,7 @@ fn compile_scenarios(
   ir : @ir.Map,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
-  match ir.get_field("scenarios") {
-    Some(f) =>
-      match f.composite {
-        Some(@ir.Composite::Map(scenarios_map)) =>
-          for field in scenarios_map.fields {
-            match field.composite {
-              Some(@ir.Composite::Map(scenario_ir)) => {
-                let scenario_graph = Graph::new(field.name)
-                compile_board_graph(scenario_graph, scenario_ir, classes)
-                graph.add_scenario(Scenario::new(field.name, scenario_graph))
-              }
-              _ => ()
-            }
-          }
-        _ => ()
-      }
-    None => ()
-  }
+  compile_boards_field(graph, ir, classes, "scenarios", true)
 }
 
 ///|
@@ -2912,24 +2991,7 @@ fn compile_steps(
   ir : @ir.Map,
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
-  match ir.get_field("steps") {
-    Some(f) =>
-      match f.composite {
-        Some(@ir.Composite::Map(steps_map)) =>
-          for field in steps_map.fields {
-            match field.composite {
-              Some(@ir.Composite::Map(step_ir)) => {
-                let step_graph = Graph::new(field.name)
-                compile_board_graph(step_graph, step_ir, classes)
-                graph.add_step(Step::new(field.name, step_graph))
-              }
-              _ => ()
-            }
-          }
-        _ => ()
-      }
-    None => ()
-  }
+  compile_boards_field(graph, ir, classes, "steps", true)
 }
 
 ///|

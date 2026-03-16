@@ -891,6 +891,14 @@ fn find_edge_index(m : Map, id : EdgeID) -> Int? {
 }
 
 ///|
+/// Return a detached map created by overlaying `overlay` onto `self`.
+pub fn Map::overlay(self : Map, overlay : Map) -> Map {
+  let merged = clone_map(self)
+  overlay_map(merged, overlay)
+  merged.reindex_paths()
+}
+
+///|
 fn overlay_field(base : Field, overlay : Field) -> Field {
   let mut primary = base.primary
   if overlay.primary is Some(op) {

@@ -199,6 +199,7 @@ pub fn Map::has_field(Self, String) -> Bool
 pub fn Map::import_ast(Self) -> @ast.Node?
 pub fn Map::multi_glob(Self, Array[String]) -> (Array[Field], Bool)
 pub fn Map::new() -> Self
+pub fn Map::overlay(Self, Self) -> Self
 pub fn Map::parent(Self, Self) -> Node?
 pub fn Map::path(Self) -> NodePath?
 pub fn Map::reindex_paths(Self) -> Self
