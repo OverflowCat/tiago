@@ -35,6 +35,8 @@ priv struct RenderRequest {
   target_spec : String?
   theme_name : String?
   dark_theme_id : Int?
+  pad : Double?
+  center : Bool?
   theme_overrides : Map[String, String]
   dark_theme_overrides : Map[String, String]
   scale : Double?

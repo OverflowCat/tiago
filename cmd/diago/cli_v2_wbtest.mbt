@@ -45,6 +45,8 @@ fn parse_render(
             target_spec: None,
             theme_name: None,
             dark_theme_id: None,
+            pad: None,
+            center: None,
             theme_overrides: {},
             dark_theme_overrides: {},
             scale: None,
@@ -75,6 +77,8 @@ fn parse_render(
         target_spec: None,
         theme_name: None,
         dark_theme_id: None,
+        pad: None,
+        center: None,
         theme_overrides: {},
         dark_theme_overrides: {},
         scale: None,
@@ -174,6 +178,16 @@ test "precedence: env overrides defaults for layout" {
   })
   assert_eq(req.layout_engine, LayoutEngineChoice::Elk)
   assert_true(req.layout_explicit)
+}
+
+///|
+test "render parses D2-style pad and center svg options" {
+  let req = parse_render(
+    ["diago", "render", "demo.d2", "--pad", "24", "--center"],
+    {},
+  )
+  assert_eq(req.pad, Some(24.0))
+  assert_eq(req.center, Some(true))
 }
 
 ///|

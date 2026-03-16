@@ -31,6 +31,8 @@ pub enum RenderPass {
 pub struct SvgConfig {
   /// Padding around the entire diagram
   padding : Double
+  /// Center the outer SVG viewbox like D2's render option.
+  center : Bool
   /// Default font family
   font_family : String
   /// Default font size
@@ -68,6 +70,7 @@ pub fn SvgConfig::new() -> SvgConfig {
   let theme = @themes.get_theme(0)
   {
     padding: 100.0,
+    center: false,
     font_family: "Arial, sans-serif",
     font_size: 16,
     background: theme.background_color(),
@@ -93,6 +96,7 @@ pub fn SvgConfig::with_theme(theme_id : Int) -> SvgConfig {
   let font = if theme.rules.mono { "monospace" } else { "Arial, sans-serif" }
   {
     padding: 100.0,
+    center: false,
     font_family: font,
     font_size: 16,
     background: theme.background_color(),
@@ -130,6 +134,7 @@ pub fn SvgConfig::with_render_options(
   dark_theme_id : Int?,
   theme_overrides : Map[String, String],
   dark_theme_overrides : Map[String, String],
+  center : Bool,
   scale : Double?,
   no_xml_tag : Bool,
   salt : String?,
@@ -145,6 +150,7 @@ pub fn SvgConfig::with_render_options(
   }
   {
     ..self,
+    center,
     font_family,
     background: active_light_theme.background_color(),
     default_stroke: active_light_theme.stroke_color(),

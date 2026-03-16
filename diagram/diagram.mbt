@@ -169,6 +169,9 @@ pub struct Diagram {
   name : String
   config : Config?
   is_folder_only : Bool
+  description : String
+  font_family : String?
+  mono_font_family : String?
   root : Shape
   shapes : Array[Shape]
   connections : Array[Connection]
@@ -202,6 +205,31 @@ pub fn Diagram::has_legend(self : Diagram) -> Bool {
     Some(l) => not(l.is_empty()) && l.position != @graph.Hidden
     None => false
   }
+}
+
+///|
+pub fn Diagram::has_shape(self : Diagram, condition : (Shape) -> Bool) -> Bool {
+  for board in self.layers {
+    if board.has_shape(condition) {
+      return true
+    }
+  }
+  for board in self.scenarios {
+    if board.has_shape(condition) {
+      return true
+    }
+  }
+  for board in self.steps {
+    if board.has_shape(condition) {
+      return true
+    }
+  }
+  for shape in self.shapes {
+    if condition(shape) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -334,6 +362,112 @@ pub fn Diagram::find_object(self : Diagram, id : String) -> Shape? {
 }
 
 ///|
+pub fn Diagram::bytes(self : Diagram) -> String {
+  let out = StringBuilder::new()
+  out.write_string(diagram_shape_array_json(self.shapes))
+  out.write_string(diagram_connection_array_json(self.connections))
+  out.write_string(diagram_shape_json(self.root))
+  match self.config {
+    Some(config) => out.write_string(diagram_config_json(config))
+    None => ()
+  }
+  for board in self.layers {
+    out.write_string(board.bytes())
+  }
+  for board in self.scenarios {
+    out.write_string(board.bytes())
+  }
+  for board in self.steps {
+    out.write_string(board.bytes())
+  }
+  out.to_string()
+}
+
+///|
+pub fn Diagram::hash_id(self : Diagram, salt : String?) -> String {
+  let bytes = self.bytes()
+  let hash = match salt {
+    Some(s) => d2_fnv32a(bytes + s)
+    None => d2_fnv32a(bytes)
+  }
+  "d2-\{d2_u32_decimal(hash)}"
+}
+
+///|
+pub fn Diagram::get_nested_corpus(self : Diagram) -> String {
+  let corpus = StringBuilder::new()
+  corpus.write_string(self.get_corpus())
+  for board in self.layers {
+    corpus.write_string(board.get_nested_corpus())
+  }
+  for board in self.scenarios {
+    corpus.write_string(board.get_nested_corpus())
+  }
+  for board in self.steps {
+    corpus.write_string(board.get_nested_corpus())
+  }
+  corpus.to_string()
+}
+
+///|
+pub fn Diagram::get_corpus(self : Diagram) -> String {
+  let corpus = StringBuilder::new()
+  let mut appendix_count = 0
+  let suppressed_shape_ids : Map[String, Bool] = {}
+  for shape in self.shapes {
+    if shape.shape_type == @graph.Class || shape.shape_type == @graph.SqlTable {
+      for child_id in shape.child_ids {
+        suppressed_shape_ids[child_id] = true
+      }
+    }
+  }
+  for shape in self.shapes {
+    if suppressed_shape_ids.contains(shape.id) {
+      continue
+    }
+    corpus.write_string(shape.label)
+    match shape.tooltip {
+      Some(tooltip) =>
+        if tooltip != "" {
+          corpus.write_string(tooltip)
+          appendix_count = appendix_count + 1
+          corpus.write_string(appendix_count.to_string())
+        }
+      None => ()
+    }
+    match shape.link {
+      Some(link) =>
+        if link != "" {
+          corpus.write_string(link)
+          appendix_count = appendix_count + 1
+          corpus.write_string(appendix_count.to_string())
+        }
+      None => ()
+    }
+    corpus.write_string(shape_structured_corpus(shape, self.shapes))
+  }
+  for connection in self.connections {
+    corpus.write_string(connection.label)
+    match connection.src_arrowhead_label {
+      Some(label) => corpus.write_string(label)
+      None => ()
+    }
+    match connection.dst_arrowhead_label {
+      Some(label) => corpus.write_string(label)
+      None => ()
+    }
+  }
+  match self.legend {
+    Some(legend) =>
+      if !legend.is_empty() {
+        corpus.write_string(legend_corpus(legend))
+      }
+    None => ()
+  }
+  corpus.to_string()
+}
+
+///|
 pub fn Shape::get_id(self : Shape) -> String {
   self.id
 }
@@ -349,6 +483,535 @@ pub fn Shape::center(self : Shape) -> @graph.Point? {
     Some(b) => Some(b.center())
     None => None
   }
+}
+
+///|
+fn json_string(value : String) -> String {
+  Json::string(value).stringify()
+}
+
+///|
+fn json_bool(value : Bool) -> String {
+  Json::boolean(value).stringify()
+}
+
+///|
+fn json_int(value : Int) -> String {
+  value.to_string()
+}
+
+///|
+fn json_double(value : Double) -> String {
+  Json::number(value).stringify()
+}
+
+///|
+fn json_array(items : Array[String]) -> String {
+  let joined = items.join(",")
+  "[\{joined}]"
+}
+
+///|
+fn json_string_array(items : Array[String]) -> String {
+  let out : Array[String] = []
+  for item in items {
+    out.push(json_string(item))
+  }
+  json_array(out)
+}
+
+///|
+fn json_object(fields : Array[(String, String)]) -> String {
+  let out : Array[String] = []
+  for field in fields {
+    out.push("\{json_string(field.0)}:\{field.1}")
+  }
+  let joined = out.join(",")
+  "{\{joined}}"
+}
+
+///|
+fn style_value_json(value : @graph.StyleValue) -> String {
+  json_string(value.get_value())
+}
+
+///|
+fn style_input_json(style : @graph.StyleInput) -> String {
+  let fields : Array[(String, String)] = []
+  let push = fn(key : String, value : @graph.StyleValue?) {
+    match value {
+      Some(v) => fields.push((key, style_value_json(v)))
+      None => ()
+    }
+  }
+  push("opacity", style.opacity)
+  push("stroke", style.stroke)
+  push("fill", style.fill)
+  push("strokeWidth", style.stroke_width)
+  push("strokeDash", style.stroke_dash)
+  push("borderRadius", style.border_radius)
+  push("shadow", style.shadow)
+  push("threeD", style.three_d)
+  push("multiple", style.multiple)
+  push("font", style.font)
+  push("fontSize", style.font_size)
+  push("fontColor", style.font_color)
+  push("bold", style.bold)
+  push("italic", style.italic)
+  push("underline", style.underline)
+  push("animated", style.animated)
+  push("filled", style.filled)
+  push("doubleBorder", style.double_border)
+  push("textTransform", style.text_transform)
+  push("fontFamily", style.font_family)
+  push("fillPattern", style.fill_pattern)
+  push("sketch", style.sketch)
+  push("curved", style.curved)
+  json_object(fields)
+}
+
+///|
+fn point_json(point : @graph.Point) -> String {
+  json_object([("x", json_double(point.x)), ("y", json_double(point.y))])
+}
+
+///|
+fn point_array_json(points : Array[@graph.Point]) -> String {
+  let items : Array[String] = []
+  for point in points {
+    items.push(point_json(point))
+  }
+  json_array(items)
+}
+
+///|
+fn box_json(box : @graph.Box) -> String {
+  json_object([
+    ("x", json_double(box.x)),
+    ("y", json_double(box.y)),
+    ("width", json_double(box.width)),
+    ("height", json_double(box.height)),
+  ])
+}
+
+///|
+fn shape_type_json(shape_type : @graph.ShapeType) -> String {
+  json_string(shape_type.to_shape_string())
+}
+
+///|
+fn arrowhead_json(arrowhead : @graph.ArrowheadType) -> String {
+  json_string(arrowhead.to_string())
+}
+
+///|
+fn diagram_shape_json(shape : Shape) -> String {
+  let fields : Array[(String, String)] = [
+    ("id", json_string(shape.id)),
+    ("semanticId", json_string(shape.semantic_id)),
+    ("label", json_string(shape.label)),
+    ("shapeType", shape_type_json(shape.shape_type)),
+    ("style", style_input_json(shape.style)),
+    ("childIds", json_string_array(shape.child_ids)),
+    ("zIndex", json_int(shape.z_index)),
+    ("classes", json_string_array(shape.classes)),
+    ("sqlConstraints", json_string_array(shape.sql_constraints)),
+  ]
+  match shape.box {
+    Some(box) => fields.push(("box", box_json(box)))
+    None => ()
+  }
+  match shape.label_box {
+    Some(box) => fields.push(("labelBox", box_json(box)))
+    None => ()
+  }
+  match shape.label_width {
+    Some(value) => fields.push(("labelWidth", json_double(value)))
+    None => ()
+  }
+  match shape.label_height {
+    Some(value) => fields.push(("labelHeight", json_double(value)))
+    None => ()
+  }
+  match shape.icon {
+    Some(value) => fields.push(("icon", json_string(value)))
+    None => ()
+  }
+  match shape.tooltip {
+    Some(value) => fields.push(("tooltip", json_string(value)))
+    None => ()
+  }
+  match shape.link {
+    Some(value) => fields.push(("link", json_string(value)))
+    None => ()
+  }
+  match shape.language {
+    Some(value) => fields.push(("language", json_string(value)))
+    None => ()
+  }
+  match shape.grid_rows {
+    Some(value) => fields.push(("gridRows", json_int(value)))
+    None => ()
+  }
+  match shape.grid_columns {
+    Some(value) => fields.push(("gridColumns", json_int(value)))
+    None => ()
+  }
+  match shape.grid_gap {
+    Some(value) => fields.push(("gridGap", json_double(value)))
+    None => ()
+  }
+  match shape.horizontal_gap {
+    Some(value) => fields.push(("horizontalGap", json_double(value)))
+    None => ()
+  }
+  match shape.vertical_gap {
+    Some(value) => fields.push(("verticalGap", json_double(value)))
+    None => ()
+  }
+  match shape.grid_column_span {
+    Some(value) => fields.push(("gridColumnSpan", json_int(value)))
+    None => ()
+  }
+  match shape.grid_row_span {
+    Some(value) => fields.push(("gridRowSpan", json_int(value)))
+    None => ()
+  }
+  match shape.near {
+    Some(value) => fields.push(("near", json_string(value)))
+    None => ()
+  }
+  json_object(fields)
+}
+
+///|
+fn diagram_shape_array_json(shapes : Array[Shape]) -> String {
+  let items : Array[String] = []
+  for shape in shapes {
+    items.push(diagram_shape_json(shape))
+  }
+  json_array(items)
+}
+
+///|
+fn diagram_connection_json(connection : Connection) -> String {
+  let fields : Array[(String, String)] = [
+    ("index", json_int(connection.index)),
+    ("srcId", json_string(connection.src_id)),
+    ("dstId", json_string(connection.dst_id)),
+    ("srcLookupId", json_string(connection.src_lookup_id)),
+    ("dstLookupId", json_string(connection.dst_lookup_id)),
+    ("srcArrow", json_bool(connection.src_arrow)),
+    ("dstArrow", json_bool(connection.dst_arrow)),
+    ("srcArrowhead", arrowhead_json(connection.src_arrowhead)),
+    ("dstArrowhead", arrowhead_json(connection.dst_arrowhead)),
+    ("label", json_string(connection.label)),
+    ("style", style_input_json(connection.style)),
+    ("route", point_array_json(connection.route)),
+    ("isCurve", json_bool(connection.is_curve)),
+    ("zIndex", json_int(connection.z_index)),
+    ("referenceCount", json_int(connection.reference_count)),
+  ]
+  match connection.src_arrowhead_label {
+    Some(value) => fields.push(("srcArrowheadLabel", json_string(value)))
+    None => ()
+  }
+  match connection.dst_arrowhead_label {
+    Some(value) => fields.push(("dstArrowheadLabel", json_string(value)))
+    None => ()
+  }
+  match connection.src_arrowhead_label_color {
+    Some(value) => fields.push(("srcArrowheadLabelColor", json_string(value)))
+    None => ()
+  }
+  match connection.dst_arrowhead_label_color {
+    Some(value) => fields.push(("dstArrowheadLabelColor", json_string(value)))
+    None => ()
+  }
+  match connection.src_anchor {
+    Some(value) => fields.push(("srcAnchor", json_string(value)))
+    None => ()
+  }
+  match connection.dst_anchor {
+    Some(value) => fields.push(("dstAnchor", json_string(value)))
+    None => ()
+  }
+  match connection.bend_points {
+    Some(points) => fields.push(("bendPoints", point_array_json(points)))
+    None => ()
+  }
+  match connection.label_box {
+    Some(box) => fields.push(("labelBox", box_json(box)))
+    None => ()
+  }
+  match connection.src_column_index {
+    Some(value) => fields.push(("srcColumnIndex", json_int(value)))
+    None => ()
+  }
+  match connection.dst_column_index {
+    Some(value) => fields.push(("dstColumnIndex", json_int(value)))
+    None => ()
+  }
+  json_object(fields)
+}
+
+///|
+fn diagram_connection_array_json(connections : Array[Connection]) -> String {
+  let items : Array[String] = []
+  for connection in connections {
+    items.push(diagram_connection_json(connection))
+  }
+  json_array(items)
+}
+
+///|
+fn config_data_value_json(value : ConfigDataValue) -> String {
+  match value {
+    Text(text) => json_string(text)
+    StringArray(values) => json_string_array(values)
+  }
+}
+
+///|
+fn sorted_string_map_json(values : Map[String, String]) -> String {
+  let keys : Array[String] = []
+  for key, _ in values {
+    keys.push(key)
+  }
+  keys.sort_by(fn(a, b) { a.compare(b) })
+  let fields : Array[(String, String)] = []
+  for key in keys {
+    fields.push((key, json_string(values[key])))
+  }
+  json_object(fields)
+}
+
+///|
+fn sorted_config_data_json(values : Map[String, ConfigDataValue]) -> String {
+  let keys : Array[String] = []
+  for key, _ in values {
+    keys.push(key)
+  }
+  keys.sort_by(fn(a, b) { a.compare(b) })
+  let fields : Array[(String, String)] = []
+  for key in keys {
+    fields.push((key, config_data_value_json(values[key])))
+  }
+  json_object(fields)
+}
+
+///|
+fn diagram_config_json(config : Config) -> String {
+  let fields : Array[(String, String)] = []
+  match config.sketch {
+    Some(value) => fields.push(("sketch", json_bool(value)))
+    None => ()
+  }
+  match config.theme_id {
+    Some(value) => fields.push(("themeID", json_int(value)))
+    None => ()
+  }
+  match config.dark_theme_id {
+    Some(value) => fields.push(("darkThemeID", json_int(value)))
+    None => ()
+  }
+  match config.pad {
+    Some(value) => fields.push(("pad", json_double(value)))
+    None => ()
+  }
+  match config.center {
+    Some(value) => fields.push(("center", json_bool(value)))
+    None => ()
+  }
+  match config.layout_engine {
+    Some(value) => fields.push(("layoutEngine", json_string(value)))
+    None => ()
+  }
+  if !config.theme_overrides.is_empty() {
+    fields.push(
+      ("themeOverrides", sorted_string_map_json(config.theme_overrides)),
+    )
+  }
+  if !config.dark_theme_overrides.is_empty() {
+    fields.push(
+      (
+        "darkThemeOverrides",
+        sorted_string_map_json(config.dark_theme_overrides),
+      ),
+    )
+  }
+  if !config.data.is_empty() {
+    fields.push(("data", sorted_config_data_json(config.data)))
+  }
+  json_object(fields)
+}
+
+///|
+fn legend_corpus(legend : @graph.LegendInput) -> String {
+  let corpus = StringBuilder::new()
+  match legend.title {
+    Some(title) =>
+      if title == "" {
+        corpus.write_string("Legend")
+      } else {
+        corpus.write_string(title)
+      }
+    None => corpus.write_string("Legend")
+  }
+  for entry in legend.entries {
+    match entry {
+      @graph.ShapeEntry(label~, ..) => corpus.write_string(label)
+      @graph.ConnectionEntry(label~, ..) => corpus.write_string(label)
+      @graph.CustomEntry(..) => ()
+      @graph.Separator => ()
+    }
+  }
+  corpus.to_string()
+}
+
+///|
+fn object_children(parent : Shape, all_shapes : Array[Shape]) -> Array[Shape] {
+  let by_id : Map[String, Shape] = {}
+  for shape in all_shapes {
+    by_id[shape.id] = shape
+  }
+  let children : Array[Shape] = []
+  for child_id in parent.child_ids {
+    match by_id.get(child_id) {
+      Some(shape) => children.push(shape)
+      None => ()
+    }
+  }
+  children
+}
+
+///|
+fn short_shape_name(shape : Shape) -> String {
+  @graph.syntax_path_last_display(shape.id)
+}
+
+///|
+fn trim_surrounding_double_quotes(s : String) -> String {
+  if s.length() >= 2 && s[0] == '"' && s[s.length() - 1] == '"' {
+    let out = StringBuilder::new()
+    for i = 1; i < s.length() - 1; i = i + 1 {
+      match s[i].to_char() {
+        Some(ch) => out.write_char(ch)
+        None => ()
+      }
+    }
+    out.to_string()
+  } else {
+    s
+  }
+}
+
+///|
+fn split_class_member_visibility(raw_name : String) -> (String, Bool, String) {
+  if raw_name == "" {
+    return ("", false, "")
+  }
+  match raw_name[0].to_char() {
+    Some(ch) =>
+      if ch == '+' || ch == '-' || ch == '#' || ch == '~' {
+        let rest = StringBuilder::new()
+        for i = 1; i < raw_name.length(); i = i + 1 {
+          match raw_name[i].to_char() {
+            Some(c) => rest.write_char(c)
+            None => ()
+          }
+        }
+        (rest.to_string(), true, ch.to_string())
+      } else {
+        (raw_name, false, "")
+      }
+    None => (raw_name, false, "")
+  }
+}
+
+///|
+fn class_member_corpus(child : Shape) -> String {
+  let raw_name = short_shape_name(child)
+  let (name_without_visibility, has_explicit_visibility, visibility) = split_class_member_visibility(
+    raw_name,
+  )
+  let is_method = name_without_visibility.contains("(")
+  let effective_visibility = if has_explicit_visibility {
+    visibility
+  } else {
+    "+"
+  }
+  let display_name = effective_visibility + name_without_visibility
+  let raw_type = trim_surrounding_double_quotes(child.label)
+  let type_name = if raw_type == "" ||
+    raw_type == raw_name ||
+    raw_type == name_without_visibility ||
+    raw_type == display_name {
+    if is_method {
+      "void"
+    } else {
+      ""
+    }
+  } else {
+    raw_type
+  }
+  name_without_visibility + type_name + effective_visibility
+}
+
+///|
+fn sql_table_constraint_abbr(child : Shape) -> String {
+  let abbrs : Array[String] = []
+  for constraint in child.sql_constraints {
+    abbrs.push(
+      match constraint {
+        "primary_key" => "PK"
+        "foreign_key" => "FK"
+        "unique" => "UNQ"
+        _ => constraint
+      },
+    )
+  }
+  abbrs.join(", ")
+}
+
+///|
+fn shape_structured_corpus(shape : Shape, all_shapes : Array[Shape]) -> String {
+  let corpus = StringBuilder::new()
+  match shape.shape_type {
+    @graph.Class =>
+      for child in object_children(shape, all_shapes) {
+        corpus.write_string(class_member_corpus(child))
+      }
+    @graph.SqlTable =>
+      for child in object_children(shape, all_shapes) {
+        corpus.write_string(short_shape_name(child))
+        corpus.write_string(child.label)
+        corpus.write_string(sql_table_constraint_abbr(child))
+      }
+    _ => ()
+  }
+  corpus.to_string()
+}
+
+///|
+fn d2_fnv32a(text : String) -> Int {
+  let mut h : Int = -2128831035
+  let bytes = @utf8.encode(text[:])
+  for b in bytes {
+    h = (h ^ b.to_int()) & 0xffffffff
+    h = (h * 16777619) & 0xffffffff
+  }
+  h
+}
+
+///|
+fn d2_u32_decimal(v : Int) -> String {
+  let unsigned = if v < 0 {
+    Int64::from_int(v) + 4294967296L
+  } else {
+    Int64::from_int(v)
+  }
+  unsigned.to_string()
 }
 
 ///|
@@ -739,6 +1402,9 @@ pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
     name: graph.name,
     config,
     is_folder_only: graph.is_folder_only,
+    description: "",
+    font_family: None,
+    mono_font_family: None,
     root: shape_from_object(graph.root),
     shapes,
     connections,

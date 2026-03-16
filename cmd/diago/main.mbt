@@ -888,6 +888,8 @@ fn compile_source(
   target_spec : String?,
   ascii_mode? : AsciiMode = AsciiMode::Extended,
   dark_theme_id? : Int? = None,
+  pad? : Double? = None,
+  center? : Bool? = None,
   theme_overrides? : Map[String, String] = {},
   dark_theme_overrides? : Map[String, String] = {},
   scale? : Double? = None,
@@ -906,6 +908,8 @@ fn compile_source(
         layout_explicit,
         target_spec,
         dark_theme_id~,
+        pad~,
+        center~,
         theme_overrides~,
         dark_theme_overrides~,
         scale~,
@@ -955,6 +959,8 @@ fn compile_diago_svg(
   layout_explicit : Bool,
   target_spec : String?,
   dark_theme_id? : Int? = None,
+  pad? : Double? = None,
+  center? : Bool? = None,
   theme_overrides? : Map[String, String] = {},
   dark_theme_overrides? : Map[String, String] = {},
   scale? : Double? = None,
@@ -972,6 +978,8 @@ fn compile_diago_svg(
         theme_name,
         diagram.config,
         dark_theme_id~,
+        pad~,
+        center~,
         theme_overrides~,
         dark_theme_overrides~,
         scale~,
@@ -1122,6 +1130,8 @@ fn resolve_svg_config(
   theme_name : String?,
   source_config : @diagram.Config?,
   dark_theme_id? : Int? = None,
+  pad? : Double? = None,
+  center? : Bool? = None,
   theme_overrides? : Map[String, String] = {},
   dark_theme_overrides? : Map[String, String] = {},
   scale? : Double? = None,
@@ -1149,12 +1159,16 @@ fn resolve_svg_config(
         None => @renderer_svg.SvgConfig::new()
       }
   }
-  match source_config {
-    Some(config) =>
-      match config.pad {
-        Some(pad_value) => resolved = resolved.with_padding(pad_value)
-        None => ()
+  let effective_pad = match pad {
+    Some(v) => Some(v)
+    None =>
+      match source_config {
+        Some(config) => config.pad
+        None => None
       }
+  }
+  match effective_pad {
+    Some(pad_value) => resolved = resolved.with_padding(pad_value)
     None => ()
   }
 
@@ -1179,6 +1193,14 @@ fn resolve_svg_config(
       match source_config {
         Some(config) => config.scale
         None => None
+      }
+  }
+  let effective_center = match center {
+    Some(v) => v
+    None =>
+      match source_config {
+        Some(config) => config.center.unwrap_or(false)
+        None => false
       }
   }
   let effective_no_xml_tag = match no_xml_tag {
@@ -1208,7 +1230,7 @@ fn resolve_svg_config(
 
   resolved.with_render_options(
     effective_dark_theme_id, merged_theme_overrides, merged_dark_theme_overrides,
-    effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
+    effective_center, effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
   )
 }
 

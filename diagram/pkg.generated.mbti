@@ -70,6 +70,9 @@ pub struct Diagram {
   name : String
   config : Config?
   is_folder_only : Bool
+  description : String
+  font_family : String?
+  mono_font_family : String?
   root : Shape
   shapes : Array[Shape]
   connections : Array[Connection]
@@ -81,14 +84,19 @@ pub struct Diagram {
   steps : Array[Diagram]
   legend : @graph.LegendInput?
 }
+pub fn Diagram::bytes(Self) -> String
 pub fn Diagram::find_object(Self, String) -> Shape?
 pub fn Diagram::get_board(Self, Array[String]) -> Self?
+pub fn Diagram::get_corpus(Self) -> String
 pub fn Diagram::get_edges(Self) -> Array[Connection]
+pub fn Diagram::get_nested_corpus(Self) -> String
 pub fn Diagram::get_objects(Self) -> Array[Shape]
 pub fn Diagram::has_layers(Self) -> Bool
 pub fn Diagram::has_legend(Self) -> Bool
 pub fn Diagram::has_scenarios(Self) -> Bool
+pub fn Diagram::has_shape(Self, (Shape) -> Bool) -> Bool
 pub fn Diagram::has_steps(Self) -> Bool
+pub fn Diagram::hash_id(Self, String?) -> String
 pub impl Show for Diagram
 
 pub struct Shape {

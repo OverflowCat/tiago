@@ -135,12 +135,17 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 ## 5. Renderer And Target Model Parity
 
-- [ ] Align `diagram` with D2's `d2target` model where behavior depends on target-level fields.
+- [x] Align `diagram` with D2's `d2target` model where behavior depends on target-level fields.
   - Includes root shape behavior, nested board packaging, config hashing inputs, legend structure, and board traversal APIs.
   - Landed in diago: target board selection is now parser-backed and quote-aware instead of using raw `.` splitting.
+  - Landed in diago: `diagram.Diagram` now carries D2-style target fields and helpers for `description`, font-family metadata, `has_shape`, `bytes`, `hash_id`, `get_corpus`, and `get_nested_corpus`.
+  - Landed in diago: SVG scope hashing and font-subset corpus generation now consume `diagram` target APIs instead of renderer-private hash/corpus logic.
+  - Landed in diago: committed Dagre and ELK SVG snapshots were refreshed to the new D2-style target hash/corpus semantics.
 
 - [ ] Align SVG render configuration semantics with D2.
   - Verify `theme`, `dark-theme`, `pad`, `center`, `scale`, `no-xml-tag`, `salt`, `omit-version`, and bundled asset behavior.
+  - Landed in diago: CLI/lib/render option plumbing now carries D2-style `pad` and `center`, and SVG `preserveAspectRatio` now follows D2's `xMinYMin` vs `xMidYMid` behavior.
+  - Remaining gap: global `sketch` render semantics still differ from D2 because diago currently uses local SVG sketch filters rather than D2's sketch renderer pipeline.
 
 - [ ] Align root canvas sizing and board bounding box behavior with D2.
 

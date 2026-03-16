@@ -103,6 +103,8 @@ pub struct RenderOptions {
   output_mode : OutputMode
   theme_name : String?
   dark_theme_id : Int?
+  pad : Double?
+  center : Bool?
   theme_overrides : Map[String, String]
   dark_theme_overrides : Map[String, String]
   scale : Double?
@@ -117,6 +119,8 @@ pub fn RenderOptions::new() -> RenderOptions {
     output_mode: Svg,
     theme_name: None,
     dark_theme_id: None,
+    pad: None,
+    center: None,
     theme_overrides: {},
     dark_theme_overrides: {},
     scale: None,
@@ -148,6 +152,22 @@ pub fn RenderOptions::with_dark_theme_id(
   dark_theme_id : Int?,
 ) -> RenderOptions {
   { ..self, dark_theme_id, }
+}
+
+///|
+pub fn RenderOptions::with_pad(
+  self : RenderOptions,
+  pad : Double?,
+) -> RenderOptions {
+  { ..self, pad, }
+}
+
+///|
+pub fn RenderOptions::with_center(
+  self : RenderOptions,
+  center : Bool?,
+) -> RenderOptions {
+  { ..self, center, }
 }
 
 ///|
@@ -348,12 +368,16 @@ fn resolve_svg_config(
         None => @renderer_svg.SvgConfig::new()
       }
   }
-  match source_config {
-    Some(config) =>
-      match config.pad {
-        Some(pad_value) => resolved = resolved.with_padding(pad_value)
-        None => ()
+  let effective_pad = match options.pad {
+    Some(v) => Some(v)
+    None =>
+      match source_config {
+        Some(config) => config.pad
+        None => None
       }
+  }
+  match effective_pad {
+    Some(pad_value) => resolved = resolved.with_padding(pad_value)
     None => ()
   }
   let merged_theme_overrides : Map[String, String] = {}
@@ -379,6 +403,14 @@ fn resolve_svg_config(
       match source_config {
         Some(config) => config.scale
         None => None
+      }
+  }
+  let effective_center = match options.center {
+    Some(v) => v
+    None =>
+      match source_config {
+        Some(config) => config.center.unwrap_or(false)
+        None => false
       }
   }
   let effective_no_xml_tag = match options.no_xml_tag {
@@ -407,7 +439,7 @@ fn resolve_svg_config(
   }
   resolved.with_render_options(
     effective_dark_theme_id, merged_theme_overrides, merged_dark_theme_overrides,
-    effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
+    effective_center, effective_scale, effective_no_xml_tag, effective_salt, effective_omit_version,
   )
 }
 

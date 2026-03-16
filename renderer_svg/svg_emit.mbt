@@ -576,6 +576,9 @@ fn d2_append_graph_corpus(sb : StringBuilder, graph : Diagram) -> Unit {
 }
 
 ///|
+
+///|
+#warnings("-unused_value")
 fn d2_diagram_corpus(graph : Diagram) -> String {
   let sb = StringBuilder::new()
   d2_append_graph_corpus(sb, graph)
@@ -1428,6 +1431,9 @@ fn d2_hash_config_json(graph : Diagram) -> String? {
 }
 
 ///|
+
+///|
+#warnings("-unused_value")
 fn d2_hash_diagram_bytes(graph : Diagram, config : SvgConfig) -> String {
   let out = StringBuilder::new()
   let shapes_json : Array[String] = []
@@ -1462,13 +1468,7 @@ fn d2_hash_diagram_bytes(graph : Diagram, config : SvgConfig) -> String {
 
 ///|
 fn diagram_scope_class(graph : Diagram, config : SvgConfig) -> String {
-  let bytes = d2_hash_diagram_bytes(graph, config)
-  let mut h = d2_fnv32a(bytes)
-  match config.salt {
-    Some(s) => h = d2_fnv32a(bytes + s)
-    None => ()
-  }
-  "d2-\{d2_u32_decimal(h)}"
+  graph.hash_id(config.salt)
 }
 
 ///|
@@ -1750,8 +1750,11 @@ fn marker_resource_id(
 
 ///|
 fn d2_alignment(config : SvgConfig) -> String {
-  let _ = config
-  "xMinYMin"
+  if config.center {
+    "xMidYMid"
+  } else {
+    "xMinYMin"
+  }
 }
 
 ///|
@@ -2182,7 +2185,7 @@ fn emit_svg_document(
   let inner_viewbox = "\{svg.viewbox_x().to_int()} \{svg.viewbox_y().to_int()} \{inner_width} \{inner_height}"
   let body_elements = svg.elements()
   let body_source = body_elements.join("") + assets.tail_elements.join("")
-  let corpus = d2_diagram_corpus(graph)
+  let corpus = graph.get_corpus()
   let upper_blocks : Array[String] = []
   upper_blocks.push(
     d2_embed_fonts_styles(assets.diagram_hash, body_source, corpus),

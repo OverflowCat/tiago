@@ -44,6 +44,7 @@ pub enum RenderPass {
 
 pub struct SvgConfig {
   padding : Double
+  center : Bool
   font_family : String
   font_size : Int
   background : String
@@ -62,7 +63,7 @@ pub struct SvgConfig {
 }
 pub fn SvgConfig::new() -> Self
 pub fn SvgConfig::with_padding(Self, Double) -> Self
-pub fn SvgConfig::with_render_options(Self, Int?, Map[String, String], Map[String, String], Double?, Bool, String?, Bool) -> Self
+pub fn SvgConfig::with_render_options(Self, Int?, Map[String, String], Map[String, String], Bool, Double?, Bool, String?, Bool) -> Self
 pub fn SvgConfig::with_theme(Int) -> Self
 pub fn SvgConfig::with_theme_name(String) -> Self
 pub impl Show for SvgConfig

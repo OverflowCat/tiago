@@ -75,6 +75,13 @@ fn build_render_subcommand() -> @argparse.Command {
         about="Watch input file and rebuild on changes",
       ),
       @argparse.FlagArg(
+        "center",
+        short='c',
+        long="center",
+        about="Center the SVG in the containing viewbox",
+        env="DIAGO_CENTER",
+      ),
+      @argparse.FlagArg(
         "bundle",
         long="bundle",
         about="Bundle image hrefs as data URIs (default: true)",
@@ -138,6 +145,12 @@ fn build_render_subcommand() -> @argparse.Command {
         short='t',
         about="Use specified theme (SVG mode)",
         env="DIAGO_THEME",
+      ),
+      @argparse.OptionArg(
+        "pad",
+        long="pad",
+        about="Pixels padded around the rendered diagram",
+        env="DIAGO_PAD",
       ),
       @argparse.OptionArg(
         "dark-theme",
@@ -391,6 +404,17 @@ fn parse_render_request(
   if first_match_value(matches, "dark-theme-id") is Some(value) {
     dark_theme_id = parse_theme_id_option(value, dark_theme_id)
   }
+  let mut pad : Double? = None
+  if first_match_value(matches, "pad") is Some(value) {
+    match parse_uint(value) {
+      Some(v) => pad = Some(v.to_double())
+      None =>
+        return Err(
+          "Error: unsupported --pad '\{value}'. Expected a non-negative integer.",
+        )
+    }
+  }
+  let center = matches.flags.get("center")
   let theme_overrides : Map[String, String] = {}
   for value in match_values(matches, "theme-overrides") {
     merge_theme_overrides(theme_overrides, parse_override_pairs(value))
@@ -500,6 +524,8 @@ fn parse_render_request(
     target_spec,
     theme_name,
     dark_theme_id,
+    pad,
+    center,
     theme_overrides,
     dark_theme_overrides,
     scale,

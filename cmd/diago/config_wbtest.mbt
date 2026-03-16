@@ -354,6 +354,49 @@ test "vars d2-config pad is applied to svg config padding" {
 }
 
 ///|
+test "vars d2-config center is applied to svg alignment" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    center: true
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+  ).unwrap()
+  assert_true(svg.contains("preserveAspectRatio=\"xMidYMid meet\""))
+}
+
+///|
+test "cli center overrides vars d2-config center=false" {
+  let source =
+    #|vars: {
+    #|  d2-config: {
+    #|    center: false
+    #|  }
+    #|}
+    #|a -> b
+  let svg = compile_source(
+    source,
+    OutputMode::Svg,
+    None,
+    None,
+    LayoutEngineChoice::Dagre,
+    false,
+    None,
+    center=Some(true),
+  ).unwrap()
+  assert_true(svg.contains("preserveAspectRatio=\"xMidYMid meet\""))
+}
+
+///|
 test "vars d2-config dark-theme-id emits dark media css" {
   let source =
     #|vars: {
