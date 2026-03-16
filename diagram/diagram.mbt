@@ -103,6 +103,7 @@ pub fn Config::from_parts(
 /// This is derived from `@graph.ObjectInput` after layout has been applied.
 pub struct Shape {
   id : String
+  semantic_id : String
   label : String
   shape_type : @graph.ShapeType
   style : @graph.StyleInput
@@ -136,6 +137,8 @@ pub struct Connection {
   index : Int
   src_id : String
   dst_id : String
+  src_lookup_id : String
+  dst_lookup_id : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : @graph.ArrowheadType
@@ -319,6 +322,14 @@ pub fn Diagram::find_object(self : Diagram, id : String) -> Shape? {
       return Some(obj)
     }
   }
+  if self.root.semantic_id == id {
+    return Some(self.root)
+  }
+  for obj in self.shapes {
+    if obj.semantic_id == id {
+      return Some(obj)
+    }
+  }
   None
 }
 
@@ -417,7 +428,8 @@ fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
     None => None
   }
   {
-    id: obj.id,
+    id: obj.abs_id_syntax,
+    semantic_id: obj.id,
     label: obj.label,
     shape_type: obj.shape_type,
     style: obj.style,
@@ -450,6 +462,8 @@ fn connection_from_edge(edge : @graph.EdgeInput) -> Connection {
     index: edge.index,
     src_id: edge.src_id,
     dst_id: edge.dst_id,
+    src_lookup_id: edge.src_id_syntax,
+    dst_lookup_id: edge.dst_id_syntax,
     src_arrow: edge.src_arrow,
     dst_arrow: edge.dst_arrow,
     src_arrowhead: edge.src_arrowhead,
@@ -479,7 +493,7 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
     let ids : Array[String] = []
     let exists : Map[String, Bool] = {}
     for obj in graph.objects {
-      exists[obj.id] = true
+      exists[obj.abs_id_syntax] = true
     }
     for id in graph.root.child_ids {
       if exists.contains(id) {
@@ -498,8 +512,8 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
   }
   let ids : Array[String] = []
   for obj in graph.objects {
-    if !child_ids.contains(obj.id) {
-      ids.push(obj.id)
+    if !child_ids.contains(obj.abs_id_syntax) {
+      ids.push(obj.abs_id_syntax)
     }
   }
   ids
@@ -660,6 +674,8 @@ fn append_sequence_lifeline_connections(
               index: next_index,
               src_id: id,
               dst_id: "",
+              src_lookup_id: id,
+              dst_lookup_id: "",
               src_arrow: false,
               dst_arrow: false,
               src_arrowhead: @graph.None,

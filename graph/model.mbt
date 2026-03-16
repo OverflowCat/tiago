@@ -85,6 +85,73 @@ pub fn SequenceFragmentModel::new(
 }
 
 ///|
+pub struct ObjectReference {
+  range : @lexer.Range
+  key_path_index : Int
+  in_edge : Bool
+  scope_abs_id_syntax : String?
+  source_path : String?
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+} derive(Eq, Show)
+
+///|
+pub fn ObjectReference::new(
+  range : @lexer.Range,
+  key_path_index : Int,
+  in_edge : Bool,
+  scope_abs_id_syntax : String?,
+  source_path : String?,
+  primary : Bool,
+  due_to_glob : Bool,
+  due_to_lazy_glob : Bool,
+) -> ObjectReference {
+  {
+    range,
+    key_path_index,
+    in_edge,
+    scope_abs_id_syntax,
+    source_path,
+    primary,
+    due_to_glob,
+    due_to_lazy_glob,
+  }
+}
+
+///|
+pub struct EdgeReference {
+  range : @lexer.Range
+  edge_index : Int
+  scope_abs_id_syntax : String?
+  source_path : String?
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+} derive(Eq, Show)
+
+///|
+pub fn EdgeReference::new(
+  range : @lexer.Range,
+  edge_index : Int,
+  scope_abs_id_syntax : String?,
+  source_path : String?,
+  primary : Bool,
+  due_to_glob : Bool,
+  due_to_lazy_glob : Bool,
+) -> EdgeReference {
+  {
+    range,
+    edge_index,
+    scope_abs_id_syntax,
+    source_path,
+    primary,
+    due_to_glob,
+    due_to_lazy_glob,
+  }
+}
+
+///|
 /// Immutable style model
 pub struct StyleModel {
   opacity : StyleValue?
@@ -148,6 +215,7 @@ pub struct ObjectModel {
   id_val : String
   id_syntax : String
   abs_id_syntax : String
+  references : Array[ObjectReference]
   label : String
   shape_type : ShapeType
   style : StyleModel
@@ -186,6 +254,7 @@ pub fn ObjectModel::new(
     id_val,
     id_syntax,
     abs_id_syntax,
+    references: [],
     label: id_val,
     shape_type: Rectangle,
     style: StyleModel::new(),
@@ -221,6 +290,7 @@ pub struct EdgeModel {
   dst_id : String
   src_id_syntax : String
   dst_id_syntax : String
+  references : Array[EdgeReference]
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -259,6 +329,7 @@ pub fn EdgeModel::new(
     dst_id,
     src_id_syntax,
     dst_id_syntax,
+    references: [],
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {

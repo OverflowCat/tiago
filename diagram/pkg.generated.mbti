@@ -41,6 +41,8 @@ pub struct Connection {
   index : Int
   src_id : String
   dst_id : String
+  src_lookup_id : String
+  dst_lookup_id : String
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : @graph.ArrowheadType
@@ -91,6 +93,7 @@ pub impl Show for Diagram
 
 pub struct Shape {
   id : String
+  semantic_id : String
   label : String
   shape_type : @graph.ShapeType
   style : @graph.StyleInput

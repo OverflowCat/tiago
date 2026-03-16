@@ -154,6 +154,98 @@ fn copy_graph_data_value(value : GraphDataValue) -> GraphDataValue {
 }
 
 ///|
+pub fn split_syntax_path(id : String) -> Array[String] {
+  if id.length() == 0 {
+    return []
+  }
+  let segments : Array[String] = []
+  let current = StringBuilder::new()
+  let mut quote : Char? = None
+  let mut escaped = false
+  for ch in id {
+    if escaped {
+      current.write_char(ch)
+      escaped = false
+      continue
+    }
+    match quote {
+      Some(q) => {
+        current.write_char(ch)
+        if ch == '\\' {
+          escaped = true
+        } else if ch == q {
+          quote = None
+        }
+      }
+      None => {
+        if ch == '.' {
+          segments.push(current.to_string())
+          current.reset()
+          continue
+        }
+        current.write_char(ch)
+        if ch == '"' || ch == '\'' {
+          quote = Some(ch)
+        }
+      }
+    }
+  }
+  segments.push(current.to_string())
+  segments
+}
+
+///|
+pub fn syntax_path_depth(id : String) -> Int {
+  split_syntax_path(id).length()
+}
+
+///|
+pub fn syntax_path_last(id : String) -> String {
+  let segments = split_syntax_path(id)
+  if segments.is_empty() {
+    id
+  } else {
+    segments[segments.length() - 1]
+  }
+}
+
+///|
+pub fn display_key_segment(segment : String) -> String {
+  if segment.length() < 2 {
+    return segment
+  }
+  let quote = segment[0]
+  if (quote != '"' && quote != '\'') || segment[segment.length() - 1] != quote {
+    return segment
+  }
+  let out = StringBuilder::new()
+  let mut escaped = false
+  for i = 1; i < segment.length() - 1; i = i + 1 {
+    match segment[i].to_char() {
+      Some(ch) =>
+        if escaped {
+          out.write_char(ch)
+          escaped = false
+        } else if ch == '\\' {
+          escaped = true
+        } else {
+          out.write_char(ch)
+        }
+      None => ()
+    }
+  }
+  if escaped {
+    out.write_char('\\')
+  }
+  out.to_string()
+}
+
+///|
+pub fn syntax_path_last_display(id : String) -> String {
+  display_key_segment(syntax_path_last(id))
+}
+
+///|
 pub struct LayerInput {
   name : String
   graph : GraphInput
@@ -217,6 +309,30 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 }
 
 ///|
+pub fn ObjectReference::contained_by(
+  self : ObjectReference,
+  abs_id_syntax : String,
+) -> Bool {
+  match self.scope_abs_id_syntax {
+    Some(scope) =>
+      scope == abs_id_syntax || scope.has_prefix(abs_id_syntax + ".")
+    None => false
+  }
+}
+
+///|
+pub fn EdgeReference::contained_by(
+  self : EdgeReference,
+  abs_id_syntax : String,
+) -> Bool {
+  match self.scope_abs_id_syntax {
+    Some(scope) =>
+      scope == abs_id_syntax || scope.has_prefix(abs_id_syntax + ".")
+    None => false
+  }
+}
+
+///|
 /// Immutable representation of a graph object for layout engines.
 ///
 /// Fields:
@@ -225,12 +341,13 @@ pub fn FragmentOperandInput::new(condition : String?) -> FragmentOperandInput {
 /// * `id_val` : Semantic value of the local object identifier.
 /// * `id_syntax` : Canonical D2 syntax for the local object identifier.
 /// * `abs_id_syntax` : Canonical D2 syntax for the absolute object path.
+/// * `references` : Source references that compiled into this object.
 /// * `label` : Display text for the object.
 /// * `shape_type` : Visual shape of the object.
 /// * `style` : Visual styling properties.
 /// * `box` : Optional precomputed bounding box.
 /// * `label_box` : Optional precomputed label bounding box.
-/// * `child_ids` : Array of child object identifiers.
+/// * `child_ids` : Array of child object absolute syntax identifiers.
 /// * `z_index` : Layer ordering for visual stacking.
 /// * `icon` : Optional icon identifier.
 /// * `tooltip` : Optional tooltip text.
@@ -255,6 +372,7 @@ pub struct ObjectInput {
   id_val : String
   id_syntax : String
   abs_id_syntax : String
+  references : Array[ObjectReference]
   label : String
   shape_type : ShapeType
   style : StyleInput
@@ -293,6 +411,7 @@ pub fn ObjectInput::new(
     id_val,
     id_syntax,
     abs_id_syntax,
+    references: [],
     label: id_val,
     shape_type: Rectangle,
     style: StyleInput::new(),
@@ -350,12 +469,14 @@ pub fn ObjectInput::from_parts(
   id_val? : String = id,
   id_syntax? : String = id,
   abs_id_syntax? : String = id,
+  references? : Array[ObjectReference] = [],
 ) -> ObjectInput {
   {
     id,
     id_val,
     id_syntax,
     abs_id_syntax,
+    references,
     label,
     shape_type,
     style,
@@ -392,6 +513,11 @@ pub fn ObjectInput::with_direction(
 }
 
 ///|
+pub fn ObjectInput::lookup_id(self : ObjectInput) -> String {
+  self.abs_id_syntax
+}
+
+///|
 pub fn ObjectInput::get_box(self : ObjectInput) -> Box? {
   self.box
 }
@@ -408,6 +534,7 @@ pub struct EdgeInput {
   dst_id : String
   src_id_syntax : String
   dst_id_syntax : String
+  references : Array[EdgeReference]
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -446,6 +573,7 @@ pub fn EdgeInput::new(
     dst_id,
     src_id_syntax,
     dst_id_syntax,
+    references: [],
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
@@ -504,6 +632,7 @@ pub fn EdgeInput::from_parts(
   dst_column_index : Int?,
   src_id_syntax? : String = src_id,
   dst_id_syntax? : String = dst_id,
+  references? : Array[EdgeReference] = [],
 ) -> EdgeInput {
   {
     index,
@@ -511,6 +640,7 @@ pub fn EdgeInput::from_parts(
     dst_id,
     src_id_syntax,
     dst_id_syntax,
+    references,
     src_arrow,
     dst_arrow,
     src_arrowhead,
@@ -540,8 +670,18 @@ pub fn EdgeInput::get_src_id(self : EdgeInput) -> String {
 }
 
 ///|
+pub fn EdgeInput::lookup_src_id(self : EdgeInput) -> String {
+  self.src_id_syntax
+}
+
+///|
 pub fn EdgeInput::get_dst_id(self : EdgeInput) -> String {
   self.dst_id
+}
+
+///|
+pub fn EdgeInput::lookup_dst_id(self : EdgeInput) -> String {
+  self.dst_id_syntax
 }
 
 ///|
@@ -912,7 +1052,7 @@ pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
 pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
   let child_ids : Array[String] = []
   for child in obj.children {
-    child_ids.push(child.id)
+    child_ids.push(child.abs_id_syntax)
   }
   let classes : Array[String] = []
   for c in obj.classes {
@@ -921,6 +1061,10 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
   let sql_constraints : Array[String] = []
   for constraint in obj.sql_constraints {
     sql_constraints.push(constraint)
+  }
+  let references : Array[ObjectReference] = []
+  for reference in obj.references {
+    references.push(reference)
   }
   ObjectInput::from_parts(
     obj.id,
@@ -951,6 +1095,7 @@ pub fn ObjectInput::from_model(obj : ObjectModel) -> ObjectInput {
     id_val=obj.id_val,
     id_syntax=obj.id_syntax,
     abs_id_syntax=obj.abs_id_syntax,
+    references~,
   )
 }
 
@@ -965,6 +1110,10 @@ pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
       Some(copied)
     }
     None => None
+  }
+  let references : Array[EdgeReference] = []
+  for reference in edge.references {
+    references.push(reference)
   }
   EdgeInput::from_parts(
     edge.index,
@@ -992,6 +1141,7 @@ pub fn EdgeInput::from_model(edge : EdgeModel) -> EdgeInput {
     edge.dst_column_index,
     src_id_syntax=edge.src_id_syntax,
     dst_id_syntax=edge.dst_id_syntax,
+    references~,
   )
 }
 

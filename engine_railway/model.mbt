@@ -13,6 +13,41 @@
 // limitations under the License.
 
 ///|
+fn canonicalize_layout_object(obj : @graph.ObjectInput) -> @graph.ObjectInput {
+  @graph.ObjectInput::from_parts(
+    obj.lookup_id(),
+    obj.label,
+    obj.shape_type,
+    obj.style,
+    obj.box,
+    obj.label_box,
+    obj.child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    obj.classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+    obj.top,
+    obj.left,
+    direction=obj.direction,
+    language=obj.language,
+    sql_constraints=obj.sql_constraints,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
+    references=obj.references,
+  )
+}
+
+///|
 fn build_railway_layout_input(
   graph : @graph.GraphInput,
 ) -> (@graph.GraphInput, Map[String, @graph.ObjectInput], Map[String, String]) {
@@ -21,14 +56,14 @@ fn build_railway_layout_input(
   let layout_objects : Array[@graph.ObjectInput] = []
   for obj in graph.objects {
     if is_inner_member_of_sql_or_class(
-        obj.id,
+        obj.lookup_id(),
         object_by_id,
         parent_id_by_child_id,
       ) {
       continue
     }
-    layout_node_ids[obj.id] = true
-    layout_objects.push(obj)
+    layout_node_ids[obj.lookup_id()] = true
+    layout_objects.push(canonicalize_layout_object(obj))
   }
   let layout_edges : Array[@graph.EdgeInput] = []
   for edge in graph.edges {
@@ -39,7 +74,7 @@ fn build_railway_layout_input(
       match object_by_id.get(src_id) {
         Some(obj) => {
           layout_node_ids[src_id] = true
-          layout_objects.push(obj)
+          layout_objects.push(canonicalize_layout_object(obj))
         }
         None => ()
       }
@@ -48,7 +83,7 @@ fn build_railway_layout_input(
       match object_by_id.get(dst_id) {
         Some(obj) => {
           layout_node_ids[dst_id] = true
-          layout_objects.push(obj)
+          layout_objects.push(canonicalize_layout_object(obj))
         }
         None => ()
       }
@@ -60,7 +95,7 @@ fn build_railway_layout_input(
   }
   let layout_input = @graph.GraphInput::from_parts(
     graph.name,
-    graph.root,
+    canonicalize_layout_object(graph.root),
     layout_objects,
     layout_edges,
     graph.sequence_fragments,
@@ -71,6 +106,8 @@ fn build_railway_layout_input(
     graph.scenarios,
     graph.steps,
     graph.legend,
+    is_folder_only=graph.is_folder_only,
+    data=graph.data,
   )
   (layout_input, object_by_id, parent_id_by_child_id)
 }
@@ -106,17 +143,17 @@ fn build_object_maps_railway(
   graph : @graph.GraphInput,
 ) -> (Map[String, @graph.ObjectInput], Map[String, String]) {
   let object_by_id : Map[String, @graph.ObjectInput] = {}
-  object_by_id[graph.root.id] = graph.root
+  object_by_id[graph.root.lookup_id()] = graph.root
   for obj in graph.objects {
-    object_by_id[obj.id] = obj
+    object_by_id[obj.lookup_id()] = obj
   }
   let parent_id_by_child_id : Map[String, String] = {}
   for child_id in graph.root.child_ids {
-    parent_id_by_child_id[child_id] = graph.root.id
+    parent_id_by_child_id[child_id] = graph.root.lookup_id()
   }
   for obj in graph.objects {
     for child_id in obj.child_ids {
-      parent_id_by_child_id[child_id] = obj.id
+      parent_id_by_child_id[child_id] = obj.lookup_id()
     }
   }
   (object_by_id, parent_id_by_child_id)
@@ -152,6 +189,9 @@ fn edge_with_layout_endpoints(
     edge.label_box,
     edge.src_column_index,
     edge.dst_column_index,
+    src_id_syntax=src_id,
+    dst_id_syntax=dst_id,
+    references=edge.references,
   )
 }
 
@@ -163,12 +203,12 @@ fn resolve_edge_layout_endpoints_railway(
   parent_id_by_child_id : Map[String, String],
 ) -> (String, String) {
   let src_id = collapse_sql_or_class_endpoint_id(
-    edge.src_id,
+    edge.lookup_src_id(),
     object_by_id,
     parent_id_by_child_id,
   )
   let dst_id = collapse_sql_or_class_endpoint_id(
-    edge.dst_id,
+    edge.lookup_dst_id(),
     object_by_id,
     parent_id_by_child_id,
   )

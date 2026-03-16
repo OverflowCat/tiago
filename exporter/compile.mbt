@@ -80,6 +80,7 @@ priv struct Object {
   id_val : String
   id_syntax : String
   abs_id_syntax : String
+  mut references : Array[@graph.ObjectReference]
   mut label : String
   mut shape_type : ShapeType
   mut raw_shape : String?
@@ -119,6 +120,7 @@ fn Object::new(
     id_val,
     id_syntax,
     abs_id_syntax,
+    references: [],
     label: id_val,
     shape_type: Rectangle,
     raw_shape: None,
@@ -159,6 +161,7 @@ priv struct Edge {
   dst_id : String
   src_id_syntax : String
   dst_id_syntax : String
+  mut references : Array[@graph.EdgeReference]
   src_arrow : Bool
   dst_arrow : Bool
   mut src_arrowhead : ArrowheadType
@@ -195,6 +198,7 @@ fn Edge::new(
     dst_id,
     src_id_syntax,
     dst_id_syntax,
+    references: [],
     src_arrow,
     dst_arrow,
     src_arrowhead: if src_arrow {
@@ -501,7 +505,7 @@ fn legend_to_input(legend : Legend) -> @graph.LegendInput {
 fn object_to_input(obj : Object) -> @graph.ObjectInput {
   let child_ids : Array[String] = []
   for child in obj.children {
-    child_ids.push(child.id)
+    child_ids.push(child.abs_id_syntax)
   }
   let classes : Array[String] = []
   for c in obj.classes {
@@ -510,6 +514,10 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
   let sql_constraints : Array[String] = []
   for constraint in obj.sql_constraints {
     sql_constraints.push(constraint)
+  }
+  let references : Array[@graph.ObjectReference] = []
+  for reference in obj.references {
+    references.push(reference)
   }
   let box = match (obj.width, obj.height) {
     (None, None) => None
@@ -546,6 +554,7 @@ fn object_to_input(obj : Object) -> @graph.ObjectInput {
     id_val=obj.id_val,
     id_syntax=obj.id_syntax,
     abs_id_syntax=obj.abs_id_syntax,
+    references~,
   )
 }
 
@@ -570,6 +579,10 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
       Some(copied)
     }
     None => None
+  }
+  let references : Array[@graph.EdgeReference] = []
+  for reference in edge.references {
+    references.push(reference)
   }
   @graph.EdgeInput::from_parts(
     edge.index,
@@ -597,7 +610,89 @@ fn edge_to_input(edge : Edge) -> @graph.EdgeInput {
     edge.dst_column_index,
     src_id_syntax=edge.src_id_syntax,
     dst_id_syntax=edge.dst_id_syntax,
+    references~,
   )
+}
+
+///|
+fn compare_reference_ranges(a : @lexer.Range, b : @lexer.Range) -> Int {
+  if a.path != b.path {
+    return a.path.compare(b.path)
+  }
+  if a.start.offset != b.start.offset {
+    return a.start.offset - b.start.offset
+  }
+  if a.end.offset != b.end.offset {
+    return a.end.offset - b.end.offset
+  }
+  0
+}
+
+///|
+fn sort_object_array_by_references(objects : Array[Object]) -> Unit {
+  let original_index_by_id : Map[String, Int] = {}
+  for i, obj in objects {
+    original_index_by_id[obj.abs_id_syntax] = i
+  }
+  objects.sort_by(fn(a, b) {
+    let cmp = if a.references.length() > 0 && b.references.length() > 0 {
+      compare_reference_ranges(a.references[0].range, b.references[0].range)
+    } else {
+      0
+    }
+    if cmp != 0 {
+      return cmp
+    }
+    original_index_by_id.get_or_default(a.abs_id_syntax, 0) -
+    original_index_by_id.get_or_default(b.abs_id_syntax, 0)
+  })
+}
+
+///|
+fn sort_edge_array_by_references(edges : Array[Edge]) -> Unit {
+  let original_index_by_edge : Map[Int, Int] = {}
+  for i, edge in edges {
+    original_index_by_edge[edge.index] = i
+  }
+  edges.sort_by(fn(a, b) {
+    let cmp = if a.references.length() > 0 && b.references.length() > 0 {
+      compare_reference_ranges(a.references[0].range, b.references[0].range)
+    } else {
+      0
+    }
+    if cmp != 0 {
+      return cmp
+    }
+    original_index_by_edge.get_or_default(a.index, 0) -
+    original_index_by_edge.get_or_default(b.index, 0)
+  })
+}
+
+///|
+fn sort_children_by_references(obj : Object) -> Unit {
+  sort_object_array_by_references(obj.children)
+  for child in obj.children {
+    sort_children_by_references(child)
+  }
+}
+
+///|
+fn sort_graph_by_references(graph : Graph) -> Unit {
+  sort_object_array_by_references(graph.objects)
+  sort_edge_array_by_references(graph.edges)
+  sort_children_by_references(graph.root)
+  for obj in graph.objects {
+    sort_children_by_references(obj)
+  }
+  for layer in graph.layers {
+    sort_graph_by_references(layer.graph)
+  }
+  for scenario in graph.scenarios {
+    sort_graph_by_references(scenario.graph)
+  }
+  for step in graph.steps {
+    sort_graph_by_references(step.graph)
+  }
 }
 
 ///|
@@ -609,13 +704,13 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
   let nested_child_ids : Map[String, Bool] = {}
   for obj in graph.objects {
     for child in obj.children {
-      nested_child_ids[child.id] = true
+      nested_child_ids[child.abs_id_syntax] = true
     }
   }
   let root_child_ids : Array[String] = []
   for obj in graph.objects {
-    if !nested_child_ids.contains(obj.id) {
-      root_child_ids.push(obj.id)
+    if !nested_child_ids.contains(obj.abs_id_syntax) {
+      root_child_ids.push(obj.abs_id_syntax)
     }
   }
   let root_classes : Array[String] = []
@@ -625,6 +720,10 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
   let root_sql_constraints : Array[String] = []
   for constraint in graph.root.sql_constraints {
     root_sql_constraints.push(constraint)
+  }
+  let root_references : Array[@graph.ObjectReference] = []
+  for reference in graph.root.references {
+    root_references.push(reference)
   }
   let root_box = match (graph.root.width, graph.root.height) {
     (None, None) => None
@@ -661,6 +760,7 @@ fn graph_to_input(graph : Graph) -> @graph.GraphInput {
     id_val=graph.root.id_val,
     id_syntax=graph.root.id_syntax,
     abs_id_syntax=graph.root.abs_id_syntax,
+    references=root_references,
   )
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
@@ -724,6 +824,8 @@ pub fn compile(
   normalize_sql_table_edge_endpoints_recursive(graph)
   // Semantic validation pass aligned with D2 compiler behavior.
   validate_semantics(graph)
+  // D2 parity: preserve source order using object and edge references.
+  sort_graph_by_references(graph)
   graph_to_input(graph)
 }
 
@@ -793,6 +895,10 @@ fn compile_objects(
       "\{prefix_syntax}.\{id_syntax}"
     }
     let obj = Object::new(id, id_val~, id_syntax~, abs_id_syntax~)
+    obj.references = object_references_from_field(
+      field,
+      graph.root.abs_id_syntax,
+    )
     // Set label from primary value
     match field.primary {
       Some(scalar) => set_object_label_from_scalar(obj, scalar)
@@ -874,6 +980,7 @@ fn compile_children(
     let id = "\{prefix}.\{id_val}"
     let abs_id_syntax = "\{prefix_syntax}.\{id_syntax}"
     let child = Object::new(id, id_val~, id_syntax~, abs_id_syntax~)
+    child.references = object_references_from_field(field, parent.abs_id_syntax)
     // Set label - use field name as default, or primary value if provided
     match field.primary {
       Some(scalar) => set_object_label_from_scalar(child, scalar)
@@ -1717,6 +1824,64 @@ fn join_path_syntax(prefix : String, path : Array[String]) -> String {
 }
 
 ///|
+fn object_references_from_field(
+  field : @ir.Field,
+  scope_abs_id_syntax : String,
+) -> Array[@graph.ObjectReference] {
+  let references : Array[@graph.ObjectReference] = []
+  for reference in field.references {
+    let context = reference.context()
+    let source_path = match context {
+      Some(ctx) => ctx.source_path
+      None => None
+    }
+    references.push(
+      @graph.ObjectReference::new(
+        reference.range,
+        reference.key_path_index,
+        match context {
+          Some(ctx) => ctx.edge is Some(_)
+          None => false
+        },
+        Some(scope_abs_id_syntax),
+        source_path,
+        reference.primary,
+        reference.due_to_glob,
+        reference.due_to_lazy_glob,
+      ),
+    )
+  }
+  references
+}
+
+///|
+fn edge_references_from_ir(
+  edge : @ir.Edge,
+  scope_abs_id_syntax : String,
+) -> Array[@graph.EdgeReference] {
+  let references : Array[@graph.EdgeReference] = []
+  for reference in edge.references {
+    let context = reference.context()
+    let source_path = match context {
+      Some(ctx) => ctx.source_path
+      None => None
+    }
+    references.push(
+      @graph.EdgeReference::new(
+        reference.range,
+        reference.edge_index,
+        Some(scope_abs_id_syntax),
+        source_path,
+        reference.primary,
+        reference.due_to_glob,
+        reference.due_to_lazy_glob,
+      ),
+    )
+  }
+  references
+}
+
+///|
 fn compile_edges_in_map(
   graph : Graph,
   ir : @ir.Map,
@@ -1761,6 +1926,14 @@ fn compile_edges_in_map(
       edge.id.dst_arrow,
       src_id_syntax~,
       dst_id_syntax~,
+    )
+    graph_edge.references = edge_references_from_ir(
+      edge,
+      if prefix_syntax == "" {
+        graph.root.abs_id_syntax
+      } else {
+        prefix_syntax
+      },
     )
     next_index = next_index + 1
     // Set reference count from IR edge references

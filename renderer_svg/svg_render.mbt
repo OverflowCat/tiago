@@ -2858,15 +2858,8 @@ fn compute_graph_bounds(
 
 ///|
 /// Get the depth of an object ID (number of dots + 1)
-/// e.g., "aws" = 1, "aws.vpc" = 2, "aws.vpc.subnet" = 3
 fn get_object_depth(id : String) -> Int {
-  let mut depth = 1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      depth = depth + 1
-    }
-  }
-  depth
+  @graph.syntax_path_depth(id)
 }
 
 ///|
@@ -4198,24 +4191,7 @@ fn render_svg_sql_table(
 ///|
 /// Get the short name from a dotted ID (e.g., "users.id" -> "id")
 fn get_short_name(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot >= 0 && last_dot < id.length() - 1 {
-    let buf = StringBuilder::new()
-    for i = last_dot + 1; i < id.length(); i = i + 1 {
-      match id[i].to_char() {
-        Some(c) => buf.write_char(c)
-        None => ()
-      }
-    }
-    buf.to_string()
-  } else {
-    id
-  }
+  @graph.syntax_path_last_display(id)
 }
 
 ///|
@@ -4257,7 +4233,7 @@ fn trim_double_quotes(s : String) -> String {
 
 ///|
 fn class_member_from_shape(child : Shape) -> ClassMember {
-  let raw_name = trim_double_quotes(get_short_name(child.id))
+  let raw_name = get_short_name(child.id)
   let mut visibility = "+"
   let mut name = raw_name
   if raw_name.length() > 0 {
@@ -7525,12 +7501,12 @@ fn get_arrowhead_adjustments(
   }
   let src_shape_stroke = shape_stroke_width(
     shapes,
-    edge.src_id,
+    edge.src_lookup_id,
     default_shape_stroke_width,
   )
   let dst_shape_stroke = shape_stroke_width(
     shapes,
-    edge.dst_id,
+    edge.dst_lookup_id,
     default_shape_stroke_width,
   )
   let src_adj = arrowhead_adjustment(

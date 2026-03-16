@@ -101,49 +101,6 @@ pub(open) trait LayoutEngine {
 }
 
 ///|
-fn get_short_id(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot >= 0 && last_dot < id.length() - 1 {
-    let buf = StringBuilder::new()
-    for i = last_dot + 1; i < id.length(); i = i + 1 {
-      match id[i].to_char() {
-        Some(c) => buf.write_char(c)
-        None => ()
-      }
-    }
-    buf.to_string()
-  } else {
-    id
-  }
-}
-
-///|
-fn get_parent_id(id : String) -> String? {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot <= 0 {
-    return None
-  }
-  let buf = StringBuilder::new()
-  for i = 0; i < last_dot; i = i + 1 {
-    match id[i].to_char() {
-      Some(c) => buf.write_char(c)
-      None => ()
-    }
-  }
-  Some(buf.to_string())
-}
-
-///|
 fn direction_from_keyword(raw : String) -> Direction? {
   match raw.to_lower() {
     "down" => Some(Direction::Down)
@@ -170,6 +127,34 @@ fn graph_layout_direction(
 }
 
 ///|
+fn clone_graph_with_parts(
+  graph : @graph.GraphInput,
+  root : @graph.ObjectInput,
+  objects : Array[@graph.ObjectInput],
+  edges : Array[@graph.EdgeInput],
+  layers : Array[@graph.LayerInput],
+  scenarios : Array[@graph.ScenarioInput],
+  steps : Array[@graph.StepInput],
+) -> @graph.GraphInput {
+  @graph.GraphInput::from_parts(
+    graph.name,
+    root,
+    objects,
+    edges,
+    graph.sequence_fragments,
+    graph.activation_boxes,
+    graph.sequence_notes,
+    graph.sequence_fragments_layout,
+    layers,
+    scenarios,
+    steps,
+    graph.legend,
+    is_folder_only=graph.is_folder_only,
+    data=graph.data,
+  )
+}
+
+///|
 fn normalize_sequence_root(graph : @graph.GraphInput) -> @graph.GraphInput {
   if graph.root.shape_type != @graph.SequenceDiagram {
     return graph
@@ -182,58 +167,33 @@ fn normalize_sequence_root(graph : @graph.GraphInput) -> @graph.GraphInput {
   }
   let root_child_ids : Array[String] = []
   for obj in graph.objects {
-    if not(child_ids.contains(obj.id)) {
-      root_child_ids.push(obj.id)
+    if not(child_ids.contains(obj.abs_id_syntax)) {
+      root_child_ids.push(obj.abs_id_syntax)
     }
   }
-  let r = graph.root
-  let root = @graph.ObjectInput::from_parts(
-    r.id,
-    r.label,
-    r.shape_type,
-    r.style,
-    r.box,
-    r.label_box,
-    root_child_ids,
-    r.z_index,
-    r.icon,
-    r.tooltip,
-    r.link,
-    r.classes,
-    r.grid_rows,
-    r.grid_columns,
-    r.grid_gap,
-    r.horizontal_gap,
-    r.vertical_gap,
-    r.grid_column_span,
-    r.grid_row_span,
-    r.near,
-    r.top,
-    r.left,
-    direction=r.direction,
-  )
-  @graph.GraphInput::from_parts(
-    graph.name,
+  let root = clone_object_with_parts(graph.root, graph.root.box, root_child_ids)
+  clone_graph_with_parts(
+    graph,
     root,
     graph.objects,
     graph.edges,
-    graph.sequence_fragments,
-    graph.activation_boxes,
-    graph.sequence_notes,
-    graph.sequence_fragments_layout,
     graph.layers,
     graph.scenarios,
     graph.steps,
-    graph.legend,
   )
 }
 
 ///|
 fn find_sql_column_index(
   object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
   field_id : String,
 ) -> Int? {
-  let parent_id = match get_parent_id(field_id) {
+  let field = match object_by_id.get(field_id) {
+    Some(f) => f
+    None => return None
+  }
+  let parent_id = match parent_id_by_child_id.get(field.abs_id_syntax) {
     Some(p) => p
     None => return None
   }
@@ -244,10 +204,9 @@ fn find_sql_column_index(
   if parent.shape_type != @graph.SqlTable {
     return None
   }
-  let field_name = get_short_id(field_id)
   let mut i = 0
   for child_id in parent.child_ids {
-    if get_short_id(child_id) == field_name {
+    if child_id == field.abs_id_syntax {
       return Some(i)
     }
     i = i + 1
@@ -258,19 +217,38 @@ fn find_sql_column_index(
 ///|
 fn assign_sql_column_indices(graph : @graph.GraphInput) -> @graph.GraphInput {
   let object_by_id : Map[String, @graph.ObjectInput] = {}
-  object_by_id[graph.root.id] = graph.root
+  object_by_id[graph.root.abs_id_syntax] = graph.root
   for obj in graph.objects {
-    object_by_id[obj.id] = obj
+    object_by_id[obj.abs_id_syntax] = obj
+  }
+  let parent_id_by_child_id : Map[String, String] = {}
+  for child_id in graph.root.child_ids {
+    parent_id_by_child_id[child_id] = graph.root.abs_id_syntax
+  }
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      parent_id_by_child_id[child_id] = obj.abs_id_syntax
+    }
   }
   let edges : Array[@graph.EdgeInput] = []
   for e in graph.edges {
     let src_column_index = match e.src_column_index {
       Some(i) => Some(i)
-      None => find_sql_column_index(object_by_id, e.src_id)
+      None =>
+        find_sql_column_index(
+          object_by_id,
+          parent_id_by_child_id,
+          e.src_id_syntax,
+        )
     }
     let dst_column_index = match e.dst_column_index {
       Some(i) => Some(i)
-      None => find_sql_column_index(object_by_id, e.dst_id)
+      None =>
+        find_sql_column_index(
+          object_by_id,
+          parent_id_by_child_id,
+          e.dst_id_syntax,
+        )
     }
     edges.push(
       @graph.EdgeInput::from_parts(
@@ -297,22 +275,20 @@ fn assign_sql_column_indices(graph : @graph.GraphInput) -> @graph.GraphInput {
         e.label_box,
         src_column_index,
         dst_column_index,
+        src_id_syntax=e.src_id_syntax,
+        dst_id_syntax=e.dst_id_syntax,
+        references=e.references,
       ),
     )
   }
-  @graph.GraphInput::from_parts(
-    graph.name,
+  clone_graph_with_parts(
+    graph,
     graph.root,
     graph.objects,
     edges,
-    graph.sequence_fragments,
-    graph.activation_boxes,
-    graph.sequence_notes,
-    graph.sequence_fragments_layout,
     graph.layers,
     graph.scenarios,
     graph.steps,
-    graph.legend,
   )
 }
 
@@ -371,22 +347,20 @@ fn normalize_routes(graph : @graph.GraphInput) -> @graph.GraphInput {
         e.label_box,
         e.src_column_index,
         e.dst_column_index,
+        src_id_syntax=e.src_id_syntax,
+        dst_id_syntax=e.dst_id_syntax,
+        references=e.references,
       ),
     )
   }
-  @graph.GraphInput::from_parts(
-    graph.name,
+  clone_graph_with_parts(
+    graph,
     graph.root,
     graph.objects,
     edges,
-    graph.sequence_fragments,
-    graph.activation_boxes,
-    graph.sequence_notes,
-    graph.sequence_fragments_layout,
     graph.layers,
     graph.scenarios,
     graph.steps,
-    graph.legend,
   )
 }
 
@@ -479,14 +453,14 @@ fn collect_grid_semantic_groups(
   graph : @graph.GraphInput,
 ) -> Map[String, Array[String]] {
   let object_by_id : Map[String, @graph.ObjectInput] = {}
-  object_by_id[graph.root.id] = graph.root
+  object_by_id[graph.root.abs_id_syntax] = graph.root
   for obj in graph.objects {
-    object_by_id[obj.id] = obj
+    object_by_id[obj.abs_id_syntax] = obj
   }
   let incident_ids : Map[String, Bool] = {}
   for edge in graph.edges {
-    incident_ids[edge.src_id] = true
-    incident_ids[edge.dst_id] = true
+    incident_ids[edge.src_id_syntax] = true
+    incident_ids[edge.dst_id_syntax] = true
   }
   let groups : Map[String, Array[String]] = {}
   let parents : Array[@graph.ObjectInput] = [graph.root]
@@ -510,7 +484,7 @@ fn collect_grid_semantic_groups(
     if blocked || child_ids.is_empty() {
       continue
     }
-    groups[parent.id] = child_ids
+    groups[parent.abs_id_syntax] = child_ids
   }
   groups
 }
@@ -522,14 +496,14 @@ fn apply_grid_semantic_parent_boxes(
   config : LayoutConfig,
 ) -> @graph.GraphInput {
   let object_by_id : Map[String, @graph.ObjectInput] = {}
-  object_by_id[graph.root.id] = graph.root
+  object_by_id[graph.root.abs_id_syntax] = graph.root
   for obj in graph.objects {
-    object_by_id[obj.id] = obj
+    object_by_id[obj.abs_id_syntax] = obj
   }
 
   let parent_box_by_id : Map[String, @graph.Box] = {}
   for parent_id, child_ids in groups {
-    if parent_id == graph.root.id {
+    if parent_id == graph.root.abs_id_syntax {
       continue
     }
     let parent = match object_by_id.get(parent_id) {
@@ -567,26 +541,21 @@ fn apply_grid_semantic_parent_boxes(
 
   let objects : Array[@graph.ObjectInput] = []
   for obj in graph.objects {
-    let box = match parent_box_by_id.get(obj.id) {
+    let box = match parent_box_by_id.get(obj.abs_id_syntax) {
       Some(v) => Some(v)
       None => obj.box
     }
     objects.push(clone_object_with_parts(obj, box, obj.child_ids))
   }
 
-  @graph.GraphInput::from_parts(
-    graph.name,
+  clone_graph_with_parts(
+    graph,
     graph.root,
     objects,
     graph.edges,
-    graph.sequence_fragments,
-    graph.activation_boxes,
-    graph.sequence_notes,
-    graph.sequence_fragments_layout,
     graph.layers,
     graph.scenarios,
     graph.steps,
-    graph.legend,
   )
 }
 
@@ -603,10 +572,10 @@ fn detach_grid_children(
   }
   let objects : Array[@graph.ObjectInput] = []
   for obj in graph.objects {
-    if group_child_ids.contains(obj.id) {
+    if group_child_ids.contains(obj.abs_id_syntax) {
       continue
     }
-    let child_ids = match groups.get(obj.id) {
+    let child_ids = match groups.get(obj.abs_id_syntax) {
       Some(filtered) => {
         let removed : Map[String, Bool] = {}
         for id in filtered {
@@ -624,7 +593,7 @@ fn detach_grid_children(
     }
     objects.push(clone_object_with_parts(obj, obj.box, child_ids))
   }
-  let root_child_ids = match groups.get(graph.root.id) {
+  let root_child_ids = match groups.get(graph.root.abs_id_syntax) {
     Some(filtered) => {
       let removed : Map[String, Bool] = {}
       for id in filtered {
@@ -641,19 +610,14 @@ fn detach_grid_children(
     None => graph.root.child_ids
   }
   let root = clone_object_with_parts(graph.root, graph.root.box, root_child_ids)
-  @graph.GraphInput::from_parts(
-    graph.name,
+  clone_graph_with_parts(
+    graph,
     root,
     objects,
     graph.edges,
-    graph.sequence_fragments,
-    graph.activation_boxes,
-    graph.sequence_notes,
-    graph.sequence_fragments_layout,
     graph.layers,
     graph.scenarios,
     graph.steps,
-    graph.legend,
   )
 }
 
@@ -1428,19 +1392,19 @@ fn restore_grid_semantics(
   config : LayoutConfig,
 ) -> @graph.GraphInput {
   let original_by_id : Map[String, @graph.ObjectInput] = {}
-  original_by_id[original_graph.root.id] = original_graph.root
+  original_by_id[original_graph.root.abs_id_syntax] = original_graph.root
   for obj in original_graph.objects {
-    original_by_id[obj.id] = obj
+    original_by_id[obj.abs_id_syntax] = obj
   }
   let laid_out_by_id : Map[String, @graph.ObjectInput] = {}
-  laid_out_by_id[laid_out_graph.root.id] = laid_out_graph.root
+  laid_out_by_id[laid_out_graph.root.abs_id_syntax] = laid_out_graph.root
   for obj in laid_out_graph.objects {
-    laid_out_by_id[obj.id] = obj
+    laid_out_by_id[obj.abs_id_syntax] = obj
   }
 
   let override_boxes : Map[String, @graph.Box] = {}
   for parent_id, child_ids in context.groups {
-    if parent_id == original_graph.root.id {
+    if parent_id == original_graph.root.abs_id_syntax {
       let parent = original_graph.root
       let child_size_by_id : Map[String, (Double, Double)] = {}
       for child_id in child_ids {
@@ -1512,8 +1476,8 @@ fn restore_grid_semantics(
 
   let objects : Array[@graph.ObjectInput] = []
   for obj in original_graph.objects {
-    if context.child_ids.contains(obj.id) {
-      let override_box = override_boxes.get(obj.id)
+    if context.child_ids.contains(obj.abs_id_syntax) {
+      let override_box = override_boxes.get(obj.abs_id_syntax)
       let box = match override_box {
         Some(v) => Some(v)
         None => obj.box
@@ -1524,25 +1488,25 @@ fn restore_grid_semantics(
       )
       continue
     }
-    let laid_out_obj = match laid_out_by_id.get(obj.id) {
+    let laid_out_obj = match laid_out_by_id.get(obj.abs_id_syntax) {
       Some(v) => v
       None => obj
     }
-    let override_box = override_boxes.get(obj.id)
+    let override_box = override_boxes.get(obj.abs_id_syntax)
     let box = match override_box {
       Some(v) => Some(v)
       None => laid_out_obj.box
     }
     let label_box = match override_box {
       Some(_) =>
-        if context.groups.contains(obj.id) {
+        if context.groups.contains(obj.abs_id_syntax) {
           None
         } else {
           laid_out_obj.label_box
         }
       None => laid_out_obj.label_box
     }
-    let child_ids = if context.groups.contains(obj.id) {
+    let child_ids = if context.groups.contains(obj.abs_id_syntax) {
       obj.child_ids
     } else {
       laid_out_obj.child_ids
@@ -1552,7 +1516,9 @@ fn restore_grid_semantics(
     )
   }
 
-  let root_child_ids = if context.groups.contains(original_graph.root.id) {
+  let root_child_ids = if context.groups.contains(
+      original_graph.root.abs_id_syntax,
+    ) {
     original_graph.root.child_ids
   } else {
     laid_out_graph.root.child_ids
@@ -1563,19 +1529,14 @@ fn restore_grid_semantics(
     root_child_ids,
   )
 
-  @graph.GraphInput::from_parts(
-    laid_out_graph.name,
+  clone_graph_with_parts(
+    laid_out_graph,
     root,
     objects,
     laid_out_graph.edges,
-    laid_out_graph.sequence_fragments,
-    laid_out_graph.activation_boxes,
-    laid_out_graph.sequence_notes,
-    laid_out_graph.sequence_fragments_layout,
     laid_out_graph.layers,
     laid_out_graph.scenarios,
     laid_out_graph.steps,
-    laid_out_graph.legend,
   )
 }
 
@@ -1657,6 +1618,12 @@ fn clone_object_with_parts_and_label(
     obj.top,
     obj.left,
     direction=obj.direction,
+    language=obj.language,
+    sql_constraints=obj.sql_constraints,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
+    references=obj.references,
   )
 }
 
@@ -2210,19 +2177,14 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
     )
   }
   normalize_routes(
-    @graph.GraphInput::from_parts(
-      laid_out.name,
+    clone_graph_with_parts(
+      laid_out,
       laid_out.root,
       laid_out.objects,
       laid_out.edges,
-      laid_out.sequence_fragments,
-      laid_out.activation_boxes,
-      laid_out.sequence_notes,
-      laid_out.sequence_fragments_layout,
       layers,
       scenarios,
       steps,
-      laid_out.legend,
     ),
   )
 }

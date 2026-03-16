@@ -162,17 +162,7 @@ fn min_double(a : Double, b : Double) -> Double {
 
 ///|
 fn short_id(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id.code_unit_at(i) == '.'.to_int().to_uint16() {
-      last_dot = i
-    }
-  }
-  if last_dot >= 0 && last_dot + 1 < id.length() {
-    string_slice(id, last_dot + 1, id.length())
-  } else {
-    id
-  }
+  @graph.syntax_path_last_display(id)
 }
 
 ///|

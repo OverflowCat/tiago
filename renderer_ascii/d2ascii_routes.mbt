@@ -47,8 +47,8 @@ fn draw_connection_route(
   let source_routes = route_points_from_graph(source_route, x_offset, y_offset)
   let (from_boundary, to_boundary) = get_connection_boundaries(
     ctx,
-    conn.src_id,
-    conn.dst_id,
+    conn.src_lookup_id,
+    conn.dst_lookup_id,
   )
   let routes = process_route(ctx, source_routes, from_boundary, to_boundary)
   let turn_dir = calculate_turn_directions(routes)

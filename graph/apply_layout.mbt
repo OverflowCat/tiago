@@ -21,11 +21,11 @@ fn apply_box_to_object(
   nodes : Map[String, Box],
   node_labels : Map[String, Box],
 ) -> ObjectInput {
-  let layout_box = match nodes.get(obj.id) {
+  let layout_box = match nodes.get(obj.abs_id_syntax) {
     Some(b) => Some(b)
     None => obj.box
   }
-  let layout_label_box = match node_labels.get(obj.id) {
+  let layout_label_box = match node_labels.get(obj.abs_id_syntax) {
     Some(b) => Some(b)
     None => obj.label_box
   }

@@ -227,9 +227,7 @@ fn trim_double_quotes_for_class_member(s : String) -> String {
 
 ///|
 fn class_member_info_from_object(child : @graph.ObjectInput) -> ClassMemberInfo {
-  let raw_name = trim_double_quotes_for_class_member(
-    short_name_from_id(child.id),
-  )
+  let raw_name = @graph.syntax_path_last_display(child.id)
   let mut name = raw_name
   if raw_name.length() > 0 {
     let first = raw_name[0]

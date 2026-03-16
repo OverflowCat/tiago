@@ -95,6 +95,82 @@ test "right direction stacks objects horizontally" {
 }
 
 ///|
+test "quoted syntax identities survive dagre elk and railway layout" {
+  let source =
+    #|"a.b"
+    #|a: {
+    #|  b
+    #|}
+    #|"a.b" -> a.b
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+  let railway = @engine_api.layout_with_engine(
+    @engine_railway.RailwayEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("railway layout error: \{e}")
+  }
+
+  guard dagre.find_object("\"a.b\"") is Some(dagre_quoted) else {
+    fail("expected quoted top-level object after dagre layout")
+  }
+  guard dagre.find_object("a.b") is Some(dagre_nested) else {
+    fail("expected nested object after dagre layout")
+  }
+  assert_eq(dagre_quoted.abs_id_syntax, "\"a.b\"")
+  assert_eq(dagre_nested.abs_id_syntax, "a.b")
+  assert_true(dagre_quoted.box is Some(_), msg="dagre quoted box")
+  assert_true(dagre_nested.box is Some(_), msg="dagre nested box")
+  assert_true(dagre.edges.length() == 1, msg="dagre edge count")
+  assert_true(dagre.edges[0].route.length() >= 2, msg="dagre edge route")
+
+  guard elk.find_object("\"a.b\"") is Some(elk_quoted) else {
+    fail("expected quoted top-level object after elk layout")
+  }
+  guard elk.find_object("a.b") is Some(elk_nested) else {
+    fail("expected nested object after elk layout")
+  }
+  assert_eq(elk_quoted.abs_id_syntax, "\"a.b\"")
+  assert_eq(elk_nested.abs_id_syntax, "a.b")
+  assert_true(elk_quoted.box is Some(_), msg="elk quoted box")
+  assert_true(elk_nested.box is Some(_), msg="elk nested box")
+  assert_true(elk.edges.length() == 1, msg="elk edge count")
+  assert_true(elk.edges[0].route.length() >= 2, msg="elk edge route")
+
+  guard railway.find_object("\"a.b\"") is Some(railway_quoted) else {
+    fail("expected quoted top-level object after railway layout")
+  }
+  guard railway.find_object("a.b") is Some(railway_nested) else {
+    fail("expected nested object after railway layout")
+  }
+  assert_eq(railway_quoted.abs_id_syntax, "\"a.b\"")
+  assert_eq(railway_nested.abs_id_syntax, "a.b")
+  assert_true(railway_quoted.box is Some(_), msg="railway quoted box")
+  assert_true(railway_nested.box is Some(_), msg="railway nested box")
+  assert_true(railway.edges.length() == 1, msg="railway edge count")
+  assert_true(railway.edges[0].route.length() >= 2, msg="railway edge route")
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {

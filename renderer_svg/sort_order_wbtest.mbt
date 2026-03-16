@@ -118,3 +118,17 @@ test "sort objects keeps containers before leaves even when deeper" {
     content="[\"aws.s3\", \"aws.vpc.subnet\", \"aws.vpc.subnet.ec2\"]",
   )
 }
+
+///|
+test "sort objects treats quoted dots as a single syntax segment" {
+  let input = test_shapes([
+    test_object("a.b", 0),
+    test_object("\"a.b\"", 0),
+    test_object("aws.vpc.subnet", 0),
+  ])
+  let sorted = sort_objects_by_depth(input)
+  inspect(
+    sorted.map(fn(shape) { shape.id }),
+    content="[\"\\\"a.b\\\"\", \"a.b\", \"aws.vpc.subnet\"]",
+  )
+}

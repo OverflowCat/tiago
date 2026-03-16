@@ -8,6 +8,16 @@ import {
 // Values
 pub fn apply_layout(GraphInput, LayoutPatch) -> GraphInput
 
+pub fn display_key_segment(String) -> String
+
+pub fn split_syntax_path(String) -> Array[String]
+
+pub fn syntax_path_depth(String) -> Int
+
+pub fn syntax_path_last(String) -> String
+
+pub fn syntax_path_last_display(String) -> String
+
 // Errors
 
 // Types and methods
@@ -62,6 +72,7 @@ pub struct EdgeInput {
   dst_id : String
   src_id_syntax : String
   dst_id_syntax : String
+  references : Array[EdgeReference]
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -84,10 +95,12 @@ pub struct EdgeInput {
   dst_column_index : Int?
 }
 pub fn EdgeInput::from_model(EdgeModel) -> Self
-pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String?, String?, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?, src_id_syntax? : String, dst_id_syntax? : String) -> Self
+pub fn EdgeInput::from_parts(Int, String, String, Bool, Bool, ArrowheadType, ArrowheadType, String?, String?, String?, String?, String?, String?, String, StyleInput, Array[Point], Array[Point]?, Bool, Int, Int, Box?, Int?, Int?, src_id_syntax? : String, dst_id_syntax? : String, references? : Array[EdgeReference]) -> Self
 pub fn EdgeInput::get_dst_id(Self) -> String
 pub fn EdgeInput::get_label_box(Self) -> Box?
 pub fn EdgeInput::get_src_id(Self) -> String
+pub fn EdgeInput::lookup_dst_id(Self) -> String
+pub fn EdgeInput::lookup_src_id(Self) -> String
 pub fn EdgeInput::new(Int, String, String, Bool, Bool, src_id_syntax? : String, dst_id_syntax? : String) -> Self
 pub impl Show for EdgeInput
 
@@ -97,6 +110,7 @@ pub struct EdgeModel {
   dst_id : String
   src_id_syntax : String
   dst_id_syntax : String
+  references : Array[EdgeReference]
   src_arrow : Bool
   dst_arrow : Bool
   src_arrowhead : ArrowheadType
@@ -123,6 +137,20 @@ pub fn EdgeModel::with_label(Self, String) -> Self
 pub fn EdgeModel::with_label_box(Self, Box?) -> Self
 pub fn EdgeModel::with_route(Self, Array[Point]) -> Self
 pub impl Show for EdgeModel
+
+pub struct EdgeReference {
+  range : @lexer.Range
+  edge_index : Int
+  scope_abs_id_syntax : String?
+  source_path : String?
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+}
+pub fn EdgeReference::contained_by(Self, String) -> Bool
+pub fn EdgeReference::new(@lexer.Range, Int, String?, String?, Bool, Bool, Bool) -> Self
+pub impl Eq for EdgeReference
+pub impl Show for EdgeReference
 
 pub struct FragmentOperandInput {
   condition : String?
@@ -320,6 +348,7 @@ pub struct ObjectInput {
   id_val : String
   id_syntax : String
   abs_id_syntax : String
+  references : Array[ObjectReference]
   label : String
   shape_type : ShapeType
   style : StyleInput
@@ -346,9 +375,10 @@ pub struct ObjectInput {
   direction : String?
 }
 pub fn ObjectInput::from_model(ObjectModel) -> Self
-pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String], id_val? : String, id_syntax? : String, abs_id_syntax? : String) -> Self
+pub fn ObjectInput::from_parts(String, String, ShapeType, StyleInput, Box?, Box?, Array[String], Int, String?, String?, String?, Array[String], Int?, Int?, Double?, Double?, Double?, Int?, Int?, String?, Int?, Int?, direction? : String?, language? : String?, sql_constraints? : Array[String], id_val? : String, id_syntax? : String, abs_id_syntax? : String, references? : Array[ObjectReference]) -> Self
 pub fn ObjectInput::get_box(Self) -> Box?
 pub fn ObjectInput::get_label_box(Self) -> Box?
+pub fn ObjectInput::lookup_id(Self) -> String
 pub fn ObjectInput::new(String, id_val? : String, id_syntax? : String, abs_id_syntax? : String) -> Self
 pub fn ObjectInput::with_direction(Self, String?) -> Self
 pub impl Show for ObjectInput
@@ -358,6 +388,7 @@ pub struct ObjectModel {
   id_val : String
   id_syntax : String
   abs_id_syntax : String
+  references : Array[ObjectReference]
   label : String
   shape_type : ShapeType
   style : StyleModel
@@ -389,6 +420,21 @@ pub fn ObjectModel::with_box(Self, Box?) -> Self
 pub fn ObjectModel::with_label(Self, String) -> Self
 pub fn ObjectModel::with_label_box(Self, Box?) -> Self
 pub impl Show for ObjectModel
+
+pub struct ObjectReference {
+  range : @lexer.Range
+  key_path_index : Int
+  in_edge : Bool
+  scope_abs_id_syntax : String?
+  source_path : String?
+  primary : Bool
+  due_to_glob : Bool
+  due_to_lazy_glob : Bool
+}
+pub fn ObjectReference::contained_by(Self, String) -> Bool
+pub fn ObjectReference::new(@lexer.Range, Int, Bool, String?, String?, Bool, Bool, Bool) -> Self
+pub impl Eq for ObjectReference
+pub impl Show for ObjectReference
 
 pub struct Point {
   x : Double

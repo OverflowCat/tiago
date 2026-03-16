@@ -172,6 +172,103 @@ fn dagre_point_to_json(point : @moon_dagre.Point) -> Json {
 }
 
 ///|
+fn canonicalize_layout_object(obj : @graph.ObjectInput) -> @graph.ObjectInput {
+  @graph.ObjectInput::from_parts(
+    obj.lookup_id(),
+    obj.label,
+    obj.shape_type,
+    obj.style,
+    obj.box,
+    obj.label_box,
+    obj.child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    obj.classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    obj.near,
+    obj.top,
+    obj.left,
+    direction=obj.direction,
+    language=obj.language,
+    sql_constraints=obj.sql_constraints,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
+    references=obj.references,
+  )
+}
+
+///|
+fn canonicalize_layout_edge(edge : @graph.EdgeInput) -> @graph.EdgeInput {
+  let src_id = edge.lookup_src_id()
+  let dst_id = edge.lookup_dst_id()
+  @graph.EdgeInput::from_parts(
+    edge.index,
+    src_id,
+    dst_id,
+    edge.src_arrow,
+    edge.dst_arrow,
+    edge.src_arrowhead,
+    edge.dst_arrowhead,
+    edge.src_arrowhead_label,
+    edge.dst_arrowhead_label,
+    edge.src_arrowhead_label_color,
+    edge.dst_arrowhead_label_color,
+    edge.src_anchor,
+    edge.dst_anchor,
+    edge.label,
+    edge.style,
+    edge.route,
+    edge.bend_points,
+    edge.is_curve,
+    edge.z_index,
+    edge.reference_count,
+    edge.label_box,
+    edge.src_column_index,
+    edge.dst_column_index,
+    src_id_syntax=src_id,
+    dst_id_syntax=dst_id,
+    references=edge.references,
+  )
+}
+
+///|
+fn canonicalize_layout_graph(graph : @graph.GraphInput) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(canonicalize_layout_object(obj))
+  }
+  let edges : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    edges.push(canonicalize_layout_edge(edge))
+  }
+  @graph.GraphInput::from_parts(
+    graph.name,
+    canonicalize_layout_object(graph.root),
+    objects,
+    edges,
+    graph.sequence_fragments,
+    graph.activation_boxes,
+    graph.sequence_notes,
+    graph.sequence_fragments_layout,
+    graph.layers,
+    graph.scenarios,
+    graph.steps,
+    graph.legend,
+    is_folder_only=graph.is_folder_only,
+    data=graph.data,
+  )
+}
+
+///|
 priv struct EdgeLayoutInfo {
   edge_index : Int
   src_id : String
@@ -378,6 +475,7 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   config,
   direction,
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
+  let graph = canonicalize_layout_graph(graph)
   if graph.root.shape_type == @graph.SequenceDiagram {
     return layout_sequence_diagram(graph, config)
   }
@@ -796,7 +894,7 @@ fn sequence_label_height(obj : @graph.ObjectInput) -> Double {
 
 ///|
 fn sequence_root_label_height(graph : @graph.GraphInput) -> Double {
-  if graph.root.label == "" || graph.root.label == graph.root.id {
+  if graph.root.label == "" || graph.root.label == graph.root.id_val {
     0.0
   } else {
     sequence_label_height(graph.root)
@@ -995,6 +1093,7 @@ fn build_dagre_graph(
   Map[String, String],
   Map[String, String],
 ) raise @engine_api.LayoutError {
+  let graph = canonicalize_layout_graph(graph)
   let dagre_graph = @moon_dagre.new_graph(multigraph=true, compound=true)
   dagre_graph.set_graph(make_dagre_graph_attrs(config, graph, direction))
 
@@ -1535,7 +1634,7 @@ fn apply_constant_near_positions(
 ) -> Unit {
   let near_key_by_id : Map[String, String] = {}
   for obj in graph.objects {
-    if obj.id.contains(".") {
+    if @graph.syntax_path_depth(obj.id) != 1 {
       continue
     }
     match obj.near {
@@ -1934,9 +2033,7 @@ fn trim_double_quotes_for_class_member(s : String) -> String {
 
 ///|
 fn class_member_info_from_object(child : @graph.ObjectInput) -> ClassMemberInfo {
-  let raw_name = trim_double_quotes_for_class_member(
-    short_name_from_id(child.id),
-  )
+  let raw_name = @graph.syntax_path_last_display(child.id)
   let mut name = raw_name
   if raw_name.length() > 0 {
     let first = raw_name[0]
@@ -2180,24 +2277,7 @@ fn sql_table_constraint_abbr_from_object(obj : @graph.ObjectInput) -> String {
 
 ///|
 fn short_name_from_id(id : String) -> String {
-  let mut last_dot = -1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      last_dot = i
-    }
-  }
-  if last_dot < 0 || last_dot >= id.length() - 1 {
-    id
-  } else {
-    let out = StringBuilder::new()
-    for i = last_dot + 1; i < id.length(); i = i + 1 {
-      match id[i].to_char() {
-        Some(ch) => out.write_char(ch)
-        None => ()
-      }
-    }
-    out.to_string()
-  }
+  @graph.syntax_path_last(id)
 }
 
 ///|
@@ -5053,13 +5133,7 @@ fn precision_eq_with_tol(a : Double, b : Double, tol : Double) -> Bool {
 
 ///|
 fn object_depth_from_id(id : String) -> Int {
-  let mut depth = 1
-  for i = 0; i < id.length(); i = i + 1 {
-    if id[i] == '.' {
-      depth = depth + 1
-    }
-  }
-  depth
+  @graph.syntax_path_depth(id)
 }
 
 ///|

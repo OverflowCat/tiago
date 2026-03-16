@@ -120,3 +120,121 @@ test "graph objects preserve explicit language and sql constraints" {
   assert_eq(snippet.language, Some("text"))
   assert_eq(column.sql_constraints, ["primary_key", "unique"])
 }
+
+///|
+fn test_range(offset : Int) -> @lexer.Range {
+  let start = @lexer.Position::new(0, offset, offset)
+  let end = @lexer.Position::new(0, offset + 1, offset + 1)
+  @lexer.Range::new(start, end)
+}
+
+///|
+test "sort_graph_by_references reorders objects edges and children by source ranges" {
+  let graph = Graph::new("root")
+
+  let parent = Object::new("parent")
+  let child_late = Object::new(
+    "parent.late",
+    id_val="late",
+    id_syntax="late",
+    abs_id_syntax="parent.late",
+  )
+  child_late.references = [
+    @graph.ObjectReference::new(
+      test_range(40),
+      0,
+      false,
+      Some("parent"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+  let child_early = Object::new(
+    "parent.early",
+    id_val="early",
+    id_syntax="early",
+    abs_id_syntax="parent.early",
+  )
+  child_early.references = [
+    @graph.ObjectReference::new(
+      test_range(10),
+      0,
+      false,
+      Some("parent"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+  parent.add_child(child_late)
+  parent.add_child(child_early)
+
+  let object_late = Object::new("late")
+  object_late.references = [
+    @graph.ObjectReference::new(
+      test_range(30),
+      0,
+      false,
+      Some("root"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+  let object_early = Object::new("early")
+  object_early.references = [
+    @graph.ObjectReference::new(
+      test_range(5),
+      0,
+      false,
+      Some("root"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+
+  let edge_late = Edge::new(2, "late", "early", false, true)
+  edge_late.references = [
+    @graph.EdgeReference::new(
+      test_range(50),
+      2,
+      Some("root"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+  let edge_early = Edge::new(1, "early", "late", false, true)
+  edge_early.references = [
+    @graph.EdgeReference::new(
+      test_range(15),
+      1,
+      Some("root"),
+      None,
+      true,
+      false,
+      false,
+    ),
+  ]
+
+  graph.add_object(object_late)
+  graph.add_object(object_early)
+  graph.add_object(parent)
+  graph.add_edge(edge_late)
+  graph.add_edge(edge_early)
+
+  sort_graph_by_references(graph)
+
+  assert_eq(graph.objects.map(fn(obj) { obj.id }), ["early", "late", "parent"])
+  assert_eq(graph.edges.map(fn(edge) { edge.index }), [1, 2])
+  assert_eq(parent.children.map(fn(child) { child.id }), [
+    "parent.early", "parent.late",
+  ])
+}

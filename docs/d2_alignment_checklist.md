@@ -84,9 +84,11 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 - [x] Align object identity semantics with D2's `ID` vs `IDVal` split.
   - Landed in diago: graph models/inputs now preserve compatibility semantic IDs, local `id_val`, canonical local `id_syntax`, canonical absolute `abs_id_syntax`, and syntax-aware edge endpoint IDs.
   - `GraphInput::find_object` now resolves canonical D2 absolute IDs before falling back to the legacy flattened semantic path string, which covers quoted-dot and quoted-key lookups.
+  - Downstream layout and render code now also canonicalizes object and edge lookup IDs through the syntax-aware graph identity model instead of flattening quoted path segments back into ambiguous dotted strings.
 
-- [ ] Align graph reference tracking for objects and edges.
-  - This is required for true `d2lsp` / `d2oracle` parity.
+- [x] Align graph reference tracking for objects and edges.
+  - Landed in diago: object and edge references now flow from IR into graph inputs/models, are preserved through layout canonicalization and graph cloning helpers, and are used to restore D2-style source-order sorting.
+  - This closes the graph-side prerequisite for broader `d2lsp` / `d2oracle` parity work, though the tooling surface itself is still tracked separately below.
 
 - [ ] Implement or verify D2-style board compilation semantics.
   - Includes `layers`, `scenarios`, `steps`, inherited/base board behavior, and "folder only" boards.
@@ -95,9 +97,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - D2 builds legends from `vars.d2-legend` with explicit filtering and synthetic layout defaults.
   - Verify diago matches the same source semantics and output structure.
 
-- [ ] Align AST-based sort order behavior.
-  - D2 explicitly sorts objects and edges by AST order after compilation.
-  - Verify whether diago preserves all the same ordering guarantees.
+- [x] Align AST-based sort order behavior.
+  - Landed in diago: exporter graph compilation now sorts objects, nested children, and edges by reference/source ranges with stable fallback to encounter order.
+  - Layout/render regression coverage also now verifies syntax-aware ordering for quoted-dot identities.
 
 ## 4. Layout Orchestration Parity
 

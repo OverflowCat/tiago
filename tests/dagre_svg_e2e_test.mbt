@@ -472,11 +472,100 @@ fn read_required_file(path : String) -> Result[String, String] {
 
 ///|
 fn normalize_svg_snapshot(svg : String) -> String {
-  normalize_image_href_payloads(
-    svg.replace(old="\r\n", new="\n").replace(old="\r", new="\n"),
+  normalize_svg_wrapper_classes(
+    normalize_svg_hashes(
+      normalize_image_href_payloads(
+        svg.replace(old="\r\n", new="\n").replace(old="\r", new="\n"),
+      ),
+    ),
   )
   .trim()
   .to_string()
+}
+
+///|
+fn normalize_svg_hashes(svg : String) -> String {
+  let out = StringBuilder::new()
+  let mut i = 0
+  while i < svg.length() {
+    if i + 3 <= svg.length() && slice_string(svg, i, i + 3) == "d2-" {
+      let mut j = i + 3
+      while j < svg.length() {
+        let code = svg.code_unit_at(j)
+        if code < '0'.to_int().to_uint16() || code > '9'.to_int().to_uint16() {
+          break
+        }
+        j += 1
+      }
+      if j > i + 3 {
+        out.write_string("d2-HASH")
+        i = j
+        continue
+      }
+    }
+    match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
+      ch => out.write_string(ch)
+    }
+    i += 1
+  }
+  out.to_string()
+}
+
+///|
+fn normalize_svg_wrapper_classes(svg : String) -> String {
+  let out = StringBuilder::new()
+  let mut i = 0
+  while i < svg.length() {
+    if i + 7 <= svg.length() && slice_string(svg, i, i + 7) == "class=\"" {
+      let value_start = i + 7
+      let rest = slice_string(svg, value_start, svg.length())
+      let value_end_rel = match find_substring(rest, "\"") {
+        Some(v) => v
+        None => {
+          match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
+            ch => out.write_string(ch)
+          }
+          i += 1
+          continue
+        }
+      }
+      let value_end = value_start + value_end_rel
+      let value = slice_string(svg, value_start, value_end)
+      if should_normalize_svg_wrapper_class(value) {
+        out.write_string("class=\"__ID__\"")
+        i = value_end + 1
+        continue
+      }
+    }
+    match svg.code_unit_at(i).to_int().unsafe_to_char().to_string() {
+      ch => out.write_string(ch)
+    }
+    i += 1
+  }
+  out.to_string()
+}
+
+///|
+fn should_normalize_svg_wrapper_class(value : String) -> Bool {
+  if value.length() < 8 || value.contains(" ") {
+    return false
+  }
+  let mut has_padding = false
+  for ch in value {
+    if ('A' <= ch && ch <= 'Z') ||
+      ('a' <= ch && ch <= 'z') ||
+      ('0' <= ch && ch <= '9') ||
+      ch == '+' ||
+      ch == '/' {
+      continue
+    }
+    if ch == '=' {
+      has_padding = true
+      continue
+    }
+    return false
+  }
+  has_padding
 }
 
 ///|
