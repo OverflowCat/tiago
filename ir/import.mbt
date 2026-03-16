@@ -93,7 +93,15 @@ fn compile_import(
   let (primary, composite) = select_primary_and_composite(import_ir, selector)
   let field_name = extract_filename(display)
   let field0 = ir.ensure_field(field_name)
-  ir.set_field(Field::new(field0.name, primary, composite, field0.references))
+  ir.set_field(
+    Field::new(
+      field0.name,
+      primary,
+      composite,
+      field0.references,
+      name_syntax=field0.name_syntax(),
+    ),
+  )
 }
 
 ///|
@@ -101,7 +109,7 @@ fn compile_import_target(
   imp : @ast.Import,
   resolver : ImportResolver,
   import_stack : Array[String],
-) -> (Map, Array[String]) raise CompileError {
+) -> (Map, Array[@ast.StringValue]) raise CompileError {
   let (file_key, selector, display) = split_import_file_and_selector(imp)
   let (content, canonical) = resolve_import_content(resolver, file_key) catch {
     _ =>
@@ -135,7 +143,7 @@ fn compile_import_target(
 ///|
 fn split_import_file_and_selector(
   imp : @ast.Import,
-) -> (String, Array[String], String) {
+) -> (String, Array[@ast.StringValue], String) {
   // `@a.b.c` means: import file "a", then select path ["b", "c"].
   // The resolver key is the file part only (d2 parity).
   let file = if imp.path.length() > 0 {
@@ -143,14 +151,18 @@ fn split_import_file_and_selector(
   } else {
     join_import_pre(imp.pre, "")
   }
-  let selector : Array[String] = []
+  let selector : Array[@ast.StringValue] = []
   for i = 1; i < imp.path.length(); i = i + 1 {
-    selector.push(imp.path[i].content())
+    selector.push(imp.path[i])
   }
   let display = if selector.length() == 0 {
     file
   } else {
-    file + "." + selector.join(".")
+    let selector_parts : Array[String] = []
+    for part in selector {
+      selector_parts.push(part.content())
+    }
+    file + "." + selector_parts.join(".")
   }
   (file, selector, display)
 }
@@ -227,7 +239,7 @@ fn format_cycle(stack : Array[String], next : String) -> String {
 ///|
 fn select_primary_and_composite(
   root : Map,
-  selector : Array[String],
+  selector : Array[@ast.StringValue],
 ) -> (Scalar?, Composite?) raise CompileError {
   if selector.length() == 0 {
     return (None, Some(Composite::Map(root)))
@@ -239,7 +251,7 @@ fn select_primary_and_composite(
 ///|
 fn select_map_for_spread(
   root : Map,
-  selector : Array[String],
+  selector : Array[@ast.StringValue],
 ) -> Map raise CompileError {
   if selector.length() == 0 {
     return root
@@ -254,12 +266,11 @@ fn select_map_for_spread(
 ///|
 fn select_field(
   root : Map,
-  selector : Array[String],
+  selector : Array[@ast.StringValue],
 ) -> Field raise CompileError {
   let mut current = root
   for i = 0; i < selector.length(); i = i + 1 {
-    let name = selector[i]
-    match current.get_field(name) {
+    match current.get_field_by_syntax(selector[i]) {
       Some(f) =>
         if i == selector.length() - 1 {
           return f
@@ -347,11 +358,10 @@ fn compile_key_with_imports(
   // Navigate/create the field path
   let mut current_map = ir
   for i = 0; i < path.length() - 1; i = i + 1 {
-    let name = path[i]
     let elem = key_path.path[i]
     let field = record_field_reference(
       current_map,
-      current_map.ensure_field(name),
+      current_map.ensure_field_by_syntax(elem),
       elem,
       key_path,
       context,
@@ -367,6 +377,7 @@ fn compile_key_with_imports(
           field.primary,
           Some(Composite::Map(new_map)),
           field.references,
+          name_syntax=field.name_syntax(),
         )
         current_map.set_field(field)
         current_map = new_map
@@ -377,12 +388,17 @@ fn compile_key_with_imports(
   }
   // Set the final field
   let last_index = path.length() - 1
-  let final_name = path[last_index]
   let last_elem = key_path.path[last_index]
-  let field0 = current_map.ensure_field(final_name)
-  let field1 = if key.primary is Some(_) {
+  let field0 = current_map.ensure_field_by_syntax(last_elem)
+  let field1 = if key.primary is Some(_) || key.value is None {
     record_field_reference(
-      current_map, field0, last_elem, key_path, context, last_index, true,
+      current_map,
+      field0,
+      last_elem,
+      key_path,
+      context,
+      last_index,
+      key.primary is Some(_),
     )
   } else {
     field0
@@ -402,6 +418,7 @@ fn compile_key_with_imports(
         Some(compile_scalar(scalar, source_path)),
         field.composite,
         field.references,
+        name_syntax=field.name_syntax(),
       )
     None => field
   }
@@ -431,6 +448,7 @@ fn compile_value_with_imports(
         Some(compile_scalar(s, source_path)),
         field.composite,
         field.references,
+        name_syntax=field.name_syntax(),
       )
     @ast.Value::Map(m) => {
       let ir_map = Map::from_ast(m, source_path~)
@@ -447,6 +465,7 @@ fn compile_value_with_imports(
         field.primary,
         Some(Composite::Map(ir_map)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
     @ast.Value::Array(a) => {
@@ -458,6 +477,7 @@ fn compile_value_with_imports(
         field.primary,
         Some(Composite::Array(ir_array)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
     @ast.Value::Import(imp) => {
@@ -467,7 +487,13 @@ fn compile_value_with_imports(
       let (primary, composite) = select_primary_and_composite(
         import_ir, selector,
       )
-      Field::new(field.name, primary, composite, field.references)
+      Field::new(
+        field.name,
+        primary,
+        composite,
+        field.references,
+        name_syntax=field.name_syntax(),
+      )
     }
     @ast.Value::BlockScalar(label, m) => {
       let field = match label {
@@ -477,6 +503,7 @@ fn compile_value_with_imports(
             Some(compile_scalar(s, source_path)),
             field.composite,
             field.references,
+            name_syntax=field.name_syntax(),
           )
         _ => field
       }
@@ -494,6 +521,7 @@ fn compile_value_with_imports(
         field.primary,
         Some(Composite::Map(ir_map)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
   }
@@ -740,10 +768,12 @@ fn compile_edges_with_imports(
           continue
         }
         let base_id = EdgeID::new(
-          src_path,
-          dst_path,
+          src_path.names,
+          dst_path.names,
           edge.src_arrow == "<",
           edge.dst_arrow == ">",
+          src_path_syntax=Some(src_path.syntax),
+          dst_path_syntax=Some(dst_path.syntax),
         )
         match key.edge_index {
           Some(ei) =>
@@ -775,6 +805,8 @@ fn compile_edges_with_imports(
                 base_id.src_arrow,
                 base_id.dst_arrow,
                 idx,
+                src_path_syntax=Some(base_id.src_path_syntax),
+                dst_path_syntax=Some(base_id.dst_path_syntax),
               )
               match find_exact_edge(ir, edge_id) {
                 Some(e) => {
@@ -825,6 +857,8 @@ fn compile_edges_with_imports(
               base_id.src_arrow,
               base_id.dst_arrow,
               idx,
+              src_path_syntax=Some(base_id.src_path_syntax),
+              dst_path_syntax=Some(base_id.dst_path_syntax),
             )
             let (primary, edge_map) = compile_edge_value(
               None,

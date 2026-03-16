@@ -733,7 +733,7 @@ fn compile_objects(
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
     // Skip reserved keywords (like 'classes', 'vars', etc.)
-    if is_reserved_keyword(field.name) {
+    if field.is_reserved_keyword_name() {
       continue
     }
     let id = if prefix == "" { field.name } else { "\{prefix}.\{field.name}" }
@@ -810,7 +810,7 @@ fn compile_children(
 ) -> Unit raise GraphCompileError {
   for field in ir.fields {
     // Skip reserved keywords
-    if is_reserved_keyword(field.name) {
+    if field.is_reserved_keyword_name() {
       continue
     }
     let id = "\{prefix}.\{field.name}"
@@ -1489,7 +1489,7 @@ fn compile_edges_in_map(
 ) -> Int raise GraphCompileError {
   let mut next_index = next_index
   for field in ir.fields {
-    if is_reserved_keyword(field.name) {
+    if field.is_reserved_keyword_name() {
       continue
     }
     match field.composite {
@@ -1723,7 +1723,7 @@ fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit raise GraphCompileError {
 ///|
 fn validate_style_keys(style_map : @ir.Map) -> Unit raise GraphCompileError {
   for field in style_map.fields {
-    if !is_style_keyword(field.name) {
+    if !field.name_is_unquoted() || !is_style_keyword(field.name) {
       raise InvalidStyle("invalid style keyword: \"\{field.name}\"")
     }
   }
@@ -1743,7 +1743,7 @@ fn is_style_keyword(name : String) -> Bool {
 ///|
 fn validate_edge_map_keys(edge_map : @ir.Map) -> Unit raise GraphCompileError {
   for field in edge_map.fields {
-    if !is_edge_reserved_keyword(field.name) {
+    if !field.name_is_unquoted() || !is_edge_reserved_keyword(field.name) {
       raise Semantic("edge map keys must be reserved keywords")
     }
   }
@@ -1761,7 +1761,7 @@ fn is_edge_reserved_keyword(name : String) -> Bool {
 ///|
 fn validate_reserved_fields(ir : @ir.Map) -> Unit raise GraphCompileError {
   for field in ir.fields {
-    if !is_reserved_keyword(field.name) {
+    if !field.is_reserved_keyword_name() {
       continue
     }
     let keyword = field.name.to_lower()
@@ -2005,17 +2005,6 @@ fn near_constants() -> Array[String] {
 ///|
 fn near_constants_message() -> String {
   near_constants().join(", ")
-}
-
-///|
-fn is_reserved_keyword(name : String) -> Bool {
-  let keywords = [
-    "label", "shape", "icon", "style", "tooltip", "link", "near", "width", "height",
-    "top", "left", "direction", "constraint", "class", "classes", "vars", "grid-rows",
-    "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span",
-    "grid-row-span", "layers", "scenarios", "steps",
-  ]
-  keywords.contains(name.to_lower())
 }
 
 ///|

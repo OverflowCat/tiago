@@ -93,6 +93,33 @@ test "field references retain AST context" {
 }
 
 ///|
+test "bare key fields retain name syntax and non-primary references" {
+  let (ast, _) = @parser.parse("\"style\"")
+  let quoted_syntax = match ast.nodes[0] {
+    @ast.MapNode::Key(key) =>
+      match key.key {
+        Some(key_path) => key_path.path[0]
+        None => fail("expected key path")
+      }
+    _ => fail("expected key node")
+  }
+  let ir = compile(ast)
+  assert_eq(ir.get_field("style"), None)
+  guard ir.get_field_by_syntax(quoted_syntax) is Some(field) else {
+    fail("expected quoted style field")
+  }
+  assert_eq(field.name, "style")
+  assert_false(field.name_is_unquoted())
+  guard field.name_syntax() is Some(@ast.StringValue::DoubleQuoted(_)) else {
+    fail("expected double-quoted field syntax")
+  }
+  guard field.last_ref() is Some(Reference::FieldRef(reference)) else {
+    fail("expected field reference")
+  }
+  assert_false(reference.primary)
+}
+
+///|
 test "compile edge" {
   let (ast, _) = @parser.parse("a -> b")
   let ir = compile(ast)
@@ -104,6 +131,29 @@ test "compile edge" {
   // Source and destination fields should exist
   assert_true(ir.has_field("a"))
   assert_true(ir.has_field("b"))
+}
+
+///|
+test "edge ids preserve quoted endpoint syntax" {
+  let (ast, _) = @parser.parse("\"style\" -> target")
+  let quoted_src = match ast.nodes[0] {
+    @ast.MapNode::Key(key) => key.edges[0].src.path[0]
+    _ => fail("expected edge key")
+  }
+  let ir = compile(ast)
+  assert_eq(ir.edges.length(), 1)
+  let edge = ir.edges[0]
+  assert_eq(edge.id.src_path, ["style"])
+  let src_path_syntax = edge.id.src_path_syntax()
+  guard src_path_syntax[0] is @ast.StringValue::DoubleQuoted(_) else {
+    fail("expected quoted source path syntax")
+  }
+  assert_eq(src_path_syntax[0], quoted_src)
+  assert_eq(ir.get_field("style"), None)
+  guard ir.get_field_by_syntax(quoted_src) is Some(src_field) else {
+    fail("expected quoted source field")
+  }
+  assert_false(src_field.name_is_unquoted())
 }
 
 ///|
@@ -886,7 +936,7 @@ test "compiled IR assigns node paths and parent lookups" {
   assert_eq(ir.path(), Some(root_path))
 
   guard ir.get_field("a") is Some(a_field) else { fail("expected a field") }
-  let a_field_path = root_path.append(NodePathSegment::FieldStep("a"))
+  let a_field_path = root_path.append(NodePathSegment::FieldStep("a", true))
   assert_eq(a_field.path(), Some(a_field_path))
   guard a_field.parent(ir) is Some(Node::Map(parent_map)) else {
     fail("expected map parent")
@@ -902,7 +952,7 @@ test "compiled IR assigns node paths and parent lookups" {
   assert_eq(parent_field.name, "a")
 
   guard a_map.get_field("b") is Some(b_field) else { fail("expected b field") }
-  let b_field_path = a_map_path.append(NodePathSegment::FieldStep("b"))
+  let b_field_path = a_map_path.append(NodePathSegment::FieldStep("b", true))
   assert_eq(b_field.path(), Some(b_field_path))
   guard b_field.primary is Some(b_scalar) else { fail("expected b scalar") }
   let b_scalar_path = b_field_path.append(NodePathSegment::PrimaryStep)
@@ -915,7 +965,7 @@ test "compiled IR assigns node paths and parent lookups" {
   guard a_map.get_field("c") is Some(c_field) else { fail("expected c field") }
   guard c_field.map() is Some(c_map) else { fail("expected c map") }
   let c_map_path = a_map_path
-    .append(NodePathSegment::FieldStep("c"))
+    .append(NodePathSegment::FieldStep("c", true))
     .append(NodePathSegment::CompositeStep)
   assert_eq(c_map.path(), Some(c_map_path))
   guard c_map.parent(ir) is Some(Node::Field(parent_of_c_map)) else {
@@ -928,7 +978,7 @@ test "compiled IR assigns node paths and parent lookups" {
   }
   guard xs_field.array() is Some(xs_array) else { fail("expected xs array") }
   let xs_array_path = a_map_path
-    .append(NodePathSegment::FieldStep("xs"))
+    .append(NodePathSegment::FieldStep("xs", true))
     .append(NodePathSegment::CompositeStep)
   assert_eq(xs_array.path(), Some(xs_array_path))
   guard xs_array.parent(ir) is Some(Node::Field(parent_of_xs_array)) else {
@@ -960,6 +1010,51 @@ test "compiled IR assigns node paths and parent lookups" {
     fail("expected edge scalar parent")
   }
   assert_eq(parent_edge.id, edge.id)
+}
+
+///|
+test "quoted reserved fields keep distinct node paths" {
+  let source =
+    #|style: red
+    #|"style": blue
+  let (ast, _) = @parser.parse(source)
+  let unquoted_syntax = match ast.nodes[0] {
+    @ast.MapNode::Key(key) =>
+      match key.key {
+        Some(key_path) => key_path.path[0]
+        None => fail("expected key path")
+      }
+    _ => fail("expected key node")
+  }
+  let quoted_syntax = match ast.nodes[1] {
+    @ast.MapNode::Key(key) =>
+      match key.key {
+        Some(key_path) => key_path.path[0]
+        None => fail("expected key path")
+      }
+    _ => fail("expected key node")
+  }
+  let ir = compile(ast)
+  guard ir.get_field_by_syntax(unquoted_syntax) is Some(unquoted_field) else {
+    fail("expected unquoted style field")
+  }
+  guard ir.get_field_by_syntax(quoted_syntax) is Some(quoted_field) else {
+    fail("expected quoted style field")
+  }
+  assert_true(unquoted_field.name_is_unquoted())
+  assert_false(quoted_field.name_is_unquoted())
+  guard ir.get_field("style") is Some(default_lookup) else {
+    fail("expected unquoted default lookup")
+  }
+  assert_true(default_lookup.name_is_unquoted())
+  let quoted_path = NodePath::root().append(
+    NodePathSegment::FieldStep("style", false),
+  )
+  assert_eq(quoted_field.path(), Some(quoted_path))
+  guard ir.get_node(quoted_path) is Some(Node::Field(looked_up_quoted)) else {
+    fail("expected quoted field lookup by path")
+  }
+  assert_false(looked_up_quoted.name_is_unquoted())
 }
 
 ///|

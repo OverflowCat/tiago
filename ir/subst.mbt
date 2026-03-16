@@ -141,6 +141,7 @@ fn resolve_field_primary_substitutions(
   }
   m.fields[field_index] = {
     name: field.name,
+    name_syntax: field.name_syntax(),
     primary: updated_field.0,
     composite: updated_field.1,
     references: field.references,
@@ -918,6 +919,10 @@ fn overlay_field(base : Field, overlay : Field) -> Field {
   }
   {
     name: base.name,
+    name_syntax: match overlay.name_syntax() {
+      Some(name_syntax) => Some(name_syntax)
+      None => base.name_syntax()
+    },
     primary,
     composite,
     references: refs,
@@ -1034,6 +1039,7 @@ fn clone_field(f : Field) -> Field {
   }
   {
     name: f.name,
+    name_syntax: f.name_syntax(),
     primary,
     composite,
     references: f.references.copy(),
@@ -1046,8 +1052,10 @@ fn clone_field(f : Field) -> Field {
 fn clone_edge_id(id : EdgeID) -> EdgeID {
   {
     src_path: id.src_path.copy(),
+    src_path_syntax: id.src_path_syntax(),
     src_arrow: id.src_arrow,
     dst_path: id.dst_path.copy(),
+    dst_path_syntax: id.dst_path_syntax(),
     dst_arrow: id.dst_arrow,
     index: id.index,
     glob: id.glob,

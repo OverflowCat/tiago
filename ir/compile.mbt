@@ -31,6 +31,20 @@ pub(all) suberror CompileError {
 } derive(Eq, Show)
 
 ///|
+priv struct ResolvedPath {
+  names : Array[String]
+  syntax : Array[@ast.StringValue]
+}
+
+///|
+fn ResolvedPath::new(
+  names : Array[String],
+  syntax : Array[@ast.StringValue],
+) -> ResolvedPath {
+  { names, syntax }
+}
+
+///|
 /// Compile an AST Map to IR Map
 pub fn compile(ast : @ast.Map) -> Map raise CompileError {
   let ir = Map::from_ast(ast)
@@ -90,7 +104,13 @@ fn record_field_reference(
       due_to_lazy_glob~,
     ),
   )
-  let updated = Field::new(f.name, f.primary, f.composite, refs)
+  let updated = Field::new(
+    f.name,
+    f.primary,
+    f.composite,
+    refs,
+    name_syntax=f.name_syntax(),
+  )
   m.set_field(updated)
   updated
 }
@@ -128,11 +148,10 @@ fn compile_key(
   // Navigate/create the field path
   let mut current_map = ir
   for i = 0; i < path.length() - 1; i = i + 1 {
-    let name = path[i]
     let elem = key_path.path[i]
     let field = record_field_reference(
       current_map,
-      current_map.ensure_field(name),
+      current_map.ensure_field_by_syntax(elem),
       elem,
       key_path,
       context,
@@ -149,6 +168,7 @@ fn compile_key(
           field.primary,
           Some(Composite::Map(new_map)),
           field.references,
+          name_syntax=field.name_syntax(),
         )
         current_map.set_field(field)
         current_map = new_map
@@ -159,12 +179,17 @@ fn compile_key(
   }
   // Set the final field
   let last_index = path.length() - 1
-  let final_name = path[last_index]
   let last_elem = key_path.path[last_index]
-  let field0 = current_map.ensure_field(final_name)
-  let field1 = if key.primary is Some(_) {
+  let field0 = current_map.ensure_field_by_syntax(last_elem)
+  let field1 = if key.primary is Some(_) || key.value is None {
     record_field_reference(
-      current_map, field0, last_elem, key_path, context, last_index, true,
+      current_map,
+      field0,
+      last_elem,
+      key_path,
+      context,
+      last_index,
+      key.primary is Some(_),
     )
   } else {
     field0
@@ -184,6 +209,7 @@ fn compile_key(
         Some(compile_scalar(scalar, source_path)),
         field.composite,
         field.references,
+        name_syntax=field.name_syntax(),
       )
     None => field
   }
@@ -272,7 +298,13 @@ fn build_nested_properties(
                   Some(pk) => {
                     let prop_names = pk.to_strings()
                     if prop_names.length() > 0 {
-                      let prop_field = Field::new(prop_names[0], None, None, [])
+                      let prop_field = Field::new(
+                        prop_names[0],
+                        None,
+                        None,
+                        [],
+                        name_syntax=Some(pk.path[0]),
+                      )
                       let prop_field = match prop_key.value {
                         Some(@ast.Value::Scalar(sv)) =>
                           Field::new(
@@ -280,6 +312,7 @@ fn build_nested_properties(
                             Some(compile_scalar(sv, source_path)),
                             prop_field.composite,
                             prop_field.references,
+                            name_syntax=prop_field.name_syntax(),
                           )
                         _ => prop_field
                       }
@@ -300,22 +333,29 @@ fn build_nested_properties(
     for i = 0; i < remaining_path.length() - 1; i = i + 1 {
       let elem = remaining_path[i]
       let name = elem.content()
-      let field = Field::new(name, None, None, [
-        FieldReference::from_ast(
-          elem,
-          key_path,
-          glob_index + 1 + i,
-          false,
-          context,
-          due_to_glob=true,
-        ),
-      ])
+      let field = Field::new(
+        name,
+        None,
+        None,
+        [
+          FieldReference::from_ast(
+            elem,
+            key_path,
+            glob_index + 1 + i,
+            false,
+            context,
+            due_to_glob=true,
+          ),
+        ],
+        name_syntax=Some(elem),
+      )
       let inner = Map::new()
       let field = Field::new(
         field.name,
         field.primary,
         Some(Composite::Map(inner)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
       current.add_field(field)
       current = inner
@@ -324,16 +364,22 @@ fn build_nested_properties(
     let final_elem = remaining_path[remaining_path.length() - 1]
     let final_name = final_elem.content()
     let final_index = glob_index + remaining_path.length()
-    let final_field = Field::new(final_name, None, None, [
-      FieldReference::from_ast(
-        final_elem,
-        key_path,
-        final_index,
-        true,
-        context,
-        due_to_glob=true,
-      ),
-    ])
+    let final_field = Field::new(
+      final_name,
+      None,
+      None,
+      [
+        FieldReference::from_ast(
+          final_elem,
+          key_path,
+          final_index,
+          true,
+          context,
+          due_to_glob=true,
+        ),
+      ],
+      name_syntax=Some(final_elem),
+    )
     // Try key.primary first, then key.value for scalar
     let final_field = match key.primary {
       Some(scalar) =>
@@ -355,6 +401,7 @@ fn build_nested_properties(
             )
             refs
           },
+          name_syntax=final_field.name_syntax(),
         )
       None =>
         // Check if value is a scalar
@@ -365,6 +412,7 @@ fn build_nested_properties(
               Some(compile_scalar(sv, source_path)),
               final_field.composite,
               final_field.references,
+              name_syntax=final_field.name_syntax(),
             )
           _ => final_field
         }
@@ -408,12 +456,18 @@ fn collect_filters_from_value(key : @ast.Key) -> Array[(Bool, String, String)] {
 fn edge_endpoint_paths(
   ir : Map,
   key_path : @ast.KeyPath,
-) -> Array[Array[String]] {
+) -> Array[ResolvedPath] {
   if !key_path.has_glob() {
-    return [key_path.to_strings()]
+    return [ResolvedPath::new(key_path.to_strings(), key_path.path.copy())]
   }
-  let out : Array[Array[String]] = []
-  expand_edge_endpoint_paths(ir, key_path.path, 0, [], out)
+  let out : Array[ResolvedPath] = []
+  expand_edge_endpoint_paths(
+    ir,
+    key_path.path,
+    0,
+    ResolvedPath::new([], []),
+    out,
+  )
   out
 }
 
@@ -422,8 +476,8 @@ fn expand_edge_endpoint_paths(
   current_map : Map,
   segments : Array[@ast.StringValue],
   index : Int,
-  current_path : Array[String],
-  out : Array[Array[String]],
+  current_path : ResolvedPath,
+  out : Array[ResolvedPath],
 ) -> Unit {
   if index >= segments.length() {
     out.push(current_path)
@@ -436,7 +490,14 @@ fn expand_edge_endpoint_paths(
       if us.pattern.length() > 0 {
         let candidates = current_map.single_glob(us.pattern)
         for field in candidates {
-          let next_path = append_path_segment(current_path, field.name)
+          let next_path = append_path_segment(
+            current_path,
+            field.name,
+            match field.name_syntax() {
+              Some(name_syntax) => name_syntax
+              None => synthetic_unquoted_string(field.name)
+            },
+          )
           if is_last {
             out.push(next_path)
           } else {
@@ -455,9 +516,11 @@ fn expand_edge_endpoint_paths(
         }
       } else {
         let segment_name = segment.content()
-        match current_map.get_field(segment_name) {
+        match current_map.get_field_by_syntax(segment) {
           Some(field) => {
-            let next_path = append_path_segment(current_path, segment_name)
+            let next_path = append_path_segment(
+              current_path, segment_name, segment,
+            )
             if is_last {
               out.push(next_path)
             } else {
@@ -479,9 +542,11 @@ fn expand_edge_endpoint_paths(
       }
     _ => {
       let segment_name = segment.content()
-      match current_map.get_field(segment_name) {
+      match current_map.get_field_by_syntax(segment) {
         Some(field) => {
-          let next_path = append_path_segment(current_path, segment_name)
+          let next_path = append_path_segment(
+            current_path, segment_name, segment,
+          )
           if is_last {
             out.push(next_path)
           } else {
@@ -505,22 +570,31 @@ fn expand_edge_endpoint_paths(
 }
 
 ///|
-fn append_path_segment(path : Array[String], segment : String) -> Array[String] {
-  let out : Array[String] = []
-  for p in path {
-    out.push(p)
+fn append_path_segment(
+  path : ResolvedPath,
+  segment : String,
+  syntax : @ast.StringValue,
+) -> ResolvedPath {
+  let names : Array[String] = []
+  for p in path.names {
+    names.push(p)
   }
-  out.push(segment)
-  out
+  names.push(segment)
+  let syntax_path : Array[@ast.StringValue] = []
+  for part in path.syntax {
+    syntax_path.push(part)
+  }
+  syntax_path.push(syntax)
+  ResolvedPath::new(names, syntax_path)
 }
 
 ///|
-fn string_path_equal(a : Array[String], b : Array[String]) -> Bool {
-  if a.length() != b.length() {
+fn string_path_equal(a : ResolvedPath, b : ResolvedPath) -> Bool {
+  if a.names.length() != b.names.length() {
     return false
   }
-  for i = 0; i < a.length(); i = i + 1 {
-    if a[i] != b[i] {
+  for i = 0; i < a.names.length(); i = i + 1 {
+    if a.names[i] != b.names[i] {
       return false
     }
   }
@@ -628,10 +702,12 @@ fn compile_edges(
           continue
         }
         let base_id = EdgeID::new(
-          src_path,
-          dst_path,
+          src_path.names,
+          dst_path.names,
           edge.src_arrow == "<",
           edge.dst_arrow == ">",
+          src_path_syntax=Some(src_path.syntax),
+          dst_path_syntax=Some(dst_path.syntax),
         )
         // D2 preserves multiple edges between the same endpoints. When no explicit
         // `[index]` is given, allocate the next index and create a new edge.
@@ -663,6 +739,8 @@ fn compile_edges(
                 base_id.src_arrow,
                 base_id.dst_arrow,
                 idx,
+                src_path_syntax=Some(base_id.src_path_syntax),
+                dst_path_syntax=Some(base_id.dst_path_syntax),
               )
               match find_exact_edge(ir, edge_id) {
                 Some(e) => {
@@ -706,6 +784,8 @@ fn compile_edges(
               base_id.src_arrow,
               base_id.dst_arrow,
               idx,
+              src_path_syntax=Some(base_id.src_path_syntax),
+              dst_path_syntax=Some(base_id.dst_path_syntax),
             )
             let (primary, edge_map) = compile_edge_value(None, key.value)
             let new_edge = Edge::new(edge_id, primary, edge_map, [
@@ -728,10 +808,10 @@ fn compile_edges(
 }
 
 ///|
-fn ensure_field_path(ir : Map, path : Array[String]) -> Unit {
+fn ensure_field_path(ir : Map, path : ResolvedPath) -> Unit {
   let mut current = ir
-  for name in path {
-    let field = current.ensure_field(name)
+  for i, _ in path.names {
+    let field = current.ensure_field_by_syntax(path.syntax[i])
     match field.composite {
       Some(Composite::Map(m)) => current = m
       None => {
@@ -741,6 +821,7 @@ fn ensure_field_path(ir : Map, path : Array[String]) -> Unit {
           field.primary,
           Some(Composite::Map(new_map)),
           field.references,
+          name_syntax=field.name_syntax(),
         )
         current.set_field(field)
         current = new_map
@@ -763,6 +844,7 @@ fn compile_value(
         Some(compile_scalar(s, source_path)),
         field.composite,
         field.references,
+        name_syntax=field.name_syntax(),
       )
     @ast.Value::Map(m) => {
       let ir_map = Map::from_ast(m, source_path~)
@@ -772,6 +854,7 @@ fn compile_value(
         field.primary,
         Some(Composite::Map(ir_map)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
     @ast.Value::Array(a) => {
@@ -781,6 +864,7 @@ fn compile_value(
         field.primary,
         Some(Composite::Array(ir_array)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
     @ast.Value::Import(_) =>
@@ -796,6 +880,7 @@ fn compile_value(
             Some(compile_scalar(s, source_path)),
             field.composite,
             field.references,
+            name_syntax=field.name_syntax(),
           )
         _ => field
       }
@@ -806,6 +891,7 @@ fn compile_value(
         field.primary,
         Some(Composite::Map(ir_map)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
     }
   }

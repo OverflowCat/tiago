@@ -25,8 +25,8 @@
 /// Reserved keywords that shouldn't be matched by globs
 let reserved_keywords : Array[String] = [
   "label", "shape", "icon", "style", "width", "height", "top", "left", "near", "tooltip",
-  "link", "class", "vars", "source-arrowhead", "target-arrowhead", "direction", "grid-rows",
-  "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span",
+  "link", "class", "classes", "vars", "source-arrowhead", "target-arrowhead", "direction",
+  "grid-rows", "grid-columns", "grid-gap", "horizontal-gap", "vertical-gap", "grid-column-span",
   "grid-row-span", "constraint", "layers", "scenarios", "steps",
 ]
 
@@ -107,8 +107,8 @@ pub fn Map::double_glob(self : Map) -> Array[Field] {
 fn Map::double_glob_helper(self : Map, result : Array[Field]) -> Unit {
   for f in self.fields {
     // Skip reserved keywords (but check if it's a board keyword)
-    if is_reserved_keyword(f.name) {
-      if is_board_keyword(f.name) {
+    if f.is_reserved_keyword_name() {
+      if f.is_board_keyword_name() {
         // Skip board keywords entirely for double glob
         continue
       }
@@ -142,7 +142,7 @@ pub fn Map::triple_glob(self : Map) -> Array[Field] {
 fn Map::triple_glob_helper(self : Map, result : Array[Field]) -> Unit {
   for f in self.fields {
     // Skip non-board reserved keywords
-    if is_reserved_keyword(f.name) && !is_board_keyword(f.name) {
+    if f.is_reserved_keyword_name() && !f.is_board_keyword_name() {
       match f.composite {
         Some(Composite::Map(m)) => m.triple_glob_helper(result)
         _ => ()
@@ -150,7 +150,7 @@ fn Map::triple_glob_helper(self : Map, result : Array[Field]) -> Unit {
       continue
     }
     // Add this field (including board fields)
-    if !is_board_keyword(f.name) {
+    if !f.is_board_keyword_name() {
       result.push(f)
     }
     // Recursively collect from children
@@ -183,8 +183,16 @@ pub fn Map::multi_glob(
 /// - literal text to match
 /// - "*" to match any characters
 pub fn match_pattern(s : String, pattern : Array[String]) -> Bool {
-  // Don't match reserved keywords
-  if is_reserved_keyword(s) {
+  match_pattern_inner(s, pattern, false)
+}
+
+///|
+fn match_pattern_inner(
+  s : String,
+  pattern : Array[String],
+  allow_reserved : Bool,
+) -> Bool {
+  if !allow_reserved && is_reserved_keyword(s) {
     return false
   }
   if pattern.length() == 0 {
@@ -265,7 +273,10 @@ fn string_substring(s : String, start : Int) -> String {
 pub fn Map::single_glob(self : Map, pattern : Array[String]) -> Array[Field] {
   let result : Array[Field] = []
   for f in self.fields {
-    if match_pattern(f.name, pattern) {
+    if f.is_reserved_keyword_name() {
+      continue
+    }
+    if match_pattern_inner(f.name, pattern, true) {
       result.push(f)
     }
   }
@@ -421,7 +432,7 @@ fn Map::apply_multi_glob_properties(
     }
     if include_boards {
       // Triple glob (***): descend into boards, but don't apply to reserved keywords.
-      if is_board_keyword(f.name) {
+      if f.is_board_keyword_name() {
         match child_map {
           Some(m) =>
             m.apply_multi_glob_properties(properties, filters, include_boards)
@@ -429,11 +440,11 @@ fn Map::apply_multi_glob_properties(
         }
         continue
       }
-      if is_reserved_keyword(f.name) {
+      if f.is_reserved_keyword_name() {
         continue
       }
       // Double glob (**): don't apply to reserved keywords (including `style`).
-    } else if is_reserved_keyword(f.name) {
+    } else if f.is_reserved_keyword_name() {
       continue
     }
 
@@ -497,6 +508,7 @@ fn clone_field_for_properties(f : Field) -> Field {
   }
   {
     name: f.name,
+    name_syntax: f.name_syntax(),
     primary: f.primary,
     composite,
     references: f.references.copy(),
@@ -525,7 +537,11 @@ fn clone_map_for_properties(m : Map) -> Map {
 ///|
 fn merge_properties_into_map(target : Map, src : Map) -> Unit {
   for prop in src.fields {
-    match target.get_field(prop.name) {
+    let existing_field = match prop.name_syntax() {
+      Some(name_syntax) => target.get_field_by_syntax(name_syntax)
+      None => target.get_field(prop.name)
+    }
+    match existing_field {
       Some(existing) => {
         let primary = if prop.primary is Some(_) {
           prop.primary
@@ -555,6 +571,7 @@ fn merge_properties_into_map(target : Map, src : Map) -> Unit {
             }
             refs
           },
+          name_syntax=existing.name_syntax(),
         )
         target.set_field(updated)
       }
@@ -576,6 +593,7 @@ fn apply_properties_to_field(field : Field, properties : Map) -> Field {
         field.primary,
         Some(Composite::Map(m)),
         field.references,
+        name_syntax=field.name_syntax(),
       )
       (field, m)
     }

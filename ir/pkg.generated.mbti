@@ -64,17 +64,21 @@ pub impl Show for Edge
 
 pub struct EdgeID {
   src_path : Array[String]
+  src_path_syntax : Array[@ast.StringValue]
   src_arrow : Bool
   dst_path : Array[String]
+  dst_path_syntax : Array[@ast.StringValue]
   dst_arrow : Bool
   index : Int?
   glob : Bool
 }
 pub fn EdgeID::copy(Self) -> Self
+pub fn EdgeID::dst_path_syntax(Self) -> Array[@ast.StringValue]
 pub fn EdgeID::matches(Self, Self) -> Bool
-pub fn EdgeID::new(Array[String], Array[String], Bool, Bool) -> Self
-pub fn EdgeID::with_glob(Array[String], Array[String], Bool, Bool) -> Self
-pub fn EdgeID::with_index(Array[String], Array[String], Bool, Bool, Int) -> Self
+pub fn EdgeID::new(Array[String], Array[String], Bool, Bool, src_path_syntax? : Array[@ast.StringValue]?, dst_path_syntax? : Array[@ast.StringValue]?) -> Self
+pub fn EdgeID::src_path_syntax(Self) -> Array[@ast.StringValue]
+pub fn EdgeID::with_glob(Array[String], Array[String], Bool, Bool, src_path_syntax? : Array[@ast.StringValue]?, dst_path_syntax? : Array[@ast.StringValue]?) -> Self
+pub fn EdgeID::with_index(Array[String], Array[String], Bool, Bool, Int, src_path_syntax? : Array[@ast.StringValue]?, dst_path_syntax? : Array[@ast.StringValue]?) -> Self
 pub impl Eq for EdgeID
 pub impl Show for EdgeID
 
@@ -96,6 +100,7 @@ pub impl Show for EdgeReference
 
 pub struct Field {
   name : String
+  name_syntax : @ast.StringValue?
   primary : Scalar?
   composite : Composite?
   references : Array[FieldReference]
@@ -108,14 +113,18 @@ pub fn Field::copy(Self) -> Self
 pub fn Field::has_composite(Self) -> Bool
 pub fn Field::has_primary(Self) -> Bool
 pub fn Field::import_ast(Self) -> @ast.Node?
+pub fn Field::is_board_keyword_name(Self) -> Bool
+pub fn Field::is_reserved_keyword_name(Self) -> Bool
 pub fn Field::last_primary_key(Self) -> @ast.Key?
 pub fn Field::last_primary_ref(Self) -> Reference?
 pub fn Field::last_ref(Self) -> Reference?
 pub fn Field::map(Self) -> Map?
-pub fn Field::new(String, Scalar?, Composite?, Array[FieldReference]) -> Self
+pub fn Field::name_is_unquoted(Self) -> Bool
+pub fn Field::name_syntax(Self) -> @ast.StringValue?
+pub fn Field::new(String, Scalar?, Composite?, Array[FieldReference], name_syntax? : @ast.StringValue?) -> Self
 pub fn Field::parent(Self, Map) -> Node?
 pub fn Field::path(Self) -> NodePath?
-pub fn Field::simple(String) -> Self
+pub fn Field::simple(String, name_syntax? : @ast.StringValue?) -> Self
 pub impl Eq for Field
 pub impl Show for Field
 
@@ -180,9 +189,11 @@ pub fn Map::copy(Self) -> Self
 pub fn Map::delete_field(Self, String) -> Field?
 pub fn Map::double_glob(Self) -> Array[Field]
 pub fn Map::ensure_field(Self, String) -> Field
+pub fn Map::ensure_field_by_syntax(Self, @ast.StringValue) -> Field
 pub fn Map::find_edges(Self, EdgeID) -> Array[Edge]
 pub fn Map::from_ast(@ast.Map, source_path? : String?) -> Self
 pub fn Map::get_field(Self, String) -> Field?
+pub fn Map::get_field_by_syntax(Self, @ast.StringValue) -> Field?
 pub fn Map::get_node(Self, NodePath) -> Node?
 pub fn Map::has_field(Self, String) -> Bool
 pub fn Map::import_ast(Self) -> @ast.Node?
@@ -229,7 +240,7 @@ pub impl Eq for NodePath
 pub impl Show for NodePath
 
 pub(all) enum NodePathSegment {
-  FieldStep(String)
+  FieldStep(String, Bool)
   EdgeStep(EdgeID)
   PrimaryStep
   CompositeStep

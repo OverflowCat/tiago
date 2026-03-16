@@ -67,9 +67,9 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: `Map/Field/Edge.import_ast()` now preserves the local import syntax while imported references still retain imported-file `source_path`.
   - Verified for both `field: @import` and `...@import` flows, including imported edges.
 
-- [ ] Align IR field/edge naming and path semantics with D2.
-  - In D2, key/value identity and syntax form are preserved more aggressively.
-  - Verify quoted/unquoted key behavior, glob semantics, and edge ID semantics.
+- [x] Align IR field/edge naming and path semantics with D2.
+  - Landed in diago: `Field` now preserves `name_syntax`, reserved-keyword lookups are quote-aware, bare keys retain non-primary references, `NodePath` field steps keep quotedness, import selectors preserve syntax, and `EdgeID` now retains source/destination path syntax alongside scalar path strings.
+  - Follow-through included glob/property/exporter updates so quoted reserved names are no longer treated like unquoted semantic keywords.
 
 - [ ] Upgrade `vars.d2-config.data` handling from `Map[String, String]`-like behavior to D2-compatible value support.
   - D2 can carry richer `data` values, including arrays.

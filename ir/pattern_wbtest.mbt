@@ -129,6 +129,30 @@ test "single_glob" {
 }
 
 ///|
+test "quoted reserved names are not treated as reserved in globs" {
+  let m = Map::new()
+  m.add_field(
+    Field::simple(
+      "style",
+      name_syntax=Some(
+        @ast.StringValue::DoubleQuoted(
+          @ast.DoubleQuotedString::new(
+            @lexer.Range::new(@lexer.Position::zero(), @lexer.Position::zero()),
+            [@ast.Interpolation::Text("style")],
+          ),
+        ),
+      ),
+    ),
+  )
+  m.add_field(Field::simple("server"))
+  let fields = m.single_glob(["st", "*"])
+  assert_eq(fields.length(), 1)
+  assert_eq(fields[0].name, "style")
+  let double_glob_fields = m.double_glob()
+  assert_eq(double_glob_fields.length(), 2)
+}
+
+///|
 test "evaluate_filter shape" {
   let field_map = Map::new()
   field_map.add_field(

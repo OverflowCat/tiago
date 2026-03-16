@@ -54,6 +54,7 @@ pub struct Map {
 /// A field in the IR map
 pub struct Field {
   name : String
+  name_syntax : @ast.StringValue?
   primary : Scalar?
   composite : Composite?
   references : Array[FieldReference]
@@ -100,8 +101,10 @@ pub struct Edge {
 /// Unique identifier for an edge
 pub struct EdgeID {
   src_path : Array[String]
+  src_path_syntax : Array[@ast.StringValue]
   src_arrow : Bool
   dst_path : Array[String]
+  dst_path_syntax : Array[@ast.StringValue]
   dst_arrow : Bool
   index : Int?
   glob : Bool
@@ -110,7 +113,7 @@ pub struct EdgeID {
 ///|
 /// Stable path to an IR node inside a compiled map.
 pub(all) enum NodePathSegment {
-  FieldStep(String)
+  FieldStep(String, Bool)
   EdgeStep(EdgeID)
   PrimaryStep
   CompositeStep
@@ -393,6 +396,61 @@ fn default_range() -> @lexer.Range {
 }
 
 ///|
+fn synthetic_unquoted_string(value : String) -> @ast.StringValue {
+  let r = default_range()
+  @ast.StringValue::Unquoted(
+    @ast.UnquotedString::new(r, [@ast.Interpolation::Text(value)], []),
+  )
+}
+
+///|
+fn is_unquoted_string_value(value : @ast.StringValue) -> Bool {
+  match value {
+    @ast.StringValue::Unquoted(_) => true
+    _ => false
+  }
+}
+
+///|
+fn copy_string_value_array(
+  values : Array[@ast.StringValue],
+) -> Array[@ast.StringValue] {
+  let out : Array[@ast.StringValue] = []
+  for value in values {
+    out.push(value)
+  }
+  out
+}
+
+///|
+fn default_edge_path_syntax(path : Array[String]) -> Array[@ast.StringValue] {
+  let out : Array[@ast.StringValue] = []
+  for segment in path {
+    out.push(synthetic_unquoted_string(segment))
+  }
+  out
+}
+
+///|
+fn field_name_matches(
+  field : Field,
+  name : String,
+  syntax : @ast.StringValue?,
+) -> Bool {
+  if field.name.to_lower() != name.to_lower() {
+    return false
+  }
+  if is_reserved_keyword(name) {
+    let want_unquoted = match syntax {
+      Some(segment) => is_unquoted_string_value(segment)
+      None => true
+    }
+    return field.name_is_unquoted() == want_unquoted
+  }
+  true
+}
+
+///|
 pub fn Scalar::at(range : @lexer.Range, value : ScalarValue) -> Scalar {
   { value, range, ast: None, source_path: None, path: None }
 }
@@ -470,14 +528,27 @@ pub fn Field::new(
   primary : Scalar?,
   composite : Composite?,
   references : Array[FieldReference],
+  name_syntax? : @ast.StringValue? = None,
 ) -> Field {
-  { name, primary, composite, references, import_ast: None, path: None }
+  {
+    name,
+    name_syntax,
+    primary,
+    composite,
+    references,
+    import_ast: None,
+    path: None,
+  }
 }
 
 ///|
-pub fn Field::simple(name : String) -> Field {
+pub fn Field::simple(
+  name : String,
+  name_syntax? : @ast.StringValue? = None,
+) -> Field {
   {
     name,
+    name_syntax,
     primary: None,
     composite: None,
     references: [],
@@ -516,8 +587,25 @@ pub fn EdgeID::new(
   dst_path : Array[String],
   src_arrow : Bool,
   dst_arrow : Bool,
+  src_path_syntax? : Array[@ast.StringValue]? = None,
+  dst_path_syntax? : Array[@ast.StringValue]? = None,
 ) -> EdgeID {
-  { src_path, src_arrow, dst_path, dst_arrow, index: None, glob: false }
+  {
+    src_path,
+    src_path_syntax: match src_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(src_path)
+    },
+    src_arrow,
+    dst_path,
+    dst_path_syntax: match dst_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(dst_path)
+    },
+    dst_arrow,
+    index: None,
+    glob: false,
+  }
 }
 
 ///|
@@ -527,8 +615,25 @@ pub fn EdgeID::with_index(
   src_arrow : Bool,
   dst_arrow : Bool,
   index : Int,
+  src_path_syntax? : Array[@ast.StringValue]? = None,
+  dst_path_syntax? : Array[@ast.StringValue]? = None,
 ) -> EdgeID {
-  { src_path, src_arrow, dst_path, dst_arrow, index: Some(index), glob: false }
+  {
+    src_path,
+    src_path_syntax: match src_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(src_path)
+    },
+    src_arrow,
+    dst_path,
+    dst_path_syntax: match dst_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(dst_path)
+    },
+    dst_arrow,
+    index: Some(index),
+    glob: false,
+  }
 }
 
 ///|
@@ -537,8 +642,25 @@ pub fn EdgeID::with_glob(
   dst_path : Array[String],
   src_arrow : Bool,
   dst_arrow : Bool,
+  src_path_syntax? : Array[@ast.StringValue]? = None,
+  dst_path_syntax? : Array[@ast.StringValue]? = None,
 ) -> EdgeID {
-  { src_path, src_arrow, dst_path, dst_arrow, index: None, glob: true }
+  {
+    src_path,
+    src_path_syntax: match src_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(src_path)
+    },
+    src_arrow,
+    dst_path,
+    dst_path_syntax: match dst_path_syntax {
+      Some(path) => copy_string_value_array(path)
+      None => default_edge_path_syntax(dst_path)
+    },
+    dst_arrow,
+    index: None,
+    glob: true,
+  }
 }
 
 ///|
@@ -638,9 +760,22 @@ pub fn EdgeReference::from_ast(
 ///|
 /// Get a field by name (case-insensitive)
 pub fn Map::get_field(self : Map, name : String) -> Field? {
-  let lower = name.to_lower()
+  self.get_field_by_name(name, None)
+}
+
+///|
+pub fn Map::get_field_by_syntax(self : Map, name : @ast.StringValue) -> Field? {
+  self.get_field_by_name(name.content(), Some(name))
+}
+
+///|
+fn Map::get_field_by_name(
+  self : Map,
+  name : String,
+  syntax : @ast.StringValue?,
+) -> Field? {
   for f in self.fields {
-    if f.name.to_lower() == lower {
+    if field_name_matches(f, name, syntax) {
       return Some(f)
     }
   }
@@ -661,9 +796,8 @@ pub fn Map::add_field(self : Map, field : Field) -> Unit {
 
 ///|
 fn Map::set_field(self : Map, field : Field) -> Unit {
-  let lower = field.name.to_lower()
   for i, f in self.fields {
-    if f.name.to_lower() == lower {
+    if field_name_matches(f, field.name, field.name_syntax()) {
       self.fields[i] = field
       return
     }
@@ -702,11 +836,25 @@ pub fn Map::ensure_field(self : Map, name : String) -> Field {
 }
 
 ///|
+pub fn Map::ensure_field_by_syntax(
+  self : Map,
+  name : @ast.StringValue,
+) -> Field {
+  match self.get_field_by_syntax(name) {
+    Some(f) => f
+    None => {
+      let f = Field::simple(name.content(), name_syntax=Some(name))
+      self.fields.push(f)
+      f
+    }
+  }
+}
+
+///|
 /// Delete a field by name, returning it if found
 pub fn Map::delete_field(self : Map, name : String) -> Field? {
-  let lower = name.to_lower()
   for i, f in self.fields {
-    if f.name.to_lower() == lower {
+    if field_name_matches(f, name, None) {
       // Remove and return
       let removed = self.fields.remove(i)
       return Some(removed)
@@ -747,11 +895,21 @@ fn get_node_from_map(
     return Some(Node::Map(m))
   }
   match segments[index] {
-    NodePathSegment::FieldStep(name) =>
-      match m.get_field(name) {
+    NodePathSegment::FieldStep(name, unquoted) => {
+      let step_syntax = if unquoted {
+        synthetic_unquoted_string(name)
+      } else {
+        @ast.StringValue::DoubleQuoted(
+          @ast.DoubleQuotedString::new(default_range(), [
+            @ast.Interpolation::Text(name),
+          ]),
+        )
+      }
+      match m.get_field_by_name(name, Some(step_syntax)) {
         Some(field) => get_node_from_field(field, segments, index + 1)
         None => None
       }
+    }
     NodePathSegment::EdgeStep(id) =>
       match get_edge_by_id(m, id) {
         Some(edge) => get_node_from_edge(edge, segments, index + 1)
@@ -884,7 +1042,9 @@ fn get_edge_by_id(m : Map, id : EdgeID) -> Edge? {
 fn reindex_map(m : Map, path : NodePath) -> Map {
   let fields : Array[Field] = []
   for field in m.fields {
-    let field_path = path.append(NodePathSegment::FieldStep(field.name))
+    let field_path = path.append(
+      NodePathSegment::FieldStep(field.name, field.name_is_unquoted()),
+    )
     fields.push(reindex_field(field, field_path))
   }
   let edges : Array[Edge] = []
@@ -916,6 +1076,7 @@ fn reindex_field(field : Field, path : NodePath) -> Field {
   }
   {
     name: field.name,
+    name_syntax: field.name_syntax(),
     primary,
     composite,
     references: field.references.copy(),
@@ -1034,6 +1195,7 @@ fn copy_field_detached(field : Field) -> Field {
   }
   {
     name: field.name,
+    name_syntax: field.name_syntax(),
     primary,
     composite,
     references: field.references.copy(),
@@ -1112,6 +1274,7 @@ fn with_import_ast_field(field : Field, import_ast : @ast.Node) -> Field {
   }
   {
     name: field.name,
+    name_syntax: field.name_syntax(),
     primary: field.primary,
     composite,
     references: field.references.copy(),
@@ -1180,8 +1343,10 @@ pub fn EdgeID::matches(self : EdgeID, other : EdgeID) -> Bool {
 pub fn EdgeID::copy(self : EdgeID) -> EdgeID {
   {
     src_path: self.src_path.copy(),
+    src_path_syntax: copy_string_value_array(self.src_path_syntax),
     src_arrow: self.src_arrow,
     dst_path: self.dst_path.copy(),
+    dst_path_syntax: copy_string_value_array(self.dst_path_syntax),
     dst_arrow: self.dst_arrow,
     index: self.index,
     glob: self.glob,
@@ -1510,6 +1675,36 @@ pub fn Field::ast(self : Field) -> @ast.Node? {
 }
 
 ///|
+pub fn Field::name_syntax(self : Field) -> @ast.StringValue? {
+  match self.name_syntax {
+    Some(syntax) => Some(syntax)
+    None =>
+      match self.last_ref() {
+        Some(Reference::FieldRef(reference)) => reference.syntax
+        _ => None
+      }
+  }
+}
+
+///|
+pub fn Field::name_is_unquoted(self : Field) -> Bool {
+  match self.name_syntax() {
+    Some(syntax) => is_unquoted_string_value(syntax)
+    None => true
+  }
+}
+
+///|
+pub fn Field::is_reserved_keyword_name(self : Field) -> Bool {
+  is_reserved_keyword(self.name) && self.name_is_unquoted()
+}
+
+///|
+pub fn Field::is_board_keyword_name(self : Field) -> Bool {
+  is_board_keyword(self.name) && self.name_is_unquoted()
+}
+
+///|
 pub fn Field::import_ast(self : Field) -> @ast.Node? {
   self.import_ast
 }
@@ -1586,6 +1781,16 @@ pub fn Edge::parent(self : Edge, root : Map) -> Node? {
 ///|
 pub fn Edge::copy(self : Edge) -> Edge {
   copy_edge_detached(self)
+}
+
+///|
+pub fn EdgeID::src_path_syntax(self : EdgeID) -> Array[@ast.StringValue] {
+  copy_string_value_array(self.src_path_syntax)
+}
+
+///|
+pub fn EdgeID::dst_path_syntax(self : EdgeID) -> Array[@ast.StringValue] {
+  copy_string_value_array(self.dst_path_syntax)
 }
 
 ///|
