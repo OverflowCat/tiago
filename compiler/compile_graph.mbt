@@ -13,36 +13,6 @@
 // limitations under the License.
 
 ///|
-fn default_import_resolver(base_path : String?) -> @ir.ImportResolver {
-  @ir.ImportResolver::new(fn(import_path) {
-    let full_path = match base_path {
-      Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()
-      None => import_path
-    }
-    let path_with_ext = if full_path.has_suffix(".d2") {
-      full_path
-    } else {
-      full_path + ".d2"
-    }
-    Some(@fs.read_file_to_string(path_with_ext)) catch {
-      _ => None
-    }
-  })
-}
-
-///|
-fn get_dir_path(file_path : String) -> String? {
-  let path = @path.Path(file_path)
-  let dir = path.dirname()
-  let dir_str = dir.to_string()
-  if dir_str.length() > 0 {
-    Some(dir_str)
-  } else {
-    None
-  }
-}
-
-///|
 fn merge_theme_overrides(
   dst : Map[String, String],
   src : Map[String, String],

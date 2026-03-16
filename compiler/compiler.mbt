@@ -17,21 +17,12 @@
 
 ///|
 pub struct ParseOptions {
-  base_path : String?
   import_resolver : @ir.ImportResolver?
 }
 
 ///|
 pub fn ParseOptions::new() -> ParseOptions {
-  { base_path: None, import_resolver: None }
-}
-
-///|
-pub fn ParseOptions::with_base_path(
-  self : ParseOptions,
-  base_path : String?,
-) -> ParseOptions {
-  { ..self, base_path, }
+  { import_resolver: None }
 }
 
 ///|
@@ -39,7 +30,8 @@ pub fn ParseOptions::with_import_resolver(
   self : ParseOptions,
   import_resolver : @ir.ImportResolver?,
 ) -> ParseOptions {
-  { ..self, import_resolver, }
+  ignore(self)
+  { import_resolver, }
 }
 
 ///|
@@ -87,29 +79,12 @@ pub fn compile_ir(
   if !errors.is_empty() {
     return Err(ParseError("Parse errors: \{errors}"))
   }
-  let resolver = match options.import_resolver {
-    Some(resolver) => resolver
-    None => default_import_resolver(options.base_path)
-  }
+  let resolver = options.import_resolver.unwrap_or(
+    @ir.ImportResolver::new(fn(_) { None }),
+  )
   Ok(@ir.compile_with_imports(ast, resolver)) catch {
     e => Err(IrError(e.to_string()))
   }
-}
-
-///|
-pub fn compile_ir_file(
-  file_path : String,
-  options? : ParseOptions = ParseOptions::new(),
-) -> Result[@ir.Map, CompileError] {
-  let source = @fs.read_file_to_string(file_path) catch {
-    e => return Err(IOError("Error reading file '\{file_path}': \{e}"))
-  }
-  let resolved_options = if options.base_path is Some(_) {
-    options
-  } else {
-    { ..options, base_path: get_dir_path(file_path) }
-  }
-  compile_ir(source, options=resolved_options)
 }
 
 ///|
@@ -146,21 +121,4 @@ pub fn compile_graph(
     data=graph_data_from_source_config(source_config),
   )
   Ok({ ir_map, graph_input, source_config })
-}
-
-///|
-pub fn compile_graph_file(
-  name : String,
-  file_path : String,
-  options? : ParseOptions = ParseOptions::new(),
-) -> Result[CompileResult, CompileError] {
-  let source = @fs.read_file_to_string(file_path) catch {
-    e => return Err(IOError("Error reading file '\{file_path}': \{e}"))
-  }
-  let resolved_options = if options.base_path is Some(_) {
-    options
-  } else {
-    { ..options, base_path: get_dir_path(file_path) }
-  }
-  compile_graph(name, source, options=resolved_options)
 }

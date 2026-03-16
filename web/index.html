@@ -1058,203 +1058,6 @@ server -> database: queries"></textarea>
       document.body.style.userSelect = '';
     });
 
-    function createMoonBitFsBridge() {
-      let lastError = '';
-      let lastFileContent = new Uint8Array();
-      let lastDirFiles = [];
-
-      function failFs(message) {
-        lastError = String(message);
-        lastFileContent = new Uint8Array();
-        lastDirFiles = [];
-        return -1;
-      }
-
-      function begin_create_string() {
-        return { s: '' };
-      }
-
-      function string_append_char(handle, ch) {
-        handle.s += String.fromCharCode(ch);
-      }
-
-      function finish_create_string(handle) {
-        return handle.s;
-      }
-
-      function begin_read_string(s) {
-        return { s: String(s ?? ''), i: 0 };
-      }
-
-      function string_read_char(handle) {
-        if (handle.i >= handle.s.length) {
-          return -1;
-        }
-        return handle.s.charCodeAt(handle.i++);
-      }
-
-      function finish_read_string(_handle) {
-        return;
-      }
-
-      function begin_read_byte_array(arr) {
-        if (arr instanceof Uint8Array) {
-          return { arr, i: 0 };
-        }
-        if (ArrayBuffer.isView(arr)) {
-          return {
-            arr: new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength),
-            i: 0,
-          };
-        }
-        if (arr instanceof ArrayBuffer) {
-          return { arr: new Uint8Array(arr), i: 0 };
-        }
-        if (Array.isArray(arr)) {
-          return { arr: Uint8Array.from(arr), i: 0 };
-        }
-        return { arr: new Uint8Array(), i: 0 };
-      }
-
-      function byte_array_read_byte(handle) {
-        if (handle.i >= handle.arr.length) {
-          return -1;
-        }
-        return handle.arr[handle.i++];
-      }
-
-      function finish_read_byte_array(_handle) {
-        return;
-      }
-
-      function begin_create_byte_array() {
-        return { arr: [] };
-      }
-
-      function byte_array_append_byte(handle, byte) {
-        handle.arr.push(byte & 0xff);
-      }
-
-      function finish_create_byte_array(handle) {
-        return new Uint8Array(handle.arr);
-      }
-
-      function begin_read_string_array(arr) {
-        return { arr: Array.isArray(arr) ? arr : [], i: 0 };
-      }
-
-      function string_array_read_string(handle) {
-        if (handle.i >= handle.arr.length) {
-          return 'ffi_end_of_/string_array';
-        }
-        return String(handle.arr[handle.i++]);
-      }
-
-      function finish_read_string_array(_handle) {
-        return;
-      }
-
-      return {
-        begin_create_string,
-        string_append_char,
-        finish_create_string,
-        begin_read_string,
-        string_read_char,
-        finish_read_string,
-        begin_read_byte_array,
-        byte_array_read_byte,
-        finish_read_byte_array,
-        begin_create_byte_array,
-        byte_array_append_byte,
-        finish_create_byte_array,
-        begin_read_string_array,
-        string_array_read_string,
-        finish_read_string_array,
-        array_len(arr) {
-          return arr.length;
-        },
-        array_get(arr, idx) {
-          return arr[idx];
-        },
-        jsvalue_is_string(v) {
-          return typeof v === 'string';
-        },
-        get_error_message() {
-          return lastError;
-        },
-        get_file_content() {
-          return lastFileContent;
-        },
-        get_dir_files() {
-          return lastDirFiles;
-        },
-        read_file_to_bytes_new(path) {
-          return failFs(`Browser runtime does not support reading files: ${path}`);
-        },
-        write_bytes_to_file_new(path) {
-          return failFs(`Browser runtime does not support writing files: ${path}`);
-        },
-        path_exists(_path) {
-          return false;
-        },
-        create_dir_new(path) {
-          return failFs(`Browser runtime does not support creating directories: ${path}`);
-        },
-        read_dir_new(path) {
-          return failFs(`Browser runtime does not support reading directories: ${path}`);
-        },
-        is_file_new(path) {
-          return failFs(`Browser runtime does not support file metadata lookups: ${path}`);
-        },
-        is_dir_new(path) {
-          return failFs(`Browser runtime does not support directory metadata lookups: ${path}`);
-        },
-        remove_file_new(path) {
-          return failFs(`Browser runtime does not support removing files: ${path}`);
-        },
-        remove_dir_new(path) {
-          return failFs(`Browser runtime does not support removing directories: ${path}`);
-        },
-        args_get() {
-          return [];
-        },
-        get_env_var(_key) {
-          return '';
-        },
-        get_env_var_exists(_key) {
-          return false;
-        },
-        get_env_vars() {
-          return [];
-        },
-        set_env_var(_key, _value) {
-          return;
-        },
-        unset_env_var(_key) {
-          return;
-        },
-      };
-    }
-
-    function createMoonBitRuntimeImports() {
-      return {
-        spectest: {
-          print_char: (c) => console.log(String.fromCharCode(c)),
-          print_i32: (i) => console.log(i),
-          print_f64: (f) => console.log(f),
-        },
-        __moonbit_fs_unstable: createMoonBitFsBridge(),
-        __moonbit_sys_unstable: {
-          is_windows() {
-            return 0;
-          },
-          exit(code) {
-            throw new Error(`MoonBit requested exit(${code})`);
-          },
-        },
-      };
-    }
-
     // Renderer loading
     async function loadWasm() {
       try {
@@ -1267,10 +1070,13 @@ server -> database: queries"></textarea>
         }
 
         const wasmBytes = await response.arrayBuffer();
-        const result = await WebAssembly.instantiate(
-          wasmBytes,
-          createMoonBitRuntimeImports()
-        );
+        const result = await WebAssembly.instantiate(wasmBytes, {
+          spectest: {
+            print_char: (c) => console.log(String.fromCharCode(c)),
+            print_i32: (i) => console.log(i),
+            print_f64: (f) => console.log(f),
+          }
+        });
 
         wasmModule = result.instance.exports;
         statusEl.textContent = 'Ready';
@@ -1280,25 +1086,16 @@ server -> database: queries"></textarea>
         console.error('WASM load error:', e);
         statusEl.textContent = 'Renderer unavailable';
         statusEl.className = 'status error';
-        showPlaceholder(e);
+        showPlaceholder();
       }
     }
 
-    function escapeHtml(text) {
-      return String(text ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-    }
-
-    function showPlaceholder(error) {
-      const detail = String(error?.message ?? error ?? '').trim();
+    function showPlaceholder() {
       preview.className = 'preview-content dark';
       preview.innerHTML = `
         <div style="text-align: center; color: #666;">
           <p style="margin-bottom: 0.75rem;">Failed to initialize the renderer.</p>
           <p style="font-size: 0.8rem;">Please refresh the page and try again.</p>
-          ${detail ? `<p style="font-size: 0.75rem; margin-top: 0.75rem; color: #999;">${escapeHtml(detail)}</p>` : ''}
         </div>
       `;
     }

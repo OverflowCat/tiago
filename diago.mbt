@@ -283,7 +283,10 @@ pub fn parse(
   options? : ParseOptions = ParseOptions::new(),
 ) -> @ir.Map raise DiagoError {
   match
-    @compiler.compile_ir(source, options=to_compiler_parse_options(options)) {
+    @compiler.compile_ir(
+      source,
+      options=to_compiler_parse_options(resolve_parse_options(options)),
+    ) {
     Ok(ir_map) => ir_map
     Err(err) => raise_diago_compiler_error(err)
   }
@@ -294,10 +297,13 @@ pub fn parse_file(
   file_path : String,
   options? : ParseOptions = ParseOptions::new(),
 ) -> @ir.Map raise DiagoError {
+  let source = read_source_file(file_path)
   match
-    @compiler.compile_ir_file(
-      file_path,
-      options=to_compiler_parse_options(options),
+    @compiler.compile_ir(
+      source,
+      options=to_compiler_parse_options(
+        resolve_parse_options_for_file(file_path, options),
+      ),
     ) {
     Ok(ir_map) => ir_map
     Err(err) => raise_diago_compiler_error(err)
@@ -313,7 +319,9 @@ pub fn compile_diagram(
     @compiler.compile_graph(
       "diagram",
       source,
-      options=to_compiler_parse_options(options.parse_options),
+      options=to_compiler_parse_options(
+        resolve_parse_options(options.parse_options),
+      ),
     ) {
     Ok(compiled) => compiled
     Err(err) => raise_diago_compiler_error(err)
@@ -346,11 +354,14 @@ pub fn compile_file(
   file_path : String,
   options? : CompileOptions = CompileOptions::new(),
 ) -> String raise DiagoError {
+  let source = read_source_file(file_path)
   let compiled = match
-    @compiler.compile_graph_file(
+    @compiler.compile_graph(
       "diagram",
-      file_path,
-      options=to_compiler_parse_options(options.parse_options),
+      source,
+      options=to_compiler_parse_options(
+        resolve_parse_options_for_file(file_path, options.parse_options),
+      ),
     ) {
     Ok(compiled) => compiled
     Err(err) => raise_diago_compiler_error(err)
@@ -372,9 +383,7 @@ pub fn compile_file(
 
 ///|
 fn to_compiler_parse_options(options : ParseOptions) -> @compiler.ParseOptions {
-  @compiler.ParseOptions::new()
-  .with_base_path(options.base_path)
-  .with_import_resolver(options.import_resolver)
+  @compiler.ParseOptions::new().with_import_resolver(options.import_resolver)
 }
 
 ///|

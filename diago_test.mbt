@@ -83,6 +83,69 @@ test "parse supports custom import resolver hook" {
 }
 
 ///|
+fn remove_test_path(path : String) -> Unit {
+  @fs.remove_file(path) catch {
+    _ => ()
+  }
+}
+
+///|
+fn remove_test_dir(path : String) -> Unit {
+  @fs.remove_dir(path) catch {
+    _ => ()
+  }
+}
+
+///|
+test "parse resolves imports from base_path via facade file resolver" {
+  let dir = ".diago_parse_base_path_test"
+  let dep_path = dir + "/common.d2"
+  remove_test_path(dep_path)
+  remove_test_dir(dir)
+  @fs.create_dir(dir)
+  @fs.write_string_to_file(dep_path, "server\ndatabase")
+  let ir_map = parse(
+    "common: @common",
+    options=ParseOptions::new().with_base_path(Some(dir)),
+  )
+  remove_test_path(dep_path)
+  remove_test_dir(dir)
+  guard ir_map.get_field("common") is Some(common) else {
+    fail("no common field")
+  }
+  guard common.composite is Some(@ir.Composite::Map(common_map)) else {
+    fail("common field has no map")
+  }
+  assert_true(common_map.has_field("server"))
+  assert_true(common_map.has_field("database"))
+}
+
+///|
+test "parse_file resolves imports relative to input file" {
+  let dir = ".diago_parse_file_test"
+  let main_path = dir + "/main.d2"
+  let dep_path = dir + "/common.d2"
+  remove_test_path(main_path)
+  remove_test_path(dep_path)
+  remove_test_dir(dir)
+  @fs.create_dir(dir)
+  @fs.write_string_to_file(main_path, "common: @common")
+  @fs.write_string_to_file(dep_path, "server\ndatabase")
+  let ir_map = parse_file(main_path)
+  remove_test_path(main_path)
+  remove_test_path(dep_path)
+  remove_test_dir(dir)
+  guard ir_map.get_field("common") is Some(common) else {
+    fail("no common field")
+  }
+  guard common.composite is Some(@ir.Composite::Map(common_map)) else {
+    fail("common field has no map")
+  }
+  assert_true(common_map.has_field("server"))
+  assert_true(common_map.has_field("database"))
+}
+
+///|
 test "compile_diagram supports board target selection" {
   let source =
     #|layers: {

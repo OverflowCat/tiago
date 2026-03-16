@@ -12,11 +12,7 @@ import {
 // Values
 pub fn compile_graph(String, String, options? : ParseOptions) -> Result[CompileResult, CompileError]
 
-pub fn compile_graph_file(String, String, options? : ParseOptions) -> Result[CompileResult, CompileError]
-
 pub fn compile_ir(String, options? : ParseOptions) -> Result[@ir.Map, CompileError]
-
-pub fn compile_ir_file(String, options? : ParseOptions) -> Result[@ir.Map, CompileError]
 
 pub fn parse(String) -> (@ast.Map, @parser.ParseErrors)
 
@@ -43,11 +39,9 @@ pub fn CompileResult::ir_map(Self) -> @ir.Map
 pub fn CompileResult::source_config(Self) -> @diagram.Config?
 
 pub struct ParseOptions {
-  base_path : String?
   import_resolver : @ir.ImportResolver?
 }
 pub fn ParseOptions::new() -> Self
-pub fn ParseOptions::with_base_path(Self, String?) -> Self
 pub fn ParseOptions::with_import_resolver(Self, @ir.ImportResolver?) -> Self
 
 // Type aliases

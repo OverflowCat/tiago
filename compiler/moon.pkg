@@ -5,6 +5,4 @@ import {
   "Milky2018/diago/graph",
   "Milky2018/diago/ir",
   "Milky2018/diago/parser",
-  "moonbitlang/x/fs",
-  "moonbitlang/x/path",
 }
