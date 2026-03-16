@@ -112,6 +112,8 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - D2 reference: `d2layouts.LayoutNested`, extracted subgraphs, child-order restore, constant-near handling, nested grid and sequence passes, routing after layout.
   - Landed in diago: the D2 constant-near branch is now partially mirrored for Dagre and ELK. Top-level constant-near containers now move their descendant subgraph together, keep internal edges aligned with the moved subtree, and reroute cross-subgraph edges after the near placement instead of leaving stale pre-near routes behind.
   - Landed in diago: Dagre and ELK now also mirror one D2 root-grid slice that previously depended on `LayoutNested` extraction. When a root grid child remains in the core layout because incident edges block the old semantic detachment path, diago now reapplies D2-style root grid placement after core layout, shifts nested descendants with their grid cell, and reroutes cross-cell edges with the same default-router strategy used by upstream nested reinjection. This is locked against the upstream `nested_layout_bug.d2` fixture.
+  - Landed in diago: extracted-subgraph prelayout now also covers nested sequence and nested-grid containers strongly enough to match the upstream `nested_diagram_types.d2` fixture for both Dagre and ELK. Nested diagram containers are recursively laid out before outer layout, their fitted bounds are re-used as outer placeholders, and nested descendants / internal edges are restored relative to the laid-out container afterward.
+  - Landed in diago: the root-grid reinjection path now also mirrors D2's `d2grid.sizeForOutsideLabels()` cleanup semantics more closely. Grid children still participate in row/column sizing with their expanded layout dimensions, but their final boxes are restored from the resolved cell size instead of snapping back to pre-layout semantic widths. This closes the `grid.d2` parity regression that appeared while landing nested root-grid extraction.
   - Remaining gaps: full `ExtractSubgraph` / `InjectNested` style orchestration, child-order preservation/restoration, and the dedicated nested grid / sequence control flow still remain distributed across `engine_api`, `graph`, and engine-specific code.
 
 - [x] Add or verify explicit support for D2 layout capability checks.
@@ -129,6 +131,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 - [ ] Align grid diagram behavior with D2.
   - Verify row/column layout rules, gap semantics, spans, nested containers, label/icon padding, and edge routing through grid content.
   - Landed in diago: root-grid layouts with incident child edges now preserve D2's nested-cell behavior for Dagre and ELK, including the upstream `nested_layout_bug.d2` case where a nested grid container must still occupy a grid column and cross-cell edges are rerouted after the cell reposition.
+  - Landed in diago: root-grid cell cleanup now preserves D2's final column/row sizing after outside-label margin rollback, which restores parity for the upstream `grid.d2` fixture in Dagre and ELK instead of shrinking plain cells back to their semantic minimum widths.
 
 - [ ] Align sequence diagram behavior with D2.
   - Verify actor spacing, group handling, lifelines, message routing, notes, and nested sequence behavior.

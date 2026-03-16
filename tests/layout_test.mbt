@@ -218,6 +218,12 @@ fn assert_root_grid_nested_layout_like_d2(
 
   match (a.get_box(), b.get_box(), aa.get_box(), bb.get_box()) {
     (Some(a_box), Some(b_box), Some(aa_box), Some(bb_box)) => {
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(0.0, 0.0, 53.0, 282.0))
+        assert_eq(b_box, @graph.Box::new(93.0, 0.0, 244.0, 282.0))
+        assert_eq(aa_box, @graph.Box::new(153.0, 96.0, 124.0, 126.0))
+        assert_eq(bb_box, @graph.Box::new(183.0, 126.0, 64.0, 66.0))
+      }
       assert_true(
         a_box.x < b_box.x,
         msg="\{engine_name} should place root grid children in separate columns",
@@ -257,6 +263,186 @@ fn assert_root_grid_nested_layout_like_d2(
   assert_true(
     start.x < finish.x,
     msg="\{engine_name} expected cross-cell edge to route left-to-right",
+  )
+}
+
+///|
+test "d2 nested_diagram_types keeps nested sequence descendants inside their containers" {
+  let source =
+    #|a
+    #|b
+    #|c
+    #|
+    #|a: {
+    #|  grid-columns: 3
+    #|
+    #|  1
+    #|  2
+    #|  3
+    #|  3: {
+    #|    shape: sequence_diagram
+    #|    x
+    #|    y
+    #|    # TODO x -> y
+    #|  }
+    #|
+    #|  1 -> 2 -> 3
+    #|
+    #|  near: center-right
+    #|}
+    #|
+    #|b: {
+    #|  shape: sequence_diagram
+    #|  1 -> 2
+    #|
+    #|  near: bottom-right
+    #|
+    #|  2: {
+    #|    # TODO compile error grid on sequence actor?
+    #|    grid-columns: 3
+    #|    x
+    #|    y
+    #|    z
+    #|  }
+    #|
+    #|  1: {
+    #|    x: {
+    #|      # TODO compile error grid in sequence (group)
+    #|      # grid-columns: 3
+    #|      u
+    #|      v
+    #|      w
+    #|    }
+    #|    y
+    #|    z
+    #|  }
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_nested_diagram_types_layout_like_d2(dagre, "dagre")
+  assert_nested_diagram_types_layout_like_d2(elk, "elk")
+}
+
+///|
+fn assert_nested_diagram_types_layout_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let a = graph.find_object("a").unwrap()
+  let a3 = graph.find_object("a.3").unwrap()
+  let a3x = graph.find_object("a.3.x").unwrap()
+  let a3y = graph.find_object("a.3.y").unwrap()
+  let b = graph.find_object("b").unwrap()
+  let b1 = graph.find_object("b.1").unwrap()
+  let b2 = graph.find_object("b.2").unwrap()
+  let b2x = graph.find_object("b.2.x").unwrap()
+  let b2y = graph.find_object("b.2.y").unwrap()
+  let b2z = graph.find_object("b.2.z").unwrap()
+  let b1x = graph.find_object("b.1.x").unwrap()
+  let b1xu = graph.find_object("b.1.x.u").unwrap()
+  let b1xv = graph.find_object("b.1.x.v").unwrap()
+  let b1xw = graph.find_object("b.1.x.w").unwrap()
+
+  guard a.get_box() is Some(a_box) else {
+    fail("\{engine_name} expected box for a")
+  }
+  guard a3.get_box() is Some(a3_box) else {
+    fail("\{engine_name} expected box for a.3")
+  }
+  guard a3x.get_box() is Some(a3x_box) else {
+    fail("\{engine_name} expected box for a.3.x")
+  }
+  guard a3y.get_box() is Some(a3y_box) else {
+    fail("\{engine_name} expected box for a.3.y")
+  }
+  assert_true(
+    a_box.contains(a3_box.center()),
+    msg="\{engine_name} should keep nested sequence container inside a",
+  )
+  assert_true(
+    a3_box.contains(a3x_box.center()),
+    msg="\{engine_name} should keep a.3.x inside the nested sequence container",
+  )
+  assert_true(
+    a3_box.contains(a3y_box.center()),
+    msg="\{engine_name} should keep a.3.y inside the nested sequence container",
+  )
+  assert_true(
+    a3x_box.x < a3y_box.x,
+    msg="\{engine_name} should keep nested sequence actors ordered left-to-right",
+  )
+
+  guard b.get_box() is Some(b_box) else {
+    fail("\{engine_name} expected box for b")
+  }
+  guard b1.get_box() is Some(b1_box) else {
+    fail("\{engine_name} expected box for b.1")
+  }
+  guard b2.get_box() is Some(b2_box) else {
+    fail("\{engine_name} expected box for b.2")
+  }
+  guard b2x.get_box() is Some(b2x_box) else {
+    fail("\{engine_name} expected box for b.2.x")
+  }
+  guard b2y.get_box() is Some(b2y_box) else {
+    fail("\{engine_name} expected box for b.2.y")
+  }
+  guard b2z.get_box() is Some(b2z_box) else {
+    fail("\{engine_name} expected box for b.2.z")
+  }
+  guard b1x.get_box() is Some(b1x_box) else {
+    fail("\{engine_name} expected box for b.1.x")
+  }
+  guard b1xu.get_box() is Some(b1xu_box) else {
+    fail("\{engine_name} expected box for b.1.x.u")
+  }
+  guard b1xv.get_box() is Some(b1xv_box) else {
+    fail("\{engine_name} expected box for b.1.x.v")
+  }
+  guard b1xw.get_box() is Some(b1xw_box) else {
+    fail("\{engine_name} expected box for b.1.x.w")
+  }
+  assert_true(
+    b_box.contains(b1_box.center()),
+    msg="\{engine_name} should keep sequence participant b.1 inside b",
+  )
+  assert_true(
+    b_box.contains(b2_box.center()),
+    msg="\{engine_name} should keep sequence participant b.2 inside b",
+  )
+  assert_true(
+    b1_box.x < b2_box.x,
+    msg="\{engine_name} should lay out b sequence participants left-to-right",
+  )
+  assert_true(
+    b2_box.contains(b2x_box.center()) &&
+    b2_box.contains(b2y_box.center()) &&
+    b2_box.contains(b2z_box.center()),
+    msg="\{engine_name} should keep nested grid children inside b.2",
+  )
+  assert_true(
+    b1x_box.contains(b1xu_box.center()) &&
+    b1x_box.contains(b1xv_box.center()) &&
+    b1x_box.contains(b1xw_box.center()),
+    msg="\{engine_name} should keep nested children inside b.1.x",
   )
 }
 

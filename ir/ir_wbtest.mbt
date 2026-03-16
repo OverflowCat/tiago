@@ -134,6 +134,35 @@ test "compile edge" {
 }
 
 ///|
+test "edge endpoints append field references in source order" {
+  let source =
+    #|b: {
+    #|  1 -> 2
+    #|  2
+    #|  1
+    #|}
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  guard ir.get_field("b") is Some(b_field) else { fail("expected field b") }
+  guard b_field.map() is Some(b_map) else { fail("expected map b") }
+  guard b_map.get_field("1") is Some(one) else { fail("expected field 1") }
+  guard b_map.get_field("2") is Some(two) else { fail("expected field 2") }
+  assert_true(one.references.length() >= 2)
+  assert_true(two.references.length() >= 2)
+  assert_true(
+    one.references[0].range.start.offset < two.references[0].range.start.offset,
+  )
+  guard one.references[0].context() is Some(one_context) else {
+    fail("expected field 1 edge context")
+  }
+  guard two.references[0].context() is Some(two_context) else {
+    fail("expected field 2 edge context")
+  }
+  assert_true(one_context.edge is Some(_))
+  assert_true(two_context.edge is Some(_))
+}
+
+///|
 test "edge ids preserve quoted endpoint syntax" {
   let (ast, _) = @parser.parse("\"style\" -> target")
   let quoted_src = match ast.nodes[0] {

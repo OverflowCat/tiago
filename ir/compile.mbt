@@ -728,6 +728,14 @@ fn compile_edges(
                     due_to_glob=true,
                   ),
                 )
+                ensure_field_path(ir, src_path)
+                ensure_field_path(ir, dst_path)
+                append_field_references_for_path(
+                  ir, src_path, edge_context, true,
+                )
+                append_field_references_for_path(
+                  ir, dst_path, edge_context, true,
+                )
                 let (primary, edge_map) = compile_edge_value(Some(e), key.value)
                 ir.set_edge(Edge::new(e.id, primary, edge_map, e.references))
               }
@@ -753,6 +761,20 @@ fn compile_edges(
                       due_to_glob=src_has_glob || dst_has_glob,
                     ),
                   )
+                  ensure_field_path(ir, src_path)
+                  ensure_field_path(ir, dst_path)
+                  append_field_references_for_path(
+                    ir,
+                    src_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
+                  append_field_references_for_path(
+                    ir,
+                    dst_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
                   let (primary, edge_map) = compile_edge_value(
                     Some(e),
                     key.value,
@@ -773,6 +795,18 @@ fn compile_edges(
                   ir.add_edge(new_edge)
                   ensure_field_path(ir, src_path)
                   ensure_field_path(ir, dst_path)
+                  append_field_references_for_path(
+                    ir,
+                    src_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
+                  append_field_references_for_path(
+                    ir,
+                    dst_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
                 }
               }
             }
@@ -800,6 +834,18 @@ fn compile_edges(
             ir.add_edge(new_edge)
             ensure_field_path(ir, src_path)
             ensure_field_path(ir, dst_path)
+            append_field_references_for_path(
+              ir,
+              src_path,
+              edge_context,
+              src_has_glob || dst_has_glob,
+            )
+            append_field_references_for_path(
+              ir,
+              dst_path,
+              edge_context,
+              src_has_glob || dst_has_glob,
+            )
           }
         }
       }
@@ -828,6 +874,65 @@ fn ensure_field_path(ir : Map, path : ResolvedPath) -> Unit {
       }
       Some(_) => break // Field has non-map composite, stop
     }
+  }
+}
+
+///|
+fn append_field_references_for_path(
+  ir : Map,
+  path : ResolvedPath,
+  context : RefContext,
+  due_to_glob : Bool,
+) -> Unit {
+  if path.syntax.is_empty() {
+    return
+  }
+  let key_path = @ast.KeyPath::new(path.syntax[0].range(), path.syntax.copy())
+  append_field_references_for_path_at(
+    ir, path, key_path, context, 0, due_to_glob,
+  )
+}
+
+///|
+fn append_field_references_for_path_at(
+  current : Map,
+  path : ResolvedPath,
+  key_path : @ast.KeyPath,
+  context : RefContext,
+  index : Int,
+  due_to_glob : Bool,
+) -> Unit {
+  if index >= path.syntax.length() {
+    return
+  }
+  let field = match current.get_field_by_syntax(path.syntax[index]) {
+    Some(field) => field
+    None => return
+  }
+  let updated = record_field_reference(
+    current,
+    field,
+    path.syntax[index],
+    key_path,
+    context,
+    index,
+    false,
+    due_to_glob~,
+  )
+  if index + 1 >= path.syntax.length() {
+    return
+  }
+  match updated.composite {
+    Some(Composite::Map(next)) =>
+      append_field_references_for_path_at(
+        next,
+        path,
+        key_path,
+        context,
+        index + 1,
+        due_to_glob,
+      )
+    _ => ()
   }
 }
 
