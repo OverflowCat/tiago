@@ -112,9 +112,11 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - D2 reference: `d2layouts.LayoutNested`, extracted subgraphs, child-order restore, constant-near handling, nested grid and sequence passes, routing after layout.
   - diago currently distributes some of this responsibility across `engine_api`, `graph`, and engine implementations.
 
-- [ ] Add or verify explicit support for D2 layout capability checks.
+- [x] Add or verify explicit support for D2 layout capability checks.
   - D2 reference: the layout layer distinguishes capabilities such as `near_object`, `container_dimensions`, `top_left`, `descendant_edges`, and routed edges.
-  - diago currently does not expose an equivalent compatibility contract.
+  - Landed in diago: `engine_api.LayoutEngine` now exposes an explicit D2-style capability contract, and `layout_with_engine(...)` performs the same pre-layout validation categories as upstream `d2plugin.FeatureSupportCheck`.
+  - Landed in diago: built-in Dagre and ELK now advertise the same effective support surface as upstream D2 (`dagre`: none of the gated features, `elk`: `container_dimensions` and `descendant_edges`), while Railway now declares its currently supported extension surface explicitly instead of relying on silent best-effort behavior.
+  - Verified with D2-derived engine API coverage for rejected `near_object`, rejected locked `top/left`, rejected Dagre descendant/container-dimension cases, and accepted ELK container-dimension / descendant-edge cases.
 
 - [ ] Validate Dagre behavior against D2 fixtures.
   - Note: implementation strategy may remain MoonBit-native, but behavior should align.

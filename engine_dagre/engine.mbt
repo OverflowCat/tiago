@@ -525,6 +525,18 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
 }
 
 ///|
+pub impl @engine_api.LayoutEngine for DagreEngine with engine_name(_self) -> String {
+  "dagre"
+}
+
+///|
+pub impl @engine_api.LayoutEngine for DagreEngine with features(_self) -> Array[
+  @engine_api.LayoutFeature,
+] {
+  []
+}
+
+///|
 fn layout_sequence_diagram(
   graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,

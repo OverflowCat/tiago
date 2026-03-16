@@ -35,3 +35,18 @@ pub impl @engine_api.LayoutEngine for RailwayEngine with layout(
 ) -> @graph.LayoutPatch raise @engine_api.LayoutError {
   layout_graph(graph, config, direction)
 }
+
+///|
+pub impl @engine_api.LayoutEngine for RailwayEngine with engine_name(_self) -> String {
+  "railway"
+}
+
+///|
+pub impl @engine_api.LayoutEngine for RailwayEngine with features(_self) -> Array[
+  @engine_api.LayoutFeature,
+] {
+  [
+    @engine_api.LayoutFeature::ContainerDimensions,
+    @engine_api.LayoutFeature::DescendantEdges,
+  ]
+}

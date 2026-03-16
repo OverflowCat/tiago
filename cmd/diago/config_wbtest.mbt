@@ -597,7 +597,7 @@ test "near ancestor and edge map non-reserved are rejected" {
 }
 
 ///|
-test "top/left fixed positioning applies to laid out object" {
+test "dagre rejects top/left fixed positioning like D2" {
   let source =
     #|a: {
     #|  top: 120
@@ -605,23 +605,22 @@ test "top/left fixed positioning applies to laid out object" {
     #|}
     #|b
     #|a -> b
-  let diagram = compile_to_diagram(
-    source,
-    None,
-    LayoutEngineChoice::Dagre,
-    false,
-    None,
-  ).unwrap()
-  match diagram.find_object("a") {
-    Some(shape) =>
-      match shape.get_box() {
-        Some(box) => {
-          assert_eq(box.y, 120.0)
-          assert_eq(box.x, 240.0)
-        }
-        None => fail("expected box for object a")
-      }
-    None => fail("expected object a")
+  match
+    compile_source(
+      source,
+      OutputMode::Svg,
+      None,
+      None,
+      LayoutEngineChoice::Dagre,
+      false,
+      None,
+    ) {
+    Ok(_) => fail("expected dagre fixed-position feature check to fail")
+    Err(msg) =>
+      assert_true(
+        msg.contains("does not support locked positions"),
+        msg="unexpected error: \{msg}",
+      )
   }
 }
 

@@ -326,6 +326,21 @@ pub impl @engine_api.LayoutEngine for ElkEngine with layout(
 }
 
 ///|
+pub impl @engine_api.LayoutEngine for ElkEngine with engine_name(_self) -> String {
+  "elk"
+}
+
+///|
+pub impl @engine_api.LayoutEngine for ElkEngine with features(_self) -> Array[
+  @engine_api.LayoutFeature,
+] {
+  [
+    @engine_api.LayoutFeature::ContainerDimensions,
+    @engine_api.LayoutFeature::DescendantEdges,
+  ]
+}
+
+///|
 fn layout_sequence_diagram(
   graph : @graph.GraphInput,
   config : @engine_api.LayoutConfig,

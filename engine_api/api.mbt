@@ -47,6 +47,15 @@ pub(all) enum Direction {
 } derive(Eq, Show)
 
 ///|
+/// Layout engine capability flags aligned with D2's layout feature model.
+pub(all) enum LayoutFeature {
+  NearObject
+  ContainerDimensions
+  TopLeft
+  DescendantEdges
+} derive(Eq, Show)
+
+///|
 /// Layout error
 pub(all) suberror LayoutError {
   InvalidGraph(String)
@@ -98,6 +107,8 @@ pub fn LayoutConfig::with_spacing(
 /// applied by the caller.
 pub(open) trait LayoutEngine {
   layout(Self, @graph.GraphInput, LayoutConfig, Direction) -> @graph.LayoutPatch raise LayoutError
+  engine_name(Self) -> String
+  features(Self) -> Array[LayoutFeature]
 }
 
 ///|
@@ -123,6 +134,207 @@ fn graph_layout_direction(
         None => fallback
       }
     None => fallback
+  }
+}
+
+///|
+fn has_layout_feature(
+  features : Array[LayoutFeature],
+  feature : LayoutFeature,
+) -> Bool {
+  for current in features {
+    if current == feature {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn build_object_by_abs_id_syntax(
+  graph : @graph.GraphInput,
+) -> Map[String, @graph.ObjectInput] {
+  let object_by_id : Map[String, @graph.ObjectInput] = {}
+  object_by_id[graph.root.abs_id_syntax] = graph.root
+  for obj in graph.objects {
+    object_by_id[obj.abs_id_syntax] = obj
+  }
+  object_by_id
+}
+
+///|
+fn build_parent_id_by_child_abs_id_syntax(
+  graph : @graph.GraphInput,
+) -> Map[String, String] {
+  let parent_id_by_child_id : Map[String, String] = {}
+  for child_id in graph.root.child_ids {
+    parent_id_by_child_id[child_id] = graph.root.abs_id_syntax
+  }
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      parent_id_by_child_id[child_id] = obj.abs_id_syntax
+    }
+  }
+  parent_id_by_child_id
+}
+
+///|
+fn is_grid_diagram_object(obj : @graph.ObjectInput) -> Bool {
+  obj.grid_rows is Some(_) || obj.grid_columns is Some(_)
+}
+
+///|
+fn is_container_object(obj : @graph.ObjectInput) -> Bool {
+  !obj.child_ids.is_empty()
+}
+
+///|
+fn has_explicit_dimensions(obj : @graph.ObjectInput) -> Bool {
+  match obj.box {
+    Some(box) => box.width > 0.0 || box.height > 0.0
+    None => false
+  }
+}
+
+///|
+fn is_descendant_of_id(
+  obj_id : String,
+  ancestor_id : String,
+  parent_id_by_child_id : Map[String, String],
+) -> Bool {
+  let mut current = obj_id
+  while true {
+    if current == ancestor_id {
+      return true
+    }
+    match parent_id_by_child_id.get(current) {
+      Some(parent_id) => current = parent_id
+      None => break
+    }
+  }
+  false
+}
+
+///|
+fn is_inside_sequence_diagram(
+  graph : @graph.GraphInput,
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+  id : String,
+) -> Bool {
+  if graph.root.shape_type == @graph.SequenceDiagram {
+    return true
+  }
+  let mut current = id
+  while true {
+    match object_by_id.get(current) {
+      Some(obj) => if obj.shape_type == @graph.SequenceDiagram { return true }
+      None => ()
+    }
+    match parent_id_by_child_id.get(current) {
+      Some(parent_id) => current = parent_id
+      None => break
+    }
+  }
+  false
+}
+
+///|
+fn edge_display_id(edge : @graph.EdgeInput) -> String {
+  let operator = match (edge.src_arrow, edge.dst_arrow) {
+    (false, false) => "--"
+    (false, true) => "->"
+    (true, false) => "<-"
+    (true, true) => "<->"
+  }
+  "(\{edge.src_id_syntax} \{operator} \{edge.dst_id_syntax})[\{edge.index}]"
+}
+
+///|
+fn check_feature_support(
+  engine_name : String,
+  features : Array[LayoutFeature],
+  graph : @graph.GraphInput,
+) -> Unit raise LayoutError {
+  let object_by_id = build_object_by_abs_id_syntax(graph)
+  let parent_id_by_child_id = build_parent_id_by_child_abs_id_syntax(graph)
+
+  for obj in graph.objects {
+    if (obj.top is Some(_) || obj.left is Some(_)) &&
+      !has_layout_feature(features, LayoutFeature::TopLeft) {
+      raise unsupported(
+        "Object \"\{obj.abs_id_syntax}\" has attribute \"top\" and/or \"left\" set, but layout engine \"\{engine_name}\" does not support locked positions. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+      )
+    }
+    if has_explicit_dimensions(obj) &&
+      is_container_object(obj) &&
+      !is_grid_diagram_object(obj) &&
+      !has_layout_feature(features, LayoutFeature::ContainerDimensions) {
+      raise unsupported(
+        "Object \"\{obj.abs_id_syntax}\" has attribute \"width\" and/or \"height\" set, but layout engine \"\{engine_name}\" does not support dimensions set on containers. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+      )
+    }
+    match obj.near {
+      Some(near_key) =>
+        if graph.find_object(near_key) is Some(_) &&
+          !has_layout_feature(features, LayoutFeature::NearObject) {
+          raise unsupported(
+            "Object \"\{obj.abs_id_syntax}\" has \"near\" set to another object, but layout engine \"\{engine_name}\" only supports constant values for \"near\". See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+          )
+        }
+      None => ()
+    }
+  }
+
+  if has_layout_feature(features, LayoutFeature::DescendantEdges) {
+    return
+  }
+
+  for edge in graph.edges {
+    if is_inside_sequence_diagram(
+        graph,
+        object_by_id,
+        parent_id_by_child_id,
+        edge.src_id_syntax,
+      ) ||
+      is_inside_sequence_diagram(
+        graph,
+        object_by_id,
+        parent_id_by_child_id,
+        edge.dst_id_syntax,
+      ) {
+      continue
+    }
+    let src = match object_by_id.get(edge.src_id_syntax) {
+      Some(obj) => obj
+      None => continue
+    }
+    let dst = match object_by_id.get(edge.dst_id_syntax) {
+      Some(obj) => obj
+      None => continue
+    }
+    if !is_container_object(src) && !is_container_object(dst) {
+      continue
+    }
+    if edge.src_id_syntax == edge.dst_id_syntax {
+      raise unsupported(
+        "Connection \"\{edge_display_id(edge)}\" is a self loop on a container, but layout engine \"\{engine_name}\" does not support this. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+      )
+    }
+    if is_descendant_of_id(
+        edge.src_id_syntax,
+        edge.dst_id_syntax,
+        parent_id_by_child_id,
+      ) ||
+      is_descendant_of_id(
+        edge.dst_id_syntax,
+        edge.src_id_syntax,
+        parent_id_by_child_id,
+      ) {
+      raise unsupported(
+        "Connection \"\{edge_display_id(edge)}\" goes from a container to a descendant, but layout engine \"\{engine_name}\" does not support this. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+      )
+    }
   }
 }
 
@@ -2137,6 +2349,7 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
   config : LayoutConfig,
   direction : Direction,
 ) -> @graph.GraphInput raise LayoutError {
+  check_feature_support(engine.engine_name(), engine.features(), graph)
   let effective_direction = graph_layout_direction(graph, direction)
   let prepared = prepare_graph_for_layout(graph)
   let (engine_graph, semantic_ctx) = prepare_layout_semantics(prepared, config)

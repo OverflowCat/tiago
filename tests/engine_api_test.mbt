@@ -44,6 +44,23 @@ impl @engine_api.LayoutEngine for FakeEngine with layout(
 }
 
 ///|
+impl @engine_api.LayoutEngine for FakeEngine with engine_name(_self) -> String {
+  "fake"
+}
+
+///|
+impl @engine_api.LayoutEngine for FakeEngine with features(_self) -> Array[
+  @engine_api.LayoutFeature,
+] {
+  [
+    @engine_api.LayoutFeature::NearObject,
+    @engine_api.LayoutFeature::ContainerDimensions,
+    @engine_api.LayoutFeature::TopLeft,
+    @engine_api.LayoutFeature::DescendantEdges,
+  ]
+}
+
+///|
 fn root_input(child_ids : Array[String]) -> @graph.ObjectInput {
   @graph.ObjectInput::from_parts(
     "root",
@@ -126,6 +143,20 @@ fn graph_input(
 }
 
 ///|
+fn compile_graph_input(source : String) -> Result[@graph.GraphInput, String] {
+  let (ast, errors) = @parser.parse(source)
+  if !errors.is_empty() {
+    return Err("Parse errors: \{errors}")
+  }
+  let ir = @ir.compile(ast) catch { e => return Err("IR error: \{e}") }
+  try @exporter.compile("engine-api-test", ir) catch {
+    e => Err("Graph error: \{e}")
+  } noraise {
+    graph => Ok(graph)
+  }
+}
+
+///|
 fn edge_input(index : Int, curved : Bool?) -> @graph.EdgeInput {
   let style = @graph.StyleInput::from_parts(
     None,
@@ -204,6 +235,23 @@ impl @engine_api.LayoutEngine for RoundtripEngine with layout(
   patch.activation_boxes.push(("a", @graph.Box::new(9.0, 9.0, 1.0, 2.0)))
   patch.sequence_notes.push(("a", "note", @graph.Box::new(3.0, 4.0, 5.0, 6.0)))
   patch
+}
+
+///|
+impl @engine_api.LayoutEngine for RoundtripEngine with engine_name(_self) -> String {
+  "roundtrip"
+}
+
+///|
+impl @engine_api.LayoutEngine for RoundtripEngine with features(_self) -> Array[
+  @engine_api.LayoutFeature,
+] {
+  [
+    @engine_api.LayoutFeature::NearObject,
+    @engine_api.LayoutFeature::ContainerDimensions,
+    @engine_api.LayoutFeature::TopLeft,
+    @engine_api.LayoutFeature::DescendantEdges,
+  ]
 }
 
 ///|
@@ -357,4 +405,188 @@ test "engine implementations must not mutate input graph" {
     assert_eq(e.label_box, labels_before[j])
     j = j + 1
   }
+}
+
+///|
+test "dagre rejects object near like D2 feature checks" {
+  let source =
+    #|a
+    #|b: {
+    #|  near: a
+    #|}
+  let graph = compile_graph_input(source).unwrap()
+  ignore(
+    @engine_api.layout_with_engine(
+      @engine_dagre.DagreEngine::new(),
+      graph,
+      @engine_api.LayoutConfig::new(),
+      @engine_api.Direction::Down,
+    ),
+  ) catch {
+    e => {
+      assert_eq(
+        e,
+        @engine_api.unsupported(
+          "Object \"b\" has \"near\" set to another object, but layout engine \"dagre\" only supports constant values for \"near\". See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+        ),
+      )
+      return
+    }
+  }
+  fail("expected dagre to reject object near")
+}
+
+///|
+test "dagre rejects container dimensions like D2 feature checks" {
+  let source =
+    #|container: {
+    #|  width: 320
+    #|  a
+    #|}
+  let graph = compile_graph_input(source).unwrap()
+  ignore(
+    @engine_api.layout_with_engine(
+      @engine_dagre.DagreEngine::new(),
+      graph,
+      @engine_api.LayoutConfig::new(),
+      @engine_api.Direction::Down,
+    ),
+  ) catch {
+    e => {
+      assert_eq(
+        e,
+        @engine_api.unsupported(
+          "Object \"container\" has attribute \"width\" and/or \"height\" set, but layout engine \"dagre\" does not support dimensions set on containers. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+        ),
+      )
+      return
+    }
+  }
+  fail("expected dagre to reject explicit container dimensions")
+}
+
+///|
+test "dagre rejects descendant edges like D2 feature checks" {
+  let source =
+    #|aaa: {
+    #|  ccc
+    #|}
+    #|aaa.ccc -- aaa
+  let graph = compile_graph_input(source).unwrap()
+  ignore(
+    @engine_api.layout_with_engine(
+      @engine_dagre.DagreEngine::new(),
+      graph,
+      @engine_api.LayoutConfig::new(),
+      @engine_api.Direction::Down,
+    ),
+  ) catch {
+    e => {
+      assert_eq(
+        e,
+        @engine_api.unsupported(
+          "Connection \"(aaa.ccc -- aaa)[0]\" goes from a container to a descendant, but layout engine \"dagre\" does not support this. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+        ),
+      )
+      return
+    }
+  }
+  fail("expected dagre to reject descendant edges")
+}
+
+///|
+test "elk accepts D2-supported container dimensions and descendant edges" {
+  let container_source =
+    #|container: {
+    #|  width: 320
+    #|  a
+    #|}
+  let container_graph = compile_graph_input(container_source).unwrap()
+  let laid_out_container = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    container_graph,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk should support container dimensions: \{e}")
+  }
+  assert_true(
+    laid_out_container.find_object("container").unwrap().box is Some(_),
+    msg="container should be laid out by elk",
+  )
+
+  let descendant_source =
+    #|aaa: {
+    #|  ccc
+    #|}
+    #|aaa.ccc -- aaa
+  let descendant_graph = compile_graph_input(descendant_source).unwrap()
+  let laid_out_descendant = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    descendant_graph,
+    @engine_api.LayoutConfig::new(),
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk should support descendant edges: \{e}")
+  }
+  assert_true(
+    laid_out_descendant.edges[0].route.length() >= 2,
+    msg="elk descendant edge should be routed",
+  )
+}
+
+///|
+test "elk still rejects unsupported D2 feature-gated inputs" {
+  let near_source =
+    #|a
+    #|b: {
+    #|  near: a
+    #|}
+  let near_graph = compile_graph_input(near_source).unwrap()
+  let mut near_rejected = false
+  ignore(
+    @engine_api.layout_with_engine(
+      @engine_elk.ElkEngine::new(),
+      near_graph,
+      @engine_api.LayoutConfig::new(),
+      @engine_api.Direction::Down,
+    ),
+  ) catch {
+    e => {
+      assert_eq(
+        e,
+        @engine_api.unsupported(
+          "Object \"b\" has \"near\" set to another object, but layout engine \"elk\" only supports constant values for \"near\". See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+        ),
+      )
+      near_rejected = true
+    }
+  }
+  assert_true(near_rejected, msg="expected elk to reject object near")
+
+  let pinned_source =
+    #|a: {
+    #|  top: 10
+    #|  left: 20
+    #|}
+  let pinned_graph = compile_graph_input(pinned_source).unwrap()
+  ignore(
+    @engine_api.layout_with_engine(
+      @engine_elk.ElkEngine::new(),
+      pinned_graph,
+      @engine_api.LayoutConfig::new(),
+      @engine_api.Direction::Down,
+    ),
+  ) catch {
+    e => {
+      assert_eq(
+        e,
+        @engine_api.unsupported(
+          "Object \"a\" has attribute \"top\" and/or \"left\" set, but layout engine \"elk\" does not support locked positions. See https://d2lang.com/tour/layouts/#layout-specific-functionality for more.",
+        ),
+      )
+      return
+    }
+  }
+  fail("expected elk to reject top/left")
 }
