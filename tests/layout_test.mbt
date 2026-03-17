@@ -447,6 +447,111 @@ fn assert_nested_diagram_types_layout_like_d2(
 }
 
 ///|
+test "d2 grid_nested_simple_edges preserves nested grid child order" {
+  let source =
+    #|direction: right
+    #|outer-grid -> outer-container
+    #|
+    #|outer-grid: {
+    #|  grid-columns: 1
+    #|
+    #|  inner-grid -> container -> etc
+    #|
+    #|  container: {
+    #|    label.near: top-left
+    #|    (** -> **)[*].class: red
+    #|    a -> b -> c -> a
+    #|    d -> e -> g.h.i
+    #|    d -> f -> g.h
+    #|    b -> g
+    #|  }
+    #|
+    #|  inner-grid: {
+    #|    grid-rows: 1
+    #|    1 -> 2 -> 3: {class: red}
+    #|  }
+    #|}
+    #|
+    #|outer-container: {
+    #|  grid -> container
+    #|
+    #|  grid: {
+    #|    grid-rows: 1
+    #|    1 -> 2 -> 3
+    #|  }
+    #|
+    #|  container: {
+    #|    4 -> 5 -> 6
+    #|    nested container: {
+    #|      7 -> 8
+    #|    }
+    #|  }
+    #|}
+    #|
+    #|classes.red.style.stroke: red
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Right,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Right,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_nested_simple_edges_order_like_d2(dagre, "dagre")
+  assert_grid_nested_simple_edges_order_like_d2(elk, "elk")
+}
+
+///|
+fn assert_grid_nested_simple_edges_order_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  guard graph.find_object("outer-grid") is Some(outer_grid) else {
+    fail("\{engine_name} expected outer-grid object")
+  }
+  assert_eq(outer_grid.child_ids, [
+    "outer-grid.inner-grid", "outer-grid.container", "outer-grid.etc",
+  ])
+
+  let inner_grid = graph.find_object("outer-grid.inner-grid").unwrap()
+  let container = graph.find_object("outer-grid.container").unwrap()
+  let etc = graph.find_object("outer-grid.etc").unwrap()
+  match (inner_grid.get_box(), container.get_box(), etc.get_box()) {
+    (Some(inner_box), Some(container_box), Some(etc_box)) => {
+      assert_true(
+        inner_box.y < container_box.y,
+        msg="\{engine_name} expected outer-grid.inner-grid above outer-grid.container",
+      )
+      assert_true(
+        container_box.y < etc_box.y,
+        msg="\{engine_name} expected outer-grid.container above outer-grid.etc",
+      )
+      assert_true(
+        (inner_box.x - container_box.x).abs() < 1.0 &&
+        (container_box.x - etc_box.x).abs() < 1.0,
+        msg="\{engine_name} expected single-column nested grid children",
+      )
+    }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for outer-grid.inner-grid, outer-grid.container, and outer-grid.etc",
+      )
+  }
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {

@@ -2709,6 +2709,157 @@ fn min_int(a : Int, b : Int) -> Int {
 }
 
 ///|
+priv struct GraphOrderContext {
+  object_order : Map[String, Int]
+  edge_order : Map[Int, Int]
+  child_order_by_parent : Map[String, Map[String, Int]]
+}
+
+///|
+fn save_graph_order_like_d2(graph : @graph.GraphInput) -> GraphOrderContext {
+  let object_order : Map[String, Int] = {}
+  for i, obj in graph.objects {
+    object_order[obj.abs_id_syntax] = i
+  }
+
+  let edge_order : Map[Int, Int] = {}
+  for i, edge in graph.edges {
+    edge_order[edge.index] = i
+  }
+
+  let child_order_by_parent : Map[String, Map[String, Int]] = {}
+  let root_child_order : Map[String, Int] = {}
+  for i, child_id in graph.root.child_ids {
+    root_child_order[child_id] = i
+  }
+  child_order_by_parent[graph.root.abs_id_syntax] = root_child_order
+  for obj in graph.objects {
+    let child_order : Map[String, Int] = {}
+    for i, child_id in obj.child_ids {
+      child_order[child_id] = i
+    }
+    child_order_by_parent[obj.abs_id_syntax] = child_order
+  }
+
+  { object_order, edge_order, child_order_by_parent }
+}
+
+///|
+fn restore_child_order_like_d2(
+  parent_id : String,
+  child_ids : Array[String],
+  context : GraphOrderContext,
+) -> Array[String] {
+  match context.child_order_by_parent.get(parent_id) {
+    Some(order) => {
+      let out = child_ids.copy()
+      let current_order : Map[String, Int] = {}
+      for i, child_id in out {
+        current_order[child_id] = i
+      }
+      out.sort_by(fn(a, b) {
+        let a_has = order.contains(a)
+        let b_has = order.contains(b)
+        if a_has && b_has {
+          let cmp = order.get_or_default(a, 0) - order.get_or_default(b, 0)
+          if cmp != 0 {
+            return cmp
+          }
+        } else if a_has != b_has {
+          return if a_has { -1 } else { 1 }
+        }
+        current_order.get_or_default(a, 0) - current_order.get_or_default(b, 0)
+      })
+      out
+    }
+    None => child_ids
+  }
+}
+
+///|
+fn restore_graph_order_like_d2(
+  graph : @graph.GraphInput,
+  laid_out_graph : @graph.GraphInput,
+) -> @graph.GraphInput {
+  let context = save_graph_order_like_d2(graph)
+
+  let objects = laid_out_graph.objects.copy()
+  let current_object_order : Map[String, Int] = {}
+  for i, obj in objects {
+    current_object_order[obj.abs_id_syntax] = i
+  }
+  objects.sort_by(fn(a, b) {
+    let a_has = context.object_order.contains(a.abs_id_syntax)
+    let b_has = context.object_order.contains(b.abs_id_syntax)
+    if a_has && b_has {
+      let cmp = context.object_order.get_or_default(a.abs_id_syntax, 0) -
+        context.object_order.get_or_default(b.abs_id_syntax, 0)
+      if cmp != 0 {
+        return cmp
+      }
+    } else if a_has != b_has {
+      return if a_has { -1 } else { 1 }
+    }
+    current_object_order.get_or_default(a.abs_id_syntax, 0) -
+    current_object_order.get_or_default(b.abs_id_syntax, 0)
+  })
+
+  let restored_objects : Array[@graph.ObjectInput] = []
+  for obj in objects {
+    restored_objects.push(
+      clone_object_with_parts_and_label(
+        obj,
+        obj.box,
+        obj.label_box,
+        restore_child_order_like_d2(obj.abs_id_syntax, obj.child_ids, context),
+      ),
+    )
+  }
+
+  let edges = laid_out_graph.edges.copy()
+  let current_edge_order : Map[Int, Int] = {}
+  for i, edge in edges {
+    current_edge_order[edge.index] = i
+  }
+  edges.sort_by(fn(a, b) {
+    let a_has = context.edge_order.contains(a.index)
+    let b_has = context.edge_order.contains(b.index)
+    if a_has && b_has {
+      let cmp = context.edge_order.get_or_default(a.index, 0) -
+        context.edge_order.get_or_default(b.index, 0)
+      if cmp != 0 {
+        return cmp
+      }
+    } else if a_has != b_has {
+      return if a_has { -1 } else { 1 }
+    }
+    current_edge_order.get_or_default(a.index, 0) -
+    current_edge_order.get_or_default(b.index, 0)
+  })
+
+  let root = clone_object_with_parts_and_label(
+    laid_out_graph.root,
+    laid_out_graph.root.box,
+    laid_out_graph.root.label_box,
+    restore_child_order_like_d2(
+      graph.root.abs_id_syntax,
+      laid_out_graph.root.child_ids,
+      context,
+    ),
+  )
+
+  clone_graph_with_parts(
+    laid_out_graph,
+    root,
+    restored_objects,
+    edges,
+    laid_out_graph.layers,
+    laid_out_graph.scenarios,
+    laid_out_graph.steps,
+  )
+}
+
+///|
 /// Perform layout on a graph (including variants) with a specific engine.
 ///
 /// Returns a new graph with layout applied.
@@ -2766,15 +2917,18 @@ pub fn[Engine : LayoutEngine] layout_with_engine(
       ),
     )
   }
-  normalize_routes(
-    clone_graph_with_parts(
-      laid_out,
-      laid_out.root,
-      laid_out.objects,
-      laid_out.edges,
-      layers,
-      scenarios,
-      steps,
+  restore_graph_order_like_d2(
+    graph,
+    normalize_routes(
+      clone_graph_with_parts(
+        laid_out,
+        laid_out.root,
+        laid_out.objects,
+        laid_out.edges,
+        layers,
+        scenarios,
+        steps,
+      ),
     ),
   )
 }
