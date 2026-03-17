@@ -869,7 +869,7 @@ fn compile_board_graph(
   classes : Map[String, @ir.Map],
 ) -> Unit raise GraphCompileError {
   compile_objects(graph, ir, "", "", classes)
-  compile_edges(graph, ir)
+  compile_edges(graph, ir, classes)
   compile_layers(graph, ir, classes)
   compile_scenarios(graph, ir, classes)
   compile_steps(graph, ir, classes)
@@ -2463,6 +2463,7 @@ fn edge_references_from_ir(
 fn compile_edges_in_map(
   graph : Graph,
   ir : @ir.Map,
+  classes : Map[String, @ir.Map],
   prefix : String,
   prefix_syntax : String,
   next_index : Int,
@@ -2485,7 +2486,7 @@ fn compile_edges_in_map(
           prefix_syntax + "." + d2_format_key_segment(field.name)
         }
         next_index = compile_edges_in_map(
-          graph, inner, child_prefix, child_prefix_syntax, next_index,
+          graph, inner, classes, child_prefix, child_prefix_syntax, next_index,
         )
       }
       _ => ()
@@ -2523,83 +2524,7 @@ fn compile_edges_in_map(
     }
     // Process edge properties from map
     match edge.map {
-      Some(m) => {
-        validate_edge_map_keys(m)
-        // Process style
-        match m.get_field("style") {
-          Some(f) =>
-            match f.composite {
-              Some(@ir.Composite::Map(style_map)) => {
-                validate_style_keys(style_map)
-                process_style(graph_edge.style, style_map)
-              }
-              _ => ()
-            }
-          None => ()
-        }
-        // Process source-arrowhead / target-arrowhead using d2 semantics:
-        // scalar can be either shape or label, map primary is label and shape
-        // comes from `shape`.
-        if m.get_field("source-arrowhead") is Some(f) {
-          process_edge_arrowhead_field(graph_edge, f, true)
-        }
-        if m.get_field("target-arrowhead") is Some(f) {
-          process_edge_arrowhead_field(graph_edge, f, false)
-        }
-        // Process source-anchor
-        if m.get_field("source-anchor") is Some(f) {
-          if f.primary is Some(s) {
-            graph_edge.src_anchor = Some(s.to_string())
-          }
-        }
-        // Process target-anchor
-        if m.get_field("target-anchor") is Some(f) {
-          if f.primary is Some(s) {
-            graph_edge.dst_anchor = Some(s.to_string())
-          }
-        }
-
-        // Process manual bend points for edge routing.
-        // Supported:
-        // - bend-points: [[x, y], [x, y]]
-        // - route.points: [[x, y], [x, y]]
-        // - route: [[x, y], [x, y]]
-        if m.get_field("bend-points") is Some(f) {
-          match f.array() {
-            Some(arr) => {
-              let points = parse_bend_points_array(arr)
-              if !points.is_empty() {
-                graph_edge.bend_points = Some(points)
-              }
-            }
-            None => ()
-          }
-        } else if m.get_field("route") is Some(route_f) {
-          // Prefer route.points if present
-          let mut points : Array[Point] = []
-          match route_f.map() {
-            Some(route_map) =>
-              match route_map.get_field("points") {
-                Some(points_f) =>
-                  match points_f.array() {
-                    Some(arr) => points = parse_bend_points_array(arr)
-                    None => ()
-                  }
-                None => ()
-              }
-            None => ()
-          }
-          if points.is_empty() {
-            match route_f.array() {
-              Some(arr) => points = parse_bend_points_array(arr)
-              None => ()
-            }
-          }
-          if !points.is_empty() {
-            graph_edge.bend_points = Some(points)
-          }
-        }
-      }
+      Some(m) => process_edge_map(graph_edge, m, classes)
       None => ()
     }
     graph.add_edge(graph_edge)
@@ -2713,8 +2638,129 @@ fn process_edge_arrowhead_field(
 }
 
 ///|
-fn compile_edges(graph : Graph, ir : @ir.Map) -> Unit raise GraphCompileError {
-  compile_edges_in_map(graph, ir, "", "", 0) |> ignore
+fn process_edge_map(
+  edge : Edge,
+  edge_map : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  process_edge_map_classes(edge, edge_map, classes)
+  validate_edge_map_keys(edge_map)
+  if edge_map.get_field("label") is Some(label_field) {
+    match label_field.primary {
+      Some(label) => edge.label = label.to_string()
+      None => ()
+    }
+  }
+  match edge_map.get_field("style") {
+    Some(f) =>
+      match f.composite {
+        Some(@ir.Composite::Map(style_map)) => {
+          validate_style_keys(style_map)
+          process_style(edge.style, style_map)
+        }
+        _ => ()
+      }
+    None => ()
+  }
+  if edge_map.get_field("source-arrowhead") is Some(f) {
+    process_edge_arrowhead_field(edge, f, true)
+  }
+  if edge_map.get_field("target-arrowhead") is Some(f) {
+    process_edge_arrowhead_field(edge, f, false)
+  }
+  if edge_map.get_field("source-anchor") is Some(f) {
+    if f.primary is Some(s) {
+      edge.src_anchor = Some(s.to_string())
+    }
+  }
+  if edge_map.get_field("target-anchor") is Some(f) {
+    if f.primary is Some(s) {
+      edge.dst_anchor = Some(s.to_string())
+    }
+  }
+  if edge_map.get_field("bend-points") is Some(f) {
+    match f.array() {
+      Some(arr) => {
+        let points = parse_bend_points_array(arr)
+        if !points.is_empty() {
+          edge.bend_points = Some(points)
+        }
+      }
+      None => ()
+    }
+  } else if edge_map.get_field("route") is Some(route_f) {
+    let mut points : Array[Point] = []
+    match route_f.map() {
+      Some(route_map) =>
+        match route_map.get_field("points") {
+          Some(points_f) =>
+            match points_f.array() {
+              Some(arr) => points = parse_bend_points_array(arr)
+              None => ()
+            }
+          None => ()
+        }
+      None => ()
+    }
+    if points.is_empty() {
+      match route_f.array() {
+        Some(arr) => points = parse_bend_points_array(arr)
+        None => ()
+      }
+    }
+    if !points.is_empty() {
+      edge.bend_points = Some(points)
+    }
+  }
+}
+
+///|
+fn process_edge_map_classes(
+  edge : Edge,
+  edge_map : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  match edge_map.get_field("class") {
+    Some(class_field) =>
+      for class_name in edge_class_names_from_field(class_field) {
+        match classes.get(class_name) {
+          Some(class_def) => process_edge_map(edge, class_def, classes)
+          None => ()
+        }
+      }
+    None => ()
+  }
+}
+
+///|
+fn edge_class_names_from_field(
+  class_field : @ir.Field,
+) -> Array[String] raise GraphCompileError {
+  let class_names : Array[String] = []
+  match class_field.primary {
+    Some(s) => class_names.push(s.to_string())
+    None => ()
+  }
+  match class_field.composite {
+    Some(@ir.Composite::Array(arr)) =>
+      for value in arr.values {
+        match value {
+          @ir.Value::Scalar(s) => class_names.push(s.to_string())
+          _ => raise Semantic("invalid value in array")
+        }
+      }
+    _ => ()
+  }
+  class_names
+}
+
+///|
+fn compile_edges(
+  graph : Graph,
+  ir : @ir.Map,
+  classes : Map[String, @ir.Map],
+) -> Unit raise GraphCompileError {
+  compile_edges_in_map(graph, ir, classes, "", "", 0) |> ignore
 }
 
 ///|
@@ -2740,17 +2786,26 @@ fn is_style_keyword(name : String) -> Bool {
 ///|
 fn validate_edge_map_keys(edge_map : @ir.Map) -> Unit raise GraphCompileError {
   for field in edge_map.fields {
-    if !field.name_is_unquoted() || !is_edge_reserved_keyword(field.name) {
+    if !field.name_is_unquoted() ||
+      !is_edge_reserved_keyword_or_class(field.name) {
       raise Semantic("edge map keys must be reserved keywords")
     }
   }
 }
 
 ///|
+fn is_edge_reserved_keyword_or_class(name : String) -> Bool {
+  if name.to_lower() == "class" {
+    return true
+  }
+  is_edge_reserved_keyword(name)
+}
+
+///|
 fn is_edge_reserved_keyword(name : String) -> Bool {
   let keywords = [
     "style", "source-arrowhead", "target-arrowhead", "source-anchor", "target-anchor",
-    "bend-points", "route",
+    "bend-points", "route", "label",
   ]
   keywords.contains(name.to_lower())
 }
@@ -3269,7 +3324,7 @@ fn compile_legend(
   // into legend entries.
   let legend_graph = Graph::new("d2-legend")
   compile_objects(legend_graph, legend_map, "", "", classes)
-  compile_edges(legend_graph, legend_map)
+  compile_edges(legend_graph, legend_map, classes)
   let legend = Legend::new()
   match lf.primary {
     Some(p) => legend.set_title(p.to_string())

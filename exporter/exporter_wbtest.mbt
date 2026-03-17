@@ -384,6 +384,73 @@ test "edges from sequence diagrams cannot enter themselves" {
 }
 
 ///|
+test "grid nested simple edges fixture compiles edge classes on grid descendants like D2" {
+  let source =
+    #|direction: right
+    #|
+    #|outer-grid -> outer-container
+    #|
+    #|outer-grid: {
+    #|  grid-columns: 1
+    #|
+    #|  inner-grid -> container -> etc
+    #|
+    #|  container: {
+    #|    label.near: top-left
+    #|    (** -> **)[*].class: red
+    #|    a -> b -> c -> a
+    #|    d -> e -> g.h.i
+    #|    d -> f -> g.h
+    #|    b -> g
+    #|  }
+    #|
+    #|  inner-grid: {
+    #|    grid-rows: 1
+    #|    1 -> 2 -> 3: {class: red}
+    #|  }
+    #|}
+    #|
+    #|outer-container: {
+    #|  grid -> container
+    #|
+    #|  grid: {
+    #|    grid-rows: 1
+    #|    1 -> 2 -> 3
+    #|  }
+    #|
+    #|  container: {
+    #|    4 -> 5 -> 6
+    #|    nested container: {
+    #|      7 -> 8
+    #|    }
+    #|  }
+    #|}
+    #|
+    #|classes.red.style.stroke: red
+  let graph = compile_source_graph(source).unwrap()
+  let red_inner_grid_edges : Array[@graph.EdgeInput] = []
+  let container_chain_edges : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    if edge.src_id.has_prefix("outer-grid.inner-grid.") &&
+      edge.dst_id.has_prefix("outer-grid.inner-grid.") {
+      red_inner_grid_edges.push(edge)
+    }
+    if edge.src_id == "outer-grid.inner-grid" ||
+      edge.src_id == "outer-grid.container" {
+      if edge.dst_id == "outer-grid.container" ||
+        edge.dst_id == "outer-grid.etc" {
+        container_chain_edges.push(edge)
+      }
+    }
+  }
+  assert_eq(red_inner_grid_edges.length(), 2)
+  for edge in red_inner_grid_edges {
+    assert_eq(edge.style.stroke, Some(@graph.StyleValue::from_string("red")))
+  }
+  assert_eq(container_chain_edges.length(), 2)
+}
+
+///|
 test "label icon and tooltip near fields follow d2 position semantics" {
   let source =
     #|hey: {

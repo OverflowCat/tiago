@@ -132,6 +132,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Verify row/column layout rules, gap semantics, spans, nested containers, label/icon padding, and edge routing through grid content.
   - Landed in diago: root-grid layouts with incident child edges now preserve D2's nested-cell behavior for Dagre and ELK, including the upstream `nested_layout_bug.d2` case where a nested grid container must still occupy a grid column and cross-cell edges are rerouted after the cell reposition.
   - Landed in diago: root-grid cell cleanup now preserves D2's final column/row sizing after outside-label margin rollback, which restores parity for the upstream `grid.d2` fixture in Dagre and ELK instead of shrinking plain cells back to their semantic minimum widths.
+  - Landed in diago: exporter-side edge map handling now follows the upstream `compileEdgeMap(...)` class-expansion path closely enough for `grid_nested_simple_edges.d2` to compile. Edge `class` values on nested grid descendants are now accepted and expanded through `classes.*` before reserved-key validation, which restores the upstream red-stroke fixture edges instead of failing with `edge map keys must be reserved keywords`.
 
 - [ ] Align sequence diagram behavior with D2.
   - Verify actor spacing, group handling, lifelines, message routing, notes, and nested sequence behavior.
