@@ -1,6 +1,6 @@
-// Generates `text_metrics/font_metrics.mbt` from the embedded D2 fonts.
+// Generates `text_metrics/font_metrics.mbt` from the embedded reference fonts.
 //
-// Run this from a checkout where upstream D2's Go modules resolve, for example:
+// Run this from a checkout where upstream reference's Go modules resolve, for example:
 //   go run /path/to/diago/text_metrics/gen_font_metrics.go > /path/to/diago/text_metrics/font_metrics.mbt
 package main
 
@@ -99,7 +99,7 @@ func main() {
 	}
 
 	var b strings.Builder
-	b.WriteString("// Generated from upstream D2 embedded fonts by text_metrics/gen_font_metrics.go. Do not edit by hand.\n\n")
+	b.WriteString("// Generated from upstream reference embedded fonts by text_metrics/gen_font_metrics.go. Do not edit by hand.\n\n")
 	b.WriteString("///|\n")
 	b.WriteString(fmt.Sprintf("const BASE_FONT_SIZE : Int = %d\n\n", baseFontSize))
 	b.WriteString("///|\n")
@@ -171,8 +171,8 @@ func main() {
 }
 
 func generateSizeSpecific() {
-	fmt.Println("// Generated from upstream D2 embedded fonts by text_metrics/gen_font_metrics.go.")
-	fmt.Println("// Size-specific metrics to match D2 ruler hinting at selected sizes.")
+	fmt.Println("// Generated from upstream reference embedded fonts by text_metrics/gen_font_metrics.go.")
+	fmt.Println("// Size-specific metrics to match the reference ruler hinting at selected sizes.")
 	fmt.Println()
 
 	for _, v := range variants {

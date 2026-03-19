@@ -277,7 +277,7 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
   let selected_layout = if request.layout_explicit {
     layout_engine_name(request.layout_engine)
   } else {
-    "auto(d2-config|default)"
+    "auto(config|default)"
   }
   println(
     "Watching \{input} (interval=\{request.watch_interval_ms}ms, layout=\{selected_layout})...",
@@ -390,7 +390,7 @@ fn execute_validate(request : ValidateRequest) -> Result[Unit, String] {
   } else {
     request.input_path.unwrap_or("Input")
   }
-  println("Success! [\{display}] is valid D2.")
+  println("Success! [\{display}] is valid.")
   Ok(())
 }
 

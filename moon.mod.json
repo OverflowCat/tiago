@@ -20,7 +20,7 @@
   "keywords": [
     "graph"
   ],
-  "description": "A D2-compatible diagram toolkit for MoonBit with Dagre, ELK, and Railway layout engines, rendering SVG, ASCII, and Unicode outputs.",
+  "description": "A diagram toolkit for MoonBit with Dagre, ELK, and Railway layout engines, rendering SVG, ASCII, and Unicode outputs.",
   "exclude": [
     "examples"
   ]

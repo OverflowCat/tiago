@@ -44,7 +44,7 @@ fn constant_near_label_test_object(
 }
 
 ///|
-test "constant near place shifts left for outside-right labels like d2" {
+test "constant near place shifts left for outside-right labels like the reference" {
   let plain = constant_near_label_test_object(None)
   let outside_right = constant_near_label_test_object(
     Some("OUTSIDE_RIGHT_MIDDLE"),
@@ -61,7 +61,7 @@ test "constant near place shifts left for outside-right labels like d2" {
 }
 
 ///|
-test "constant near place shifts down for outside-top labels like d2" {
+test "constant near place shifts down for outside-top labels like the reference" {
   let plain = constant_near_label_test_object(None)
   let outside_top = constant_near_label_test_object(Some("OUTSIDE_TOP_CENTER"))
   let plain_pos = place_constant_near_box(

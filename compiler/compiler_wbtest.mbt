@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-test "compile_graph attaches vars d2-config data to graph input" {
+test "compile_graph attaches vars config data to graph input" {
   let source =
     #|vars: {
     #|  d2-config: {

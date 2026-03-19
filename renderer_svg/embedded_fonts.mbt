@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Embedded Source Code Pro font data URLs, aligned with D2's defaults.
+/// Embedded Source Code Pro font data URLs, aligned with the reference's defaults.
 
 ///|
 fn concat_chunks(chunks : Array[String]) -> String {

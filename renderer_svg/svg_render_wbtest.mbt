@@ -71,7 +71,7 @@ fn test_diagram_with_object(obj : @graph.ObjectInput) -> @diagram.Diagram {
 }
 
 ///|
-test "plain object label layout uses explicit d2 label position" {
+test "plain object label layout uses explicit label position" {
   let diagram = test_diagram_with_object(
     test_object_input(
       @graph.Box::new(100.0, 80.0, 80.0, 40.0),
@@ -114,7 +114,7 @@ test "positioned tooltips render without fallback appendix icon title" {
 }
 
 ///|
-test "compute graph bounds includes d2 outside icon and positioned tooltip extents" {
+test "compute graph bounds includes outside icon and positioned tooltip extents" {
   let diagram = test_diagram_with_object(
     test_object_input(
       @graph.Box::new(100.0, 80.0, 80.0, 40.0),

@@ -196,7 +196,7 @@ fn Lexer::scan_token(self : Lexer) -> Unit {
       } else if is_ident_start(c) {
         self.scan_identifier(start, c)
       } else {
-        // d2 parity: most non-delimiter characters are part of unquoted text.
+        // reference behavior: most non-delimiter characters are part of unquoted text.
         // Keep them as identifier-like tokens so parser-level delimiters decide.
         self.scan_identifier(start, c)
       }

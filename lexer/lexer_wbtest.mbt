@@ -290,7 +290,7 @@ test "tokenize semicolon" {
 }
 
 ///|
-test "tokenize d2 example" {
+test "tokenize diagram example" {
   let source = "server -> database: queries"
   let (tokens, errors) = tokenize(source)
   assert_eq(errors.length(), 0)
@@ -350,7 +350,7 @@ test "Position::zero" {
 }
 
 ///|
-test "complex d2 example" {
+test "complex diagram example" {
   let source =
     #|aws: AWS {
     #|  server: EC2

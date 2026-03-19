@@ -1729,7 +1729,7 @@ fn make_dagre_graph_attrs(
   attrs.set_float("nodesep", nodesep)
   attrs.set_float("ranksep", ranksep)
   attrs.set_float("edgesep", clamp_positive(config.edge_padding, 20.0))
-  // D2 dagre output does not add graph-level margin here.
+  // The reference dagre output does not add graph-level margin here.
   attrs.set_float("marginx", 0.0)
   attrs.set_float("marginy", 0.0)
   attrs
@@ -2815,7 +2815,7 @@ fn estimate_object_size(
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
     content_height = content_height + font_size.to_double()
-    // D2 parity: code shape size is measured text + 0.5em padding each side only.
+    // reference behavior: code shape size is measured text + 0.5em padding each side only.
     return (content_width, content_height)
   } else if obj.label != "" && obj.shape_type != @graph.Text {
     content_width = content_width + D2_INNER_LABEL_PADDING
@@ -6080,8 +6080,8 @@ fn first_box_intersection(
   let y0 = box.y
   let y1 = box.y + box.height
 
-  // Keep the same edge-check order as D2 geo.Box.Intersections:
-  // top -> right -> bottom -> left. D2 then takes intersections[0].
+  // Keep the same edge-check order as the reference box intersection logic:
+  // top -> right -> bottom -> left. The first hit wins.
   match segment_intersection_at_y(p0, p1, y0, x0, x1) {
     Some(hit) => return Some(hit.1)
     None => ()
@@ -7076,7 +7076,7 @@ fn trace_routes_to_object_boundaries(
     let mut start_index = 0
     let mut end_index = points.length() - 1
 
-    // Mirror d2 short-segment handling before trace-to-shape.
+    // Mirror the reference short-segment handling before trace-to-shape.
     if start_index + 2 < points.length() &&
       point_distance(points[start_index], points[start_index + 1]) <
       D2_MIN_SEGMENT_LEN {

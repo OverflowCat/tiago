@@ -1,8 +1,7 @@
 # Diago
 
-Diago is a MoonBit implementation of the [D2](https://d2lang.com) diagram language.
-It compiles `.d2` files into SVG (and optionally ASCII/Unicode text) using multiple
-layout engines.
+Diago is a diagram toolkit for MoonBit.
+It supports a D2-compatible text format and renders diagrams through multiple layout engines.
 
 ## Overview
 
@@ -22,7 +21,7 @@ moon build
 ## Quick Start
 
 ```bash
-moon run cmd/diago -- render diagram.d2
+moon run cmd/diago -- render diagram.txt
 ```
 
 ## CLI
@@ -37,25 +36,25 @@ Common usage:
 
 ```bash
 # Render SVG (default output: input.svg)
-moon run cmd/diago -- render diagram.d2
-moon run cmd/diago -- render diagram.d2 diagram.svg
-moon run cmd/diago -- render diagram.d2 --output diagram.svg
+moon run cmd/diago -- render diagram.txt
+moon run cmd/diago -- render diagram.txt diagram.svg
+moon run cmd/diago -- render diagram.txt --output diagram.svg
 
 # Choose layout engine
-moon run cmd/diago -- render --layout elk diagram.d2 diagram.svg
-moon run cmd/diago -- render -l dagre diagram.d2 diagram.svg
+moon run cmd/diago -- render --layout elk diagram.txt diagram.svg
+moon run cmd/diago -- render -l dagre diagram.txt diagram.svg
 
 # ASCII / Unicode text
-moon run cmd/diago -- render --format ascii diagram.d2 --output diagram.ascii.txt
-moon run cmd/diago -- render --format unicode diagram.d2 --output diagram.unicode.txt
+moon run cmd/diago -- render --format ascii diagram.txt --output diagram.ascii.txt
+moon run cmd/diago -- render --format unicode diagram.txt --output diagram.unicode.txt
 
 # Format / validate
-moon run cmd/diago -- fmt diagram.d2
-moon run cmd/diago -- fmt --check diagram.d2
-moon run cmd/diago -- validate diagram.d2
+moon run cmd/diago -- fmt diagram.txt
+moon run cmd/diago -- fmt --check diagram.txt
+moon run cmd/diago -- validate diagram.txt
 
 # Watch mode
-moon run cmd/diago -- render --watch diagram.d2
+moon run cmd/diago -- render --watch diagram.txt
 
 # Introspection
 moon run cmd/diago -- layout
@@ -66,9 +65,9 @@ moon run cmd/diago -- version
 
 ## Example
 
-Create a file `example.d2`:
+Create a file `example.txt`:
 
-```d2
+```text
 server: Web Server
 database: Database {
   shape: cylinder
@@ -85,7 +84,7 @@ cache -> database: fallback
 Compile it:
 
 ```bash
-moon run cmd/diago -- render example.d2 example.svg
+moon run cmd/diago -- render example.txt example.svg
 ```
 
 ## Pipeline
@@ -93,7 +92,7 @@ moon run cmd/diago -- render example.d2 example.svg
 At a high level:
 
 ```
-D2 Source → Lexer → Parser → AST → IR → Graph → Layout (dagre/elk/railway) → Render (SVG/ASCII/Unicode)
+Source → Lexer → Parser → AST → IR → Graph → Layout (dagre/elk/railway) → Render (SVG/ASCII/Unicode)
 ```
 
 ## Tests

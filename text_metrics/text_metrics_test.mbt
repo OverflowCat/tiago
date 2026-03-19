@@ -44,7 +44,7 @@ test "measure text with newlines" {
 ///|
 test "measure text with leading empty line" {
   let dims = @text_metrics.measure_text("\nLine 1", 14, false, false, false)
-  // D2 adds font_size for leading empty line
+  // A leading empty line adds one font-size line.
   assert_eq(dims.line_count, 1)
   assert_true(dims.dimensions.height > 28.0)
 }
@@ -52,7 +52,7 @@ test "measure text with leading empty line" {
 ///|
 test "measure text with trailing empty lines" {
   let dims = @text_metrics.measure_text("Line 1\n\n", 14, false, false, false)
-  // D2 adds CODE_LINE_HEIGHT * font_size * numTrailing
+  // Trailing empty lines add CODE_LINE_HEIGHT * font_size * numTrailing.
   assert_eq(dims.line_count, 2)
   assert_true(dims.dimensions.height > 30.0)
 }
@@ -66,7 +66,7 @@ test "measure label probe for empty nested grid parity" {
 }
 
 ///|
-test "measure markdown heading like d2 constant_near_title" {
+test "measure markdown heading like the reference constant_near_title" {
   inspect(
     @text_metrics.measure_label_markdown("# A winning strategy", 16),
     content="{width: 257, height: 51}",

@@ -73,7 +73,7 @@ test "format block comment uses triple quotes" {
 }
 
 ///|
-test "format edge key follows d2 parenthesized style" {
+test "format edge key follows the parenthesized style" {
   let edge = @ast.Edge::new(r(0), kp("a", 0), kp("b", 0), "", ">")
   let edge_index = @ast.EdgeIndex::new(r(0), Some(0), false)
   let edge_key = @ast.KeyPath::new(r(0), [uq("style", 0), uq("stroke", 0)])
@@ -102,7 +102,7 @@ test "format edge key follows d2 parenthesized style" {
 }
 
 ///|
-test "format unquoted null is escaped like d2" {
+test "format unquoted null is escaped like the reference" {
   let key = key_with_value(
     "x",
     @ast.Value::Scalar(

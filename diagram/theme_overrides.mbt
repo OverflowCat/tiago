@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// D2-style typed theme override set.
+/// compatibility typed theme override set.
 ///
 /// This mirrors upstream `d2target.ThemeOverrides`, including fixed field
 /// coverage and stable declaration order.

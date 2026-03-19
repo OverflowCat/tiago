@@ -408,7 +408,7 @@ test "engine implementations must not mutate input graph" {
 }
 
 ///|
-test "dagre rejects object near like D2 feature checks" {
+test "dagre rejects object near like the reference feature checks" {
   let source =
     #|a
     #|b: {
@@ -437,7 +437,7 @@ test "dagre rejects object near like D2 feature checks" {
 }
 
 ///|
-test "dagre rejects container dimensions like D2 feature checks" {
+test "dagre rejects container dimensions like the reference feature checks" {
   let source =
     #|container: {
     #|  width: 320
@@ -466,7 +466,7 @@ test "dagre rejects container dimensions like D2 feature checks" {
 }
 
 ///|
-test "dagre rejects descendant edges like D2 feature checks" {
+test "dagre rejects descendant edges like the reference feature checks" {
   let source =
     #|aaa: {
     #|  ccc
@@ -495,7 +495,7 @@ test "dagre rejects descendant edges like D2 feature checks" {
 }
 
 ///|
-test "elk accepts D2-supported container dimensions and descendant edges" {
+test "elk accepts supported container dimensions and descendant edges" {
   let container_source =
     #|container: {
     #|  width: 320
@@ -536,7 +536,7 @@ test "elk accepts D2-supported container dimensions and descendant edges" {
 }
 
 ///|
-test "elk still rejects unsupported D2 feature-gated inputs" {
+test "elk still rejects unsupported feature-gated inputs" {
   let near_source =
     #|a
     #|b: {

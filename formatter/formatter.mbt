@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// diago Source Code Formatter (ported from upstream D2 d2format)
+/// diago Source Code Formatter (ported from upstream reference d2format)
 
 ///|
 pub struct FormatConfig {

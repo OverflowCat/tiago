@@ -31,7 +31,7 @@ pub enum RenderPass {
 pub struct SvgConfig {
   /// Padding around the entire diagram
   padding : Double
-  /// Center the outer SVG viewbox like D2's render option.
+  /// Center the outer SVG viewbox like the reference's render option.
   center : Bool
   /// Apply global sketch rendering mode.
   sketch : Bool
@@ -2182,9 +2182,9 @@ pub fn render_svg(
     None => None
   }
   let use_css_theme_vars = dark_theme is Some(_)
-  // D2 parity: do not reserve extra height for custom interactive controls.
+  // reference behavior: do not reserve extra height for custom interactive controls.
   let control_height = 0.0
-  // D2 parity: SVG export renders the current board only.
+  // reference behavior: SVG export renders the current board only.
   let (base_min_x, base_min_y, base_max_x, base_max_y) = compute_graph_bounds(
     graph, config, light_theme,
   )
@@ -2193,7 +2193,7 @@ pub fn render_svg(
   let max_x = base_max_x
   let max_y = base_max_y
   let bounds = (min_x, min_y, max_x, max_y)
-  // D2 parity: dimensions are based on BoundingBox + pad.
+  // reference behavior: dimensions are based on BoundingBox + pad.
   let (base_left, base_top, base_width, base_height) = d2_base_dimensions(
     min_x,
     min_y,
@@ -2231,7 +2231,7 @@ pub fn render_svg(
   add_sketch_filter(emit_assets, graph, config)
   // Add drop-shadow filter if any object uses `shadow: true`
   add_shadow_filter(emit_assets, graph)
-  // D2 parity: all connection labels are cut out via a shared mask.
+  // reference behavior: all connection labels are cut out via a shared mask.
   let edge_label_mask_url = "url(#\{emit_assets.mask_id()})"
   emit_assets.add_tail(
     edge_label_mask_def(
@@ -2247,8 +2247,8 @@ pub fn render_svg(
   let appendix_items : Array[String] = []
   // Background
   render_root_background(svg, root_canvas, light_theme, use_css_theme_vars)
-  // D2 parity: skip custom control bar rendering.
-  // D2 parity: render in one combined z-ordered stream of shapes+connections.
+  // reference behavior: skip custom control bar rendering.
+  // reference behavior: render in one combined z-ordered stream of shapes+connections.
   // Shapes still use internal background/foreground passes when needed, but are
   // emitted at their sorted position in the global object order.
   let sorted_objects = sort_render_objects(graph.shapes, graph.connections)
@@ -2311,7 +2311,7 @@ pub fn render_svg(
   for item in appendix_items {
     svg.add(item)
   }
-  // D2 parity: export only the active/base board in SVG output.
+  // reference behavior: export only the active/base board in SVG output.
 
   // Render legend (always visible across layer/scenario/step switching)
   match graph.legend {
@@ -2328,7 +2328,7 @@ pub fn render_svg(
     None => ()
   }
 
-  // D2 parity: skip injecting custom control scripts.
+  // reference behavior: skip injecting custom control scripts.
   emit_svg_document(graph, svg, config, emit_assets)
 }
 
@@ -3241,7 +3241,7 @@ fn sort_render_objects(
   shapes : Array[Shape],
   connections : Array[Connection],
 ) -> Array[RenderObject] {
-  // D2 parity: sort over the combined shape+connection stream:
+  // reference behavior: sort over the combined shape+connection stream:
   // 1) z-index asc
   // 2) shape vs shape: shallower(level) first
   // 3) shape before connection for same z-index
@@ -3494,7 +3494,7 @@ fn render_svg_object(
     return
   }
   let shape_name = shape_type_name(obj.shape_type)
-  // D2 parity: most shapes are emitted in one pass (shape+label together).
+  // reference behavior: most shapes are emitted in one pass (shape+label together).
   // Keep two-pass behavior only for special rich shapes.
   let use_single_pass_object = shape_name != "code" &&
     shape_name != "text" &&
@@ -3652,7 +3652,7 @@ fn render_svg_object(
         None => default_font_size
       }
       if object_pass_active {
-        // D2 parity: code snippets are rendered outside the shape group,
+        // reference behavior: code snippets are rendered outside the shape group,
         // while keeping an empty shape group for structural consistency.
         svg.close_group()
       }
@@ -4904,9 +4904,9 @@ fn render_svg_code(
   font_size : Int,
   pass? : RenderPass = Foreground,
 ) -> Unit {
-  // D2 parity: render both light and dark code groups and switch visibility via CSS.
+  // reference behavior: render both light and dark code groups and switch visibility via CSS.
   let code_bgs = [("light-code", "#ffffff"), ("dark-code", "#1e1e2e")]
-  // D2 parity: code block has 0.5em inner padding.
+  // reference behavior: code block has 0.5em inner padding.
   let padding = font_size.to_double() / 2.0
   match pass {
     Background => ()
@@ -6667,7 +6667,7 @@ fn render_svg_diamond(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_diamond.go (diamondPath).
+  // Ported from upstream reference lib/shape/shape_diamond.go (diamondPath).
   let sx = box.width / 77.0
   let sy = box.height / 76.9
   let abs = fn(x : Double, y : Double) {
@@ -6776,7 +6776,7 @@ fn render_svg_hexagon(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_hexagon.go (hexagonPath).
+  // Ported from upstream reference lib/shape/shape_hexagon.go (hexagonPath).
   let half_y_factor = 43.6 / 87.3
   let x0 = box.x
   let y0 = box.y
@@ -6828,7 +6828,7 @@ fn render_svg_parallelogram(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_parallelogram.go (parallelogramPath).
+  // Ported from upstream reference lib/shape/shape_parallelogram.go (parallelogramPath).
   let wedge = if box.width <= 26.0 { box.width / 2.0 } else { 26.0 }
   let commands : Array[String] = []
   commands.push(
@@ -6863,8 +6863,8 @@ fn render_svg_parallelogram(
 
 ///|
 fn d2_path_chop_precision(value : Double) -> Double {
-  // Match upstream D2 lib/svg/path.go::chopPrecision.
-  // D2 rounds to integer after bringing the value down to float32 precision.
+  // Match upstream reference lib/svg/path.go::chopPrecision.
+  // The reference rounds to integer after bringing the value down to float32 precision.
   // Go reference:
   // math.Round(float64(float32(f*10000)) / 10000)
   let rounded = (Float::from_double(value * 10000.0).to_double() / 10000.0).round()
@@ -6892,7 +6892,7 @@ fn render_svg_person(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_person.go (personPath) + lib/svg/path.go precision.
+  // Ported from upstream reference lib/shape/shape_person.go (personPath) + lib/svg/path.go precision.
   let sx = box.width / 68.3
   let sy = box.height / 77.4
   let abs_point = fn(x : Double, y : Double) {
@@ -6955,7 +6955,7 @@ fn render_svg_person(
   current_x = c5x3
   current_y = c5y3
 
-  // Mirror of the omitted `s` command in d2.
+  // Mirror of the omitted `s` command in the reference renderer.
   let (c6x1, c6y1) = rel_point(current_x, current_y, 13.9, 0.0)
   let (c6x2, c6y2) = rel_point(current_x, current_y, 25.2, 11.3)
   let (c6x3, c6y3) = rel_point(current_x, current_y, 25.2, 25.2)
@@ -7019,8 +7019,8 @@ fn render_svg_cloud(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_cloud.go (cloudPath) and aligned to
-  // upstream D2 lib/svg/path.go chopPrecision behavior.
+  // Ported from upstream reference lib/shape/shape_cloud.go (cloudPath) and aligned to
+  // upstream reference lib/svg/path.go chopPrecision behavior.
   let sx = box.width / 834.0
   let sy = box.height / 523.0
   let abs = fn(x : Double, y : Double) {
@@ -7167,7 +7167,7 @@ fn render_svg_document(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_document.go (documentPath).
+  // Ported from upstream reference lib/shape/shape_document.go (documentPath).
   let doc_path_height = 18.925
   let doc_path_bottom = 16.3
   let sy = box.height
@@ -7223,7 +7223,7 @@ fn render_svg_queue(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
+  // Ported from upstream reference lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
   let arc_w = if box.width < 48.0 { box.width / 2.0 } else { 24.0 }
   let m = 0.45
   let x0 = box.x
@@ -7298,7 +7298,7 @@ fn render_svg_stored_data(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_stored_data.go (storedDataPath).
+  // Ported from upstream reference lib/shape/shape_stored_data.go (storedDataPath).
   let wedge = if box.width < 30.0 { box.width / 2.0 } else { 15.0 }
   let m = 0.27
   let x0 = box.x
@@ -7351,7 +7351,7 @@ fn render_svg_page(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_page.go (pageOuterPath/pageInnerPath).
+  // Ported from upstream reference lib/shape/shape_page.go (pageOuterPath/pageInnerPath).
   let x0 = box.x
   let y0 = box.y
   let w = box.width
@@ -7531,7 +7531,7 @@ fn render_svg_package(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_package.go (getTopDimensions/packagePath).
+  // Ported from upstream reference lib/shape/shape_package.go (getTopDimensions/packagePath).
   let mut top_width = box.width * 0.5
   if box.width >= 100.0 {
     top_width = if top_width > 150.0 {
@@ -7589,7 +7589,7 @@ fn render_svg_step(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_step.go (stepPath).
+  // Ported from upstream reference lib/shape/shape_step.go (stepPath).
   let wedge = if box.width <= 35.0 { box.width / 2.0 } else { 35.0 }
   let commands : Array[String] = []
   commands.push("M \{d2_path_number(box.x)} \{d2_path_number(box.y)}")
@@ -7635,7 +7635,7 @@ fn render_svg_callout(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from upstream D2 lib/shape/shape_callout.go (calloutPath).
+  // Ported from upstream reference lib/shape/shape_callout.go (calloutPath).
   let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
   let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
   let commands : Array[String] = []
@@ -7702,7 +7702,7 @@ fn render_svg_3d_rect(
   theme : @themes.Theme,
   _use_css_theme_vars : Bool,
 ) -> Unit {
-  // Ported from upstream D2 d2renderers/d2svg/d2svg.go (render3DRect).
+  // Ported from upstream reference d2renderers/d2svg/d2svg.go (render3DRect).
   let xi = round_double(box.x).to_int()
   let yi = round_double(box.y).to_int()
   let wi = round_double(box.width).to_int()
@@ -7951,7 +7951,7 @@ fn point_at_distance_on_route(
   if points.length() < 2 {
     return (Point::new(0.0, 0.0), 0)
   }
-  // Match upstream D2 lib/geo/route.go::GetPointAtDistance:
+  // Match upstream reference lib/geo/route.go::GetPointAtDistance:
   // do not clamp distance into [0, total], extrapolate on the last segment.
   let mut remaining = distance
   let mut curr = points[0]
@@ -8286,7 +8286,7 @@ fn render_svg_edge(
     // Use precomputed label_box from the layout pipeline.
     match edge.label_box {
       Some(label_box) => {
-        // Align with d2 SVG renderer behavior: edge label top-left is rounded
+        // Align with the reference SVG renderer behavior: edge label top-left is rounded
         // before calculating text baseline/center.
         let label_x = round_double(label_box.x)
         let label_y = round_double(label_box.y)

@@ -49,7 +49,7 @@ pub fn parse_with_path(
 }
 
 ///|
-/// Parse a standalone D2 key path.
+/// Parse a standalone key path in the supported format.
 pub fn parse_key_path(source : String) -> Result[@ast.KeyPath, ParseErrors] {
   let (tokens, lex_errors) = @lexer.tokenize(source)
   let parser = Parser::new(source, tokens)
@@ -662,7 +662,7 @@ fn Parser::parse_edge(self : Parser, src_key : @ast.KeyPath?) -> @ast.Edge? {
     _ => return None
   }
   self.skip_whitespace_not_newline()
-  // Support d2-style edge operator line continuation:
+  // Support compatibility edge operator line continuation:
   // src --\
   //   -> dst
   while not(self.is_at_end()) {
@@ -1306,7 +1306,7 @@ fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
 
 ///|
 fn Parser::parse_block_string(self : Parser) -> @ast.BlockString? {
-  // Ported from upstream D2 d2parser/parse.go:parseBlockString (adapted to token-based parsing).
+  // Ported from upstream reference d2parser/parse.go:parseBlockString (adapted to token-based parsing).
   let pipe = self.advance() // consume '|'
   let start = pipe.range.start
   let path = pipe.range.path
@@ -1385,7 +1385,7 @@ fn Parser::parse_block_string(self : Parser) -> @ast.BlockString? {
     end_pos = t.range.end
   }
 
-  // Extract raw content and apply d2 trimming rules.
+  // Extract raw content and apply the supported trimming rules.
   let mut value = substring_by_offsets(self.source, content_start, close_start)
   if implicit_indent.length() > 0 {
     value = implicit_indent + value

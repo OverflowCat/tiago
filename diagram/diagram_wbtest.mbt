@@ -186,7 +186,7 @@ test "has_shape recurses across nested boards" {
 }
 
 ///|
-test "get_corpus matches d2-style appendices legend and structured members" {
+test "get_corpus matches compatibility appendices legend and structured members" {
   let legend = @graph.LegendInput::from_parts(
     Some("Legend"),
     @graph.LegendPosition::TopRight,
@@ -269,7 +269,7 @@ test "get_nested_corpus includes nested boards" {
 }
 
 ///|
-test "hash_id follows d2 target config bytes and salt" {
+test "hash_id follows target config bytes and salt" {
   let a = test_diagram(
     "root",
     objects=[test_object("node", "Node", @graph.ShapeType::Rectangle)],
@@ -299,7 +299,7 @@ test "with_render_hash_config feeds render appearance into diagram hash" {
 }
 
 ///|
-test "diagram bytes encode typed theme overrides like d2target config json" {
+test "diagram bytes encode typed theme overrides like the target config json" {
   let overrides = ThemeOverrides::new()
     .with_code("B1", "red")
     .with_code("N1", "black")

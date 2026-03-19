@@ -183,7 +183,7 @@ test "precedence: env overrides defaults for layout" {
 }
 
 ///|
-test "render parses D2-style pad and center svg options" {
+test "render parses compatibility pad and center svg options" {
   let req = parse_render(
     ["diago", "render", "demo.d2", "--pad", "24", "--center"],
     {},
@@ -193,7 +193,7 @@ test "render parses D2-style pad and center svg options" {
 }
 
 ///|
-test "render parses D2-style sketch flag" {
+test "render parses compatibility sketch flag" {
   let req = parse_render(["diago", "render", "demo.d2", "--sketch"], {})
   assert_eq(req.sketch, Some(true))
 }
@@ -250,7 +250,7 @@ test "legacy direct entry returns migration hint" {
 }
 
 ///|
-test "precedence: env layout overrides invalid vars.d2-config layout-engine" {
+test "precedence: env layout overrides invalid vars config layout-engine" {
   let source =
     #|vars: {
     #|  d2-config: {

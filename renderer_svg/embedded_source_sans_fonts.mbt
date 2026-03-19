@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Embedded Source Sans Pro font data URLs, aligned with D2's defaults.
+/// Embedded Source Sans Pro font data URLs, aligned with the reference's defaults.
 
 ///|
 let source_sans_pro_regular_data : String = concat_chunks([

@@ -14,7 +14,7 @@
 
 ///|
 /// GitHub markdown stylesheet for SVG markdown labels.
-/// Source: d2/d2renderers/d2svg/github-markdown.css
+/// Source: the reference renderer's embedded markdown stylesheet.
 let markdown_css_template : String =
   #|.md em,
   #|.md dfn {

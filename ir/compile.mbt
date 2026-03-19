@@ -67,7 +67,7 @@ fn compile_map_nodes(
       @ast.MapNode::BlockComment(_, _) => () // Skip block comments
       @ast.MapNode::Substitution(sub) =>
         // Placeholder field to be resolved during substitution pass.
-        // We use an empty name to represent "no key" (d2 parity).
+        // We use an empty name to represent "no key" (reference behavior).
         ir.add_field(
           Field::new("", Some(substitution_scalar(sub, source_path)), None, []),
         )
@@ -709,7 +709,7 @@ fn compile_edges(
           src_path_syntax=Some(src_path.syntax),
           dst_path_syntax=Some(dst_path.syntax),
         )
-        // D2 preserves multiple edges between the same endpoints. When no explicit
+        // The reference preserves multiple edges between the same endpoints. When no explicit
         // `[index]` is given, allocate the next index and create a new edge.
         // When `[index]` is provided, update that edge if it exists; otherwise
         // create it at that index.

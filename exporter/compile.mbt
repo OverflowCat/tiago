@@ -829,12 +829,12 @@ pub fn compile(
   let classes = extract_classes(ir)
   compile_board_graph(graph, ir, classes)
   canonicalize_board_links_recursive(graph, graph, ["root"])
-  // D2 parity: SQL table column endpoints are represented as table endpoints
+  // reference behavior: SQL table column endpoints are represented as table endpoints
   // with source/target column indices.
   normalize_sql_table_edge_endpoints_recursive(graph)
-  // Semantic validation pass aligned with D2 compiler behavior.
+  // Semantic validation pass aligned with the reference compiler behavior.
   validate_semantics(graph)
-  // D2 parity: preserve source order using object and edge references.
+  // reference behavior: preserve source order using object and edge references.
   sort_graph_by_references(graph)
   graph_to_input(graph)
 }
@@ -1380,7 +1380,7 @@ fn compile_objects(
         // Check for special fields (can override class)
         validate_board_root_scope(inner)
         process_special_fields(obj, inner)
-        // D2 registers objects in encounter order before descending.
+        // The reference registers objects in encounter order before descending.
         graph.add_object(obj)
         // Recursively compile children
         compile_children(graph, obj, inner, id, abs_id_syntax, classes)
@@ -1497,7 +1497,7 @@ fn set_object_label_from_scalar(obj : Object, scalar : @ir.Scalar) -> Unit {
       if tag.length() > 0 {
         set_object_language(obj, Some(tag))
         if tag == "latex" || tag == "markdown" {
-          // D2 parity: markdown/latex default to text shape unless explicitly overridden.
+          // reference behavior: markdown/latex default to text shape unless explicitly overridden.
           obj.shape_type = ShapeType::Text
         } else {
           obj.shape_type = ShapeType::Code
@@ -1680,7 +1680,7 @@ fn process_special_fields(
           obj.raw_shape = Some(shape)
           obj.shape_type = ShapeType::from_string(shape)
           if obj.shape_type == ShapeType::Code {
-            // D2 parity: explicit code shape is plaintext.
+            // reference behavior: explicit code shape is plaintext.
             set_object_language(obj, Some("text"))
           }
         }
@@ -3298,10 +3298,11 @@ fn near_constants_message() -> String {
 }
 
 ///|
-/// Compile D2 legend from `vars.d2-legend` (see upstream D2 d2compiler/compile.go).
+/// Compile legend entries from the reserved legend config entry.
 ///
 /// Note: `legend` is not treated as a reserved keyword; it is compiled as a
-/// normal object to match D2 semantics and the reference SVGs in this repo.
+/// normal object to match the supported format semantics and the committed
+/// reference outputs in this repo.
 fn compile_legend(
   graph : Graph,
   ir : @ir.Map,

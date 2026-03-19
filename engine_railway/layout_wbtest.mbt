@@ -883,7 +883,7 @@ test "railway object size expands for uml class members" {
   let cfg = @engine_api.LayoutConfig::new()
   let parser = @graph.ObjectInput::from_parts(
     "parser",
-    "D2 Parser",
+    "Diagram Parser",
     @graph.Class,
     @graph.StyleInput::new(),
     None,

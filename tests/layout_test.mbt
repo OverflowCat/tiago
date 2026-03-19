@@ -171,7 +171,7 @@ test "quoted syntax identities survive dagre elk and railway layout" {
 }
 
 ///|
-test "d2 nested_layout_bug root grid keeps nested container as a grid cell" {
+test "reference nested_layout_bug root grid keeps nested container as a grid cell" {
   let source =
     #|grid-rows: 1
     #|grid-columns: 2
@@ -267,7 +267,7 @@ fn assert_root_grid_nested_layout_like_d2(
 }
 
 ///|
-test "d2 nested_diagram_types keeps nested sequence descendants inside their containers" {
+test "reference nested_diagram_types keeps nested sequence descendants inside their containers" {
   let source =
     #|a
     #|b
@@ -447,7 +447,7 @@ fn assert_nested_diagram_types_layout_like_d2(
 }
 
 ///|
-test "d2 connected_container matches stable target geometry" {
+test "reference connected_container matches stable target geometry" {
   let source =
     #|a.b -> c.d -> f.h.g
   let graph_input = compile_graph_no_layout(source).unwrap()
@@ -543,7 +543,7 @@ fn assert_connected_container_like_d2(
 }
 
 ///|
-test "d2 container_edges matches stable target geometry" {
+test "reference container_edges matches stable target geometry" {
   let source =
     #|a -> g.b -> d.h.c
     #|d -> g.e -> f -> g -> d.h
@@ -648,7 +648,7 @@ fn assert_container_edges_like_d2(
 }
 
 ///|
-test "d2 grid_nested_simple_edges preserves nested grid child order" {
+test "reference grid_nested_simple_edges preserves nested grid child order" {
   let source =
     #|direction: right
     #|outer-grid -> outer-container
@@ -753,7 +753,7 @@ fn assert_grid_nested_simple_edges_order_like_d2(
 }
 
 ///|
-test "d2 grid_nested_gap0 matches stable nested grid boxes" {
+test "reference grid_nested_gap0 matches stable nested grid boxes" {
   let source =
     #|The Universe: {
     #|  grid-rows: 3
@@ -766,10 +766,10 @@ test "d2 grid_nested_gap0 matches stable nested grid boxes" {
     #|    grid-rows: 3
     #|    grid-gap: 0
     #|    TALA.width: 100
-    #|    D2
+    #|    Node2
     #|    Cloud
     #|  }
-    #|  D2.width: 200
+    #|  Node2.width: 200
     #|  Cloud.width: 100
     #|  Terrastruct.width: 400
     #|}
@@ -793,12 +793,12 @@ test "d2 grid_nested_gap0 matches stable nested grid boxes" {
     e => fail("elk layout error: \{e}")
   }
 
-  assert_grid_nested_gap0_like_d2(dagre, "dagre")
-  assert_grid_nested_gap0_like_d2(elk, "elk")
+  assert_grid_nested_gap0_reference(dagre, "dagre")
+  assert_grid_nested_gap0_reference(elk, "elk")
 }
 
 ///|
-fn assert_grid_nested_gap0_like_d2(
+fn assert_grid_nested_gap0_reference(
   graph : @graph.GraphInput,
   engine_name : String,
 ) -> Unit raise {
@@ -807,9 +807,9 @@ fn assert_grid_nested_gap0_like_d2(
   let last = graph.find_object("The Universe.Last").unwrap()
   let tala = graph.find_object("The Universe.TALA").unwrap()
   let tala_tala = graph.find_object("The Universe.TALA.TALA").unwrap()
-  let tala_d2 = graph.find_object("The Universe.TALA.D2").unwrap()
+  let tala_node2 = graph.find_object("The Universe.TALA.Node2").unwrap()
   let tala_cloud = graph.find_object("The Universe.TALA.Cloud").unwrap()
-  let d2 = graph.find_object("The Universe.D2").unwrap()
+  let node2 = graph.find_object("The Universe.Node2").unwrap()
   let cloud = graph.find_object("The Universe.Cloud").unwrap()
   let terrastruct = graph.find_object("The Universe.Terrastruct").unwrap()
 
@@ -820,9 +820,9 @@ fn assert_grid_nested_gap0_like_d2(
       last.get_box(),
       tala.get_box(),
       tala_tala.get_box(),
-      tala_d2.get_box(),
+      tala_node2.get_box(),
       tala_cloud.get_box(),
-      d2.get_box(),
+      node2.get_box(),
       cloud.get_box(),
       terrastruct.get_box(),
     ) {
@@ -832,9 +832,9 @@ fn assert_grid_nested_gap0_like_d2(
       Some(last_box),
       Some(tala_box),
       Some(tala_tala_box),
-      Some(tala_d2_box),
+      Some(tala_node2_box),
       Some(tala_cloud_box),
-      Some(d2_box),
+      Some(node2_box),
       Some(cloud_box),
       Some(terrastruct_box),
     ) =>
@@ -844,9 +844,9 @@ fn assert_grid_nested_gap0_like_d2(
         assert_eq(last_box, @graph.Box::new(300.0, 46.0, 100.0, 66.0))
         assert_eq(tala_box, @graph.Box::new(0.0, 112.0, 100.0, 193.0))
         assert_eq(tala_tala_box, @graph.Box::new(0.0, 112.0, 100.0, 61.0))
-        assert_eq(tala_d2_box, @graph.Box::new(0.0, 173.0, 100.0, 66.0))
+        assert_eq(tala_node2_box, @graph.Box::new(0.0, 173.0, 100.0, 66.0))
         assert_eq(tala_cloud_box, @graph.Box::new(0.0, 239.0, 100.0, 66.0))
-        assert_eq(d2_box, @graph.Box::new(100.0, 112.0, 200.0, 193.0))
+        assert_eq(node2_box, @graph.Box::new(100.0, 112.0, 200.0, 193.0))
         assert_eq(cloud_box, @graph.Box::new(300.0, 112.0, 100.0, 193.0))
         assert_eq(terrastruct_box, @graph.Box::new(0.0, 305.0, 400.0, 61.0))
       } else {
@@ -855,9 +855,9 @@ fn assert_grid_nested_gap0_like_d2(
         assert_eq(last_box, @graph.Box::new(312.0, 58.0, 100.0, 66.0))
         assert_eq(tala_box, @graph.Box::new(12.0, 124.0, 100.0, 193.0))
         assert_eq(tala_tala_box, @graph.Box::new(12.0, 124.0, 100.0, 61.0))
-        assert_eq(tala_d2_box, @graph.Box::new(12.0, 185.0, 100.0, 66.0))
+        assert_eq(tala_node2_box, @graph.Box::new(12.0, 185.0, 100.0, 66.0))
         assert_eq(tala_cloud_box, @graph.Box::new(12.0, 251.0, 100.0, 66.0))
-        assert_eq(d2_box, @graph.Box::new(112.0, 124.0, 200.0, 193.0))
+        assert_eq(node2_box, @graph.Box::new(112.0, 124.0, 200.0, 193.0))
         assert_eq(cloud_box, @graph.Box::new(312.0, 124.0, 100.0, 193.0))
         assert_eq(terrastruct_box, @graph.Box::new(12.0, 317.0, 400.0, 61.0))
       }
@@ -867,7 +867,7 @@ fn assert_grid_nested_gap0_like_d2(
 }
 
 ///|
-test "d2 grid_nested grid-with-container matches stable boxes" {
+test "reference grid_nested grid-with-container matches stable boxes" {
   let source =
     #|grid w/ container: {
     #|  grid-rows: 2
@@ -956,7 +956,7 @@ fn assert_grid_nested_container_like_d2(
 }
 
 ///|
-test "d2 grid_nested grid-in-grid matches stable boxes" {
+test "reference grid_nested grid-in-grid matches stable boxes" {
   let source =
     #|grid in grid: {
     #|  grid-rows: 2
@@ -1066,7 +1066,7 @@ fn assert_grid_in_grid_like_d2(
 }
 
 ///|
-test "d2 grid_nested grid-with-nested-containers matches stable boxes" {
+test "reference grid_nested grid-with-nested-containers matches stable boxes" {
   let source =
     #|grid w/ nested containers: {
     #|  grid-rows: 2
@@ -1202,7 +1202,7 @@ fn assert_grid_nested_containers_like_d2(
 }
 
 ///|
-test "d2 grid_nested grid-with-grid-with-grid matches stable boxes" {
+test "reference grid_nested grid-with-grid-with-grid matches stable boxes" {
   let source =
     #|grid w/ grid w/ grid: {
     #|  grid-rows: 2
@@ -1401,7 +1401,7 @@ fn assert_grid_with_grid_with_grid_like_d2(
 }
 
 ///|
-test "d2 empty_nested_grid matches stable boxes" {
+test "reference empty_nested_grid matches stable boxes" {
   let source =
     #|outer: {
     #|  grid-rows: 1
@@ -1459,7 +1459,7 @@ fn assert_empty_nested_grid_like_d2(
 }
 
 ///|
-test "d2 empty_sequence matches stable boxes" {
+test "reference empty_sequence matches stable boxes" {
   let source =
     #|A: hello {
     #|  shape: sequence_diagram
@@ -1546,7 +1546,7 @@ fn assert_empty_sequence_like_d2(
 }
 
 ///|
-test "d2 nested_steps matches stable boxes" {
+test "reference nested_steps matches stable boxes" {
   let source =
     #|a: {
     #|  a: {
@@ -1643,7 +1643,7 @@ fn assert_nested_steps_like_d2(
 }
 
 ///|
-test "d2 multiple_constant_nears matches stable target geometry" {
+test "reference multiple_constant_nears matches stable target geometry" {
   let source =
     #|a
     #|b
@@ -1687,7 +1687,7 @@ test "d2 multiple_constant_nears matches stable target geometry" {
 }
 
 ///|
-test "d2 constant_near_title matches stable target geometry" {
+test "reference constant_near_title matches stable target geometry" {
   let source =
     #|title: |md
     #|  # A winning strategy
@@ -1721,7 +1721,7 @@ test "d2 constant_near_title matches stable target geometry" {
 }
 
 ///|
-test "d2 grid_edge_across_cell matches stable target geometry" {
+test "reference grid_edge_across_cell matches stable target geometry" {
   let source =
     #|classes.red.style.stroke: red
     #|grid: {
@@ -2132,7 +2132,7 @@ fn assert_multiple_constant_nears_like_d2(
 }
 
 ///|
-test "d2 grid_in_constant_near matches stable target geometry" {
+test "reference grid_in_constant_near matches stable target geometry" {
   let source =
     #|a
     #|b

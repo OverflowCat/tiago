@@ -43,7 +43,7 @@ let max_bundle_image_size : Int = 1 << 25
 let persistent_bundle_cache : Map[String, String] = {}
 
 ///|
-// Whitebox tests use these maps to mirror D2's mockable HTTP transport.
+// Whitebox tests use these maps to mirror the mockable reference HTTP transport.
 let test_remote_fetch_ok_overrides : Map[String, (Bytes, String)] = {}
 
 ///|

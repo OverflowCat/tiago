@@ -179,9 +179,9 @@ fn infer_label_position_from_boxes(
 fn resolve_shape_label_position(shape : @diagram.Shape) -> String {
   guard shape.label != "" else { return DEFAULT_LABEL_POSITION }
   if shape.shape_type == @graph.ShapeType::Text || is_markdown_shape(shape) {
-    // Match d2 ASCII behavior: markdown content affects shape sizing but is
-    // not directly drawn as plain text. Text shapes also render without
-    // plaintext labels in d2 ASCII.
+    // Match the reference ASCII behavior: markdown content affects shape sizing
+    // but is not directly drawn as plain text. Text shapes also render without
+    // plaintext labels in the reference ASCII output.
     return HIDDEN_LABEL_POSITION
   }
   guard shape.box is Some(box) else { return DEFAULT_LABEL_POSITION }

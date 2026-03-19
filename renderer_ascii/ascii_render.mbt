@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// d2-compatible ASCII renderer.
+/// compatibility ASCII renderer.
 
 ///|
 pub struct AsciiConfig {
@@ -205,7 +205,7 @@ fn calculate_extended_bounds(
           )
         }
 
-        // Keep text output bounds aligned with d2's appendix icon space for
+        // Keep text output bounds aligned with the reference appendix icon space for
         // linked/tooltip shapes, which affects y-offset calibration.
         let has_tooltip = match shape.tooltip {
           Some(t) => t != ""

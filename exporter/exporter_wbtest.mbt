@@ -384,7 +384,7 @@ test "edges from sequence diagrams cannot enter themselves" {
 }
 
 ///|
-test "grid nested simple edges fixture compiles edge classes on grid descendants like D2" {
+test "grid nested simple edges fixture compiles edge classes on grid descendants like the reference" {
   let source =
     #|direction: right
     #|
@@ -451,7 +451,7 @@ test "grid nested simple edges fixture compiles edge classes on grid descendants
 }
 
 ///|
-test "label icon and tooltip near fields follow d2 position semantics" {
+test "label icon and tooltip near fields follow position semantics" {
   let source =
     #|hey: {
     #|  label: sushi {
@@ -475,7 +475,7 @@ test "label icon and tooltip near fields follow d2 position semantics" {
 }
 
 ///|
-test "separate near fields and null position resets follow d2 semantics" {
+test "separate near fields and null position resets follow position semantics" {
   let source =
     #|hey: sushi {
     #|  label.near: outside-top-left
@@ -491,7 +491,7 @@ test "separate near fields and null position resets follow d2 semantics" {
 }
 
 ///|
-test "tooltip near rejects label-only positions like d2" {
+test "tooltip near rejects label-only positions like the reference" {
   let source =
     #|hey: {
     #|  tooltip: hover text {
@@ -505,7 +505,7 @@ test "tooltip near rejects label-only positions like d2" {
 }
 
 ///|
-test "d2-legend follows D2 compile semantics and defaults" {
+test "legend config follows the compile semantics and defaults" {
   let source =
     #|vars: {
     #|  d2-legend: "凡例" {
@@ -610,7 +610,7 @@ test "d2-legend follows D2 compile semantics and defaults" {
 }
 
 ///|
-test "d2-legend keeps zero-opacity edges like D2 compiler" {
+test "legend config keeps zero-opacity edges like the reference compiler" {
   let source =
     #|vars: {
     #|  d2-legend: {

@@ -1,6 +1,6 @@
 // Copyright 2026
 //
-// Ported from upstream D2 lib/font/subsetFont.go.
+// Ported from upstream reference lib/font/subsetFont.go.
 
 ///|
 let symbol_words : Int = 1 << 0

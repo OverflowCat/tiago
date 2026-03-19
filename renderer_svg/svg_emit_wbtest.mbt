@@ -1,5 +1,5 @@
 ///|
-test "d2 legend corpus ignores custom entries" {
+test "reference legend corpus ignores custom entries" {
   let legend = @graph.LegendInput::from_parts(
     Some("Legendary"),
     @graph.LegendPosition::TopRight,
@@ -23,7 +23,7 @@ test "d2 legend corpus ignores custom entries" {
 }
 
 ///|
-test "d2 legend corpus uses fallback title when empty" {
+test "reference legend corpus uses fallback title when empty" {
   let legend = @graph.LegendInput::from_parts(
     Some(""),
     @graph.LegendPosition::TopRight,

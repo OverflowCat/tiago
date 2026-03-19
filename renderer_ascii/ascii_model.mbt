@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Shared constants and helper types for the d2-compatible ASCII renderer.
+/// Shared constants and helper types for the compatibility ASCII renderer.
 
 ///|
 const DEFAULT_FONT_WIDTH = 9.75

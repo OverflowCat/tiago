@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-/// D2-style nested diagram orchestration for non-root nested diagram containers.
+/// Nested diagram orchestration for non-root nested diagram containers.
 ///
 /// Upstream reference:
-/// - upstream D2 `d2layouts/LayoutNested`
-/// - upstream D2 `nested_diagram_types.d2` fixture
+/// - `LayoutNested`
+/// - the nested diagram types fixture
 ///
 /// The core layout engines in diago only special-case a subset of root-level
 /// diagram kinds. This helper mirrors the upstream nested-layout flow by

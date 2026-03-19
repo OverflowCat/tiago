@@ -3720,7 +3720,7 @@ fn layout_node_spacing(
 ) -> Int {
   let raw = match
     (direction, config.horizontal_spacing, config.vertical_spacing) {
-    // Align default ELK spacing with d2 (70) while preserving explicit config overrides.
+    // Align default ELK spacing with the reference default (70) while preserving explicit config overrides.
     (@engine_api.Down | @engine_api.Up, _, v) if approx_eq(v, 100.0) => 70.0
     (@engine_api.Right | @engine_api.Left, h, _) if approx_eq(h, 60.0) => 70.0
     (@engine_api.Down | @engine_api.Up, _, v) => v
@@ -4665,7 +4665,7 @@ fn range_overlap(a1 : Double, a2 : Double, b1 : Double, b2 : Double) -> Bool {
   let max_a = if a1 > a2 { a1 } else { a2 }
   let min_b = if b1 < b2 { b1 } else { b2 }
   let max_b = if b1 > b2 { b1 } else { b2 }
-  // Align d2 geo.Segment.Overlaps(..., buffer=0):
+  // Align the reference overlap check with buffer=0:
   // endpoint touching is NOT considered overlap.
   !(min_a - max_b >= 0.0 || min_b - max_a >= 0.0)
 }
@@ -4917,7 +4917,7 @@ fn extended_trace_segment_end(
 
 ///|
 fn d2_path_chop_precision_for_trace(value : Double) -> Double {
-  // Match upstream D2 lib/svg/path.go::chopPrecision used by shape perimeters.
+  // Match upstream reference lib/svg/path.go::chopPrecision used by shape perimeters.
   let rounded = (Float::from_double(value * 10000.0).to_double() / 10000.0).round()
   if rounded == 0.0 {
     0.0
@@ -6020,7 +6020,7 @@ fn estimate_object_size(
   if obj.shape_type == @graph.Code {
     content_width = content_width + font_size.to_double()
     content_height = content_height + font_size.to_double()
-    // D2 parity: code shape size is measured text + 0.5em padding each side only.
+    // reference behavior: code shape size is measured text + 0.5em padding each side only.
     return (content_width, content_height)
   } else if obj.label != "" && obj.shape_type != @graph.Text {
     content_width = content_width + D2_INNER_LABEL_PADDING

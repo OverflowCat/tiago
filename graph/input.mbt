@@ -339,8 +339,8 @@ pub fn EdgeReference::contained_by(
 ///
 /// * `id` : Compatibility absolute identifier using semantic path values.
 /// * `id_val` : Semantic value of the local object identifier.
-/// * `id_syntax` : Canonical D2 syntax for the local object identifier.
-/// * `abs_id_syntax` : Canonical D2 syntax for the absolute object path.
+/// * `id_syntax` : Canonical source syntax for the local object identifier.
+/// * `abs_id_syntax` : Canonical source syntax for the absolute object path.
 /// * `references` : Source references that compiled into this object.
 /// * `label` : Display text for the object.
 /// * `shape_type` : Visual shape of the object.

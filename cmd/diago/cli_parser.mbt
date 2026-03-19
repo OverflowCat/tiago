@@ -104,7 +104,7 @@ fn build_render_subcommand() -> @argparse.Command {
       @argparse.FlagArg(
         "omit-version",
         long="omit-version",
-        about="Omit data-d2-version attribute in SVG output",
+        about="Omit the version attribute in SVG output",
         env="DIAGO_OMIT_VERSION",
       ),
       @argparse.FlagArg(
@@ -235,7 +235,7 @@ fn build_render_subcommand() -> @argparse.Command {
 fn build_fmt_subcommand() -> @argparse.Command {
   @argparse.Command(
     "fmt",
-    about="Format .d2 files in place",
+    about="Format diagram files in place",
     flags=[
       @argparse.FlagArg(
         "check",
@@ -665,7 +665,7 @@ fn legacy_cli_error(raw_args : Array[String]) -> String? {
   }
   if command == "watch" {
     return Some(
-      "Error: 'watch' command has been removed. Use: diago render --watch <input.d2> [output].",
+      "Error: 'watch' command has been removed. Use: diago render --watch <input> [output].",
     )
   }
   if command == "dump-input" {
@@ -697,7 +697,7 @@ fn legacy_cli_error(raw_args : Array[String]) -> String? {
     command != "__dump-input" &&
     !command.has_prefix("-") {
     return Some(
-      "Error: direct render entry was removed. Use: diago render <input.d2> [output].",
+      "Error: direct render entry was removed. Use: diago render <input> [output].",
     )
   }
   None

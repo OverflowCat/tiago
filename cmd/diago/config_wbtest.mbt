@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-test "vars d2-config theme-id applies when cli theme absent" {
+test "vars config theme-id applies when cli theme absent" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -34,7 +34,7 @@ test "vars d2-config theme-id applies when cli theme absent" {
 }
 
 ///|
-test "cli theme overrides vars d2-config theme-id" {
+test "cli theme overrides vars config theme-id" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -55,7 +55,7 @@ test "cli theme overrides vars d2-config theme-id" {
 }
 
 ///|
-test "vars d2-config layout-engine applies when cli layout is not explicit" {
+test "vars config layout-engine applies when cli layout is not explicit" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -88,7 +88,7 @@ test "vars d2-config layout-engine applies when cli layout is not explicit" {
 }
 
 ///|
-test "cli layout overrides invalid vars d2-config layout-engine" {
+test "cli layout overrides invalid vars config layout-engine" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -123,7 +123,7 @@ test "cli layout overrides invalid vars d2-config layout-engine" {
 }
 
 ///|
-test "extract vars d2-config into diagram config" {
+test "extract vars config into diagram config" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -185,7 +185,7 @@ test "extract vars d2-config into diagram config" {
 }
 
 ///|
-test "vars d2-config data arrays do not break svg rendering" {
+test "vars config data arrays do not break svg rendering" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -208,7 +208,7 @@ test "vars d2-config data arrays do not break svg rendering" {
 }
 
 ///|
-test "vars d2-config no-xml-tag omits XML declaration" {
+test "vars config no-xml-tag omits XML declaration" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -334,7 +334,7 @@ test "dark-theme-id does not replace base light theme when theme-id is absent" {
 }
 
 ///|
-test "vars d2-config pad is applied to svg config padding" {
+test "vars config pad is applied to svg config padding" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -354,7 +354,7 @@ test "vars d2-config pad is applied to svg config padding" {
 }
 
 ///|
-test "vars d2-config center is applied to svg alignment" {
+test "vars config center is applied to svg alignment" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -375,7 +375,7 @@ test "vars d2-config center is applied to svg alignment" {
 }
 
 ///|
-test "cli center overrides vars d2-config center=false" {
+test "cli center overrides vars config center=false" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -397,7 +397,7 @@ test "cli center overrides vars d2-config center=false" {
 }
 
 ///|
-test "vars d2-config sketch enables global svg sketch mode" {
+test "vars config sketch enables global svg sketch mode" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -418,7 +418,7 @@ test "vars d2-config sketch enables global svg sketch mode" {
 }
 
 ///|
-test "cli sketch overrides vars d2-config sketch=false and sketch=true" {
+test "cli sketch overrides vars config sketch=false and sketch=true" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -463,7 +463,7 @@ test "cli sketch overrides vars d2-config sketch=false and sketch=true" {
 }
 
 ///|
-test "vars d2-config dark-theme-id emits dark media css" {
+test "vars config dark-theme-id emits dark media css" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -485,7 +485,7 @@ test "vars d2-config dark-theme-id emits dark media css" {
 }
 
 ///|
-test "target selection matches D2 board-only vs board-with-children semantics" {
+test "target selection matches the reference board-only vs board-with-children semantics" {
   let source =
     #|layers: {
     #|  core: {
@@ -611,7 +611,7 @@ test "svg compile keeps output when local bundling reports an error" {
 }
 
 ///|
-test "omit-version removes data-d2-version attribute" {
+test "omit-version removes the version attribute" {
   let source_default =
     #|a -> b
   let default_svg = compile_source(
@@ -740,7 +740,7 @@ test "near ancestor and edge map non-reserved are rejected" {
 }
 
 ///|
-test "dagre rejects top/left fixed positioning like D2" {
+test "dagre rejects top/left fixed positioning like the reference" {
   let source =
     #|a: {
     #|  top: 120
@@ -874,7 +874,7 @@ test "top/left compatibility checks for hierarchy sequence and grid" {
 }
 
 ///|
-test "stdout-format parser supports d2-compatible format names" {
+test "stdout-format parser supports compatibility format names" {
   guard parse_stdout_format("svg") is Some(OutputMode::Svg) else {
     fail("svg should parse")
   }

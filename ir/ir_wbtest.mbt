@@ -844,7 +844,7 @@ test "compile - imports require resolver" {
 }
 
 ///|
-test "compile vars - spread-in-place (d2 parity)" {
+test "compile vars - spread-in-place (reference behavior)" {
   let source =
     #|vars: {
     #|  person-shape: {
@@ -871,7 +871,7 @@ test "compile vars - spread-in-place (d2 parity)" {
 }
 
 ///|
-test "compile vars - spread array (d2 parity)" {
+test "compile vars - spread array (reference behavior)" {
   let source =
     #|vars: {
     #|  xs: [1, 2]
@@ -894,7 +894,7 @@ test "compile vars - spread array (d2 parity)" {
 }
 
 ///|
-test "compile vars - unresolved substitution errors (d2 parity)" {
+test "compile vars - unresolved substitution errors (reference behavior)" {
   let source = "x: ${missing}"
   let (ast, _) = @parser.parse(source)
   let result : Result[Map, CompileError] = Ok(compile(ast)) catch {
@@ -908,7 +908,7 @@ test "compile vars - unresolved substitution errors (d2 parity)" {
 }
 
 ///|
-test "compile vars - self scope vars doesn't resolve to itself (d2 parity)" {
+test "compile vars - self scope vars doesn't resolve to itself (reference behavior)" {
   let source =
     #|vars: {
     #|  x: a
@@ -938,7 +938,7 @@ test "compile vars - self scope vars doesn't resolve to itself (d2 parity)" {
 }
 
 ///|
-test "compile vars - spread non-composite errors (d2 parity)" {
+test "compile vars - spread non-composite errors (reference behavior)" {
   let source =
     #|vars: { x: 1 }
     #|a: { ...${x} }
@@ -954,7 +954,7 @@ test "compile vars - spread non-composite errors (d2 parity)" {
 }
 
 ///|
-test "compile vars - spread non-array into array errors (d2 parity)" {
+test "compile vars - spread non-array into array errors (reference behavior)" {
   let source =
     #|vars: { x: { a } }
     #|a: [...${x}]

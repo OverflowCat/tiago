@@ -488,7 +488,7 @@ fn d2_legend_corpus(legend : @graph.LegendInput) -> String {
     match entry {
       @graph.ShapeEntry(label~, ..) => sb.write_string(label)
       @graph.ConnectionEntry(label~, ..) => sb.write_string(label)
-      // D2 GetCorpus includes legend shape/connection labels only.
+      // The reference corpus includes legend shape/connection labels only.
       @graph.CustomEntry(..) => ()
       @graph.Separator => ()
     }
@@ -605,7 +605,7 @@ fn d2_markdown_styles(diagram_hash : String) -> String {
   if !css.has_suffix("\n") {
     css = css + "\n"
   }
-  // Keep CSS bytes unescaped to match d2's markdown style emission.
+  // Keep CSS bytes unescaped to match the reference markdown style emission.
   @xml_emit.Element::new("style").attr("type", "text/css").raw(css).build()
 }
 

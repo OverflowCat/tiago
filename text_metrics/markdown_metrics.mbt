@@ -13,11 +13,11 @@
 // limitations under the License.
 
 ///|
-/// Markdown measurement approximating D2's `lib/textmeasure/markdown.go`.
+/// Markdown measurement approximating the reference markdown sizing logic.
 ///
 /// The upstream implementation renders Markdown into HTML and measures the
 /// resulting block tree. Diago does not yet have the same HTML measurement
-/// stack, so this package mirrors D2's block-level constants and composition
+/// stack, so this package mirrors the reference block-level constants and composition
 /// rules over the parsed CommonMark AST. This keeps layout and SVG
 /// `foreignObject` sizing aligned with upstream fixtures such as
 /// `constant_near_title`.
@@ -361,7 +361,7 @@ fn markdown_measure_block(
 }
 
 ///|
-/// Measure a markdown label using D2-style block layout constants.
+/// Measure a markdown label using compatibility block layout constants.
 pub fn measure_label_markdown(text : String, font_size : Int) -> TextDimensions {
   if text == "" {
     return { width: 1.0, height: 1.0 }

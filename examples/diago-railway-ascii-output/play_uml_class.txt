@@ -1,9 +1,9 @@
 +------------------------------------------------+
-|                   D2 Parser                    |
+|                Diagram Parser                  |
 |                                                |
 +------------------------------------------------+
 |+reader                           io.RuneReader |
-|+readerPos                       d2ast.Position |
+|+readerPos                         ast.Position |
 |-lookahead                               []rune |
 +------------------------------------------------+
 |#peekn(n int)              (s string, eof bool) |

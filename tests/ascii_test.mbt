@@ -99,7 +99,7 @@ test "ascii multiple edges from same source" {
 }
 
 ///|
-test "ascii text shape hides label like d2" {
+test "ascii text shape hides label like the reference" {
   let source =
     #|note: Hello World {
     #|  shape: text

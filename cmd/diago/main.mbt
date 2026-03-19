@@ -16,7 +16,7 @@
 /// Diago - diago diagram compiler
 ///
 /// A MoonBit implementation of the diago diagram language.
-/// Usage: diago [options] <input.d2> [output]
+/// Usage: diago [options] <input> [output]
 
 ///|
 enum OutputMode {
@@ -1751,7 +1751,7 @@ fn create_import_resolver(base_path : String?) -> @ir.ImportResolver {
       Some(base) => @path.Path(base).join(@path.Path(import_path)).to_string()
       None => import_path
     }
-    // Add .d2 extension if not present
+    // Add the default source extension if not present.
     let path_with_ext = if full_path.has_suffix(".d2") {
       full_path
     } else {

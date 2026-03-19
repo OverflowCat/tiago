@@ -16,7 +16,7 @@
 /// Immutable data model for functional architecture
 
 ///|
-/// Graph-scoped metadata values aligned with D2's current config data shape.
+/// Graph-scoped metadata values aligned with the reference's current config data shape.
 pub(all) enum GraphDataValue {
   Text(String)
   StringArray(Array[String])

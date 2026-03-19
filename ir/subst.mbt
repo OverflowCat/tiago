@@ -13,7 +13,7 @@
 // limitations under the License.
 
 ///|
-/// Variable substitution for diago IR (d2 parity)
+/// Variable substitution for diago IR (reference behavior)
 ///
 /// This pass resolves `${var}` substitution segments that the parser stores in
 /// `@ast.StringValue::Unquoted` interpolation segments, and also handles
@@ -207,7 +207,7 @@ fn resolve_double_quoted_in_field(
   field_name : String,
   in_vars_map : Bool,
 ) -> Scalar raise CompileError {
-  // d2 parity: substitutions in quotes always resolve to a string; composites are invalid.
+  // reference behavior: substitutions in quotes always resolve to a string; composites are invalid.
   let buf = StringBuilder::new()
   for seg in dqs.value {
     match seg {
@@ -339,7 +339,7 @@ fn resolve_single_sub_in_field(
         return (true, (None, None))
       }
       Composite::Array(_) => {
-        // d2 parity: placeholder is removed even if nothing can be expanded into a map.
+        // reference behavior: placeholder is removed even if nothing can be expanded into a map.
         let _ = parent_map.fields.remove(field_index)
         return (true, (None, None))
       }
@@ -554,7 +554,7 @@ fn resolve_unquoted_in_array(
             false
           }
           None =>
-            // d2 parity: composite variables substituted as a whole array element are ignored.
+            // reference behavior: composite variables substituted as a whole array element are ignored.
             false
         }
       }
@@ -596,7 +596,7 @@ fn resolve_unquoted_in_array(
 }
 
 // ============================================================================
-// Block string substitution resolution (d2 parity)
+// Block string substitution resolution (reference behavior)
 // ============================================================================
 
 ///|
@@ -634,7 +634,7 @@ fn collect_block_string_variables(
         for kv in nested {
           vars_put(out, "\{f.name}.\{kv.0}", kv.1)
         }
-        // Also expose nested keys without prefix (d2 behavior).
+        // Also expose nested keys without prefix.
         collect_block_string_variables(m, out)
       }
       _ => ()
@@ -662,7 +662,7 @@ fn replace_substitutions_markdown(
   md_text : String,
   variables : Array[(String, String)],
 ) -> String {
-  // Best-effort port of upstream D2 lib/textmeasure/substitutions.go:
+  // Best-effort port of upstream reference lib/textmeasure/substitutions.go:
   // replace ${var} outside inline/fenced code spans.
   let chars = md_text.to_array()
   let out = StringBuilder::new()
@@ -728,7 +728,7 @@ fn substitution_pattern(key : String) -> String {
 }
 
 // ============================================================================
-// Vars lookup helpers (d2 resolveSubstitution parity)
+// Vars lookup helpers
 // ============================================================================
 
 ///|
@@ -760,7 +760,7 @@ fn resolve_from_stack(
   for i, vars in vars_stack {
     match resolve_in_vars(vars, sub, field_name, in_vars_map, i == 0) {
       Some(f) => {
-        // d2 parity: a found `null` shadows outer scopes and behaves like unresolved.
+        // reference behavior: a found `null` shadows outer scopes and behaves like unresolved.
         match f.primary {
           Some(p) =>
             if p.value is ScalarValue::Null {
@@ -840,7 +840,7 @@ fn join(parts : Array[String], sep : String) -> String {
 }
 
 // ============================================================================
-// Spread expansion (d2 ExpandSubstitution parity)
+// Spread expansion
 // ============================================================================
 
 ///|

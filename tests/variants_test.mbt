@@ -92,7 +92,7 @@ test "exporter object IDs are deterministic" {
 }
 
 ///|
-test "graph lookups prefer D2 absolute syntax IDs before flattened semantic IDs" {
+test "graph lookups prefer absolute syntax IDs before flattened semantic IDs" {
   let source =
     #|"a.b"
     #|a: {
@@ -116,7 +116,7 @@ test "graph lookups prefer D2 absolute syntax IDs before flattened semantic IDs"
 }
 
 ///|
-test "exporter carries D2 syntax IDs for objects and edge endpoints" {
+test "exporter carries syntax IDs for objects and edge endpoints" {
   let source =
     #|'null'
     #|special: {

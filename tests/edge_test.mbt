@@ -158,7 +158,7 @@ test "no arrowhead when none specified" {
 ///|
 test "all arrowhead markers are defined in defs" {
   let svg = compile("a -> b").unwrap()
-  // d2 parity: markers are emitted inline in the connection wrapper group.
+  // reference behavior: markers are emitted inline in the connection wrapper group.
   assert_true(svg.contains("<marker id=\"mk-"))
   assert_true(svg.contains("marker-end=\"url(#mk-"))
 }

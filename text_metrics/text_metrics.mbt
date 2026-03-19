@@ -15,10 +15,10 @@
 ///|
 /// Text measurement module
 ///
-/// This module implements text dimension calculation following D2's approach:
-/// - Uses D2's constant CODE_LINE_HEIGHT = 1.3
-/// - Handles empty lines (leading/trailing) as D2 does
-/// - Uses pre-generated glyph bounds and advances from D2's embedded fonts
+/// This module implements text dimension calculation following the reference approach:
+/// - Uses the reference constant CODE_LINE_HEIGHT = 1.3
+/// - Handles empty lines (leading/trailing) the same way
+/// - Uses pre-generated glyph bounds and advances from the embedded fonts
 
 ///|
 /// Text dimensions (width and height)
@@ -36,22 +36,22 @@ pub struct MeasuredText {
 } derive(Eq, Show)
 
 ///|
-/// D2's CODE_LINE_HEIGHT constant (from lib/textmeasure/textmeasure.go:20)
+/// Reference CODE_LINE_HEIGHT constant.
 const CODE_LINE_HEIGHT : Double = 1.3
 
 ///|
-/// D2's TAB_SIZE constant (from lib/textmeasure/textmeasure.go:19)
+/// Reference TAB_SIZE constant.
 const TAB_SIZE : Double = 4.0
 
 ///|
-/// Approximation for D2's line height scaling.
+/// Approximation for the reference line height scaling.
 ///
-/// D2's `textmeasure.Ruler` computes line heights from font metrics at each size
+/// The reference ruler computes line heights from font metrics at each size
 /// (with hinting), which is not perfectly linear. For the embedded Source Sans
 /// Pro / Source Code Pro fonts, the measured line height for a single line is
 /// well-approximated by `ceil(font_size * 101 / 80)`.
 ///
-/// This constant is chosen to match D2's `ruler.Measure` heights across common
+/// This constant is chosen to match the reference's `ruler.Measure` heights across common
 /// sizes (e.g. 16 -> 21, 24 -> 31).
 const LINE_HEIGHT_FACTOR : Double = 101.0 / 80.0
 
@@ -398,7 +398,7 @@ fn measure_text_with_mode(
   let mut dot_x = 0.0
   let mut prev_cp = -1
 
-  // Analyze each character (D2's ruler.drawBuf approach)
+  // Analyze each character following the ruler.drawBuf approach.
   let len = text.length()
   let mut i = 0
   while i < len {
@@ -411,8 +411,8 @@ fn measure_text_with_mode(
         // Carriage return moves to line origin without advancing lines.
         dot_x = 0.0
       Some('\t') => {
-        // Mirror D2's controlRune tab behavior (lib/textmeasure/textmeasure.go:244-252).
-        // NOTE: This does not reset `prevR`; keep kerning behavior aligned with D2.
+        // Mirror the reference tab behavior.
+        // NOTE: This does not reset `prevR`; keep kerning behavior aligned.
         let mut rem = dot_x % tab_width
         rem = rem % (rem + tab_width)
         if rem == 0.0 {
@@ -475,7 +475,7 @@ fn measure_text_with_mode(
 
   let max_line_width = bounds_right - bounds_left
 
-  // Handle empty lines (D2's logic from d2graph.GetTextDimensionsWithMono:1459-1476)
+  // Handle empty lines using the reference logic.
   let lines_iter = text.split("\n")
   let lines : Array[String] = []
 
@@ -484,7 +484,7 @@ fn measure_text_with_mode(
     lines.push(line.to_string())
   }
 
-  // D2 checks if first line after split is empty (leading empty line)
+  // Check whether the first split line is empty (leading empty line).
   let mut has_leading = false
   let mut first_line = ""
   if lines.length() > 0 {
@@ -506,40 +506,40 @@ fn measure_text_with_mode(
     }
   }
 
-  // Calculate height following D2's formula
+  // Calculate height using the reference formula.
   let base_height = font_size.to_double()
   let line_height = if use_code_line_height {
-    // D2 parity for language-tagged code snippets.
+    // reference behavior for language-tagged code snippets.
     font_size.to_double() * CODE_LINE_HEIGHT
   } else {
     line_height_for(font_size, bounds_with_dot)
   }
   let mut total_height = (line_count + 1).to_double() * line_height
   if use_code_line_height {
-    // D2: if hasLeading && numTrailing < len(lines) { h += t.FontSize }
+    // Add one font-size line when there is a leading blank line.
     if has_leading && num_trailing < lines.length() {
       total_height = total_height + base_height
     }
 
-    // D2: h += int(math.Ceil(textmeasure.CODE_LINE_HEIGHT * float64(t.FontSize*numTrailing)))
+    // Add trailing blank lines using CODE_LINE_HEIGHT.
     let trailing_height = CODE_LINE_HEIGHT *
       base_height *
       num_trailing.to_double()
     total_height = total_height + trailing_height
   }
 
-  // D2 text measurement returns raw text dimensions.
+  // Text measurement returns raw text dimensions.
   // Shape padding / size-to-fit is applied later by the shape sizing layer.
-  // D2 rounds up (`math.Ceil`) the measured bounds.
+  // The measured bounds are rounded up with `math.Ceil`.
   let width = @math.ceil(max_line_width)
   let height = @math.ceil(total_height)
   { dimensions: { width, height }, line_count, max_line_width }
 }
 
 ///|
-/// Calculate text dimensions following D2's approach (from d2graph.GetTextDimensionsWithMono)
+/// Calculate text dimensions following the reference approach (from d2graph.GetTextDimensionsWithMono)
 ///
-/// Key aspects from D2 implementation:
+/// Key aspects from the reference implementation:
 /// 1. For code/mono text: use CODE_LINE_HEIGHT (1.3)
 /// 2. For regular text: use DEFAULT_LINE_HEIGHT_FACTOR (1.0)
 /// 3. Handle empty lines (leading/trailing) by adding font_size for each
@@ -593,7 +593,7 @@ fn trailing_dot_delta_for_line(
 ///|
 /// Measure text using precise bounds that include the pen position ("dot").
 ///
-/// D2's Markdown measuring path sets `ruler.boundsWithDot = true`. In the
+/// The Markdown measuring path sets `ruler.boundsWithDot = true`. In the
 /// MoonBit metrics pipeline we apply the equivalent trailing-dot correction per
 /// line without changing the base line-height behavior.
 pub fn measure_text_with_dot_bounds(
@@ -653,7 +653,7 @@ pub fn measure_text_code(
 ///|
 /// Measure text using monospace glyph metrics with regular (non-code) line height.
 ///
-/// This matches D2's `ruler.Measure(SourceCodePro, ...)` behavior used by
+/// This matches the reference's `ruler.Measure(SourceCodePro, ...)` behavior used by
 /// UML class sizing: monospace font, but without code-block line-height logic.
 pub fn measure_text_mono_plain(text : String, font_size : Int) -> MeasuredText {
   measure_text_with_mode(text, font_size, MonoRegular, false, false)

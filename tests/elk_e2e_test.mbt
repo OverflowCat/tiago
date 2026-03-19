@@ -17,10 +17,10 @@
 ///
 /// This suite validates all bundled examples:
 /// 1) Diago ELK output is snapshot-stable
-/// 2) Diago outputs are strictly aligned to D2 ELK references
+/// 2) Diago outputs are strictly aligned to committed ELK references
 
 ///|
-test "examples: elk svg e2e snapshots and d2 semantic parity" {
+test "examples: elk svg e2e snapshots and reference semantic parity" {
   let elk_example_names = e2e_example_names().unwrap()
   for name in elk_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
@@ -42,41 +42,43 @@ test "examples: elk svg e2e snapshots and d2 semantic parity" {
       normalize_svg_snapshot(snapshot_svg),
     )
 
-    let d2_svg = read_required_file(
-      "examples/d2-elk-svg-output/" + name + ".svg",
+    let reference_svg = read_required_file(
+      "examples/reference-elk-svg-output/" + name + ".svg",
     ).unwrap()
-    let label_mismatches = d2_label_coverage_mismatches(actual_svg, d2_svg)
+    let label_mismatches = reference_label_coverage_mismatches(
+      actual_svg, reference_svg,
+    )
     let mismatch_text = label_mismatches.join(", ")
     assert_true(
       label_mismatches.is_empty(),
-      msg="\{name}: missing d2 labels in diago elk svg: \{mismatch_text}",
+      msg="\{name}: missing reference labels in diago elk svg: \{mismatch_text}",
     )
 
-    let diago_semantic_snapshot = d2_semantic_snapshot(actual_svg)
-    let d2_semantic = d2_semantic_snapshot(d2_svg)
+    let diago_semantic_snapshot = svg_semantic_snapshot(actual_svg)
+    let reference_semantic = svg_semantic_snapshot(reference_svg)
     let semantic_diff = semantic_snapshot_mismatch_summary(
-      diago_semantic_snapshot, d2_semantic,
+      diago_semantic_snapshot, reference_semantic,
     )
     assert_eq(
       diago_semantic_snapshot,
-      d2_semantic,
-      msg="\{name}: semantic snapshot diverges from d2 elk output (\{semantic_diff})",
+      reference_semantic,
+      msg="\{name}: semantic snapshot diverges from reference elk output (\{semantic_diff})",
     )
 
-    let diago_visual_snapshot = d2_visual_style_snapshot(actual_svg)
-    let d2_visual = d2_visual_style_snapshot(d2_svg)
+    let diago_visual_snapshot = svg_visual_style_snapshot(actual_svg)
+    let reference_visual = svg_visual_style_snapshot(reference_svg)
     let visual_diff = semantic_snapshot_mismatch_summary(
-      diago_visual_snapshot, d2_visual,
+      diago_visual_snapshot, reference_visual,
     )
     assert_eq(
       diago_visual_snapshot,
-      d2_visual,
-      msg="\{name}: visual style snapshot diverges from d2 elk output (\{visual_diff})",
+      reference_visual,
+      msg="\{name}: visual style snapshot diverges from reference elk output (\{visual_diff})",
     )
 
     assert_true(
-      d2_svg.contains("<svg"),
-      msg="\{name}: d2 elk svg reference missing <svg>",
+      reference_svg.contains("<svg"),
+      msg="\{name}: reference elk svg missing <svg>",
     )
   }
 }
@@ -98,12 +100,12 @@ test "examples: elk ascii e2e snapshots" {
     )
 
     let d2_ascii = read_required_file(
-      "examples/d2-elk-ascii-output/" + name + ".txt",
+      "examples/reference-elk-ascii-output/" + name + ".txt",
     ).unwrap()
     assert_eq(
       normalize_text_snapshot(actual_ascii),
       normalize_text_snapshot(d2_ascii),
-      msg="\{name}: elk ascii diverges from d2 reference",
+      msg="\{name}: elk ascii diverges from reference output",
     )
   }
 }
@@ -125,12 +127,12 @@ test "examples: elk unicode e2e snapshots" {
     )
 
     let d2_unicode = read_required_file(
-      "examples/d2-elk-unicode-output/" + name + ".txt",
+      "examples/reference-elk-unicode-output/" + name + ".txt",
     ).unwrap()
     assert_eq(
       normalize_text_snapshot(actual_unicode),
       normalize_text_snapshot(d2_unicode),
-      msg="\{name}: elk unicode diverges from d2 reference",
+      msg="\{name}: elk unicode diverges from reference output",
     )
   }
 }

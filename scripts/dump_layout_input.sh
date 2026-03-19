@@ -3,7 +3,7 @@ set -euo pipefail
 
 if [[ $# -lt 1 ]]; then
   cat >&2 <<'EOF'
-Usage: scripts/dump_layout_input.sh <out-dir> [--engine elk|dagre] [examples/*.d2 ...]
+Usage: scripts/dump_layout_input.sh <out-dir> [--engine elk|dagre] [examples/* ...]
 
 Internal helper for layout-debug input dumps.
 It invokes the hidden CLI subcommand `__dump-input`.

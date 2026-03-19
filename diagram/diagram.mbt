@@ -19,7 +19,7 @@
 /// implementations: it is the only input type renderers should consume.
 
 ///|
-/// Typed values preserved from `vars.d2-config.data`.
+/// Typed values preserved from config data entries.
 pub(all) enum ConfigDataValue {
   Text(String)
   StringArray(Array[String])
@@ -1152,7 +1152,7 @@ fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
     None
   } else {
     // Keep container label anchor coordinates in full precision.
-    // d2 computes text placement from float label anchors; truncating here
+    // The reference computes text placement from float label anchors; truncating here
     // introduces 0.5px drift in centered container titles (e.g. legend labels).
     obj.label_box
   }

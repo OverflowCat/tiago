@@ -213,7 +213,7 @@ test "code shape has dark background" {
 }
 
 ///|
-test "block string language aliases normalize like d2" {
+test "block string language aliases normalize like the reference" {
   let source =
     #|js_node: |js const x = 1 |
     #|go_node: |go defer f() |

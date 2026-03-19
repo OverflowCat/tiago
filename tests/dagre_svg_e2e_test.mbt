@@ -18,10 +18,10 @@
 /// This suite validates all bundled examples:
 /// 1) Diago Dagre output is snapshot-stable (`examples/diago-dagre-output`)
 /// 2) Diago SVG semantic snapshots (labels + coordinates + edge curve params)
-///    are aligned to D2 Dagre reference SVGs (`examples/d2-dagre-output`)
+///    are aligned to committed reference Dagre SVGs (`examples/reference-dagre-output`)
 
 ///|
-test "examples: dagre svg e2e snapshots and d2 semantic parity" {
+test "examples: dagre svg e2e snapshots and reference semantic parity" {
   let dagre_example_names = e2e_example_names().unwrap()
   for name in dagre_example_names {
     let source = read_required_file("examples/" + name + ".d2").unwrap()
@@ -44,34 +44,38 @@ test "examples: dagre svg e2e snapshots and d2 semantic parity" {
       msg="\{name}: diago dagre svg snapshot mismatch",
     )
 
-    let d2_svg = read_required_file("examples/d2-dagre-output/" + name + ".svg").unwrap()
-    let label_mismatches = d2_label_coverage_mismatches(actual_svg, d2_svg)
+    let reference_svg = read_required_file(
+      "examples/reference-dagre-output/" + name + ".svg",
+    ).unwrap()
+    let label_mismatches = reference_label_coverage_mismatches(
+      actual_svg, reference_svg,
+    )
     let mismatch_text = label_mismatches.join(", ")
     assert_true(
       label_mismatches.is_empty(),
-      msg="\{name}: missing d2 labels in diago svg: \{mismatch_text}",
+      msg="\{name}: missing reference labels in diago svg: \{mismatch_text}",
     )
 
-    let diago_semantic_snapshot = d2_semantic_snapshot(actual_svg)
-    let d2_semantic = d2_semantic_snapshot(d2_svg)
+    let diago_semantic_snapshot = svg_semantic_snapshot(actual_svg)
+    let reference_semantic = svg_semantic_snapshot(reference_svg)
     let semantic_diff = semantic_snapshot_mismatch_summary(
-      diago_semantic_snapshot, d2_semantic,
+      diago_semantic_snapshot, reference_semantic,
     )
     assert_eq(
       diago_semantic_snapshot,
-      d2_semantic,
-      msg="\{name}: semantic snapshot diverges from d2 dagre output (\{semantic_diff})",
+      reference_semantic,
+      msg="\{name}: semantic snapshot diverges from reference dagre output (\{semantic_diff})",
     )
 
-    let diago_visual_snapshot = d2_visual_style_snapshot(actual_svg)
-    let d2_visual = d2_visual_style_snapshot(d2_svg)
+    let diago_visual_snapshot = svg_visual_style_snapshot(actual_svg)
+    let reference_visual = svg_visual_style_snapshot(reference_svg)
     let visual_diff = semantic_snapshot_mismatch_summary(
-      diago_visual_snapshot, d2_visual,
+      diago_visual_snapshot, reference_visual,
     )
     assert_eq(
       diago_visual_snapshot,
-      d2_visual,
-      msg="\{name}: visual style snapshot diverges from d2 dagre output (\{visual_diff})",
+      reference_visual,
+      msg="\{name}: visual style snapshot diverges from reference dagre output (\{visual_diff})",
     )
   }
 }
@@ -88,13 +92,13 @@ fn e2e_example_names() -> Result[Array[String], String] {
     }
   }
   if names.is_empty() {
-    return Err("no .d2 example files found in examples/")
+    return Err("no example source files found in examples/")
   }
   Ok(sort_strings(names))
 }
 
 ///|
-fn d2_semantic_snapshot(svg : String) -> String {
+fn svg_semantic_snapshot(svg : String) -> String {
   let labels = extract_text_positions(svg)
   let edges = extract_edge_endpoints_and_cubic(svg)
   let (min_x, min_y, max_x, max_y) = semantic_bounds(labels, edges)
@@ -139,7 +143,7 @@ fn d2_semantic_snapshot(svg : String) -> String {
 }
 
 ///|
-fn d2_visual_style_snapshot(svg : String) -> String {
+fn svg_visual_style_snapshot(svg : String) -> String {
   let tokens : Array[String] = []
   collect_text_style_tokens(svg, tokens)
   collect_shape_style_tokens(svg, "path", tokens)
@@ -738,7 +742,7 @@ fn replace_attr_string_value(
 }
 
 ///|
-fn d2_label_coverage_mismatches(
+fn reference_label_coverage_mismatches(
   diago_svg : String,
   d2_svg : String,
 ) -> Array[String] {
@@ -760,7 +764,9 @@ fn d2_label_coverage_mismatches(
       None => 0
     }
     if actual_count < expected_count {
-      mismatches.push("\{label} (diago=\{actual_count}, d2=\{expected_count})")
+      mismatches.push(
+        "\{label} (diago=\{actual_count}, reference=\{expected_count})",
+      )
     }
   }
   mismatches
@@ -768,7 +774,7 @@ fn d2_label_coverage_mismatches(
 
 ///|
 #warnings("-unused_value")
-fn d2_parity_metrics(
+fn reference_parity_metrics(
   diago_svg : String,
   d2_svg : String,
 ) -> (Double, Double, Double, Int, Double) {

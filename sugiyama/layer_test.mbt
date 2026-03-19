@@ -16,7 +16,7 @@
 /// Tests for layer assignment algorithm
 
 ///|
-test "layer assignment classes.d2 - alice and bob at top" {
+test "layer assignment classes example - alice and bob at top" {
   // alice -> web1, bob -> web2, web1 -> db1, web2 -> db1, db1 -> db2
   // Expected layers: [alice, bob] -> [web1, web2] -> [db1] -> [db2]
   let source =

@@ -407,7 +407,7 @@ test "parse spread import with pre path" {
 }
 
 ///|
-test "parse import strips d2 extension for unquoted path" {
+test "parse import strips the diagram extension for unquoted path" {
   let (ast, errors) = parse("x: @file.d2")
   assert_true(errors.is_empty())
   guard ast.nodes[0] is @ast.MapNode::Key(key) else { fail("expected key") }
@@ -420,7 +420,7 @@ test "parse import strips d2 extension for unquoted path" {
 }
 
 ///|
-test "parse import keeps quoted d2 segment" {
+test "parse import keeps the quoted extension segment" {
   let (ast, errors) = parse("...@\"file\".d2")
   assert_true(errors.is_empty())
   guard ast.nodes[0] is @ast.MapNode::Import(imp) else {

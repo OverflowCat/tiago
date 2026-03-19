@@ -258,7 +258,7 @@ test "custom font-family" {
     #|  style.font-family: "Georgia, serif"
     #|}
   match compile(source) {
-    Ok(_) => fail("d2 should reject style.font-family")
+    Ok(_) => fail("compiler should reject style.font-family")
     Err(msg) => assert_true(msg.contains("invalid style keyword"))
   }
 }
@@ -270,7 +270,7 @@ test "monospace font-family" {
     #|  style.font-family: monospace
     #|}
   match compile(source) {
-    Ok(_) => fail("d2 should reject style.font-family")
+    Ok(_) => fail("compiler should reject style.font-family")
     Err(msg) => assert_true(msg.contains("invalid style keyword"))
   }
 }
@@ -368,7 +368,7 @@ test "animated edge" {
     #|  style.animated: true
     #|}
   let svg = compile(source).unwrap()
-  // d2 parity: animated edges are CSS-animated dashed paths.
+  // reference behavior: animated edges are CSS-animated dashed paths.
   assert_true(svg.contains("stroke-dasharray"))
   assert_true(svg.contains("stroke-dashoffset"))
   assert_true(svg.contains("animation: dashdraw"))

@@ -15,7 +15,7 @@
 ///|
 /// Import Resolution for diago IR
 ///
-/// Handles `@path/to/file.d2` import statements.
+/// Handles file import statements.
 /// Imports are resolved by a user-provided resolver function.
 
 ///|
@@ -145,7 +145,7 @@ fn split_import_file_and_selector(
   imp : @ast.Import,
 ) -> (String, Array[@ast.StringValue], String) {
   // `@a.b.c` means: import file "a", then select path ["b", "c"].
-  // The resolver key is the file part only (d2 parity).
+  // The resolver key is the file part only.
   let file = if imp.path.length() > 0 {
     join_import_pre(imp.pre, imp.path[0].content())
   } else {
@@ -546,7 +546,7 @@ fn compile_array_with_imports(
           imp, resolver, import_stack,
         )
         if imp.spread {
-          // Only allow spreading arrays into arrays (d2 parity).
+          // Only allow spreading arrays into arrays (reference behavior).
           let f = select_field(import_ir, selector)
           match f.composite {
             Some(Composite::Array(a)) =>

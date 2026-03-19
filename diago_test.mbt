@@ -21,7 +21,7 @@ test "compile default returns svg" {
 }
 
 ///|
-test "auto layout honors vars.d2-config layout-engine" {
+test "auto layout honors vars config layout-engine" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -41,7 +41,7 @@ test "auto layout honors vars.d2-config layout-engine" {
 }
 
 ///|
-test "elk layout can be selected from options and vars.d2-config" {
+test "elk layout can be selected from options and vars config" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -264,7 +264,7 @@ test "compile supports custom route plugin hook" {
 }
 
 ///|
-test "vars d2-config invalid theme-overrides key raises ConfigError" {
+test "vars config invalid theme-overrides key raises ConfigError" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -283,7 +283,7 @@ test "vars d2-config invalid theme-overrides key raises ConfigError" {
 }
 
 ///|
-test "vars d2-config invalid theme-overrides color raises ConfigError" {
+test "vars config invalid theme-overrides color raises ConfigError" {
   let source =
     #|vars: {
     #|  d2-config: {
@@ -319,7 +319,7 @@ test "dark-theme-id alone does not replace base light theme" {
 }
 
 ///|
-test "vars d2-config pad is preserved in diagram config" {
+test "vars config pad is preserved in diagram config" {
   let source =
     #|vars: {
     #|  d2-config: {

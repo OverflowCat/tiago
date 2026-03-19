@@ -1,5 +1,5 @@
-// Generated from upstream D2 embedded fonts by text_metrics/gen_font_metrics.go.
-// Size-specific metrics to match D2 ruler hinting at selected sizes.
+// Generated from upstream reference embedded fonts by text_metrics/gen_font_metrics.go.
+// Size-specific metrics to match the reference ruler hinting at selected sizes.
 
 ///|
 let glyph_x_mins_sans_regular_sz20 : Array[Int] = [

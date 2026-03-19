@@ -437,7 +437,7 @@ fn stroke_dash_attributes(
   stroke_width : Double,
   dash_gap_size : Double,
 ) -> (Double, Double) {
-  // Ported from upstream D2 lib/svg/path.go GetStrokeDashAttributes.
+  // Ported from upstream reference lib/svg/path.go GetStrokeDashAttributes.
   let scale = @math.log10(-0.6 * stroke_width + 10.6) * 0.5 + 0.5
   let scaled_dash_size = stroke_width * dash_gap_size
   let scaled_gap_size = scale * scaled_dash_size
@@ -1077,7 +1077,7 @@ pub fn dots_pattern(id : String, color : String, bg_color : String) -> String {
 /// Build a lines pattern definition (horizontal lines)
 pub fn lines_pattern(id : String, color : String, bg_color : String) -> String {
   let _ = bg_color
-  // Keep template formatting aligned with d2's embedded lines.txt output.
+  // Keep template formatting aligned with the embedded reference output.
   "<pattern id=\"\{@xml_emit.escape(id)}\" x=\"0\" y=\"0\" width=\"15\" height=\"15\" patternUnits=\"userSpaceOnUse\">\n" +
   "<g style=\"mix-blend-mode:multiply\">\n" +
   "<g style=\"mix-blend-mode:multiply\" opacity=\"0.05\">\n" +
@@ -1348,9 +1348,9 @@ pub fn sketch_filter(id : String) -> String {
 }
 
 ///|
-/// Build a drop-shadow filter used by D2's `shadow: true` style.
+/// Build a drop-shadow filter used by the `shadow: true` style.
 pub fn shadow_filter(id : String) -> String {
-  // Keep formatting aligned with d2's defineShadowFilter output.
+  // Keep formatting aligned with the reference drop-shadow output.
   "\n\t<filter id=\"\{@xml_emit.escape(id)}\" width=\"200%\" height=\"200%\" x=\"-50%\" y=\"-50%\">\n" +
   "\t\t<feGaussianBlur stdDeviation=\"1.7 \" in=\"SourceGraphic\"></feGaussianBlur>\n" +
   "\t\t<feFlood flood-color=\"#3d4574\" flood-opacity=\"0.4\" result=\"ShadowFeFlood\" in=\"SourceGraphic\"></feFlood>\n" +
