@@ -231,7 +231,37 @@ fn lookup_sized_glyph_metrics(
           base
         }
       SansBold =>
-        if font_size == 29 {
+        if font_size == 20 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_bold_sz20[codepoint],
+              x_max: glyph_x_maxs_sans_bold_sz20[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_bold_sz20[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 24 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_bold_sz24[codepoint],
+              x_max: glyph_x_maxs_sans_bold_sz24[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_bold_sz24[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 28 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_bold_sz28[codepoint],
+              x_max: glyph_x_maxs_sans_bold_sz28[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_bold_sz28[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 29 {
           {
             metrics: {
               x_min: glyph_x_mins_sans_bold_sz29[codepoint],

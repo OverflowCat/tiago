@@ -225,6 +225,27 @@ test "compile edge with label" {
 }
 
 ///|
+test "compile edge between sequence diagram objects" {
+  let source =
+    #|A: hello {
+    #|  shape: sequence_diagram
+    #|}
+    #|
+    #|B: goodbye {
+    #|  shape: sequence_diagram
+    #|}
+    #|
+    #|A->B
+  let (ast, _) = @parser.parse(source)
+  let ir = compile(ast)
+  assert_true(ir.has_field("A"))
+  assert_true(ir.has_field("B"))
+  assert_eq(ir.edges.length(), 1)
+  assert_eq(ir.edges[0].id.src_path, ["A"])
+  assert_eq(ir.edges[0].id.dst_path, ["B"])
+}
+
+///|
 test "compile reverse edge" {
   let (ast, _) = @parser.parse("a <- b")
   let ir = compile(ast)

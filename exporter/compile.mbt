@@ -4127,14 +4127,25 @@ fn d2_default_edge_stroke(edge : Edge) -> String {
 
 ///|
 fn apply_d2_text_defaults(graph : Graph) -> Unit {
-  let sequence_root = graph.root.shape_type == ShapeType::SequenceDiagram
+  let object_by_abs_id_syntax : Map[String, Object] = {}
+  for obj in graph.objects {
+    object_by_abs_id_syntax[obj.abs_id_syntax] = obj
+  }
   for obj in graph.objects {
     let is_container = !obj.children.is_empty()
+    let is_grid_diagram = is_grid_diagram_object(obj)
+    let inside_sequence = is_inside_sequence_diagram_by_abs_id_syntax(
+      graph,
+      object_by_abs_id_syntax,
+      obj.abs_id_syntax,
+    )
     if obj.style.font_size is None {
       let default_font_size = if obj.shape_type == ShapeType::Class ||
         obj.shape_type == ShapeType::SqlTable {
         20
-      } else if is_container && obj.shape_type != ShapeType::Text {
+      } else if !inside_sequence &&
+        (is_container || is_grid_diagram) &&
+        obj.shape_type != ShapeType::Text {
         container_level_label_size(object_depth_from_id(obj.id))
       } else {
         16
@@ -4142,7 +4153,7 @@ fn apply_d2_text_defaults(graph : Graph) -> Unit {
       obj.style.font_size = Some(default_font_size)
     }
     if obj.style.bold is None {
-      let default_bold = if sequence_root {
+      let default_bold = if inside_sequence {
         false
       } else if obj.shape_type == ShapeType::Class ||
         obj.shape_type == ShapeType::SqlTable {

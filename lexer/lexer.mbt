@@ -434,6 +434,12 @@ fn Lexer::scan_identifier(self : Lexer, start : Position, first : Char) -> Unit 
   let buf = StringBuilder::new()
   buf.write_char(first)
   while not(self.is_at_end()) && is_ident_continue(self.peek()) {
+    if self.peek() == '-' {
+      let next = self.peek_next()
+      if next == '>' || next == '-' {
+        break
+      }
+    }
     buf.write_char(self.advance())
   }
   self.add_token(Ident(buf.to_string()), start)

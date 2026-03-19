@@ -92,6 +92,22 @@ test "parse simple edge" {
 }
 
 ///|
+test "parse compact edge without spaces" {
+  let (ast, errors) = parse("A->B")
+  assert_true(errors.is_empty())
+  assert_eq(ast.nodes.length(), 1)
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  assert_eq(key.edges.length(), 1)
+  let edge = key.edges[0]
+  assert_eq(edge.src.to_strings(), ["A"])
+  assert_eq(edge.dst.to_strings(), ["B"])
+  assert_eq(edge.src_arrow, "")
+  assert_eq(edge.dst_arrow, ">")
+}
+
+///|
 test "parse reverse edge" {
   let (ast, errors) = parse("a <- b")
   assert_true(errors.is_empty())

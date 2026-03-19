@@ -1200,6 +1200,293 @@ fn assert_grid_with_grid_with_grid_like_d2(
 }
 
 ///|
+test "d2 empty_nested_grid matches stable boxes" {
+  let source =
+    #|outer: {
+    #|  grid-rows: 1
+    #|  inner: {
+    #|    grid-rows: 1
+    #|    # empty
+    #|  }
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_empty_nested_grid_like_d2(dagre, "dagre")
+  assert_empty_nested_grid_like_d2(elk, "elk")
+}
+
+///|
+fn assert_empty_nested_grid_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let outer = graph.find_object("outer").unwrap()
+  let inner = graph.find_object("outer.inner").unwrap()
+
+  match (outer.get_box(), inner.get_box()) {
+    (Some(outer_box), Some(inner_box)) =>
+      if engine_name == "dagre" {
+        assert_eq(outer_box, @graph.Box::new(0.0, 0.0, 221.0, 196.0))
+        assert_eq(inner_box, @graph.Box::new(60.0, 60.0, 101.0, 76.0))
+      } else {
+        assert_eq(outer_box, @graph.Box::new(12.0, 12.0, 221.0, 196.0))
+        assert_eq(inner_box, @graph.Box::new(72.0, 72.0, 101.0, 76.0))
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for empty_nested_grid fixture objects",
+      )
+  }
+}
+
+///|
+test "d2 empty_sequence matches stable boxes" {
+  let source =
+    #|A: hello {
+    #|  shape: sequence_diagram
+    #|}
+    #|
+    #|B: goodbye {
+    #|  shape: sequence_diagram
+    #|}
+    #|
+    #|A->B
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let compiled_endpoints : Array[String] = []
+  for edge in graph_input.get_edges() {
+    compiled_endpoints.push(
+      "\{edge.lookup_src_id()} -> \{edge.lookup_dst_id()}",
+    )
+  }
+  assert_eq(compiled_endpoints, ["A -> B"])
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_empty_sequence_like_d2(dagre, "dagre")
+  assert_empty_sequence_like_d2(elk, "elk")
+}
+
+///|
+fn assert_empty_sequence_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let a = graph.find_object("A").unwrap()
+  let b = graph.find_object("B").unwrap()
+  let edge = match find_edge(graph, "A", "B") {
+    Some(edge) => edge
+    None => {
+      let endpoints : Array[String] = []
+      for edge in graph.get_edges() {
+        endpoints.push("\{edge.lookup_src_id()} -> \{edge.lookup_dst_id()}")
+      }
+      fail(
+        "\{engine_name} expected edge A -> B in empty_sequence fixture, got \{endpoints}",
+      )
+    }
+  }
+
+  match (a.get_box(), b.get_box()) {
+    (Some(a_box), Some(b_box)) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(13.0, 0.0, 80.0, 66.0))
+        assert_eq(b_box, @graph.Box::new(0.0, 166.0, 106.0, 66.0))
+        assert_route_points_close(edge.route, [
+          @graph.Point::new(53.0, 66.0),
+          @graph.Point::new(53.0, 106.0),
+          @graph.Point::new(53.0, 126.0),
+          @graph.Point::new(53.0, 166.0),
+        ])
+      } else {
+        assert_eq(a_box, @graph.Box::new(25.0, 12.0, 80.0, 66.0))
+        assert_eq(b_box, @graph.Box::new(12.0, 148.0, 106.0, 66.0))
+        assert_route_points_close(edge.route, [
+          @graph.Point::new(65.0, 78.0),
+          @graph.Point::new(65.0, 148.0),
+        ])
+      }
+    _ =>
+      fail("\{engine_name} expected boxes for empty_sequence fixture objects")
+  }
+}
+
+///|
+test "d2 nested_steps matches stable boxes" {
+  let source =
+    #|a: {
+    #|  a: {
+    #|    shape: step
+    #|  }
+    #|  b: {
+    #|    shape: step
+    #|  }
+    #|  a -> b
+    #|}
+    #|
+    #|c: {
+    #|  shape: step
+    #|}
+    #|d: {
+    #|  shape: step
+    #|}
+    #|c -> d
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_nested_steps_like_d2(dagre, "dagre")
+  assert_nested_steps_like_d2(elk, "elk")
+}
+
+///|
+fn assert_nested_steps_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let aa = target.find_object("a.a").unwrap()
+  let ab = target.find_object("a.b").unwrap()
+  let c = target.find_object("c").unwrap()
+  let d = target.find_object("d").unwrap()
+  let ab_edge = find_connection(target, "a.a", "a.b").unwrap()
+  let cd_edge = find_connection(target, "c", "d").unwrap()
+
+  match (a.get_box(), aa.get_box(), ab.get_box(), c.get_box(), d.get_box()) {
+    (Some(a_box), Some(aa_box), Some(ab_box), Some(c_box), Some(d_box)) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(10.0, 20.0, 153.0, 362.0))
+        assert_eq(aa_box, @graph.Box::new(40.0, 50.0, 93.0, 101.0))
+        assert_eq(ab_box, @graph.Box::new(40.0, 251.0, 93.0, 101.0))
+        assert_eq(c_box, @graph.Box::new(214.0, 50.0, 93.0, 101.0))
+        assert_eq(d_box, @graph.Box::new(213.0, 251.0, 94.0, 101.0))
+        assert_route_points_close(ab_edge.route, [
+          @graph.Point::new(86.0, 151.0),
+          @graph.Point::new(86.4000015258789, 191.0),
+          @graph.Point::new(86.5999984741211, 211.0),
+          @graph.Point::new(87.0, 251.0),
+        ])
+        assert_route_points_close(cd_edge.route, [
+          @graph.Point::new(260.0, 151.0),
+          @graph.Point::new(260.0, 191.0),
+          @graph.Point::new(260.0, 211.0),
+          @graph.Point::new(260.0, 251.0),
+        ])
+      } else {
+        assert_eq(a_box, @graph.Box::new(12.0, 12.0, 193.0, 372.0))
+        assert_eq(aa_box, @graph.Box::new(62.0, 62.0, 93.0, 101.0))
+        assert_eq(ab_box, @graph.Box::new(62.0, 233.0, 93.0, 101.0))
+        assert_eq(c_box, @graph.Box::new(225.0, 283.0, 93.0, 101.0))
+        assert_eq(d_box, @graph.Box::new(224.0, 454.0, 94.0, 101.0))
+        assert_route_points_close(ab_edge.route, [
+          @graph.Point::new(108.0, 163.0),
+          @graph.Point::new(109.0, 233.0),
+        ])
+        assert_route_points_close(cd_edge.route, [
+          @graph.Point::new(271.0, 384.0),
+          @graph.Point::new(272.0, 454.0),
+        ])
+      }
+    _ => fail("\{engine_name} expected boxes for nested_steps fixture objects")
+  }
+}
+
+///|
+fn find_edge(
+  graph : @graph.GraphInput,
+  src_id : String,
+  dst_id : String,
+) -> @graph.EdgeInput? {
+  for edge in graph.get_edges() {
+    if edge.lookup_src_id() == src_id && edge.lookup_dst_id() == dst_id {
+      return Some(edge)
+    }
+  }
+  None
+}
+
+///|
+fn find_connection(
+  diagram : @diagram.Diagram,
+  src_id : String,
+  dst_id : String,
+) -> @diagram.Connection? {
+  for connection in diagram.get_edges() {
+    if connection.src_lookup_id == src_id && connection.dst_lookup_id == dst_id {
+      return Some(connection)
+    }
+  }
+  None
+}
+
+///|
+fn assert_route_points_close(
+  actual : Array[@graph.Point],
+  expected : Array[@graph.Point],
+  tolerance? : Double = 1.0e-3,
+) -> Unit raise {
+  assert_eq(actual.length(), expected.length())
+  for i in 0..<actual.length() {
+    let dx = (actual[i].x - expected[i].x).abs()
+    let dy = (actual[i].y - expected[i].y).abs()
+    assert_true(
+      dx <= tolerance && dy <= tolerance,
+      msg="route point \{i} mismatch: actual=\{actual[i]}, expected=\{expected[i]}, dx=\{dx}, dy=\{dy}",
+    )
+  }
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {

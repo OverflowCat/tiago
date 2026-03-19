@@ -36,6 +36,12 @@ var variants = []fontVariant{
 	{name: "mono_regular", family: d2fonts.SourceCodePro, style: d2fonts.FONT_STYLE_REGULAR},
 }
 
+var sizeSpecificSizes = map[string][]int{
+	"sans_regular": {20, 24, 28},
+	"sans_bold":    {20, 24, 28, 29, 32},
+	"mono_regular": {20},
+}
+
 func loadFace(v fontVariant) (font.Face, error) {
 	sizeless := d2fonts.Font{Family: v.family, Style: v.style, Size: 0}
 	ttfBytes := d2fonts.FontFaces.Get(sizeless)
@@ -52,6 +58,16 @@ func glyphMetrics(face font.Face, r rune) (xMin, xMax int, advance fixed.Int26_6
 		return 0, 0, 0
 	}
 	return b.Min.X.Floor(), b.Max.X.Ceil(), adv
+}
+
+func loadFaceAtSize(v fontVariant, fontSize int) (font.Face, error) {
+	sizeless := d2fonts.Font{Family: v.family, Style: v.style, Size: 0}
+	ttfBytes := d2fonts.FontFaces.Get(sizeless)
+	ttf, err := truetype.Parse(ttfBytes)
+	if err != nil {
+		return nil, err
+	}
+	return truetype.NewFace(ttf, &truetype.Options{Size: float64(fontSize)}), nil
 }
 
 func emitArrayIntFlat(name string, values []int, perLine int) {
@@ -76,6 +92,11 @@ func emitArrayInt(name string, values []int) {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--size-specific" {
+		generateSizeSpecific()
+		return
+	}
+
 	var b strings.Builder
 	b.WriteString("// Generated from ../d2 embedded fonts by text_metrics/gen_font_metrics.go. Do not edit by hand.\n\n")
 	b.WriteString("///|\n")
@@ -145,5 +166,43 @@ func main() {
 		fmt.Println("///|")
 		emitArrayInt("glyph_advances_fixed_"+v.name+"_geo", geoAdvance)
 		fmt.Println()
+	}
+}
+
+func generateSizeSpecific() {
+	fmt.Println("// Generated from ../d2 embedded fonts by text_metrics/gen_font_metrics.go.")
+	fmt.Println("// Size-specific metrics to match D2 ruler hinting at selected sizes.")
+	fmt.Println()
+
+	for _, v := range variants {
+		sizes := sizeSpecificSizes[v.name]
+		for _, fontSize := range sizes {
+			face, err := loadFaceAtSize(v, fontSize)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+
+			asciiXMin := make([]int, 256)
+			asciiXMax := make([]int, 256)
+			asciiAdvance := make([]int, 256)
+			for cp := 0; cp < 256; cp++ {
+				xMin, xMax, adv := glyphMetrics(face, rune(cp))
+				asciiXMin[cp] = xMin
+				asciiXMax[cp] = xMax
+				asciiAdvance[cp] = int(adv)
+			}
+
+			suffix := fmt.Sprintf("%s_sz%d", v.name, fontSize)
+			fmt.Println("///|")
+			emitArrayInt("glyph_x_mins_"+suffix, asciiXMin)
+			fmt.Println()
+			fmt.Println("///|")
+			emitArrayInt("glyph_x_maxs_"+suffix, asciiXMax)
+			fmt.Println()
+			fmt.Println("///|")
+			emitArrayInt("glyph_advances_fixed_"+suffix, asciiAdvance)
+			fmt.Println()
+		}
 	}
 }

@@ -39,6 +39,16 @@ test "tokenize arrow" {
 }
 
 ///|
+test "tokenize compact arrow without spaces" {
+  let (tokens, _) = tokenize("A->B")
+  assert_eq(tokens.length(), 4) // A, ->, B, EOF
+  assert_eq(tokens[0].kind, Ident("A"))
+  assert_eq(tokens[1].kind, Arrow)
+  assert_eq(tokens[2].kind, Ident("B"))
+  assert_eq(tokens[3].kind, Eof)
+}
+
+///|
 test "tokenize reverse arrow" {
   let (tokens, _) = tokenize("a <- b")
   assert_eq(tokens.length(), 4)

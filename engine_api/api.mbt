@@ -717,6 +717,7 @@ fn apply_grid_semantic_parent_boxes(
   for obj in graph.objects {
     object_by_id[obj.abs_id_syntax] = obj
   }
+  let parent_id_by_child_id = build_parent_id_by_child_abs_id_syntax(graph)
 
   let parent_box_by_id : Map[String, @graph.Box] = {}
   for parent_id, child_ids in groups {
@@ -730,8 +731,16 @@ fn apply_grid_semantic_parent_boxes(
     let child_size_by_id : Map[String, (Double, Double)] = {}
     for child_id in child_ids {
       match object_by_id.get(child_id) {
-        Some(child) =>
-          child_size_by_id[child_id] = semantic_object_size(child, config)
+        Some(child) => {
+          let inside_sequence = is_inside_sequence_diagram(
+            graph, object_by_id, parent_id_by_child_id, child_id,
+          )
+          child_size_by_id[child_id] = semantic_object_size(
+            child,
+            config,
+            inside_sequence~,
+          )
+        }
         None => ()
       }
     }
@@ -2438,10 +2447,15 @@ fn clone_object_with_parts_and_label(
 fn semantic_object_size(
   obj : @graph.ObjectInput,
   config : LayoutConfig,
+  inside_sequence? : Bool = false,
 ) -> (Double, Double) {
   match obj.box {
     Some(box) => {
-      let (auto_width, auto_height) = estimate_semantic_object_size(obj, config)
+      let (auto_width, auto_height) = estimate_semantic_object_size(
+        obj,
+        config,
+        inside_sequence~,
+      )
       let width = if box.width > 0.0 { box.width } else { auto_width }
       let height = if box.height > 0.0 { box.height } else { auto_height }
       (
@@ -2449,7 +2463,7 @@ fn semantic_object_size(
         positive_or(height, config.default_height),
       )
     }
-    None => estimate_semantic_object_size(obj, config)
+    None => estimate_semantic_object_size(obj, config, inside_sequence~)
   }
 }
 
@@ -2457,6 +2471,7 @@ fn semantic_object_size(
 fn estimate_semantic_object_size(
   obj : @graph.ObjectInput,
   config : LayoutConfig,
+  inside_sequence? : Bool = false,
 ) -> (Double, Double) {
   let has_explicit_width = match obj.box {
     Some(box) => box.width > 0.0
@@ -2467,11 +2482,8 @@ fn estimate_semantic_object_size(
     None => false
   }
   let with_inner_label_padding = !(has_explicit_width || has_explicit_height)
-  let font_size = match obj.style.font_size {
-    Some(v) => v.as_int().unwrap_or(16)
-    None => 16
-  }
-  let is_bold = style_bool(obj.style.bold, false)
+  let font_size = object_label_font_size_like_d2(obj, inside_sequence)
+  let is_bold = object_label_bold_like_d2(obj, inside_sequence)
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
@@ -2578,6 +2590,78 @@ fn estimate_semantic_object_size(
       positive_or(config.default_height, 1.0)
     },
   )
+}
+
+///|
+const D2_FONT_SIZE_M : Int = 16
+
+///|
+const D2_FONT_SIZE_L : Int = 20
+
+///|
+const D2_FONT_SIZE_XL : Int = 24
+
+///|
+const D2_FONT_SIZE_XXL : Int = 28
+
+///|
+fn container_level_label_size_like_d2(level : Int) -> Int {
+  if level <= 1 {
+    D2_FONT_SIZE_XXL
+  } else if level == 2 {
+    D2_FONT_SIZE_XL
+  } else if level == 3 {
+    D2_FONT_SIZE_L
+  } else {
+    D2_FONT_SIZE_M
+  }
+}
+
+///|
+fn object_container_level_like_d2(obj : @graph.ObjectInput) -> Int {
+  let depth = @graph.syntax_path_depth(obj.abs_id_syntax)
+  if depth <= 0 {
+    1
+  } else {
+    depth
+  }
+}
+
+///|
+fn object_label_font_size_like_d2(
+  obj : @graph.ObjectInput,
+  inside_sequence : Bool,
+) -> Int {
+  let mut font_size = D2_FONT_SIZE_M
+  if obj.shape_type == @graph.Class || obj.shape_type == @graph.SqlTable {
+    font_size = D2_FONT_SIZE_L
+  }
+  if !inside_sequence &&
+    (
+      !obj.child_ids.is_empty() ||
+      obj.grid_rows is Some(_) ||
+      obj.grid_columns is Some(_)
+    ) &&
+    obj.shape_type != @graph.Text {
+    font_size = container_level_label_size_like_d2(
+      object_container_level_like_d2(obj),
+    )
+  }
+  match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(font_size)
+    None => font_size
+  }
+}
+
+///|
+fn object_label_bold_like_d2(
+  obj : @graph.ObjectInput,
+  inside_sequence : Bool,
+) -> Bool {
+  let default_bold = !inside_sequence &&
+    obj.child_ids.is_empty() &&
+    obj.shape_type != @graph.Text
+  style_bool(obj.style.bold, default_bold)
 }
 
 ///|

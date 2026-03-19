@@ -58,3 +58,11 @@ test "measure text with trailing empty lines" {
 }
 
 ///|
+test "measure label probe for empty nested grid parity" {
+  inspect(
+    @text_metrics.measure_label("inner", 24, false, true, false),
+    content="{width: 56, height: 31}",
+  )
+}
+
+///|
