@@ -66,3 +66,11 @@ test "measure label probe for empty nested grid parity" {
 }
 
 ///|
+test "measure markdown heading like d2 constant_near_title" {
+  inspect(
+    @text_metrics.measure_label_markdown("# A winning strategy", 16),
+    content="{width: 257, height: 51}",
+  )
+}
+
+///|

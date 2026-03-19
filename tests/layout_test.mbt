@@ -1603,14 +1603,7 @@ fn assert_constant_near_title_like_d2(
       Some(will_box),
     ) =>
       if engine_name == "dagre" {
-        assert_true(
-          (title_box.x + title_box.width / 2.0 - 165.5).abs() <= 1.0,
-          msg="\{engine_name} expected constant-near title to stay centered like D2",
-        )
-        assert_true(
-          (title_box.y + title_box.height - -20.0).abs() <= 1.0,
-          msg="\{engine_name} expected constant-near title bottom to match D2 placement",
-        )
+        assert_eq(title_box, @graph.Box::new(37.0, -71.0, 257.0, 51.0))
         assert_eq(poll_box, @graph.Box::new(82.0, 0.0, 150.0, 66.0))
         assert_eq(results_box, @graph.Box::new(191.0, 166.0, 93.0, 66.0))
         assert_eq(unfavorable_box, @graph.Box::new(0.0, 332.0, 131.0, 66.0))
@@ -1650,14 +1643,7 @@ fn assert_constant_near_title_like_d2(
           @graph.Point::new(247.5, 498.0),
         ])
       } else {
-        assert_true(
-          (title_box.x + title_box.width / 2.0 - 157.5).abs() <= 1.0,
-          msg="\{engine_name} expected constant-near title to stay centered like D2",
-        )
-        assert_true(
-          (title_box.y + title_box.height - -8.0).abs() <= 1.0,
-          msg="\{engine_name} expected constant-near title bottom to match D2 placement",
-        )
+        assert_eq(title_box, @graph.Box::new(29.0, -59.0, 257.0, 51.0))
         assert_eq(poll_box, @graph.Box::new(110.0, 12.0, 150.0, 66.0))
         assert_eq(results_box, @graph.Box::new(64.0, 158.0, 93.0, 66.0))
         assert_eq(unfavorable_box, @graph.Box::new(172.0, 304.0, 131.0, 66.0))

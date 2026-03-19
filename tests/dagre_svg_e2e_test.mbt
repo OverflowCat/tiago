@@ -41,6 +41,7 @@ test "examples: dagre svg e2e snapshots and d2 semantic parity" {
     assert_eq(
       normalize_svg_snapshot(actual_svg),
       normalize_svg_snapshot(snapshot_svg),
+      msg="\{name}: diago dagre svg snapshot mismatch",
     )
 
     let d2_svg = read_required_file("examples/d2-dagre-output/" + name + ".svg").unwrap()

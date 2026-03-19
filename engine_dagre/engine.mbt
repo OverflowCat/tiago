@@ -912,12 +912,8 @@ fn sequence_label_height(obj : @graph.ObjectInput) -> Double {
         let is_bold = style_bool(obj.style.bold, false)
         let is_italic = style_bool(obj.style.italic, false)
         let is_mono = style_is_mono(obj.style.font_family)
-        let dims = @text_metrics.measure_label(
-          obj.label,
-          font_size,
-          is_mono,
-          is_bold,
-          is_italic,
+        let dims = measure_object_label_dims(
+          obj, font_size, is_mono, is_bold, is_italic,
         )
         if dims.height > 0.0 {
           dims.height
@@ -2810,17 +2806,9 @@ fn estimate_object_size(
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let label_dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-  } else {
-    @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
-  }
+  let label_dims = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
   let mut content_width = label_dims.width
   let mut content_height = label_dims.height
 
@@ -4214,17 +4202,9 @@ fn object_layout_spacing(
     let is_italic = style_bool(obj.style.italic, false)
     let is_mono = obj.shape_type == @graph.Code ||
       style_is_mono(obj.style.font_family)
-    let dims = if obj.shape_type == @graph.Code {
-      @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-    } else {
-      @text_metrics.measure_label(
-        obj.label,
-        font_size,
-        is_mono,
-        is_bold,
-        is_italic,
-      )
-    }
+    let dims = measure_object_label_dims(
+      obj, font_size, is_mono, is_bold, is_italic,
+    )
     let label_width = if dims.width > 0.0 {
       dims.width + D2_LABEL_PADDING * 2.0
     } else {
@@ -7351,9 +7331,46 @@ fn outside_label_box(
 }
 
 ///|
+fn object_is_markdown(obj : @graph.ObjectInput) -> Bool {
+  match obj.language {
+    Some(language) => language == "markdown"
+    None => false
+  }
+}
+
+///|
+fn measure_object_label_dims(
+  obj : @graph.ObjectInput,
+  font_size : Int,
+  is_mono : Bool,
+  is_bold : Bool,
+  is_italic : Bool,
+) -> @text_metrics.TextDimensions {
+  if obj.shape_type == @graph.Code {
+    return @text_metrics.measure_label_code(
+      obj.label,
+      font_size,
+      is_bold,
+      is_italic,
+    )
+  }
+  if object_is_markdown(obj) {
+    return @text_metrics.measure_label_markdown(obj.label, font_size)
+  }
+  @text_metrics.measure_label(obj.label, font_size, is_mono, is_bold, is_italic)
+}
+
+///|
 fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
   if obj.label == "" {
     return None
+  }
+  match obj.label_box {
+    Some(box) =>
+      if box.width > 0.0 && box.height > 0.0 {
+        return Some((round_double(box.width), round_double(box.height)))
+      }
+    None => ()
   }
   let font_size = match obj.style.font_size {
     Some(v) => v.as_int().unwrap_or(16)
@@ -7363,17 +7380,9 @@ fn object_label_dimensions(obj : @graph.ObjectInput) -> (Double, Double)? {
   let is_italic = style_bool(obj.style.italic, false)
   let is_mono = obj.shape_type == @graph.Code ||
     style_is_mono(obj.style.font_family)
-  let dims = if obj.shape_type == @graph.Code {
-    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
-  } else {
-    @text_metrics.measure_label(
-      obj.label,
-      font_size,
-      is_mono,
-      is_bold,
-      is_italic,
-    )
-  }
+  let dims = measure_object_label_dims(
+    obj, font_size, is_mono, is_bold, is_italic,
+  )
   let width = if dims.width > 0.0 {
     dims.width
   } else {

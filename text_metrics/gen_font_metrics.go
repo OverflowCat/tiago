@@ -32,6 +32,7 @@ type fontVariant struct {
 var variants = []fontVariant{
 	{name: "sans_regular", family: d2fonts.SourceSansPro, style: d2fonts.FONT_STYLE_REGULAR},
 	{name: "sans_bold", family: d2fonts.SourceSansPro, style: d2fonts.FONT_STYLE_BOLD},
+	{name: "sans_semibold", family: d2fonts.SourceSansPro, style: d2fonts.FONT_STYLE_SEMIBOLD},
 	{name: "sans_italic", family: d2fonts.SourceSansPro, style: d2fonts.FONT_STYLE_ITALIC},
 	{name: "mono_regular", family: d2fonts.SourceCodePro, style: d2fonts.FONT_STYLE_REGULAR},
 }
@@ -39,6 +40,7 @@ var variants = []fontVariant{
 var sizeSpecificSizes = map[string][]int{
 	"sans_regular": {20, 24, 28},
 	"sans_bold":    {20, 24, 28, 29, 32},
+	"sans_semibold": {20, 24, 28, 32},
 	"mono_regular": {20},
 }
 

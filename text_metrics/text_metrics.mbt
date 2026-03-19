@@ -59,6 +59,7 @@ const LINE_HEIGHT_FACTOR : Double = 101.0 / 80.0
 priv enum FontKind {
   SansRegular
   SansBold
+  SansSemibold
   SansItalic
   MonoRegular
 }
@@ -110,6 +111,7 @@ fn lookup_kerning_fixed(
     match kind {
       SansRegular => kernings_fixed_sans_regular[idx]
       SansBold => kernings_fixed_sans_bold[idx]
+      SansSemibold => kernings_fixed_sans_semibold[idx]
       SansItalic => kernings_fixed_sans_italic[idx]
       MonoRegular => kernings_fixed_mono_regular[idx]
     }
@@ -131,6 +133,12 @@ fn lookup_base_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
           x_min: glyph_x_mins_sans_bold[codepoint],
           x_max: glyph_x_maxs_sans_bold[codepoint],
           advance_fixed: glyph_advances_fixed_sans_bold[codepoint],
+        }
+      SansSemibold =>
+        {
+          x_min: glyph_x_mins_sans_semibold[codepoint],
+          x_max: glyph_x_maxs_sans_semibold[codepoint],
+          advance_fixed: glyph_advances_fixed_sans_semibold[codepoint],
         }
       SansItalic =>
         {
@@ -159,6 +167,12 @@ fn lookup_base_glyph_metrics(kind : FontKind, codepoint : Int) -> GlyphMetrics {
           x_min: glyph_x_mins_sans_bold_geo[idx],
           x_max: glyph_x_maxs_sans_bold_geo[idx],
           advance_fixed: glyph_advances_fixed_sans_bold_geo[idx],
+        }
+      SansSemibold =>
+        {
+          x_min: glyph_x_mins_sans_semibold_geo[idx],
+          x_max: glyph_x_maxs_sans_semibold_geo[idx],
+          advance_fixed: glyph_advances_fixed_sans_semibold_geo[idx],
         }
       SansItalic =>
         {
@@ -277,6 +291,50 @@ fn lookup_sized_glyph_metrics(
               x_min: glyph_x_mins_sans_bold_sz32[codepoint],
               x_max: glyph_x_maxs_sans_bold_sz32[codepoint],
               advance_fixed: glyph_advances_fixed_sans_bold_sz32[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else {
+          base
+        }
+      SansSemibold =>
+        if font_size == 20 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_semibold_sz20[codepoint],
+              x_max: glyph_x_maxs_sans_semibold_sz20[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_semibold_sz20[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 24 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_semibold_sz24[codepoint],
+              x_max: glyph_x_maxs_sans_semibold_sz24[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_semibold_sz24[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 28 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_semibold_sz28[codepoint],
+              x_max: glyph_x_maxs_sans_semibold_sz28[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_semibold_sz28[codepoint],
+            },
+            scale: 1.0,
+            fixed_scale: 1.0 / 64.0,
+          }
+        } else if font_size == 32 {
+          {
+            metrics: {
+              x_min: glyph_x_mins_sans_semibold_sz32[codepoint],
+              x_max: glyph_x_maxs_sans_semibold_sz32[codepoint],
+              advance_fixed: glyph_advances_fixed_sans_semibold_sz32[codepoint],
             },
             scale: 1.0,
             fixed_scale: 1.0 / 64.0,
@@ -546,6 +604,19 @@ pub fn measure_text_with_dot_bounds(
   is_italic : Bool,
 ) -> MeasuredText {
   let kind = select_font_kind(is_mono, is_bold, is_italic)
+  measure_text_with_dot_bounds_kind(text, font_size, kind)
+}
+
+///|
+fn measure_text_with_dot_bounds_kind(
+  text : String,
+  font_size : Int,
+  kind : FontKind,
+) -> MeasuredText {
+  let is_mono = match kind {
+    MonoRegular => true
+    _ => false
+  }
   let base = measure_text_with_mode(text, font_size, kind, is_mono, false)
   let mut max_line_width = 0.0
   for line in text.split("\n") {

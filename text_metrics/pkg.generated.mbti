@@ -8,6 +8,8 @@ pub fn measure_label(String, Int, Bool, Bool, Bool) -> TextDimensions
 
 pub fn measure_label_code(String, Int, Bool, Bool) -> TextDimensions
 
+pub fn measure_label_markdown(String, Int) -> TextDimensions
+
 pub fn measure_text(String, Int, Bool, Bool, Bool) -> MeasuredText
 
 pub fn measure_text_code(String, Int, Bool, Bool) -> MeasuredText
