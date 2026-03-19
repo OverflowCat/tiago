@@ -588,9 +588,17 @@ fn finalize_grid_cell_container_like_d2(
     container_box.height,
   )
   let placeholder_label_box = shift_box_opt(container.label_box, dx, dy)
-  let (effective_label_position, effective_icon_position) = grid_child_effective_positions_like_d2(
+  let (default_label_position, default_icon_position) = grid_child_effective_positions_like_d2(
     container,
   )
+  let effective_label_position = match container.label_position {
+    Some(position) => Some(position)
+    None => default_label_position
+  }
+  let effective_icon_position = match container.icon_position {
+    Some(position) => Some(position)
+    None => default_icon_position
+  }
   let placeholder_root = clone_object_with_parts_and_effective_positions(
     container,
     Some(placeholder_box),

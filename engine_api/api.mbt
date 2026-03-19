@@ -924,10 +924,56 @@ fn grid_child_base_dimensions_like_d2(
 }
 
 ///|
+fn inferred_label_position_from_layout_like_d2(
+  obj : @graph.ObjectInput,
+) -> String? {
+  match (obj.box, obj.label_box) {
+    (Some(box), Some(label_box)) => {
+      let label_bottom = label_box.y + label_box.height
+      let box_bottom = box.y + box.height
+      let label_center_x = label_box.x + label_box.width / 2.0
+      let box_center_x = box.x + box.width / 2.0
+      let centered_x = (label_center_x - box_center_x).abs() <= 1.0
+      if label_bottom <= box.y {
+        if centered_x {
+          Some("OUTSIDE_TOP_CENTER")
+        } else {
+          Some("OUTSIDE_TOP_LEFT")
+        }
+      } else if label_box.y >= box_bottom {
+        if centered_x {
+          Some("OUTSIDE_BOTTOM_CENTER")
+        } else {
+          Some("OUTSIDE_BOTTOM_LEFT")
+        }
+      } else if label_box.y >= box.y && label_bottom <= box_bottom {
+        if label_box.y <= box.y + label_box.height + D2_LABEL_PADDING {
+          if centered_x {
+            Some("INSIDE_TOP_CENTER")
+          } else {
+            Some("INSIDE_TOP_LEFT")
+          }
+        } else if centered_x {
+          Some("INSIDE_MIDDLE_CENTER")
+        } else {
+          Some("INSIDE_MIDDLE_LEFT")
+        }
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 fn grid_child_effective_positions_like_d2(
   obj : @graph.ObjectInput,
 ) -> (String?, String?) {
-  let mut label_position = obj.label_position
+  let mut label_position = match obj.label_position {
+    Some(position) => Some(position)
+    None => inferred_label_position_from_layout_like_d2(obj)
+  }
   let mut icon_position = obj.icon_position
   let mut positioned_label = false
   if obj.icon is Some(_) && icon_position is None {
@@ -2041,9 +2087,13 @@ fn restore_grid_semantics(
       let child_metrics_by_id : Map[String, GridChildLayoutMetrics] = {}
       let child_size_by_id : Map[String, (Double, Double)] = {}
       for child_id in child_ids {
-        let child = match original_by_id.get(child_id) {
+        let child = match laid_out_by_id.get(child_id) {
           Some(v) => v
-          None => continue
+          None =>
+            match original_by_id.get(child_id) {
+              Some(v) => v
+              None => continue
+            }
         }
         let metrics = grid_child_layout_metrics_like_d2(child, config)
         child_metrics_by_id[child_id] = metrics
@@ -2070,7 +2120,11 @@ fn restore_grid_semantics(
                 None => continue
               }
               let child = match original_by_id.get(child_id) {
-                Some(value) => value
+                Some(value) =>
+                  match laid_out_by_id.get(child_id) {
+                    Some(laid_out_value) => laid_out_value
+                    None => value
+                  }
                 None => {
                   override_boxes[child_id] = content_box
                   continue
@@ -2127,9 +2181,13 @@ fn restore_grid_semantics(
     let child_metrics_by_id : Map[String, GridChildLayoutMetrics] = {}
     let child_size_by_id : Map[String, (Double, Double)] = {}
     for child_id in child_ids {
-      let child = match original_by_id.get(child_id) {
+      let child = match laid_out_by_id.get(child_id) {
         Some(v) => v
-        None => continue
+        None =>
+          match original_by_id.get(child_id) {
+            Some(v) => v
+            None => continue
+          }
       }
       let metrics = grid_child_layout_metrics_like_d2(child, config)
       child_metrics_by_id[child_id] = metrics
@@ -2162,17 +2220,21 @@ fn restore_grid_semantics(
             initial_margin: { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 },
           }
       }
-      let child = match original_by_id.get(child_id) {
+      let child = match laid_out_by_id.get(child_id) {
         Some(value) => value
-        None => {
-          override_boxes[child_id] = @graph.Box::new(
-            parent_new.x + content_box.x,
-            parent_new.y + content_box.y,
-            content_box.width,
-            content_box.height,
-          )
-          continue
-        }
+        None =>
+          match original_by_id.get(child_id) {
+            Some(value) => value
+            None => {
+              override_boxes[child_id] = @graph.Box::new(
+                parent_new.x + content_box.x,
+                parent_new.y + content_box.y,
+                content_box.width,
+                content_box.height,
+              )
+              continue
+            }
+          }
       }
       override_boxes[child_id] = grid_child_restored_box_like_d2(
         child,
@@ -2189,14 +2251,26 @@ fn restore_grid_semantics(
   let objects : Array[@graph.ObjectInput] = []
   for obj in original_graph.objects {
     if context.child_ids.contains(obj.abs_id_syntax) {
+      let laid_out_obj = match laid_out_by_id.get(obj.abs_id_syntax) {
+        Some(v) => v
+        None => obj
+      }
       let override_box = override_boxes.get(obj.abs_id_syntax)
       let box = match override_box {
         Some(v) => Some(v)
         None => obj.box
       }
-      let label_box = obj.label_box
+      let label_box = match override_box {
+        Some(_) => laid_out_obj.label_box
+        None => obj.label_box
+      }
       objects.push(
-        clone_object_with_parts_and_label(obj, box, label_box, obj.child_ids),
+        clone_object_with_parts_and_label(
+          laid_out_obj,
+          box,
+          label_box,
+          obj.child_ids,
+        ),
       )
       continue
     }

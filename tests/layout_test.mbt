@@ -666,6 +666,205 @@ fn assert_grid_nested_gap0_like_d2(
 }
 
 ///|
+test "d2 grid_nested grid-with-container matches stable boxes" {
+  let source =
+    #|grid w/ container: {
+    #|  grid-rows: 2
+    #|  grid-columns: 2
+    #|
+    #|  a
+    #|  b: {
+    #|    b child
+    #|  }
+    #|  c
+    #|  d
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_nested_container_like_d2(dagre, "dagre")
+  assert_grid_nested_container_like_d2(elk, "elk")
+}
+
+///|
+fn assert_grid_nested_container_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let root = graph.find_object("grid w/ container").unwrap()
+  let a = graph.find_object("grid w/ container.a").unwrap()
+  let b = graph.find_object("grid w/ container.b").unwrap()
+  let b_child = graph.find_object("grid w/ container.b.b child").unwrap()
+  let c = graph.find_object("grid w/ container.c").unwrap()
+  let d = graph.find_object("grid w/ container.d").unwrap()
+
+  match
+    (
+      root.get_box(),
+      a.get_box(),
+      b.get_box(),
+      b_child.get_box(),
+      c.get_box(),
+      d.get_box(),
+    ) {
+    (
+      Some(root_box),
+      Some(a_box),
+      Some(b_box),
+      Some(b_child_box),
+      Some(c_box),
+      Some(d_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(root_box, @graph.Box::new(0.0, 0.0, 364.0, 388.0))
+        assert_eq(a_box, @graph.Box::new(60.0, 60.0, 53.0, 162.0))
+        assert_eq(b_box, @graph.Box::new(153.0, 96.0, 151.0, 126.0))
+        assert_eq(b_child_box, @graph.Box::new(183.0, 126.0, 91.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(60.0, 262.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(153.0, 262.0, 151.0, 66.0))
+      } else {
+        assert_eq(root_box, @graph.Box::new(12.0, 12.0, 404.0, 392.0))
+        assert_eq(a_box, @graph.Box::new(72.0, 72.0, 53.0, 166.0))
+        assert_eq(b_box, @graph.Box::new(165.0, 72.0, 191.0, 166.0))
+        assert_eq(b_child_box, @graph.Box::new(215.0, 122.0, 91.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(72.0, 278.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(165.0, 278.0, 191.0, 66.0))
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for grid_nested grid-with-container fixture objects",
+      )
+  }
+}
+
+///|
+test "d2 grid_nested grid-in-grid matches stable boxes" {
+  let source =
+    #|grid in grid: {
+    #|  grid-rows: 2
+    #|  grid-columns: 2
+    #|
+    #|  a
+    #|  b: {
+    #|    grid-rows: 2
+    #|    grid-columns: 2
+    #|
+    #|    a
+    #|    b
+    #|    c
+    #|    d
+    #|  }
+    #|  c
+    #|  d
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_in_grid_like_d2(dagre, "dagre")
+  assert_grid_in_grid_like_d2(elk, "elk")
+}
+
+///|
+fn assert_grid_in_grid_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let root = graph.find_object("grid in grid").unwrap()
+  let a = graph.find_object("grid in grid.a").unwrap()
+  let b = graph.find_object("grid in grid.b").unwrap()
+  let ba = graph.find_object("grid in grid.b.a").unwrap()
+  let bb = graph.find_object("grid in grid.b.b").unwrap()
+  let bc = graph.find_object("grid in grid.b.c").unwrap()
+  let bd = graph.find_object("grid in grid.b.d").unwrap()
+  let c = graph.find_object("grid in grid.c").unwrap()
+  let d = graph.find_object("grid in grid.d").unwrap()
+
+  match
+    (
+      root.get_box(),
+      a.get_box(),
+      b.get_box(),
+      ba.get_box(),
+      bb.get_box(),
+      bc.get_box(),
+      bd.get_box(),
+      c.get_box(),
+      d.get_box(),
+    ) {
+    (
+      Some(root_box),
+      Some(a_box),
+      Some(b_box),
+      Some(ba_box),
+      Some(bb_box),
+      Some(bc_box),
+      Some(bd_box),
+      Some(c_box),
+      Some(d_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(root_box, @graph.Box::new(0.0, 0.0, 480.0, 518.0))
+        assert_eq(a_box, @graph.Box::new(60.0, 60.0, 53.0, 292.0))
+        assert_eq(b_box, @graph.Box::new(153.0, 60.0, 267.0, 292.0))
+        assert_eq(ba_box, @graph.Box::new(213.0, 120.0, 53.0, 66.0))
+        assert_eq(bb_box, @graph.Box::new(306.0, 120.0, 54.0, 66.0))
+        assert_eq(bc_box, @graph.Box::new(213.0, 226.0, 53.0, 66.0))
+        assert_eq(bd_box, @graph.Box::new(306.0, 226.0, 54.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(60.0, 392.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(153.0, 392.0, 267.0, 66.0))
+      } else {
+        assert_eq(root_box, @graph.Box::new(12.0, 12.0, 480.0, 518.0))
+        assert_eq(a_box, @graph.Box::new(72.0, 72.0, 53.0, 292.0))
+        assert_eq(b_box, @graph.Box::new(165.0, 72.0, 267.0, 292.0))
+        assert_eq(ba_box, @graph.Box::new(225.0, 132.0, 53.0, 66.0))
+        assert_eq(bb_box, @graph.Box::new(318.0, 132.0, 54.0, 66.0))
+        assert_eq(bc_box, @graph.Box::new(225.0, 238.0, 53.0, 66.0))
+        assert_eq(bd_box, @graph.Box::new(318.0, 238.0, 54.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(72.0, 404.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(165.0, 404.0, 267.0, 66.0))
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for grid_nested grid-in-grid fixture objects",
+      )
+  }
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {
