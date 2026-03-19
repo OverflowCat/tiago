@@ -1486,6 +1486,174 @@ test "d2 multiple_constant_nears matches stable target geometry" {
 }
 
 ///|
+test "d2 constant_near_title matches stable target geometry" {
+  let source =
+    #|title: |md
+    #|  # A winning strategy
+    #|| { near: top-center }
+    #|
+    #|poll the people -> results
+    #|results -> unfavorable -> poll the people
+    #|results -> favorable -> will of the people
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_constant_near_title_like_d2(dagre, "dagre")
+  assert_constant_near_title_like_d2(elk, "elk")
+}
+
+///|
+fn assert_constant_near_title_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let title = target.find_object("title").unwrap()
+  let poll = target.find_object("poll the people").unwrap()
+  let results = target.find_object("results").unwrap()
+  let unfavorable = target.find_object("unfavorable").unwrap()
+  let favorable = target.find_object("favorable").unwrap()
+  let will = target.find_object("will of the people").unwrap()
+  let poll_results = find_connection(target, "poll the people", "results").unwrap()
+  let results_unfavorable = find_connection(target, "results", "unfavorable").unwrap()
+  let unfavorable_poll = find_connection(
+    target, "unfavorable", "poll the people",
+  ).unwrap()
+  let results_favorable = find_connection(target, "results", "favorable").unwrap()
+  let favorable_will = find_connection(
+    target, "favorable", "will of the people",
+  ).unwrap()
+
+  match
+    (
+      title.get_box(),
+      poll.get_box(),
+      results.get_box(),
+      unfavorable.get_box(),
+      favorable.get_box(),
+      will.get_box(),
+    ) {
+    (
+      Some(title_box),
+      Some(poll_box),
+      Some(results_box),
+      Some(unfavorable_box),
+      Some(favorable_box),
+      Some(will_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_true(
+          (title_box.x + title_box.width / 2.0 - 165.5).abs() <= 1.0,
+          msg="\{engine_name} expected constant-near title to stay centered like D2",
+        )
+        assert_true(
+          (title_box.y + title_box.height - -20.0).abs() <= 1.0,
+          msg="\{engine_name} expected constant-near title bottom to match D2 placement",
+        )
+        assert_eq(poll_box, @graph.Box::new(82.0, 0.0, 150.0, 66.0))
+        assert_eq(results_box, @graph.Box::new(191.0, 166.0, 93.0, 66.0))
+        assert_eq(unfavorable_box, @graph.Box::new(0.0, 332.0, 131.0, 66.0))
+        assert_eq(favorable_box, @graph.Box::new(191.0, 332.0, 113.0, 66.0))
+        assert_eq(will_box, @graph.Box::new(164.0, 498.0, 167.0, 66.0))
+        assert_route_points_close(poll_results.route, [
+          @graph.Point::new(188.5, 66.0),
+          @graph.Point::new(227.6999969482422, 106.0),
+          @graph.Point::new(237.5, 126.0),
+          @graph.Point::new(237.5, 166.0),
+        ])
+        assert_route_points_close(results_unfavorable.route, [
+          @graph.Point::new(201.5, 232.0),
+          @graph.Point::new(157.5, 272.0),
+          @graph.Point::new(136.6999969482422, 292.0),
+          @graph.Point::new(97.5, 332.0),
+        ])
+        assert_route_points_close(unfavorable_poll.route, [
+          @graph.Point::new(61.5, 332.0),
+          @graph.Point::new(56.70000076293945, 292.0),
+          @graph.Point::new(55.5, 265.3999938964844),
+          @graph.Point::new(55.5, 240.5),
+          @graph.Point::new(55.5, 215.60000610351562),
+          @graph.Point::new(67.69999694824219, 106.0),
+          @graph.Point::new(116.5, 66.0),
+        ])
+        assert_route_points_close(results_favorable.route, [
+          @graph.Point::new(241.5, 232.0),
+          @graph.Point::new(246.3000030517578, 272.0),
+          @graph.Point::new(247.5, 292.0),
+          @graph.Point::new(247.5, 332.0),
+        ])
+        assert_route_points_close(favorable_will.route, [
+          @graph.Point::new(247.5, 398.0),
+          @graph.Point::new(247.5, 438.0),
+          @graph.Point::new(247.5, 458.0),
+          @graph.Point::new(247.5, 498.0),
+        ])
+      } else {
+        assert_true(
+          (title_box.x + title_box.width / 2.0 - 157.5).abs() <= 1.0,
+          msg="\{engine_name} expected constant-near title to stay centered like D2",
+        )
+        assert_true(
+          (title_box.y + title_box.height - -8.0).abs() <= 1.0,
+          msg="\{engine_name} expected constant-near title bottom to match D2 placement",
+        )
+        assert_eq(poll_box, @graph.Box::new(110.0, 12.0, 150.0, 66.0))
+        assert_eq(results_box, @graph.Box::new(64.0, 158.0, 93.0, 66.0))
+        assert_eq(unfavorable_box, @graph.Box::new(172.0, 304.0, 131.0, 66.0))
+        assert_eq(favorable_box, @graph.Box::new(39.0, 304.0, 113.0, 66.0))
+        assert_eq(will_box, @graph.Box::new(12.0, 440.0, 167.0, 66.0))
+        assert_route_points_close(poll_results.route, [
+          @graph.Point::new(160.16600036621094, 78.0),
+          @graph.Point::new(160.16600036621094, 118.0),
+          @graph.Point::new(111.0, 118.0),
+          @graph.Point::new(111.0, 158.0),
+        ])
+        assert_route_points_close(results_unfavorable.route, [
+          @graph.Point::new(126.5, 224.0),
+          @graph.Point::new(126.5, 264.0),
+          @graph.Point::new(215.66600036621094, 264.0),
+          @graph.Point::new(215.66600036621094, 304.0),
+        ])
+        assert_route_points_close(unfavorable_poll.route, [
+          @graph.Point::new(259.3330078125, 304.0),
+          @graph.Point::new(259.3330078125, 118.0),
+          @graph.Point::new(210.16600036621094, 118.0),
+          @graph.Point::new(210.16600036621094, 78.0),
+        ])
+        assert_route_points_close(results_favorable.route, [
+          @graph.Point::new(95.5, 224.0),
+          @graph.Point::new(95.5, 304.0),
+        ])
+        assert_route_points_close(favorable_will.route, [
+          @graph.Point::new(95.5, 370.0),
+          @graph.Point::new(95.5, 440.0),
+        ])
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for constant_near_title fixture objects",
+      )
+  }
+}
+
+///|
 fn assert_multiple_constant_nears_like_d2(
   graph : @graph.GraphInput,
   engine_name : String,
