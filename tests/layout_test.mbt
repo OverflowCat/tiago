@@ -1442,6 +1442,237 @@ fn assert_nested_steps_like_d2(
 }
 
 ///|
+test "d2 multiple_constant_nears matches stable target geometry" {
+  let source =
+    #|a
+    #|b
+    #|c
+    #|
+    #|a: {
+    #|  1 -> 2 -> 3
+    #|  near: center-right
+    #|  style.fill: red
+    #|  style.opacity: 0.5
+    #|}
+    #|
+    #|b: {
+    #|  1111 -> 2222
+    #|  near: bottom-right
+    #|  style.fill: green
+    #|  style.opacity: 0.5
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_multiple_constant_nears_like_d2(dagre, "dagre")
+  assert_multiple_constant_nears_like_d2(elk, "elk")
+}
+
+///|
+fn assert_multiple_constant_nears_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let b = target.find_object("b").unwrap()
+  let c = target.find_object("c").unwrap()
+  let a1 = target.find_object("a.1").unwrap()
+  let a2 = target.find_object("a.2").unwrap()
+  let a3 = target.find_object("a.3").unwrap()
+  let b1111 = target.find_object("b.1111").unwrap()
+  let b2222 = target.find_object("b.2222").unwrap()
+  let a12 = find_connection(target, "a.1", "a.2").unwrap()
+  let a23 = find_connection(target, "a.2", "a.3").unwrap()
+  let bedge = find_connection(target, "b.1111", "b.2222").unwrap()
+
+  match
+    (
+      a.get_box(),
+      b.get_box(),
+      c.get_box(),
+      a1.get_box(),
+      a2.get_box(),
+      a3.get_box(),
+      b1111.get_box(),
+      b2222.get_box(),
+    ) {
+    (
+      Some(a_box),
+      Some(b_box),
+      Some(c_box),
+      Some(a1_box),
+      Some(a2_box),
+      Some(a3_box),
+      Some(b1111_box),
+      Some(b2222_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(73.0, -196.0, 113.0, 458.0))
+        assert_eq(b_box, @graph.Box::new(73.0, 318.0, 139.0, 292.0))
+        assert_eq(c_box, @graph.Box::new(0.0, 0.0, 53.0, 66.0))
+        assert_eq(a1_box, @graph.Box::new(104.0, -166.0, 52.0, 66.0))
+        assert_eq(a2_box, @graph.Box::new(103.0, 0.0, 53.0, 66.0))
+        assert_eq(a3_box, @graph.Box::new(103.0, 166.0, 53.0, 66.0))
+        assert_eq(b1111_box, @graph.Box::new(104.0, 348.0, 78.0, 66.0))
+        assert_eq(b2222_box, @graph.Box::new(103.0, 514.0, 79.0, 66.0))
+        assert_eq(a.label_position, Some("OUTSIDE_TOP_CENTER"))
+        assert_eq(b.label_position, Some("OUTSIDE_TOP_CENTER"))
+        assert_route_points_close(a12.route, [
+          @graph.Point::new(129.5, -100.0),
+          @graph.Point::new(129.5, -60.0),
+          @graph.Point::new(129.5, -40.0),
+          @graph.Point::new(129.5, 0.0),
+        ])
+        assert_route_points_close(a23.route, [
+          @graph.Point::new(129.5, 66.0),
+          @graph.Point::new(129.5, 106.0),
+          @graph.Point::new(129.5, 126.0),
+          @graph.Point::new(129.5, 166.0),
+        ])
+        assert_route_points_close(bedge.route, [
+          @graph.Point::new(142.5, 414.0),
+          @graph.Point::new(142.5, 454.0),
+          @graph.Point::new(142.5, 474.0),
+          @graph.Point::new(142.5, 514.0),
+        ])
+      } else {
+        assert_eq(a_box, @graph.Box::new(85.0, -174.0, 153.0, 438.0))
+        assert_eq(b_box, @graph.Box::new(85.0, 284.0, 179.0, 302.0))
+        assert_eq(c_box, @graph.Box::new(12.0, 12.0, 53.0, 66.0))
+        assert_eq(a1_box, @graph.Box::new(135.0, -124.0, 52.0, 66.0))
+        assert_eq(a2_box, @graph.Box::new(135.0, 12.0, 53.0, 66.0))
+        assert_eq(a3_box, @graph.Box::new(135.0, 148.0, 53.0, 66.0))
+        assert_eq(b1111_box, @graph.Box::new(135.0, 334.0, 78.0, 66.0))
+        assert_eq(b2222_box, @graph.Box::new(135.0, 470.0, 79.0, 66.0))
+        assert_eq(a.label_position, Some("INSIDE_TOP_CENTER"))
+        assert_eq(b.label_position, Some("INSIDE_TOP_CENTER"))
+        assert_route_points_close(a12.route, [
+          @graph.Point::new(161.5, -58.0),
+          @graph.Point::new(161.5, 12.0),
+        ])
+        assert_route_points_close(a23.route, [
+          @graph.Point::new(161.5, 78.0),
+          @graph.Point::new(161.5, 148.0),
+        ])
+        assert_route_points_close(bedge.route, [
+          @graph.Point::new(174.5, 400.0),
+          @graph.Point::new(174.5, 470.0),
+        ])
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for multiple_constant_nears fixture objects",
+      )
+  }
+}
+
+///|
+test "d2 grid_in_constant_near matches stable target geometry" {
+  let source =
+    #|a
+    #|b
+    #|c
+    #|x: {
+    #|  near: top-right
+    #|  grid-columns: 1
+    #|  y
+    #|  z
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_in_constant_near_like_d2(dagre, "dagre")
+  assert_grid_in_constant_near_like_d2(elk, "elk")
+}
+
+///|
+fn assert_grid_in_constant_near_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let b = target.find_object("b").unwrap()
+  let c = target.find_object("c").unwrap()
+  let x = target.find_object("x").unwrap()
+  let y = target.find_object("x.y").unwrap()
+  let z = target.find_object("x.z").unwrap()
+
+  match
+    (
+      a.get_box(),
+      b.get_box(),
+      c.get_box(),
+      x.get_box(),
+      y.get_box(),
+      z.get_box(),
+    ) {
+    (
+      Some(a_box),
+      Some(b_box),
+      Some(c_box),
+      Some(x_box),
+      Some(y_box),
+      Some(z_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(0.0, 0.0, 53.0, 66.0))
+        assert_eq(b_box, @graph.Box::new(113.0, 0.0, 53.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(226.0, 0.0, 53.0, 66.0))
+        assert_eq(x_box, @graph.Box::new(299.0, -312.0, 174.0, 292.0))
+        assert_eq(y_box, @graph.Box::new(359.0, -252.0, 54.0, 66.0))
+        assert_eq(z_box, @graph.Box::new(359.0, -146.0, 54.0, 66.0))
+      } else {
+        assert_eq(a_box, @graph.Box::new(12.0, 12.0, 53.0, 66.0))
+        assert_eq(b_box, @graph.Box::new(85.0, 12.0, 53.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(158.0, 12.0, 53.0, 66.0))
+        assert_eq(x_box, @graph.Box::new(231.0, -300.0, 174.0, 292.0))
+        assert_eq(y_box, @graph.Box::new(291.0, -240.0, 54.0, 66.0))
+        assert_eq(z_box, @graph.Box::new(291.0, -134.0, 54.0, 66.0))
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for grid_in_constant_near fixture objects",
+      )
+  }
+}
+
+///|
 fn find_edge(
   graph : @graph.GraphInput,
   src_id : String,

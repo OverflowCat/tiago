@@ -29,6 +29,8 @@
 priv struct NestedSequenceContext {
   container_order : Array[String]
   graphs_by_container_id : Map[String, @graph.GraphInput]
+  constant_near_order : Array[String]
+  constant_near_graphs_by_container_id : Map[String, @graph.GraphInput]
   descendant_container_by_id : Map[String, String]
   internal_edge_container_by_index : Map[Int, String]
   external_edge_indices : Map[Int, Bool]
@@ -39,6 +41,8 @@ fn empty_nested_sequence_context() -> NestedSequenceContext {
   {
     container_order: [],
     graphs_by_container_id: {},
+    constant_near_order: [],
+    constant_near_graphs_by_container_id: {},
     descendant_container_by_id: {},
     internal_edge_container_by_index: {},
     external_edge_indices: {},
@@ -65,9 +69,37 @@ fn[Engine : LayoutEngine] prepare_nested_sequence_layouts(
       Some(obj) => obj
       None => continue
     }
-    let is_root_grid_cell_container = is_root_grid_cell_container_like_d2(
+    let is_constant_near = is_constant_near_candidate_like_d2(
       prepared_graph, container,
     )
+    let is_root_grid_cell_container = is_root_grid_cell_container_like_d2(
+        prepared_graph, container,
+      ) &&
+      !is_constant_near
+    if is_constant_near {
+      let original_near = container.near
+      let (prepared_without_nested, constant_near_graph, external_edge_indices) = extract_constant_near_graph_like_d2(
+        prepared_graph, container_id,
+      )
+      let laid_out_constant_near = layout_with_engine(
+        engine,
+        clear_constant_near_for_nested_layout_like_d2(
+          constant_near_graph, container_id,
+        ),
+        config,
+        direction,
+      )
+      let laid_out_constant_near = restore_constant_near_after_layout_like_d2(
+        laid_out_constant_near, container_id, original_near,
+      )
+      prepared_graph = prepared_without_nested
+      context.constant_near_order.push(container_id)
+      context.constant_near_graphs_by_container_id[container_id] = laid_out_constant_near
+      for edge_index, _ in external_edge_indices {
+        context.external_edge_indices[edge_index] = true
+      }
+      continue
+    }
     let (
       prepared_without_nested,
       descendant_graph,
@@ -134,9 +166,14 @@ fn restore_nested_sequence_layouts(
   laid_out_graph : @graph.GraphInput,
   context : NestedSequenceContext,
 ) -> @graph.GraphInput {
-  if context.container_order.is_empty() {
+  if context.container_order.is_empty() &&
+    context.constant_near_order.is_empty() {
     return laid_out_graph
   }
+
+  let laid_out_graph = apply_constant_near_graphs_like_d2(
+    laid_out_graph, context,
+  )
 
   let container_ids : Map[String, Bool] = {}
   let shifted_nested_object_by_id : Map[String, @graph.ObjectInput] = {}
@@ -275,8 +312,6 @@ fn collect_nested_sequence_candidate_ids(
   graph : @graph.GraphInput,
 ) -> Array[String] {
   let object_by_id = build_object_by_abs_id_syntax(graph)
-  let root_is_grid_diagram = graph.root.grid_rows is Some(_) ||
-    graph.root.grid_columns is Some(_)
   let queue : Array[String] = []
   for child_id in graph.root.child_ids {
     if object_by_id.contains(child_id) {
@@ -290,10 +325,14 @@ fn collect_nested_sequence_candidate_ids(
     index += 1
     match object_by_id.get(current_id) {
       Some(current) => {
-        let is_root_grid_cell_container = root_is_grid_diagram &&
-          !current.child_ids.is_empty() &&
-          !is_nested_diagram_candidate_like_d2(current)
-        if is_root_grid_cell_container {
+        let is_constant_near = is_constant_near_candidate_like_d2(
+          graph, current,
+        )
+        let is_root_grid_cell_container = is_root_grid_cell_container_like_d2(
+            graph, current,
+          ) &&
+          !is_constant_near
+        if is_root_grid_cell_container || is_constant_near {
           candidate_ids.push(current.abs_id_syntax)
         } else if is_nested_diagram_candidate_like_d2(current) &&
           !current.child_ids.is_empty() {
@@ -318,8 +357,42 @@ fn is_root_grid_cell_container_like_d2(
   obj : @graph.ObjectInput,
 ) -> Bool {
   (graph.root.grid_rows is Some(_) || graph.root.grid_columns is Some(_)) &&
+  graph.root.child_ids.contains(obj.abs_id_syntax) &&
   !obj.child_ids.is_empty() &&
   !is_nested_diagram_candidate_like_d2(obj)
+}
+
+///|
+fn graph_root_level_like_d2(graph : @graph.GraphInput) -> Int {
+  if graph.root.child_ids.is_empty() {
+    return 0
+  }
+  let mut min_depth = 1000000000
+  for child_id in graph.root.child_ids {
+    let depth = @graph.syntax_path_depth(child_id)
+    if depth < min_depth {
+      min_depth = depth
+    }
+  }
+  if min_depth <= 0 {
+    0
+  } else {
+    min_depth - 1
+  }
+}
+
+///|
+fn is_constant_near_candidate_like_d2(
+  graph : @graph.GraphInput,
+  obj : @graph.ObjectInput,
+) -> Bool {
+  if graph_root_level_like_d2(graph) != 0 {
+    return false
+  }
+  match obj.near {
+    Some(raw) => is_constant_near_key_like_d2(raw.to_lower())
+    None => false
+  }
 }
 
 ///|
@@ -327,6 +400,239 @@ fn is_nested_diagram_candidate_like_d2(obj : @graph.ObjectInput) -> Bool {
   obj.shape_type == @graph.SequenceDiagram ||
   obj.grid_rows is Some(_) ||
   obj.grid_columns is Some(_)
+}
+
+///|
+fn extract_constant_near_graph_like_d2(
+  graph : @graph.GraphInput,
+  container_id : String,
+) -> (@graph.GraphInput, @graph.GraphInput, Map[Int, Bool]) raise LayoutError {
+  let object_by_id = build_object_by_abs_id_syntax(graph)
+  guard object_by_id.get(container_id) is Some(_) else {
+    raise invalid_graph("constant near container not found: \{container_id}")
+  }
+  let subtree_ids = collect_descendant_ids(object_by_id, [container_id])
+  let parent_id_by_child_id = build_parent_id_by_child_abs_id_syntax(graph)
+  let parent_id = parent_id_by_child_id.get(container_id)
+  let subtree_semantic_ids : Map[String, Bool] = {}
+  let nested_objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    if subtree_ids.contains(obj.abs_id_syntax) {
+      subtree_semantic_ids[obj.id] = true
+      nested_objects.push(obj)
+    }
+  }
+  let nested_edges : Array[@graph.EdgeInput] = []
+  let outer_edges : Array[@graph.EdgeInput] = []
+  let external_edge_indices : Map[Int, Bool] = {}
+  for edge in graph.edges {
+    let src_nested = subtree_ids.contains(edge.src_id_syntax)
+    let dst_nested = subtree_ids.contains(edge.dst_id_syntax)
+    if src_nested && dst_nested {
+      nested_edges.push(edge)
+    } else if src_nested || dst_nested {
+      external_edge_indices[edge.index] = true
+    } else {
+      outer_edges.push(edge)
+    }
+  }
+  let outer_root_child_ids = match parent_id {
+    Some(parent) if parent == graph.root.abs_id_syntax =>
+      remove_child_id_like_d2(graph.root.child_ids, container_id)
+    _ => graph.root.child_ids
+  }
+  let outer_root = clone_object_with_parts(
+    graph.root,
+    graph.root.box,
+    outer_root_child_ids,
+  )
+  let outer_objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    if subtree_ids.contains(obj.abs_id_syntax) {
+      continue
+    }
+    let child_ids = match parent_id {
+      Some(parent) if parent == obj.abs_id_syntax =>
+        remove_child_id_like_d2(obj.child_ids, container_id)
+      _ => obj.child_ids
+    }
+    if child_ids == obj.child_ids {
+      outer_objects.push(obj)
+    } else {
+      outer_objects.push(clone_object_with_parts(obj, obj.box, child_ids))
+    }
+  }
+  let nested_activation_boxes : Array[(String, @graph.Box)] = []
+  let outer_activation_boxes : Array[(String, @graph.Box)] = []
+  for activation in graph.activation_boxes {
+    let (id, box) = activation
+    if subtree_semantic_ids.contains(id) {
+      nested_activation_boxes.push((id, box))
+    } else {
+      outer_activation_boxes.push((id, box))
+    }
+  }
+  let nested_sequence_notes : Array[(String, String, @graph.Box)] = []
+  let outer_sequence_notes : Array[(String, String, @graph.Box)] = []
+  for note_entry in graph.sequence_notes {
+    let (id, note, box) = note_entry
+    if subtree_semantic_ids.contains(id) {
+      nested_sequence_notes.push((id, note, box))
+    } else {
+      outer_sequence_notes.push((id, note, box))
+    }
+  }
+  let outer_graph = @graph.GraphInput::from_parts(
+    graph.name,
+    outer_root,
+    outer_objects,
+    outer_edges,
+    graph.sequence_fragments,
+    outer_activation_boxes,
+    outer_sequence_notes,
+    graph.sequence_fragments_layout,
+    graph.layers,
+    graph.scenarios,
+    graph.steps,
+    graph.legend,
+    is_folder_only=graph.is_folder_only,
+    data=graph.data,
+  )
+  let nested_graph = extract_nested_include_self_graph_like_d2(
+    graph, container_id,
+  )
+  let nested_graph = clone_graph_with_sequence_parts(
+    nested_graph,
+    nested_graph.root,
+    nested_graph.objects,
+    nested_edges,
+    nested_activation_boxes,
+    nested_sequence_notes,
+    [],
+  )
+  (outer_graph, nested_graph, external_edge_indices)
+}
+
+///|
+fn remove_child_id_like_d2(
+  child_ids : Array[String],
+  child_id : String,
+) -> Array[String] {
+  let filtered : Array[String] = []
+  for current in child_ids {
+    if current != child_id {
+      filtered.push(current)
+    }
+  }
+  filtered
+}
+
+///|
+fn clear_constant_near_for_nested_layout_like_d2(
+  graph : @graph.GraphInput,
+  container_id : String,
+) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    if obj.abs_id_syntax == container_id {
+      objects.push(clone_object_with_near_like_d2(obj, None))
+    } else {
+      objects.push(obj)
+    }
+  }
+  clone_graph_with_sequence_parts(
+    graph,
+    graph.root,
+    objects,
+    graph.edges,
+    graph.activation_boxes,
+    graph.sequence_notes,
+    graph.sequence_fragments_layout,
+  )
+}
+
+///|
+fn clone_object_with_near_like_d2(
+  obj : @graph.ObjectInput,
+  near : String?,
+) -> @graph.ObjectInput {
+  @graph.ObjectInput::from_parts(
+    obj.id,
+    obj.label,
+    obj.shape_type,
+    obj.style,
+    obj.box,
+    obj.label_box,
+    obj.child_ids,
+    obj.z_index,
+    obj.icon,
+    obj.tooltip,
+    obj.link,
+    obj.classes,
+    obj.grid_rows,
+    obj.grid_columns,
+    obj.grid_gap,
+    obj.horizontal_gap,
+    obj.vertical_gap,
+    obj.grid_column_span,
+    obj.grid_row_span,
+    near,
+    obj.top,
+    obj.left,
+    direction=obj.direction,
+    language=obj.language,
+    sql_constraints=obj.sql_constraints,
+    id_val=obj.id_val,
+    id_syntax=obj.id_syntax,
+    abs_id_syntax=obj.abs_id_syntax,
+    references=obj.references,
+    icon_position=obj.icon_position,
+    tooltip_position=obj.tooltip_position,
+    label_position=obj.label_position,
+  )
+}
+
+///|
+fn restore_constant_near_after_layout_like_d2(
+  graph : @graph.GraphInput,
+  container_id : String,
+  near : String?,
+) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    if obj.abs_id_syntax == container_id {
+      let effective_label_position = match obj.label_position {
+        Some(current) => Some(current)
+        None =>
+          if obj.child_ids.is_empty() {
+            None
+          } else {
+            inferred_label_position_from_layout_like_d2(obj)
+          }
+      }
+      objects.push(
+        clone_object_with_parts_and_effective_positions(
+          clone_object_with_near_like_d2(obj, near),
+          obj.box,
+          obj.label_box,
+          obj.child_ids,
+          effective_label_position,
+          obj.icon_position,
+        ),
+      )
+    } else {
+      objects.push(obj)
+    }
+  }
+  clone_graph_with_sequence_parts(
+    graph,
+    graph.root,
+    objects,
+    graph.edges,
+    graph.activation_boxes,
+    graph.sequence_notes,
+    graph.sequence_fragments_layout,
+  )
 }
 
 ///|
@@ -994,6 +1300,394 @@ fn clone_graph_with_sequence_parts(
     is_folder_only=graph.is_folder_only,
     data=graph.data,
   )
+}
+
+///|
+const D2_NEAR_PAD_LIKE_D2 : Double = 20.0
+
+///|
+fn apply_constant_near_graphs_like_d2(
+  graph : @graph.GraphInput,
+  context : NestedSequenceContext,
+) -> @graph.GraphInput {
+  if context.constant_near_order.is_empty() {
+    return graph
+  }
+
+  let mut placed_graph = graph
+  let placed_near_ids : Map[String, Bool] = {}
+  for key_set in [0, 1, 2] {
+    let current_set_ids : Array[String] = []
+    for container_id in context.constant_near_order {
+      let nested_graph = match
+        context.constant_near_graphs_by_container_id.get(container_id) {
+        Some(current) => current
+        None => continue
+      }
+      let obj = match constant_near_root_object_like_d2(nested_graph) {
+        Some(current) => current
+        None => continue
+      }
+      let near_key = match obj.near {
+        Some(raw) => raw.to_lower()
+        None => continue
+      }
+      if !near_key_matches_set_like_d2(near_key, key_set) {
+        continue
+      }
+      let box = match obj.box {
+        Some(current) => current
+        None => continue
+      }
+      let (min_x, min_y, max_x, max_y) = constant_near_bounding_box_like_d2(
+        placed_graph, placed_near_ids,
+      )
+      let (x, y) = place_constant_near_box_like_d2(
+        obj,
+        near_key,
+        min_x,
+        min_y,
+        max_x - min_x,
+        max_y - min_y,
+        box.width,
+        box.height,
+      )
+      let shifted = shift_nested_sequence_graph(
+        nested_graph,
+        x - box.x,
+        y - box.y,
+      )
+      placed_graph = inject_constant_near_graph_like_d2(placed_graph, shifted)
+      current_set_ids.push(container_id)
+    }
+    for container_id in current_set_ids {
+      placed_near_ids[container_id] = true
+    }
+  }
+  placed_graph
+}
+
+///|
+fn constant_near_root_object_like_d2(
+  graph : @graph.GraphInput,
+) -> @graph.ObjectInput? {
+  if graph.root.child_ids.is_empty() {
+    return None
+  }
+  build_object_by_abs_id_syntax(graph).get(graph.root.child_ids[0])
+}
+
+///|
+fn inject_constant_near_graph_like_d2(
+  graph : @graph.GraphInput,
+  nested_graph : @graph.GraphInput,
+) -> @graph.GraphInput {
+  let objects : Array[@graph.ObjectInput] = []
+  for obj in graph.objects {
+    objects.push(obj)
+  }
+  for obj in nested_graph.objects {
+    objects.push(obj)
+  }
+  let edges : Array[@graph.EdgeInput] = []
+  for edge in graph.edges {
+    edges.push(edge)
+  }
+  for edge in nested_graph.edges {
+    edges.push(edge)
+  }
+  let activation_boxes : Array[(String, @graph.Box)] = []
+  for activation in graph.activation_boxes {
+    activation_boxes.push(activation)
+  }
+  for activation in nested_graph.activation_boxes {
+    activation_boxes.push(activation)
+  }
+  let sequence_notes : Array[(String, String, @graph.Box)] = []
+  for note in graph.sequence_notes {
+    sequence_notes.push(note)
+  }
+  for note in nested_graph.sequence_notes {
+    sequence_notes.push(note)
+  }
+  let sequence_fragments_layout : Array[@graph.SequenceFragmentLayout] = []
+  for fragment in graph.sequence_fragments_layout {
+    sequence_fragments_layout.push(fragment)
+  }
+  for fragment in nested_graph.sequence_fragments_layout {
+    sequence_fragments_layout.push(fragment)
+  }
+  clone_graph_with_sequence_parts(
+    graph,
+    graph.root,
+    objects,
+    edges,
+    activation_boxes,
+    sequence_notes,
+    sequence_fragments_layout,
+  )
+}
+
+///|
+fn is_constant_near_key_like_d2(key : String) -> Bool {
+  match key {
+    "top-left"
+    | "top-center"
+    | "top-right"
+    | "center-left"
+    | "center-right"
+    | "bottom-left"
+    | "bottom-center"
+    | "bottom-right" => true
+    _ => false
+  }
+}
+
+///|
+fn near_key_matches_set_like_d2(key : String, key_set : Int) -> Bool {
+  match key_set {
+    0 => key == "top-center" || key == "bottom-center"
+    1 => key == "center-left" || key == "center-right"
+    _ =>
+      key == "top-left" ||
+      key == "top-right" ||
+      key == "bottom-left" ||
+      key == "bottom-right"
+  }
+}
+
+///|
+fn constant_near_bounding_box_like_d2(
+  graph : @graph.GraphInput,
+  placed_near_ids : Map[String, Bool],
+) -> (Double, Double, Double, Double) {
+  let mut min_x = 1000000000000.0
+  let mut min_y = 1000000000000.0
+  let mut max_x = -1000000000000.0
+  let mut max_y = -1000000000000.0
+  let mut has_bounds = false
+  let update_box = fn(box : @graph.Box) -> Unit {
+    if box.x < min_x {
+      min_x = box.x
+    }
+    if box.y < min_y {
+      min_y = box.y
+    }
+    if box.x + box.width > max_x {
+      max_x = box.x + box.width
+    }
+    if box.y + box.height > max_y {
+      max_y = box.y + box.height
+    }
+    has_bounds = true
+  }
+  for obj in graph.objects {
+    let box = match obj.box {
+      Some(current) => current
+      None => continue
+    }
+    if placed_near_ids.contains(obj.abs_id_syntax) {
+      let near_key = match obj.near {
+        Some(raw) => raw.to_lower()
+        None => continue
+      }
+      match near_key {
+        "top-center" | "bottom-center" => {
+          if box.x < min_x {
+            min_x = box.x
+          }
+          if box.x + box.width > max_x {
+            max_x = box.x + box.width
+          }
+          has_bounds = true
+        }
+        "center-left" | "center-right" => {
+          if box.y < min_y {
+            min_y = box.y
+          }
+          if box.y + box.height > max_y {
+            max_y = box.y + box.height
+          }
+          has_bounds = true
+        }
+        _ => ()
+      }
+      continue
+    }
+    if has_outer_near_container_like_d2(obj.abs_id_syntax, placed_near_ids) {
+      continue
+    }
+    update_box(box)
+    match obj.label_box {
+      Some(label_box) => {
+        let label_position = match obj.label_position {
+          Some(current) => current
+          None => ""
+        }
+        if !label_position.contains("INSIDE") {
+          update_box(label_box)
+        }
+      }
+      None => ()
+    }
+  }
+  for edge in graph.edges {
+    if has_outer_near_container_like_d2(edge.src_id_syntax, placed_near_ids) ||
+      has_outer_near_container_like_d2(edge.dst_id_syntax, placed_near_ids) {
+      continue
+    }
+    for point in edge.route {
+      if point.x < min_x {
+        min_x = point.x
+      }
+      if point.y < min_y {
+        min_y = point.y
+      }
+      if point.x > max_x {
+        max_x = point.x
+      }
+      if point.y > max_y {
+        max_y = point.y
+      }
+      has_bounds = true
+    }
+  }
+  if !has_bounds {
+    return (0.0, 0.0, 0.0, 0.0)
+  }
+  if min_x > max_x {
+    min_x = 0.0
+    max_x = 0.0
+  }
+  if min_y > max_y {
+    min_y = 0.0
+    max_y = 0.0
+  }
+  (min_x, min_y, max_x, max_y)
+}
+
+///|
+fn has_outer_near_container_like_d2(
+  obj_id : String,
+  placed_near_ids : Map[String, Bool],
+) -> Bool {
+  for near_id, _ in placed_near_ids {
+    if obj_id != near_id && obj_id.has_prefix(near_id + ".") {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn place_constant_near_box_like_d2(
+  obj : @graph.ObjectInput,
+  near_key : String,
+  min_x : Double,
+  min_y : Double,
+  width : Double,
+  height : Double,
+  box_width : Double,
+  box_height : Double,
+) -> (Double, Double) {
+  let (x, y) = match near_key {
+    "top-left" =>
+      (
+        min_x - box_width - D2_NEAR_PAD_LIKE_D2,
+        min_y - box_height - D2_NEAR_PAD_LIKE_D2,
+      )
+    "top-center" =>
+      (
+        min_x + width / 2.0 - box_width / 2.0,
+        min_y - box_height - D2_NEAR_PAD_LIKE_D2,
+      )
+    "top-right" =>
+      (
+        min_x + width + D2_NEAR_PAD_LIKE_D2,
+        min_y - box_height - D2_NEAR_PAD_LIKE_D2,
+      )
+    "center-left" =>
+      (
+        min_x - box_width - D2_NEAR_PAD_LIKE_D2,
+        min_y + height / 2.0 - box_height / 2.0,
+      )
+    "center-right" =>
+      (
+        min_x + width + D2_NEAR_PAD_LIKE_D2,
+        min_y + height / 2.0 - box_height / 2.0,
+      )
+    "bottom-left" =>
+      (
+        min_x - box_width - D2_NEAR_PAD_LIKE_D2,
+        min_y + height + D2_NEAR_PAD_LIKE_D2,
+      )
+    "bottom-center" =>
+      (
+        min_x + width / 2.0 - box_width / 2.0,
+        min_y + height + D2_NEAR_PAD_LIKE_D2,
+      )
+    "bottom-right" =>
+      (
+        min_x + width + D2_NEAR_PAD_LIKE_D2,
+        min_y + height + D2_NEAR_PAD_LIKE_D2,
+      )
+    _ => (min_x, min_y)
+  }
+  adjust_constant_near_for_label_like_d2(obj, near_key, x, y)
+}
+
+///|
+fn adjust_constant_near_for_label_like_d2(
+  obj : @graph.ObjectInput,
+  near_key : String,
+  x : Double,
+  y : Double,
+) -> (Double, Double) {
+  let label_position = match obj.label_position {
+    Some(current) => current
+    None =>
+      match inferred_label_position_from_layout_like_d2(obj) {
+        Some(current) => current
+        None => return (x, y)
+      }
+  }
+  if label_position.contains("INSIDE") {
+    return (x, y)
+  }
+  let (label_width, label_height) = match obj.label_box {
+    Some(box) => (box.width, box.height)
+    None => object_label_dimensions_like_d2(obj, 0.0)
+  }
+  if label_width <= 0.0 || label_height <= 0.0 {
+    return (x, y)
+  }
+  if label_position.contains("_TOP_") {
+    if near_key.contains("bottom") {
+      (x, y + label_height)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_LEFT_") {
+    if near_key.contains("right") {
+      (x + label_width, y)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_RIGHT_") {
+    if near_key.contains("left") {
+      (x - label_width, y)
+    } else {
+      (x, y)
+    }
+  } else if label_position.contains("_BOTTOM_") {
+    if near_key.contains("top") {
+      (x, y - label_height)
+    } else {
+      (x, y)
+    }
+  } else {
+    (x, y)
+  }
 }
 
 ///|
