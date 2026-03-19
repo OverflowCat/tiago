@@ -862,6 +862,7 @@ fn extract_nested_include_self_graph_like_d2(
     None,
     is_folder_only=false,
     data={},
+    extracted_include_self=true,
   )
 }
 
@@ -1299,6 +1300,7 @@ fn clone_graph_with_sequence_parts(
     graph.legend,
     is_folder_only=graph.is_folder_only,
     data=graph.data,
+    extracted_include_self=graph.extracted_include_self,
   )
 }
 
@@ -1699,12 +1701,75 @@ fn route_nested_external_edge(
     (object_by_id.get(edge.src_id_syntax), object_by_id.get(edge.dst_id_syntax)) {
     (Some(src), Some(dst)) =>
       match (src.box, dst.box) {
-        (Some(src_box), Some(dst_box)) => [src_box.center(), dst_box.center()]
+        (Some(src_box), Some(dst_box)) =>
+          clip_default_route_like_d2(
+            [src_box.center(), dst_box.center()],
+            src_box,
+            dst_box,
+          )
         _ => edge.route
       }
     _ => edge.route
   }
   clone_edge_with_layout(edge, route, None, None)
+}
+
+///|
+fn clip_default_route_like_d2(
+  route : Array[@graph.Point],
+  src_box : @graph.Box,
+  dst_box : @graph.Box,
+) -> Array[@graph.Point] {
+  if route.length() < 2 {
+    return route
+  }
+  let clipped : Array[@graph.Point] = []
+  for point in route {
+    clipped.push(point)
+  }
+  clipped[0] = box_border_point_towards_like_d2(src_box, clipped[1])
+  let last_index = clipped.length() - 1
+  clipped[last_index] = box_border_point_towards_like_d2(
+    dst_box,
+    clipped[last_index - 1],
+  )
+  clipped
+}
+
+///|
+fn box_border_point_towards_like_d2(
+  box : @graph.Box,
+  target : @graph.Point,
+) -> @graph.Point {
+  let center = box.center()
+  let dx = target.x - center.x
+  let dy = target.y - center.y
+  if dx.abs() <= 1.0e-9 && dy.abs() <= 1.0e-9 {
+    return center
+  }
+
+  let large = 1.0e18
+  let tx = if dx.abs() > 1.0e-9 {
+    if dx > 0.0 {
+      (box.x + box.width - center.x) / dx
+    } else {
+      (box.x - center.x) / dx
+    }
+  } else {
+    large
+  }
+  let ty = if dy.abs() > 1.0e-9 {
+    if dy > 0.0 {
+      (box.y + box.height - center.y) / dy
+    } else {
+      (box.y - center.y) / dy
+    }
+  } else {
+    large
+  }
+  let t = if ty < tx { ty } else { tx }
+  let t = if t < 0.0 { 0.0 } else { t }
+  @graph.Point::new(center.x + dx * t, center.y + dy * t)
 }
 
 ///|

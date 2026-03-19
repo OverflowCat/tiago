@@ -1520,6 +1520,50 @@ test "d2 constant_near_title matches stable target geometry" {
 }
 
 ///|
+test "d2 grid_edge_across_cell matches stable target geometry" {
+  let source =
+    #|classes.red.style.stroke: red
+    #|grid: {
+    #|  grid-columns: 2
+    #|  grid-gap: 10
+    #|
+    #|  cell 1.a -> cell 2.b -> cell 3.c.d: {
+    #|    class: red
+    #|  }
+    #|
+    #|  cell 3: {
+    #|    c -> e
+    #|    c.d -> f.g
+    #|  }
+    #|  cell 3.f.g -> cell 1.a: {
+    #|    class: red
+    #|  }
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_edge_across_cell_like_d2(dagre, "dagre")
+  assert_grid_edge_across_cell_like_d2(elk, "elk")
+}
+
+///|
 fn assert_constant_near_title_like_d2(
   graph : @graph.GraphInput,
   engine_name : String,
@@ -1649,6 +1693,154 @@ fn assert_constant_near_title_like_d2(
     _ =>
       fail(
         "\{engine_name} expected boxes for constant_near_title fixture objects",
+      )
+  }
+}
+
+///|
+fn assert_grid_edge_across_cell_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let grid = target.find_object("grid").unwrap()
+  let cell1 = target.find_object("grid.cell 1").unwrap()
+  let a = target.find_object("grid.cell 1.a").unwrap()
+  let cell2 = target.find_object("grid.cell 2").unwrap()
+  let b = target.find_object("grid.cell 2.b").unwrap()
+  let cell3 = target.find_object("grid.cell 3").unwrap()
+  let c = target.find_object("grid.cell 3.c").unwrap()
+  let cd = target.find_object("grid.cell 3.c.d").unwrap()
+  let e = target.find_object("grid.cell 3.e").unwrap()
+  let f = target.find_object("grid.cell 3.f").unwrap()
+  let fg = target.find_object("grid.cell 3.f.g").unwrap()
+  let ab = find_connection(target, "grid.cell 1.a", "grid.cell 2.b").unwrap()
+  let bcd = find_connection(target, "grid.cell 2.b", "grid.cell 3.c.d").unwrap()
+  let ce = find_connection(target, "grid.cell 3.c", "grid.cell 3.e").unwrap()
+  let cdfg = find_connection(target, "grid.cell 3.c.d", "grid.cell 3.f.g").unwrap()
+  let fga = find_connection(target, "grid.cell 3.f.g", "grid.cell 1.a").unwrap()
+
+  match
+    (
+      grid.get_box(),
+      cell1.get_box(),
+      a.get_box(),
+      cell2.get_box(),
+      b.get_box(),
+      cell3.get_box(),
+      c.get_box(),
+      cd.get_box(),
+      e.get_box(),
+      f.get_box(),
+      fg.get_box(),
+    ) {
+    (
+      Some(_),
+      Some(cell1_box),
+      Some(a_box),
+      Some(cell2_box),
+      Some(b_box),
+      Some(cell3_box),
+      Some(c_box),
+      Some(cd_box),
+      Some(e_box),
+      Some(f_box),
+      Some(fg_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(cell1_box, @graph.Box::new(10.0, 82.0, 113.0, 206.0))
+        assert_eq(a_box, @graph.Box::new(40.0, 112.0, 53.0, 66.0))
+        assert_eq(cell2_box, @graph.Box::new(10.0, 334.0, 113.0, 206.0))
+        assert_eq(b_box, @graph.Box::new(40.0, 364.0, 53.0, 66.0))
+        assert_eq(cell3_box, @graph.Box::new(133.0, 82.0, 280.0, 458.0))
+        assert_eq(c_box, @graph.Box::new(163.0, 118.0, 154.0, 126.0))
+        assert_eq(cd_box, @graph.Box::new(233.0, 148.0, 54.0, 66.0))
+        assert_eq(e_box, @graph.Box::new(166.0, 414.0, 53.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(269.0, 384.0, 114.0, 126.0))
+        assert_eq(fg_box, @graph.Box::new(299.0, 414.0, 54.0, 66.0))
+        assert_route_points_close(
+          ab.route,
+          [@graph.Point::new(66.875, 178.0), @graph.Point::new(66.875, 364.0)],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          bcd.route,
+          [@graph.Point::new(93.625, 367.0), @graph.Point::new(233.625, 211.0)],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          ce.route,
+          [
+            @graph.Point::new(193.375, 244.0),
+            @graph.Point::new(193.375, 300.0),
+            @graph.Point::new(193.375, 374.0),
+            @graph.Point::new(193.375, 414.0),
+          ],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          cdfg.route,
+          [
+            @graph.Point::new(286.875, 214.0),
+            @graph.Point::new(318.875, 254.0),
+            @graph.Point::new(326.875, 274.0),
+            @graph.Point::new(326.875, 289.0),
+            @graph.Point::new(326.875, 304.0),
+            @graph.Point::new(326.875, 374.0),
+            @graph.Point::new(326.875, 414.0),
+          ],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          fga.route,
+          [@graph.Point::new(299.875, 416.0), @graph.Point::new(92.875, 176.0)],
+          tolerance=1.0,
+        )
+      } else {
+        assert_eq(cell1_box, @graph.Box::new(22.0, 58.0, 153.0, 256.0))
+        assert_eq(a_box, @graph.Box::new(72.0, 108.0, 53.0, 66.0))
+        assert_eq(cell2_box, @graph.Box::new(22.0, 324.0, 153.0, 256.0))
+        assert_eq(b_box, @graph.Box::new(72.0, 374.0, 53.0, 66.0))
+        assert_eq(cell3_box, @graph.Box::new(185.0, 58.0, 327.0, 522.0))
+        assert_eq(c_box, @graph.Box::new(251.0, 108.0, 154.0, 166.0))
+        assert_eq(cd_box, @graph.Box::new(301.0, 158.0, 54.0, 66.0))
+        assert_eq(e_box, @graph.Box::new(235.0, 364.0, 53.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(308.0, 364.0, 154.0, 166.0))
+        assert_eq(fg_box, @graph.Box::new(358.0, 414.0, 54.0, 66.0))
+        assert_route_points_close(
+          ab.route,
+          [@graph.Point::new(98.5, 174.0), @graph.Point::new(98.5, 374.0)],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          bcd.route,
+          [@graph.Point::new(125.25, 382.0), @graph.Point::new(301.25, 216.0)],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          ce.route,
+          [@graph.Point::new(261.5, 274.0), @graph.Point::new(261.5, 364.0)],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          cdfg.route,
+          [
+            @graph.Point::new(328.25, 224.0),
+            @graph.Point::new(328.25, 319.0),
+            @graph.Point::new(385.0, 319.0),
+            @graph.Point::new(385.0, 414.0),
+          ],
+          tolerance=1.0,
+        )
+        assert_route_points_close(
+          fga.route,
+          [@graph.Point::new(358.5, 418.0), @graph.Point::new(124.5, 169.0)],
+          tolerance=1.0,
+        )
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for grid_edge_across_cell fixture objects",
       )
   }
 }

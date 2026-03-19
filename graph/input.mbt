@@ -35,6 +35,11 @@ pub struct GraphInput {
   legend : LegendInput?
   is_folder_only : Bool
   data : Map[String, GraphDataValue]
+  /// Internal layout marker mirroring D2 `ExtractSubgraph(includeSelf=true)`.
+  ///
+  /// ELK compatibility fixes must only consult this flag when reproducing
+  /// backend differences between `moon_elk/core` and D2's bundled `elk.js`.
+  extracted_include_self : Bool
 } derive(Show)
 
 ///|
@@ -55,6 +60,7 @@ pub fn GraphInput::new(name : String) -> GraphInput {
     legend: None,
     is_folder_only: false,
     data: {},
+    extracted_include_self: false,
   }
 }
 
@@ -74,6 +80,7 @@ pub fn GraphInput::from_parts(
   legend : LegendInput?,
   is_folder_only? : Bool = false,
   data? : Map[String, GraphDataValue] = {},
+  extracted_include_self? : Bool = false,
 ) -> GraphInput {
   {
     name,
@@ -90,6 +97,7 @@ pub fn GraphInput::from_parts(
     legend,
     is_folder_only,
     data,
+    extracted_include_self,
   }
 }
 
@@ -1057,6 +1065,7 @@ pub fn GraphInput::from_model(graph : GraphModel) -> GraphInput {
     },
     is_folder_only: graph.is_folder_only,
     data,
+    extracted_include_self: false,
   }
 }
 
