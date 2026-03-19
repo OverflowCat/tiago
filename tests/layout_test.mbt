@@ -447,6 +447,207 @@ fn assert_nested_diagram_types_layout_like_d2(
 }
 
 ///|
+test "d2 connected_container matches stable target geometry" {
+  let source =
+    #|a.b -> c.d -> f.h.g
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_connected_container_like_d2(dagre, "dagre")
+  assert_connected_container_like_d2(elk, "elk")
+}
+
+///|
+fn assert_connected_container_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let ab = target.find_object("a.b").unwrap()
+  let c = target.find_object("c").unwrap()
+  let cd = target.find_object("c.d").unwrap()
+  let f = target.find_object("f").unwrap()
+  let fh = target.find_object("f.h").unwrap()
+  let fhg = target.find_object("f.h.g").unwrap()
+  let ab_cd = find_connection(target, "a.b", "c.d").unwrap()
+  let cd_fhg = find_connection(target, "c.d", "f.h.g").unwrap()
+
+  match
+    (
+      a.get_box(),
+      ab.get_box(),
+      c.get_box(),
+      cd.get_box(),
+      f.get_box(),
+      fh.get_box(),
+      fhg.get_box(),
+    ) {
+    (
+      Some(a_box),
+      Some(ab_box),
+      Some(c_box),
+      Some(cd_box),
+      Some(f_box),
+      Some(fh_box),
+      Some(fhg_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(31.0, 20.0, 113.0, 126.0))
+        assert_eq(ab_box, @graph.Box::new(61.0, 50.0, 53.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(30.0, 286.0, 114.0, 126.0))
+        assert_eq(cd_box, @graph.Box::new(60.0, 316.0, 54.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(0.0, 561.0, 174.0, 197.0))
+        assert_eq(fh_box, @graph.Box::new(30.0, 602.0, 114.0, 126.0))
+        assert_eq(fhg_box, @graph.Box::new(60.0, 632.0, 54.0, 66.0))
+      } else {
+        assert_eq(a_box, @graph.Box::new(62.0, 12.0, 153.0, 166.0))
+        assert_eq(ab_box, @graph.Box::new(112.0, 62.0, 53.0, 66.0))
+        assert_eq(c_box, @graph.Box::new(62.0, 258.0, 154.0, 166.0))
+        assert_eq(cd_box, @graph.Box::new(112.0, 308.0, 54.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(12.0, 504.0, 254.0, 271.0))
+        assert_eq(fh_box, @graph.Box::new(62.0, 559.0, 154.0, 166.0))
+        assert_eq(fhg_box, @graph.Box::new(112.0, 609.0, 54.0, 66.0))
+      }
+    _ =>
+      fail(
+        "\{engine_name} expected boxes for connected_container fixture objects",
+      )
+  }
+
+  assert_true(
+    ab_cd.route.length() >= 2,
+    msg="\{engine_name} expected routed a.b -> c.d connection in connected_container",
+  )
+  assert_true(
+    cd_fhg.route.length() >= 2,
+    msg="\{engine_name} expected routed c.d -> f.h.g connection in connected_container",
+  )
+}
+
+///|
+test "d2 container_edges matches stable target geometry" {
+  let source =
+    #|a -> g.b -> d.h.c
+    #|d -> g.e -> f -> g -> d.h
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_container_edges_like_d2(dagre, "dagre")
+  assert_container_edges_like_d2(elk, "elk")
+}
+
+///|
+fn assert_container_edges_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let g = target.find_object("g").unwrap()
+  let gb = target.find_object("g.b").unwrap()
+  let ge = target.find_object("g.e").unwrap()
+  let d = target.find_object("d").unwrap()
+  let dh = target.find_object("d.h").unwrap()
+  let dhc = target.find_object("d.h.c").unwrap()
+  let f = target.find_object("f").unwrap()
+  let a_gb = find_connection(target, "a", "g.b").unwrap()
+  let gb_dhc = find_connection(target, "g.b", "d.h.c").unwrap()
+  let d_ge = find_connection(target, "d", "g.e").unwrap()
+  let ge_f = find_connection(target, "g.e", "f").unwrap()
+  let f_g = find_connection(target, "f", "g").unwrap()
+  let g_dh = find_connection(target, "g", "d.h").unwrap()
+
+  match
+    (
+      a.get_box(),
+      g.get_box(),
+      gb.get_box(),
+      ge.get_box(),
+      d.get_box(),
+      dh.get_box(),
+      dhc.get_box(),
+      f.get_box(),
+    ) {
+    (
+      Some(a_box),
+      Some(g_box),
+      Some(gb_box),
+      Some(ge_box),
+      Some(d_box),
+      Some(dh_box),
+      Some(dhc_box),
+      Some(f_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(a_box, @graph.Box::new(40.0, 0.0, 53.0, 66.0))
+        assert_eq(g_box, @graph.Box::new(10.0, 186.0, 113.0, 658.0))
+        assert_eq(gb_box, @graph.Box::new(40.0, 216.0, 53.0, 66.0))
+        assert_eq(ge_box, @graph.Box::new(40.0, 748.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(153.0, 411.0, 173.0, 197.0))
+        assert_eq(dh_box, @graph.Box::new(183.0, 452.0, 113.0, 126.0))
+        assert_eq(dhc_box, @graph.Box::new(213.0, 482.0, 53.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(41.0, 964.0, 51.0, 66.0))
+      } else {
+        assert_eq(a_box, @graph.Box::new(94.0, 12.0, 53.0, 66.0))
+        assert_eq(g_box, @graph.Box::new(44.0, 213.0, 226.0, 166.0))
+        assert_eq(gb_box, @graph.Box::new(94.0, 263.0, 53.0, 66.0))
+        assert_eq(ge_box, @graph.Box::new(167.0, 263.0, 53.0, 66.0))
+        assert_eq(d_box, @graph.Box::new(12.0, 519.0, 253.0, 271.0))
+        assert_eq(dh_box, @graph.Box::new(62.0, 574.0, 153.0, 166.0))
+        assert_eq(dhc_box, @graph.Box::new(112.0, 624.0, 53.0, 66.0))
+        assert_eq(f_box, @graph.Box::new(285.0, 519.0, 51.0, 66.0))
+      }
+    _ =>
+      fail("\{engine_name} expected boxes for container_edges fixture objects")
+  }
+
+  assert_true(
+    a_gb.route.length() >= 2 &&
+    gb_dhc.route.length() >= 2 &&
+    d_ge.route.length() >= 2 &&
+    ge_f.route.length() >= 2 &&
+    f_g.route.length() >= 2 &&
+    g_dh.route.length() >= 2,
+    msg="\{engine_name} expected routed container_edges connections to be preserved",
+  )
+}
+
+///|
 test "d2 grid_nested_simple_edges preserves nested grid child order" {
   let source =
     #|direction: right
