@@ -138,6 +138,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
   - Landed in diago: nested grid containers with explicit `grid-gap: 0` now preserve D2's zero-gap dynamic row balancing as well. `grid_nested_gap0.d2` is now locked against the upstream Dagre and ELK stable board geometry.
   - Landed in diago: include-self grid-cell container handling now recovers effective label positions from the laid out `label_box`/`box` state before the outer grid pass. That restores the ELK geometry from the upstream `grid_nested.d2` `grid w/ container` slice, where the placeholder cell must preserve D2's inner-label sizing rather than re-deriving an outside label margin.
   - Landed in diago: the upstream `grid_nested.d2` `grid in grid` slice is now locked as well, covering the case where a nested 2x2 grid container is itself a single outer grid cell and must keep the same Dagre/ELK stable box geometry as `../d2`.
+  - Landed in diago: the remaining recursive grid slices from `grid_nested.d2` are now locked too. `grid w/ nested containers` and `grid w/ grid w/ grid` both match the upstream Dagre and ELK stable board geometry, which gives explicit regression coverage for repeated nested container fitting, repeated include-self grid-cell extraction, and deep zero-gap placeholder restoration.
 
 - [ ] Align sequence diagram behavior with D2.
   - Verify actor spacing, group handling, lifelines, message routing, notes, and nested sequence behavior.
