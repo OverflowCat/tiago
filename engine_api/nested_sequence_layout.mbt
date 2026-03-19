@@ -862,7 +862,6 @@ fn extract_nested_include_self_graph_like_d2(
     None,
     is_folder_only=false,
     data={},
-    extracted_include_self=true,
   )
 }
 
@@ -1300,7 +1299,6 @@ fn clone_graph_with_sequence_parts(
     graph.legend,
     is_folder_only=graph.is_folder_only,
     data=graph.data,
-    extracted_include_self=graph.extracted_include_self,
   )
 }
 

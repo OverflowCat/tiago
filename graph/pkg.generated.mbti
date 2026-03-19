@@ -193,12 +193,11 @@ pub struct GraphInput {
   legend : LegendInput?
   is_folder_only : Bool
   data : Map[String, GraphDataValue]
-  extracted_include_self : Bool
 }
 pub fn GraphInput::children_of(Self, ObjectInput) -> Array[ObjectInput]
 pub fn GraphInput::find_object(Self, String) -> ObjectInput?
 pub fn GraphInput::from_model(GraphModel) -> Self
-pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[(String, Box)], Array[(String, String, Box)], Array[SequenceFragmentLayout], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?, is_folder_only? : Bool, data? : Map[String, GraphDataValue], extracted_include_self? : Bool) -> Self
+pub fn GraphInput::from_parts(String, ObjectInput, Array[ObjectInput], Array[EdgeInput], Array[SequenceFragmentInput], Array[(String, Box)], Array[(String, String, Box)], Array[SequenceFragmentLayout], Array[LayerInput], Array[ScenarioInput], Array[StepInput], LegendInput?, is_folder_only? : Bool, data? : Map[String, GraphDataValue]) -> Self
 pub fn GraphInput::get_edges(Self) -> Array[EdgeInput]
 pub fn GraphInput::get_objects(Self) -> Array[ObjectInput]
 pub fn GraphInput::new(String) -> Self

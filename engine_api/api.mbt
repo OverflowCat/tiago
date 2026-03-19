@@ -363,7 +363,6 @@ fn clone_graph_with_parts(
     graph.legend,
     is_folder_only=graph.is_folder_only,
     data=graph.data,
-    extracted_include_self=graph.extracted_include_self,
   )
 }
 

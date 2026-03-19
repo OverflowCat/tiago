@@ -1618,7 +1618,6 @@ fn canonicalize_layout_graph(graph : @graph.GraphInput) -> @graph.GraphInput {
     graph.legend,
     is_folder_only=graph.is_folder_only,
     data=graph.data,
-    extracted_include_self=graph.extracted_include_self,
   )
 }
 
@@ -1697,13 +1696,11 @@ fn build_elk_graph(
         obj.child_ids,
         direction,
       )
-      let layout_options = make_container_layout_options(
-        config, direction, width, height, self_loop_spacing,
+      node_json["layoutOptions"] = Json::object(
+        make_container_layout_options(
+          config, direction, width, height, self_loop_spacing,
+        ),
       )
-      apply_include_self_container_model_order_compat_like_d2(
-        graph, obj, layout_options,
-      )
-      node_json["layoutOptions"] = Json::object(layout_options)
     } else {
       node_json["layoutOptions"] = Json::object(make_leaf_layout_options())
     }
@@ -3738,33 +3735,6 @@ fn make_container_layout_options(
       "[top=\{padding},left=\{padding},bottom=\{padding},right=\{padding}]",
     ),
   }
-}
-
-///|
-// `moon_elk/core` diverges from D2's bundled `elk.js` for
-// `ExtractSubgraph(includeSelf=true)` inputs when the extracted root container
-// keeps ELK's layered model-order options. Preserve the D2 options everywhere
-// else and strip them only from that single extracted root child.
-fn apply_include_self_container_model_order_compat_like_d2(
-  graph : @graph.GraphInput,
-  obj : @graph.ObjectInput,
-  layout_options : Map[String, Json],
-) -> Unit {
-  if !should_omit_include_self_model_order_options_like_d2(graph, obj) {
-    return
-  }
-  layout_options.remove("elk.layered.considerModelOrder.strategy")
-  layout_options.remove("elk.layered.crossingMinimization.forceNodeModelOrder")
-}
-
-///|
-fn should_omit_include_self_model_order_options_like_d2(
-  graph : @graph.GraphInput,
-  obj : @graph.ObjectInput,
-) -> Bool {
-  graph.extracted_include_self &&
-  graph.root.child_ids.length() == 1 &&
-  graph.root.child_ids[0] == obj.abs_id_syntax
 }
 
 ///|
