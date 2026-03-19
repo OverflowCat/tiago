@@ -371,6 +371,27 @@ fn line_height_for(font_size : Int, is_mono : Bool) -> Double {
 }
 
 ///|
+fn regular_text_height_like_reference(text : String, font_size : Int) -> Double {
+  let lines = text.split("\n")
+  let mut first_content_line = -1
+  let mut last_content_line = -1
+  for i, line in lines {
+    if line.to_string().trim() == "" {
+      continue
+    }
+    if first_content_line < 0 {
+      first_content_line = i
+    }
+    last_content_line = i
+  }
+  if first_content_line < 0 || last_content_line < 0 {
+    return 0.0
+  }
+  line_height_for(font_size, false) +
+  (last_content_line - first_content_line).to_double() * font_size.to_double()
+}
+
+///|
 fn measure_text_with_mode(
   text : String,
   font_size : Int,
@@ -484,39 +505,35 @@ fn measure_text_with_mode(
     lines.push(line.to_string())
   }
 
-  // Check whether the first split line is empty (leading empty line).
-  let mut has_leading = false
-  let mut first_line = ""
-  if lines.length() > 0 {
-    first_line = lines[0]
-    has_leading = first_line.trim() == ""
-  }
-
-  // Count trailing empty lines
-  let mut num_trailing = 0
-  if lines.length() > 0 {
-    let mut j = lines.length() - 1
-    while j >= 0 {
-      if lines[j].trim() == "" {
-        num_trailing = num_trailing + 1
-      } else {
-        break
-      }
-      j = j - 1
+  let total_height = if use_code_line_height {
+    // Calculate height using the reference formula.
+    let base_height = font_size.to_double()
+    let line_height = if use_code_line_height {
+      // reference behavior for language-tagged code snippets.
+      font_size.to_double() * CODE_LINE_HEIGHT
+    } else {
+      line_height_for(font_size, bounds_with_dot)
     }
-  }
-
-  // Calculate height using the reference formula.
-  let base_height = font_size.to_double()
-  let line_height = if use_code_line_height {
-    // reference behavior for language-tagged code snippets.
-    font_size.to_double() * CODE_LINE_HEIGHT
-  } else {
-    line_height_for(font_size, bounds_with_dot)
-  }
-  let mut total_height = (line_count + 1).to_double() * line_height
-  if use_code_line_height {
+    let mut total_height = (line_count + 1).to_double() * line_height
     // Add one font-size line when there is a leading blank line.
+    let has_leading = if lines.length() > 0 {
+      lines[0].trim() == ""
+    } else {
+      false
+    }
+    let mut num_trailing = 0
+    if lines.length() > 0 {
+      let mut j = lines.length() - 1
+      while j >= 0 {
+        if lines[j].trim() == "" {
+          num_trailing = num_trailing + 1
+        } else {
+          break
+        }
+        j = j - 1
+      }
+    }
+    // reference behavior for language-tagged code snippets.
     if has_leading && num_trailing < lines.length() {
       total_height = total_height + base_height
     }
@@ -526,6 +543,9 @@ fn measure_text_with_mode(
       base_height *
       num_trailing.to_double()
     total_height = total_height + trailing_height
+    total_height
+  } else {
+    regular_text_height_like_reference(text, font_size)
   }
 
   // Text measurement returns raw text dimensions.

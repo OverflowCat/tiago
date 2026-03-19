@@ -162,6 +162,32 @@ test "parse edge with label" {
 }
 
 ///|
+test "parse double quoted string decodes escapes" {
+  let (ast, errors) = parse("x: \"just\\na\\nlong\\nnote\\nhere\"")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string value")
+  }
+  assert_eq(sv.content(), "just\na\nlong\nnote\nhere")
+}
+
+///|
+test "parse double quoted string keeps escaped dollar literal" {
+  let (ast, errors) = parse("x: \"price: \\$5\"")
+  assert_true(errors.is_empty())
+  guard ast.nodes[0] is @ast.MapNode::Key(key) else {
+    fail("expected Key node")
+  }
+  guard key.value is Some(@ast.Value::Scalar(@ast.Scalar::String(sv))) else {
+    fail("expected string value")
+  }
+  assert_eq(sv.content(), "price: $5")
+}
+
+///|
 test "parse block" {
   let (ast, errors) = parse("container { child }")
   assert_true(errors.is_empty())

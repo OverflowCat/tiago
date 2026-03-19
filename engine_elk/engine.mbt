@@ -71,6 +71,9 @@ const D2_SEQUENCE_SELF_MESSAGE_HORIZONTAL_TRAVEL : Double = 80.0
 const D2_SEQUENCE_GROUP_CONTAINER_PADDING : Double = 12.0
 
 ///|
+const D2_SEQUENCE_EDGE_GROUP_LABEL_PADDING : Double = 20.0
+
+///|
 const D2_SEQUENCE_MIN_MESSAGE_DISTANCE : Double = 30.0
 
 ///|
@@ -329,21 +332,29 @@ fn layout_sequence_diagram(
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
 
-  let participant_ids = sequence_participant_ids(graph)
-  if participant_ids.is_empty() {
-    return patch
-  }
-
   let object_by_id : Map[String, @graph.ObjectInput] = {}
   object_by_id[graph.root.id] = graph.root
   for obj in graph.objects {
     object_by_id[obj.id] = obj
   }
+  let object_by_abs_id : Map[String, @graph.ObjectInput] = {}
+  object_by_abs_id[graph.root.abs_id_syntax] = graph.root
+  for obj in graph.objects {
+    object_by_abs_id[obj.abs_id_syntax] = obj
+  }
+  let participant_ids = sequence_participant_ids(graph)
+  if participant_ids.is_empty() {
+    return patch
+  }
   let parent_id_by_child_id = sequence_parent_id_by_child_id(graph)
+  let participant_alias_by_abs_id = sequence_participant_alias_by_abs_id(
+    graph, participant_ids, object_by_abs_id,
+  )
 
   let participant_rank_by_id : Map[String, Int] = {}
   let participant_exists : Map[String, Bool] = {}
 
+  let raw_widths : Array[Double] = []
   let widths : Array[Double] = []
   let heights : Array[Double] = []
   let mut max_actor_height = 0.0
@@ -351,9 +362,10 @@ fn layout_sequence_diagram(
     let rank = widths.length()
     participant_rank_by_id[id] = rank
     participant_exists[id] = true
-    match object_by_id.get(id) {
+    match object_by_abs_id.get(id) {
       Some(obj) => {
         let (w0, h0) = sequence_object_size(obj, config, object_by_id)
+        raw_widths.push(w0)
         let (width, height) = sequence_actor_size(obj.shape_type, w0, h0)
         widths.push(width)
         heights.push(height)
@@ -362,6 +374,7 @@ fn layout_sequence_diagram(
         }
       }
       None => {
+        raw_widths.push(D2_SEQUENCE_MIN_ACTOR_WIDTH)
         widths.push(D2_SEQUENCE_MIN_ACTOR_WIDTH)
         heights.push(D2_SEQUENCE_MIN_ACTOR_HEIGHT)
         if D2_SEQUENCE_MIN_ACTOR_HEIGHT > max_actor_height {
@@ -370,12 +383,20 @@ fn layout_sequence_diagram(
       }
     }
   }
+  let (sequence_notes_for_layout, _, note_line_by_id_for_layout) = sequence_collect_notes_and_spans_like_d2(
+    graph, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+  )
+  let note_height_by_id_for_layout : Map[String, Double] = {}
+  for note in sequence_notes_for_layout {
+    let (_, height) = sequence_object_size(note, config, object_by_id)
+    note_height_by_id_for_layout[note.abs_id_syntax] = height
+  }
 
   let actor_x_step : Array[Double] = []
   if participant_ids.length() >= 2 {
     for i = 0; i < participant_ids.length() - 1; i = i + 1 {
       let actor_hw = widths[i] / 2.0
-      let next_actor_hw = widths[i + 1] / 2.0
+      let next_actor_hw = raw_widths[i + 1] / 2.0
       let base_step = actor_hw + next_actor_hw + D2_SEQUENCE_HORIZONTAL_PAD
       let step = if base_step < D2_SEQUENCE_MIN_ACTOR_DISTANCE {
         D2_SEQUENCE_MIN_ACTOR_DISTANCE
@@ -385,15 +406,35 @@ fn layout_sequence_diagram(
       actor_x_step.push(step)
     }
   }
+  let max_note_width_by_participant_id = sequence_max_note_width_by_participant_id_like_d2(
+    graph, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+    object_by_id, config,
+  )
+  for i, participant_id in participant_ids {
+    let max_note_width = max_note_width_by_participant_id.get_or_default(
+      participant_id, 0.0,
+    )
+    if max_note_width <= 0.0 {
+      continue
+    }
+    let required = max_note_width / 2.0 + D2_SEQUENCE_HORIZONTAL_PAD
+    if i < actor_x_step.length() && required > actor_x_step[i] {
+      actor_x_step[i] = required
+    }
+    if i > 0 && required > actor_x_step[i - 1] {
+      actor_x_step[i - 1] = required
+    }
+  }
 
   let ordered_edges = sequence_edges_in_render_order(graph)
   for edge in ordered_edges {
     let src_rank = match
       participant_rank_by_id.get(
         sequence_top_participant_id(
-          edge.src_id,
+          edge.src_id_syntax,
           participant_exists,
           parent_id_by_child_id,
+          participant_alias_by_abs_id,
         ),
       ) {
       Some(v) => v
@@ -402,9 +443,10 @@ fn layout_sequence_diagram(
     let dst_rank = match
       participant_rank_by_id.get(
         sequence_top_participant_id(
-          edge.dst_id,
+          edge.dst_id_syntax,
           participant_exists,
           parent_id_by_child_id,
+          participant_alias_by_abs_id,
         ),
       ) {
       Some(v) => v
@@ -452,7 +494,7 @@ fn layout_sequence_diagram(
     let width = widths[i]
     let height = heights[i]
     let mut y = max_actor_height - height + y_shift
-    match object_by_id.get(id) {
+    match object_by_abs_id.get(id) {
       Some(obj) =>
         if has_outside_bottom_label(obj.shape_type) {
           y = y - sequence_label_height(obj)
@@ -460,7 +502,7 @@ fn layout_sequence_diagram(
       None => ()
     }
     patch.nodes[id] = @graph.Box::new(
-      centers[i] - width / 2.0,
+      (centers[i] - width / 2.0).round(),
       y,
       width,
       height,
@@ -470,38 +512,54 @@ fn layout_sequence_diagram(
   let y_step = D2_SEQUENCE_MIN_MESSAGE_DISTANCE + D2_SEQUENCE_VERTICAL_PAD
   let mut message_offset = max_actor_height + y_step + y_shift
   for edge in ordered_edges {
+    let note_offset = sequence_note_vertical_offset_before_edge_like_d2(
+      edge, sequence_notes_for_layout, note_line_by_id_for_layout, note_height_by_id_for_layout,
+      y_step,
+    )
     let src_x = match
-      sequence_center_x_for_object(edge.src_id, patch, parent_id_by_child_id) {
+      sequence_center_x_for_object(
+        edge.src_id_syntax,
+        patch,
+        parent_id_by_child_id,
+        participant_alias_by_abs_id,
+      ) {
       Some(v) => v
       None => continue
     }
     let dst_x = match
-      sequence_center_x_for_object(edge.dst_id, patch, parent_id_by_child_id) {
+      sequence_center_x_for_object(
+        edge.dst_id_syntax,
+        patch,
+        parent_id_by_child_id,
+        participant_alias_by_abs_id,
+      ) {
       Some(v) => v
       None => continue
     }
 
     let src_top = sequence_top_participant_id(
-      edge.src_id,
+      edge.src_id_syntax,
       participant_exists,
       parent_id_by_child_id,
+      participant_alias_by_abs_id,
     )
     let dst_top = sequence_top_participant_id(
-      edge.dst_id,
+      edge.dst_id_syntax,
       participant_exists,
       parent_id_by_child_id,
+      participant_alias_by_abs_id,
     )
     let is_to_descendant = is_descendant_of(
-      edge.dst_id,
-      edge.src_id,
+      edge.dst_id_syntax,
+      edge.src_id_syntax,
       parent_id_by_child_id,
     )
     let is_from_descendant = is_descendant_of(
-      edge.src_id,
-      edge.dst_id,
+      edge.src_id_syntax,
+      edge.dst_id_syntax,
       parent_id_by_child_id,
     )
-    let is_self_message = edge.src_id == edge.dst_id
+    let is_self_message = edge.src_id_syntax == edge.dst_id_syntax
     let is_to_sibling = src_top == dst_top
 
     let (_, text_height) = sequence_edge_text_size(edge)
@@ -517,7 +575,7 @@ fn layout_sequence_diagram(
         } else {
           label_width / 2.0 + D2_LABEL_PADDING * 2.0
         })
-      let start_y = message_offset
+      let start_y = message_offset + note_offset
       let end_y = start_y +
         (if text_height > D2_SEQUENCE_MIN_MESSAGE_DISTANCE {
           text_height * 1.5
@@ -530,16 +588,21 @@ fn layout_sequence_diagram(
         @graph.Point::new(mid_x, end_y),
         @graph.Point::new(dst_x, end_y),
       ]
-      message_offset = end_y + y_step
+      message_offset = end_y + y_step - note_offset
     } else {
-      let start_y = message_offset + text_height / 2.0
+      let start_y = message_offset + note_offset + text_height / 2.0
       patch.edges[edge.index] = [
         @graph.Point::new(src_x, start_y),
         @graph.Point::new(dst_x, start_y),
       ]
-      message_offset = start_y + text_height / 2.0 + y_step
+      message_offset = start_y + text_height / 2.0 + y_step - note_offset
     }
   }
+
+  sequence_place_nested_objects_like_d2(
+    patch, graph, ordered_edges, participant_exists, parent_id_by_child_id, object_by_id,
+    object_by_abs_id, participant_alias_by_abs_id, config, max_actor_height, y_step,
+  )
 
   for edge in ordered_edges {
     let route = match patch.edges.get(edge.index) {
@@ -550,14 +613,16 @@ fn layout_sequence_diagram(
       continue
     }
     let src_top = sequence_top_participant_id(
-      edge.src_id,
+      edge.src_id_syntax,
       participant_exists,
       parent_id_by_child_id,
+      participant_alias_by_abs_id,
     )
     let dst_top = sequence_top_participant_id(
-      edge.dst_id,
+      edge.dst_id_syntax,
       participant_exists,
       parent_id_by_child_id,
+      participant_alias_by_abs_id,
     )
     let src_rank = match participant_rank_by_id.get(src_top) {
       Some(v) => v
@@ -567,9 +632,13 @@ fn layout_sequence_diagram(
       Some(v) => v
       None => continue
     }
-    if !participant_exists.contains(edge.src_id) {
+    if !sequence_uses_participant_lane(
+        edge.src_id_syntax,
+        participant_exists,
+        participant_alias_by_abs_id,
+      ) {
       let src_width = sequence_object_width(
-        edge.src_id,
+        edge.src_id_syntax,
         patch,
         object_by_id,
         config,
@@ -581,9 +650,13 @@ fn layout_sequence_diagram(
         route[0] = @graph.Point::new(first.x - src_width / 2.0, first.y)
       }
     }
-    if !participant_exists.contains(edge.dst_id) {
+    if !sequence_uses_participant_lane(
+        edge.dst_id_syntax,
+        participant_exists,
+        participant_alias_by_abs_id,
+      ) {
       let dst_width = sequence_object_width(
-        edge.dst_id,
+        edge.dst_id_syntax,
         patch,
         object_by_id,
         config,
@@ -603,16 +676,6 @@ fn layout_sequence_diagram(
       }
     }
   }
-
-  let object_by_abs_id : Map[String, @graph.ObjectInput] = {}
-  object_by_abs_id[graph.root.abs_id_syntax] = graph.root
-  for obj in graph.objects {
-    object_by_abs_id[obj.abs_id_syntax] = obj
-  }
-  sequence_place_nested_objects_like_d2(
-    patch, graph, ordered_edges, participant_exists, parent_id_by_child_id, object_by_id,
-    object_by_abs_id, config, max_actor_height, y_step,
-  )
 
   recompute_edge_label_boxes(patch, graph)
   patch
@@ -653,14 +716,39 @@ fn sequence_parent_id_by_child_id(
 ) -> Map[String, String] {
   let out : Map[String, String] = {}
   for child_id in graph.root.child_ids {
-    out[child_id] = graph.root.id
+    out[child_id] = graph.root.abs_id_syntax
   }
   for obj in graph.objects {
     for child_id in obj.child_ids {
-      out[child_id] = obj.id
+      out[child_id] = obj.abs_id_syntax
+    }
+  }
+  for obj in graph.objects {
+    match sequence_parent_abs_id_syntax_of(obj.abs_id_syntax) {
+      Some(parent_id) =>
+        if !out.contains(obj.abs_id_syntax) {
+          out[obj.abs_id_syntax] = parent_id
+        }
+      None => ()
     }
   }
   out
+}
+
+///|
+fn sequence_parent_abs_id_syntax_of(abs_id_syntax : String) -> String? {
+  let segments = @graph.split_syntax_path(abs_id_syntax)
+  if segments.length() <= 1 {
+    return None
+  }
+  let parent = StringBuilder::new()
+  for i = 0; i < segments.length() - 1; i = i + 1 {
+    if i > 0 {
+      parent.write_string(".")
+    }
+    parent.write_string(segments[i])
+  }
+  Some(parent.to_string())
 }
 
 ///|
@@ -671,7 +759,92 @@ fn sequence_edges_in_render_order(
   for edge in graph.edges {
     out.push(edge)
   }
-  out.sort_by(fn(a, b) { a.index.compare(b.index) })
+  out.sort_by(fn(a, b) {
+    let cmp = sequence_edge_earliest_line_like_d2(a).compare(
+      sequence_edge_earliest_line_like_d2(b),
+    )
+    if cmp != 0 {
+      cmp
+    } else {
+      a.index.compare(b.index)
+    }
+  })
+  out
+}
+
+///|
+fn sequence_participant_alias_by_abs_id(
+  graph : @graph.GraphInput,
+  participant_ids : Array[String],
+  object_by_abs_id : Map[String, @graph.ObjectInput],
+) -> Map[String, String] {
+  let participant_by_local_id : Map[String, String] = {}
+  for participant_id in participant_ids {
+    match object_by_abs_id.get(participant_id) {
+      Some(obj) => {
+        participant_by_local_id[obj.id_val] = obj.abs_id_syntax
+        participant_by_local_id[obj.id_syntax] = obj.abs_id_syntax
+      }
+      None => participant_by_local_id[participant_id] = participant_id
+    }
+  }
+  let out : Map[String, String] = {}
+  for participant_id in participant_ids {
+    out[participant_id] = participant_id
+  }
+  for obj in graph.objects {
+    if out.contains(obj.abs_id_syntax) {
+      continue
+    }
+    match participant_by_local_id.get(obj.id_val) {
+      Some(participant_id) => out[obj.abs_id_syntax] = participant_id
+      None =>
+        match participant_by_local_id.get(obj.id_syntax) {
+          Some(participant_id) => out[obj.abs_id_syntax] = participant_id
+          None => ()
+        }
+    }
+  }
+  out
+}
+
+///|
+fn sequence_uses_participant_lane(
+  id : String,
+  participant_exists : Map[String, Bool],
+  participant_alias_by_abs_id : Map[String, String],
+) -> Bool {
+  participant_exists.contains(id) || participant_alias_by_abs_id.contains(id)
+}
+
+///|
+fn sequence_max_note_width_by_participant_id_like_d2(
+  graph : @graph.GraphInput,
+  participant_exists : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
+  object_by_id : Map[String, @graph.ObjectInput],
+  config : @engine_api.LayoutConfig,
+) -> Map[String, Double] {
+  let out : Map[String, Double] = {}
+  for obj in graph.objects {
+    if !sequence_is_note_like_d2(obj, graph) {
+      continue
+    }
+    let participant_id = sequence_top_participant_id(
+      obj.abs_id_syntax,
+      participant_exists,
+      parent_id_by_child_id,
+      participant_alias_by_abs_id,
+    )
+    if !participant_exists.contains(participant_id) {
+      continue
+    }
+    let (width, _) = sequence_object_size(obj, config, object_by_id)
+    if width > out.get_or_default(participant_id, 0.0) {
+      out[participant_id] = width
+    }
+  }
   out
 }
 
@@ -702,31 +875,39 @@ fn sequence_actor_size(
 ///|
 fn sequence_label_height(obj : @graph.ObjectInput) -> Double {
   match obj.label_box {
-    Some(box) => if box.height > 0.0 { box.height } else { 0.0 }
-    None =>
-      if obj.label == "" {
-        0.0
+    Some(box) =>
+      if box.height > 0.0 {
+        box.height
       } else {
-        let font_size = match obj.style.font_size {
-          Some(v) => v.as_int().unwrap_or(16)
-          None => 16
-        }
-        let is_bold = style_bool(obj.style.bold, false)
-        let is_italic = style_bool(obj.style.italic, false)
-        let is_mono = style_is_mono(obj.style.font_family)
-        let dims = @text_metrics.measure_label(
-          obj.label,
-          font_size,
-          is_mono,
-          is_bold,
-          is_italic,
-        )
-        if dims.height > 0.0 {
-          dims.height
-        } else {
-          font_size.to_double() + 5.0
-        }
+        sequence_measured_label_height(obj)
       }
+    None => sequence_measured_label_height(obj)
+  }
+}
+
+///|
+fn sequence_measured_label_height(obj : @graph.ObjectInput) -> Double {
+  if obj.label == "" {
+    return 0.0
+  }
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(obj.style.bold, false)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = style_is_mono(obj.style.font_family)
+  let dims = @text_metrics.measure_label(
+    obj.label,
+    font_size,
+    is_mono,
+    is_bold,
+    is_italic,
+  )
+  if dims.height > 0.0 {
+    dims.height
+  } else {
+    font_size.to_double() + 5.0
   }
 }
 
@@ -744,6 +925,7 @@ fn sequence_center_x_for_object(
   id : String,
   patch : @graph.LayoutPatch,
   parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
 ) -> Double? {
   let mut current = id
   let visited : Map[String, Bool] = {}
@@ -751,11 +933,19 @@ fn sequence_center_x_for_object(
     visited[current] = true
     match patch.nodes.get(current) {
       Some(box) => return Some(box.x + box.width / 2.0)
-      None =>
-        match parent_id_by_child_id.get(current) {
-          Some(parent_id) => current = parent_id
-          None => return None
+      None => ()
+    }
+    match participant_alias_by_abs_id.get(current) {
+      Some(participant_id) =>
+        match patch.nodes.get(participant_id) {
+          Some(box) => return Some(box.x + box.width / 2.0)
+          None => ()
         }
+      None => ()
+    }
+    match parent_id_by_child_id.get(current) {
+      Some(parent_id) => current = parent_id
+      None => return None
     }
   }
   None
@@ -766,6 +956,7 @@ fn sequence_top_participant_id(
   id : String,
   participant_exists : Map[String, Bool],
   parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
 ) -> String {
   if participant_exists.contains(id) {
     return id
@@ -774,6 +965,10 @@ fn sequence_top_participant_id(
   let visited : Map[String, Bool] = {}
   while !visited.contains(current) {
     visited[current] = true
+    match participant_alias_by_abs_id.get(current) {
+      Some(participant_id) => return participant_id
+      None => ()
+    }
     match parent_id_by_child_id.get(current) {
       Some(parent_id) => {
         if participant_exists.contains(parent_id) {
@@ -831,55 +1026,72 @@ fn sequence_place_nested_objects_like_d2(
   parent_id_by_child_id : Map[String, String],
   object_by_id : Map[String, @graph.ObjectInput],
   object_by_abs_id : Map[String, @graph.ObjectInput],
+  participant_alias_by_abs_id : Map[String, String],
   config : @engine_api.LayoutConfig,
   max_actor_height : Double,
   y_step : Double,
 ) -> Unit {
+  let (notes, spans, note_line_by_id) = sequence_collect_notes_and_spans_like_d2(
+    graph, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+  )
+  sequence_place_notes_like_d2(
+    patch, notes, ordered_edges, note_line_by_id, participant_exists, parent_id_by_child_id,
+    participant_alias_by_abs_id, object_by_id, config, max_actor_height, y_step,
+  )
+  sequence_place_spans_like_d2(
+    patch, spans, ordered_edges, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+  )
+  sequence_place_groups_like_d2(
+    patch, graph, ordered_edges, parent_id_by_child_id, object_by_abs_id, notes,
+    spans,
+  )
+}
+
+///|
+fn sequence_collect_notes_and_spans_like_d2(
+  graph : @graph.GraphInput,
+  participant_exists : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
+) -> (Array[@graph.ObjectInput], Array[@graph.ObjectInput], Map[String, Int]) {
   let notes : Array[@graph.ObjectInput] = []
   let spans : Array[@graph.ObjectInput] = []
   let note_line_by_id : Map[String, Int] = {}
-  let participant_ids = sequence_participant_ids(graph)
-  for participant_id in participant_ids {
-    let participant = match object_by_abs_id.get(participant_id) {
-      Some(obj) => obj
-      None => continue
+  for obj in graph.objects {
+    if participant_exists.contains(obj.abs_id_syntax) ||
+      participant_alias_by_abs_id.contains(obj.abs_id_syntax) ||
+      sequence_is_group_like_d2(obj, graph) {
+      continue
     }
-    let queue : Array[String] = []
-    for child_id in participant.child_ids {
-      if object_by_abs_id.contains(child_id) {
-        queue.push(child_id)
-      }
+    let participant_id = sequence_top_participant_id(
+      obj.abs_id_syntax,
+      participant_exists,
+      parent_id_by_child_id,
+      participant_alias_by_abs_id,
+    )
+    if !participant_exists.contains(participant_id) {
+      continue
     }
-    let mut index = 0
-    while index < queue.length() {
-      let child_id = queue[index]
-      index += 1
-      let child = match object_by_abs_id.get(child_id) {
-        Some(obj) => obj
-        None => continue
-      }
-      if sequence_is_note_like_d2(child, graph) {
-        notes.push(child)
-        note_line_by_id[child.abs_id_syntax] = sequence_object_earliest_line_like_d2(
-          child,
-        )
-      } else {
-        spans.push(child)
-      }
-      for grandchild_id in child.child_ids {
-        if object_by_abs_id.contains(grandchild_id) {
-          queue.push(grandchild_id)
-        }
-      }
+    if sequence_is_note_like_d2(obj, graph) {
+      notes.push(obj)
+      note_line_by_id[obj.abs_id_syntax] = sequence_object_earliest_line_like_d2(
+        obj,
+      )
+    } else {
+      spans.push(obj)
     }
   }
-  sequence_place_notes_like_d2(
-    patch, notes, ordered_edges, note_line_by_id, participant_exists, parent_id_by_child_id,
-    object_by_id, config, max_actor_height, y_step,
-  )
-  sequence_place_spans_like_d2(
-    patch, spans, ordered_edges, participant_exists, parent_id_by_child_id,
-  )
+  notes.sort_by(fn(a, b) {
+    sequence_object_earliest_line_like_d2(a).compare(
+      sequence_object_earliest_line_like_d2(b),
+    )
+  })
+  spans.sort_by(fn(a, b) {
+    sequence_object_earliest_line_like_d2(a).compare(
+      sequence_object_earliest_line_like_d2(b),
+    )
+  })
+  (notes, spans, note_line_by_id)
 }
 
 ///|
@@ -890,6 +1102,7 @@ fn sequence_place_notes_like_d2(
   note_line_by_id : Map[String, Int],
   participant_exists : Map[String, Bool],
   parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
   object_by_id : Map[String, @graph.ObjectInput],
   config : @engine_api.LayoutConfig,
   max_actor_height : Double,
@@ -900,14 +1113,14 @@ fn sequence_place_notes_like_d2(
       note.abs_id_syntax,
       sequence_object_earliest_line_like_d2(note),
     )
-    let mut y = max_actor_height + y_step
+    let mut y = max_actor_height + y_step + D2_SEQUENCE_GROUP_CONTAINER_PADDING
     for edge in ordered_edges {
       if sequence_edge_earliest_line_like_d2(edge) >= vertical_index {
         continue
       }
       let (_, text_height) = sequence_edge_text_size(edge)
       let extra = if sequence_message_has_vertical_turn_like_d2(
-          edge, participant_exists, parent_id_by_child_id,
+          edge, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
         ) {
         if text_height > D2_SEQUENCE_MIN_MESSAGE_DISTANCE {
           text_height * 1.5
@@ -940,6 +1153,7 @@ fn sequence_place_notes_like_d2(
         note.abs_id_syntax,
         patch,
         parent_id_by_child_id,
+        participant_alias_by_abs_id,
       ) {
       Some(value) => value
       None => continue
@@ -961,6 +1175,7 @@ fn sequence_place_spans_like_d2(
   ordered_edges : Array[@graph.EdgeInput],
   _participant_exists : Map[String, Bool],
   parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
 ) -> Unit {
   let first_message_by_id : Map[String, @graph.EdgeInput] = {}
   let last_message_by_id : Map[String, @graph.EdgeInput] = {}
@@ -1000,13 +1215,15 @@ fn sequence_place_spans_like_d2(
     let mut min_message_y = 1000000000.0
     match first_message_by_id.get(span.abs_id_syntax) {
       Some(first_message) =>
-        if !first_message.route.is_empty() {
-          if first_message.src_id_syntax == first_message.dst_id_syntax ||
-            first_message.src_id_syntax == span.abs_id_syntax {
-            min_message_y = first_message.route[0].y
-          } else {
-            min_message_y = first_message.route[first_message.route.length() - 1].y
-          }
+        match patch.edges.get(first_message.index) {
+          Some(route) if !route.is_empty() =>
+            if first_message.src_id_syntax == first_message.dst_id_syntax ||
+              first_message.src_id_syntax == span.abs_id_syntax {
+              min_message_y = route[0].y
+            } else {
+              min_message_y = route[route.length() - 1].y
+            }
+          _ => ()
         }
       None => ()
     }
@@ -1014,13 +1231,15 @@ fn sequence_place_spans_like_d2(
     let mut max_message_y = -1000000000.0
     match last_message_by_id.get(span.abs_id_syntax) {
       Some(last_message) =>
-        if !last_message.route.is_empty() {
-          if last_message.src_id_syntax == last_message.dst_id_syntax ||
-            last_message.dst_id_syntax == span.abs_id_syntax {
-            max_message_y = last_message.route[last_message.route.length() - 1].y
-          } else {
-            max_message_y = last_message.route[0].y
-          }
+        match patch.edges.get(last_message.index) {
+          Some(route) if !route.is_empty() =>
+            if last_message.src_id_syntax == last_message.dst_id_syntax ||
+              last_message.dst_id_syntax == span.abs_id_syntax {
+              max_message_y = route[route.length() - 1].y
+            } else {
+              max_message_y = route[0].y
+            }
+          _ => ()
         }
       None => ()
     }
@@ -1065,6 +1284,7 @@ fn sequence_place_spans_like_d2(
         span.abs_id_syntax,
         patch,
         parent_id_by_child_id,
+        participant_alias_by_abs_id,
       ) {
       Some(value) => value
       None => continue
@@ -1076,6 +1296,308 @@ fn sequence_place_spans_like_d2(
       height,
     )
   }
+}
+
+///|
+fn sequence_place_groups_like_d2(
+  patch : @graph.LayoutPatch,
+  graph : @graph.GraphInput,
+  ordered_edges : Array[@graph.EdgeInput],
+  parent_id_by_child_id : Map[String, String],
+  object_by_abs_id : Map[String, @graph.ObjectInput],
+  notes : Array[@graph.ObjectInput],
+  spans : Array[@graph.ObjectInput],
+) -> Unit {
+  let groups = sequence_group_objects_like_d2(
+    graph, object_by_abs_id, parent_id_by_child_id,
+  )
+  if groups.is_empty() {
+    return
+  }
+  let group_ids : Map[String, Bool] = {}
+  for group in groups {
+    group_ids[group.abs_id_syntax] = true
+  }
+  let groups_most_nested : Array[@graph.ObjectInput] = []
+  for group in groups {
+    groups_most_nested.push(group)
+  }
+  groups_most_nested.sort_by(fn(a, b) {
+    sequence_object_depth_like_d2(b.abs_id_syntax, parent_id_by_child_id).compare(
+      sequence_object_depth_like_d2(a.abs_id_syntax, parent_id_by_child_id),
+    )
+  })
+
+  for group in groups_most_nested {
+    let mut min_x = 1.0e15
+    let mut min_y = 1.0e15
+    let mut max_x = -1.0e15
+    let mut max_y = -1.0e15
+    let mut saw_content = false
+
+    for edge in ordered_edges {
+      if !sequence_edge_contained_by_like_d2(edge, group.abs_id_syntax) {
+        continue
+      }
+      let route = match patch.edges.get(edge.index) {
+        Some(route) => route
+        None => continue
+      }
+      if route.is_empty() {
+        continue
+      }
+      saw_content = true
+      let (_, text_height) = sequence_edge_text_size(edge)
+      let label_height = text_height / 2.0
+      let edge_pad = if label_height + D2_SEQUENCE_GROUP_CONTAINER_PADDING >
+        D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0 {
+        label_height + D2_SEQUENCE_GROUP_CONTAINER_PADDING
+      } else {
+        D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0
+      }
+      for point in route {
+        if point.x - D2_SEQUENCE_HORIZONTAL_PAD < min_x {
+          min_x = point.x - D2_SEQUENCE_HORIZONTAL_PAD
+        }
+        if point.y - edge_pad < min_y {
+          min_y = point.y - edge_pad
+        }
+        if point.x + D2_SEQUENCE_HORIZONTAL_PAD > max_x {
+          max_x = point.x + D2_SEQUENCE_HORIZONTAL_PAD
+        }
+        if point.y + edge_pad > max_y {
+          max_y = point.y + edge_pad
+        }
+      }
+    }
+
+    for note in notes {
+      if !sequence_object_contained_by_like_d2(note, group.abs_id_syntax) {
+        continue
+      }
+      let box = match patch.nodes.get(note.abs_id_syntax) {
+        Some(box) => box
+        None => continue
+      }
+      saw_content = true
+      if box.x - D2_SEQUENCE_HORIZONTAL_PAD < min_x {
+        min_x = box.x - D2_SEQUENCE_HORIZONTAL_PAD
+      }
+      if box.y - D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0 < min_y {
+        min_y = box.y - D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0
+      }
+      if box.x + box.width + D2_SEQUENCE_HORIZONTAL_PAD > max_x {
+        max_x = box.x + box.width + D2_SEQUENCE_HORIZONTAL_PAD
+      }
+      if box.y + box.height + D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0 > max_y {
+        max_y = box.y + box.height + D2_SEQUENCE_MIN_MESSAGE_DISTANCE / 2.0
+      }
+    }
+
+    for child_id in group.child_ids {
+      if !group_ids.contains(child_id) {
+        continue
+      }
+      let child_box = match patch.nodes.get(child_id) {
+        Some(box) => box
+        None => continue
+      }
+      saw_content = true
+      if child_box.x - D2_SEQUENCE_GROUP_CONTAINER_PADDING < min_x {
+        min_x = child_box.x - D2_SEQUENCE_GROUP_CONTAINER_PADDING
+      }
+      if child_box.y - D2_SEQUENCE_GROUP_CONTAINER_PADDING < min_y {
+        min_y = child_box.y - D2_SEQUENCE_GROUP_CONTAINER_PADDING
+      }
+      if child_box.x + child_box.width + D2_SEQUENCE_GROUP_CONTAINER_PADDING >
+        max_x {
+        max_x = child_box.x +
+          child_box.width +
+          D2_SEQUENCE_GROUP_CONTAINER_PADDING
+      }
+      if child_box.y + child_box.height + D2_SEQUENCE_GROUP_CONTAINER_PADDING >
+        max_y {
+        max_y = child_box.y +
+          child_box.height +
+          D2_SEQUENCE_GROUP_CONTAINER_PADDING
+      }
+    }
+
+    if saw_content {
+      patch.nodes[group.abs_id_syntax] = @graph.Box::new(
+        min_x,
+        min_y,
+        max_x - min_x,
+        max_y - min_y,
+      )
+    }
+  }
+
+  for group in groups {
+    sequence_adjust_group_label_like_d2(
+      patch, group, groups, spans, notes, ordered_edges,
+    )
+  }
+}
+
+///|
+fn sequence_adjust_group_label_like_d2(
+  patch : @graph.LayoutPatch,
+  group : @graph.ObjectInput,
+  groups : Array[@graph.ObjectInput],
+  spans : Array[@graph.ObjectInput],
+  notes : Array[@graph.ObjectInput],
+  ordered_edges : Array[@graph.EdgeInput],
+) -> Unit {
+  if group.label == "" {
+    return
+  }
+  let group_box = match patch.nodes.get(group.abs_id_syntax) {
+    Some(box) => box
+    None => return
+  }
+  let height_add = sequence_label_height(group) +
+    D2_SEQUENCE_EDGE_GROUP_LABEL_PADDING / 2.0
+  if height_add < D2_SEQUENCE_GROUP_CONTAINER_PADDING {
+    return
+  }
+
+  patch.nodes[group.abs_id_syntax] = @graph.Box::new(
+    group_box.x,
+    group_box.y,
+    group_box.width,
+    group_box.height + height_add,
+  )
+
+  for other_group in groups {
+    if other_group.abs_id_syntax == group.abs_id_syntax {
+      continue
+    }
+    match patch.nodes.get(other_group.abs_id_syntax) {
+      Some(box) =>
+        if box.y < group_box.y && box.y + box.height > group_box.y {
+          patch.nodes[other_group.abs_id_syntax] = @graph.Box::new(
+            box.x,
+            box.y,
+            box.width,
+            box.height + height_add,
+          )
+        }
+      None => ()
+    }
+  }
+  for span in spans {
+    match patch.nodes.get(span.abs_id_syntax) {
+      Some(box) =>
+        if box.y < group_box.y && box.y + box.height > group_box.y {
+          patch.nodes[span.abs_id_syntax] = @graph.Box::new(
+            box.x,
+            box.y,
+            box.width,
+            box.height + height_add,
+          )
+        }
+      None => ()
+    }
+  }
+
+  for edge in ordered_edges {
+    let route = match patch.edges.get(edge.index) {
+      Some(route) => route
+      None => continue
+    }
+    if route.is_empty() {
+      continue
+    }
+    let start_y = route[0].y
+    let end_y = route[route.length() - 1].y
+    let min_y = if start_y < end_y { start_y } else { end_y }
+    if min_y > group_box.y {
+      for i = 0; i < route.length(); i = i + 1 {
+        route[i] = @graph.Point::new(route[i].x, route[i].y + height_add)
+      }
+    }
+  }
+
+  for span in spans {
+    match patch.nodes.get(span.abs_id_syntax) {
+      Some(box) =>
+        if box.y > group_box.y {
+          patch.nodes[span.abs_id_syntax] = @graph.Box::new(
+            box.x,
+            box.y + height_add,
+            box.width,
+            box.height,
+          )
+        }
+      None => ()
+    }
+  }
+  for other_group in groups {
+    if other_group.abs_id_syntax == group.abs_id_syntax {
+      continue
+    }
+    match patch.nodes.get(other_group.abs_id_syntax) {
+      Some(box) =>
+        if box.y > group_box.y {
+          patch.nodes[other_group.abs_id_syntax] = @graph.Box::new(
+            box.x,
+            box.y + height_add,
+            box.width,
+            box.height,
+          )
+        }
+      None => ()
+    }
+  }
+  for note in notes {
+    match patch.nodes.get(note.abs_id_syntax) {
+      Some(box) =>
+        if box.y > group_box.y {
+          patch.nodes[note.abs_id_syntax] = @graph.Box::new(
+            box.x,
+            box.y + height_add,
+            box.width,
+            box.height,
+          )
+        }
+      None => ()
+    }
+  }
+}
+
+///|
+fn sequence_group_objects_like_d2(
+  graph : @graph.GraphInput,
+  _object_by_abs_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> Array[@graph.ObjectInput] {
+  let groups : Array[@graph.ObjectInput] = []
+  let participant_ids : Map[String, Bool] = {}
+  for participant_id in sequence_participant_ids(graph) {
+    participant_ids[participant_id] = true
+  }
+  for obj in graph.objects {
+    if participant_ids.contains(obj.abs_id_syntax) {
+      continue
+    }
+    if sequence_is_group_like_d2(obj, graph) {
+      groups.push(obj)
+    }
+  }
+  groups.sort_by(fn(a, b) {
+    let cmp = sequence_object_earliest_line_like_d2(a).compare(
+      sequence_object_earliest_line_like_d2(b),
+    )
+    if cmp != 0 {
+      cmp
+    } else {
+      sequence_object_depth_like_d2(a.abs_id_syntax, parent_id_by_child_id).compare(
+        sequence_object_depth_like_d2(b.abs_id_syntax, parent_id_by_child_id),
+      )
+    }
+  })
+  groups
 }
 
 ///|
@@ -1128,16 +1650,19 @@ fn sequence_message_has_vertical_turn_like_d2(
   edge : @graph.EdgeInput,
   participant_exists : Map[String, Bool],
   parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
 ) -> Bool {
   let src_top = sequence_top_participant_id(
     edge.src_id_syntax,
     participant_exists,
     parent_id_by_child_id,
+    participant_alias_by_abs_id,
   )
   let dst_top = sequence_top_participant_id(
     edge.dst_id_syntax,
     participant_exists,
     parent_id_by_child_id,
+    participant_alias_by_abs_id,
   )
   edge.src_id_syntax == edge.dst_id_syntax ||
   is_descendant_of(
@@ -1154,13 +1679,70 @@ fn sequence_message_has_vertical_turn_like_d2(
 }
 
 ///|
+fn sequence_note_vertical_offset_before_edge_like_d2(
+  edge : @graph.EdgeInput,
+  notes : Array[@graph.ObjectInput],
+  note_line_by_id : Map[String, Int],
+  note_height_by_id : Map[String, Double],
+  y_step : Double,
+) -> Double {
+  let edge_line = sequence_edge_earliest_line_like_d2(edge)
+  let mut offset = 0.0
+  for note in notes {
+    if note_line_by_id.get_or_default(
+        note.abs_id_syntax,
+        sequence_object_earliest_line_like_d2(note),
+      ) <
+      edge_line {
+      offset = offset +
+        note_height_by_id.get_or_default(note.abs_id_syntax, 0.0) +
+        y_step
+    }
+  }
+  offset
+}
+
+///|
 fn sequence_is_note_like_d2(
   obj : @graph.ObjectInput,
   graph : @graph.GraphInput,
 ) -> Bool {
+  sequence_object_has_non_edge_reference_like_d2(obj) &&
   !sequence_object_has_incident_edge_like_d2(obj, graph) &&
   !sequence_object_contains_any_edge_like_d2(obj, graph) &&
-  obj.child_ids.is_empty()
+  obj.child_ids.is_empty() &&
+  !sequence_object_contains_any_object_like_d2(obj, graph)
+}
+
+///|
+fn sequence_is_group_like_d2(
+  obj : @graph.ObjectInput,
+  graph : @graph.GraphInput,
+) -> Bool {
+  (
+    sequence_object_has_non_edge_reference_like_d2(obj) &&
+    !sequence_object_has_incident_edge_like_d2(obj, graph) &&
+    sequence_object_contains_any_object_like_d2(obj, graph)
+  ) ||
+  (
+    sequence_object_has_non_edge_reference_like_d2(obj) &&
+    !sequence_object_has_incident_edge_like_d2(obj, graph) &&
+    sequence_object_contains_any_edge_like_d2(obj, graph)
+  )
+}
+
+///|
+fn sequence_object_contained_by_like_d2(
+  obj : @graph.ObjectInput,
+  abs_id_syntax : String,
+) -> Bool {
+  for reference in obj.references {
+    if reference.contained_by(abs_id_syntax) {
+      return true
+    }
+  }
+  let prefix = abs_id_syntax + "."
+  obj.abs_id_syntax.has_prefix(prefix)
 }
 
 ///|
@@ -1173,6 +1755,34 @@ fn sequence_object_has_incident_edge_like_d2(
       edge.dst_id_syntax == obj.abs_id_syntax ||
       edge.src_id == obj.id ||
       edge.dst_id == obj.id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn sequence_object_has_non_edge_reference_like_d2(
+  obj : @graph.ObjectInput,
+) -> Bool {
+  for reference in obj.references {
+    if !reference.in_edge &&
+      !reference.due_to_glob &&
+      !reference.due_to_lazy_glob {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn sequence_object_contains_any_object_like_d2(
+  obj : @graph.ObjectInput,
+  graph : @graph.GraphInput,
+) -> Bool {
+  for other in graph.objects {
+    if other.abs_id_syntax != obj.abs_id_syntax &&
+      sequence_object_contained_by_like_d2(other, obj.abs_id_syntax) {
       return true
     }
   }
@@ -1204,6 +1814,25 @@ fn sequence_edge_contained_by_like_d2(
   }
   let prefix = abs_id_syntax + "."
   edge.src_id_syntax.has_prefix(prefix) || edge.dst_id_syntax.has_prefix(prefix)
+}
+
+///|
+fn sequence_object_depth_like_d2(
+  abs_id_syntax : String,
+  parent_id_by_child_id : Map[String, String],
+) -> Int {
+  let mut depth = 0
+  let mut current = abs_id_syntax
+  while true {
+    match parent_id_by_child_id.get(current) {
+      Some(parent_id) => {
+        depth += 1
+        current = parent_id
+      }
+      None => break
+    }
+  }
+  depth
 }
 
 ///|
@@ -1389,34 +2018,44 @@ fn estimate_sequence_object_size(
 
 ///|
 fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
+  let object_by_abs_id : Map[String, @graph.ObjectInput] = {}
+  for obj in graph.objects {
+    object_by_abs_id[obj.abs_id_syntax] = obj
+  }
   if !graph.root.child_ids.is_empty() {
     let ids : Array[String] = []
-    let object_by_id : Map[String, @graph.ObjectInput] = {}
-    for obj in graph.objects {
-      object_by_id[obj.id] = obj
+    let root_children : Array[@graph.ObjectInput] = []
+    for child_id in graph.root.child_ids {
+      match graph.find_object(child_id) {
+        Some(obj) => root_children.push(obj)
+        None => ()
+      }
     }
-    for id in graph.root.child_ids {
-      if object_by_id.contains(id) {
-        ids.push(id)
+    root_children.sort_by(fn(a, b) {
+      sequence_object_earliest_line_like_d2(a).compare(
+        sequence_object_earliest_line_like_d2(b),
+      )
+    })
+    for obj in root_children {
+      let has_non_edge_ref = sequence_object_has_non_edge_reference_like_d2(obj)
+      let contains_any_edge = sequence_object_contains_any_edge_like_d2(
+        obj, graph,
+      )
+      let has_incident_edge = sequence_object_has_incident_edge_like_d2(
+        obj, graph,
+      )
+      let has_descendant_endpoint = sequence_has_descendant_endpoint_like_d2(
+        obj, graph,
+      )
+      let is_explicit_actor = has_non_edge_ref &&
+        (!contains_any_edge || has_incident_edge)
+      let is_implicit_actor = !has_non_edge_ref &&
+        (has_incident_edge || has_descendant_endpoint)
+      if is_explicit_actor || is_implicit_actor {
+        ids.push(obj.abs_id_syntax)
       }
     }
     if !ids.is_empty() {
-      ids.sort_by(fn(a, b) {
-        let line_a = match object_by_id.get(a) {
-          Some(obj) => sequence_object_earliest_line_like_d2(obj)
-          None => 1073741824
-        }
-        let line_b = match object_by_id.get(b) {
-          Some(obj) => sequence_object_earliest_line_like_d2(obj)
-          None => 1073741824
-        }
-        let cmp = line_a.compare(line_b)
-        if cmp != 0 {
-          cmp
-        } else {
-          0
-        }
-      })
       return ids
     }
   }
@@ -1428,11 +2067,26 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
   }
   let ids : Array[String] = []
   for obj in graph.objects {
-    if !child_ids.contains(obj.id) {
-      ids.push(obj.id)
+    if !child_ids.contains(obj.abs_id_syntax) {
+      ids.push(obj.abs_id_syntax)
     }
   }
   ids
+}
+
+///|
+fn sequence_has_descendant_endpoint_like_d2(
+  obj : @graph.ObjectInput,
+  graph : @graph.GraphInput,
+) -> Bool {
+  let prefix = obj.abs_id_syntax + "."
+  for edge in graph.edges {
+    if edge.src_id_syntax.has_prefix(prefix) ||
+      edge.dst_id_syntax.has_prefix(prefix) {
+      return true
+    }
+  }
+  false
 }
 
 ///|

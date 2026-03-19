@@ -34,27 +34,32 @@ test "measure text with newlines" {
   let dims = @text_metrics.measure_text(
     "Line 1\nLine 2\nLine 3", 14, false, false, false,
   )
-  // 2 newline characters = line_count = 2
   assert_eq(dims.line_count, 2)
-  assert_true(dims.max_line_width > 0.0)
-  // With DEFAULT_LINE_HEIGHT_FACTOR=1.0, each line should be ~14px
-  assert_true(dims.dimensions.height > 35.0)
+  assert_eq(dims.dimensions.height, 46.0)
 }
 
 ///|
 test "measure text with leading empty line" {
   let dims = @text_metrics.measure_text("\nLine 1", 14, false, false, false)
-  // A leading empty line adds one font-size line.
   assert_eq(dims.line_count, 1)
-  assert_true(dims.dimensions.height > 28.0)
+  assert_eq(dims.dimensions.height, 18.0)
 }
 
 ///|
 test "measure text with trailing empty lines" {
   let dims = @text_metrics.measure_text("Line 1\n\n", 14, false, false, false)
-  // Trailing empty lines add CODE_LINE_HEIGHT * font_size * numTrailing.
   assert_eq(dims.line_count, 2)
-  assert_true(dims.dimensions.height > 30.0)
+  assert_eq(dims.dimensions.height, 18.0)
+}
+
+///|
+test "measure multiline note text like the reference ruler" {
+  inspect(
+    @text_metrics.measure_label(
+      "just\na\nlong\nnote\nhere", 16, false, false, false,
+    ),
+    content="{width: 32, height: 85}",
+  )
 }
 
 ///|

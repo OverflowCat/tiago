@@ -1681,6 +1681,28 @@ fn parse_double_quoted_interpolations(
   let mut i = 0
   while i < chars.length() {
     let c = chars[i]
+    if c == '\\' {
+      if i + 1 >= chars.length() {
+        buf.write_char('\\')
+        break
+      }
+      let next = chars[i + 1]
+      if next == '\n' {
+        i = i + 2
+        while i < chars.length() {
+          let ws = chars[i]
+          if ws == ' ' || ws == '\t' || ws == '\r' {
+            i = i + 1
+            continue
+          }
+          break
+        }
+        continue
+      }
+      buf.write_char(decode_unquoted_escape(next))
+      i = i + 2
+      continue
+    }
     if c == '$' {
       // Try ${path} form first.
       if i + 1 < chars.length() && chars[i + 1] == '{' {

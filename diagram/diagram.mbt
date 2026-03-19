@@ -1197,13 +1197,19 @@ fn shape_from_object(obj : @graph.ObjectInput) -> Shape {
 }
 
 ///|
-fn connection_from_edge(edge : @graph.EdgeInput) -> Connection {
+fn connection_from_edge(
+  edge : @graph.EdgeInput,
+  src_id? : String = edge.src_id,
+  dst_id? : String = edge.dst_id,
+  src_lookup_id? : String = edge.src_id_syntax,
+  dst_lookup_id? : String = edge.dst_id_syntax,
+) -> Connection {
   {
     index: edge.index,
-    src_id: edge.src_id,
-    dst_id: edge.dst_id,
-    src_lookup_id: edge.src_id_syntax,
-    dst_lookup_id: edge.dst_id_syntax,
+    src_id,
+    dst_id,
+    src_lookup_id,
+    dst_lookup_id,
     src_arrow: edge.src_arrow,
     dst_arrow: edge.dst_arrow,
     src_arrowhead: edge.src_arrowhead,
@@ -1257,6 +1263,95 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
     }
   }
   ids
+}
+
+///|
+fn sequence_parent_id_by_child_id(
+  graph : @graph.GraphInput,
+) -> Map[String, String] {
+  let out : Map[String, String] = {}
+  for child_id in graph.root.child_ids {
+    out[child_id] = graph.root.abs_id_syntax
+  }
+  for obj in graph.objects {
+    for child_id in obj.child_ids {
+      out[child_id] = obj.abs_id_syntax
+    }
+  }
+  out
+}
+
+///|
+fn sequence_participant_alias_by_abs_id(
+  graph : @graph.GraphInput,
+  participant_ids : Array[String],
+  object_by_abs_id : Map[String, @graph.ObjectInput],
+) -> Map[String, String] {
+  let participant_by_local_id : Map[String, String] = {}
+  for participant_id in participant_ids {
+    match object_by_abs_id.get(participant_id) {
+      Some(obj) => {
+        participant_by_local_id[obj.id_val] = obj.abs_id_syntax
+        participant_by_local_id[obj.id_syntax] = obj.abs_id_syntax
+      }
+      None => participant_by_local_id[participant_id] = participant_id
+    }
+  }
+  let out : Map[String, String] = {}
+  for participant_id in participant_ids {
+    out[participant_id] = participant_id
+  }
+  for obj in graph.objects {
+    if out.contains(obj.abs_id_syntax) {
+      continue
+    }
+    match participant_by_local_id.get(obj.id_val) {
+      Some(participant_id) => out[obj.abs_id_syntax] = participant_id
+      None =>
+        match participant_by_local_id.get(obj.id_syntax) {
+          Some(participant_id) => out[obj.abs_id_syntax] = participant_id
+          None => ()
+        }
+    }
+  }
+  out
+}
+
+///|
+fn sequence_top_participant_id(
+  id : String,
+  participant_exists : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
+) -> String {
+  sequence_resolve_top_participant_id(
+    id, id, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+  )
+}
+
+///|
+fn sequence_resolve_top_participant_id(
+  current : String,
+  fallback : String,
+  participant_exists : Map[String, Bool],
+  parent_id_by_child_id : Map[String, String],
+  participant_alias_by_abs_id : Map[String, String],
+) -> String {
+  match participant_alias_by_abs_id.get(current) {
+    Some(mapped_id) => mapped_id
+    None =>
+      if participant_exists.contains(current) {
+        current
+      } else {
+        match parent_id_by_child_id.get(current) {
+          Some(parent_id) =>
+            sequence_resolve_top_participant_id(
+              parent_id, fallback, participant_exists, parent_id_by_child_id, participant_alias_by_abs_id,
+            )
+          None => fallback
+        }
+      }
+  }
 }
 
 ///|
@@ -1459,8 +1554,47 @@ pub fn from_graph(graph : @graph.GraphInput, config : Config?) -> Diagram {
     shapes.push(shape_from_object(obj))
   }
   let connections : Array[Connection] = []
-  for edge in graph.edges {
-    connections.push(connection_from_edge(edge))
+  if graph.root.shape_type == @graph.SequenceDiagram {
+    let object_by_abs_id : Map[String, @graph.ObjectInput] = {}
+    for obj in graph.objects {
+      object_by_abs_id[obj.abs_id_syntax] = obj
+    }
+    let participant_ids = sequence_participant_ids(graph)
+    let participant_exists : Map[String, Bool] = {}
+    for participant_id in participant_ids {
+      participant_exists[participant_id] = true
+    }
+    let parent_id_by_child_id = sequence_parent_id_by_child_id(graph)
+    let participant_alias_by_abs_id = sequence_participant_alias_by_abs_id(
+      graph, participant_ids, object_by_abs_id,
+    )
+    for edge in graph.edges {
+      let src_lookup_id = sequence_top_participant_id(
+        edge.src_id_syntax,
+        participant_exists,
+        parent_id_by_child_id,
+        participant_alias_by_abs_id,
+      )
+      let dst_lookup_id = sequence_top_participant_id(
+        edge.dst_id_syntax,
+        participant_exists,
+        parent_id_by_child_id,
+        participant_alias_by_abs_id,
+      )
+      connections.push(
+        connection_from_edge(
+          edge,
+          src_id=src_lookup_id,
+          dst_id=dst_lookup_id,
+          src_lookup_id~,
+          dst_lookup_id~,
+        ),
+      )
+    }
+  } else {
+    for edge in graph.edges {
+      connections.push(connection_from_edge(edge))
+    }
   }
   append_sequence_lifeline_connections(graph, shapes, connections)
   let layers : Array[Diagram] = []

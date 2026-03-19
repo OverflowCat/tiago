@@ -1502,6 +1502,124 @@ test "reference empty_sequence matches stable boxes" {
 }
 
 ///|
+test "reference sequence nested groups match stable boxes" {
+  let source =
+    #|shape: sequence_diagram
+    #|
+    #|a; b; c
+    #|
+    #|this is a message group: {
+    #|    a -> b
+    #|    and this is a nested message group: {
+    #|        a -> b
+    #|        what about more nesting: {
+    #|            a -> b
+    #|            crazy town: {
+    #|                a."a note"
+    #|                a -> b
+    #|                whoa: {
+    #|                    a -> b
+    #|                }
+    #|            }
+    #|        }
+    #|    }
+    #|}
+    #|
+    #|alt: {
+    #|    case 1: {
+    #|        b -> c
+    #|    }
+    #|    case 2: {
+    #|        b -> c
+    #|    }
+    #|    case 3: {
+    #|        b -> c
+    #|    }
+    #|    case 4: {
+    #|        b -> c
+    #|    }
+    #|}
+    #|
+    #|b.note: "a note here to remember that padding must consider notes too"
+    #|a.note: "just\na\nlong\nnote\nhere"
+    #|c: "just an actor"
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_sequence_nested_groups_reference(dagre, "dagre")
+  assert_sequence_nested_groups_reference(elk, "elk")
+}
+
+///|
+test "reference sequence nested span matches stable boxes" {
+  let source =
+    #|shape: sequence_diagram
+    #|
+    #|scorer: {
+    #|    style.stroke: red
+    #|    style.stroke-width: 5
+    #|}
+    #|
+    #|scorer.abc: {
+    #|    style.fill: yellow
+    #|    style.stroke-width: 7
+    #|}
+    #|
+    #|scorer -> itemResponse.a: {
+    #|    style.stroke-width: 10
+    #|}
+    #|itemResponse.a -> item.a.b
+    #|item.a.b -> essayRubric.a.b.c
+    #|essayRubric.a.b.c -> concept.a.b.c.d
+    #|item.a -> essayRubric.a.b
+    #|concept.a.b.c.d -> itemOutcome.a.b.c.d.e
+    #|
+    #|scorer.abc -> item.a
+    #|
+    #|itemOutcome.a.b.c.d.e -> scorer
+    #|scorer -> itemResponse.c
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_sequence_nested_span_reference(dagre, "dagre")
+  assert_sequence_nested_span_reference(elk, "elk")
+}
+
+///|
 fn assert_empty_sequence_like_d2(
   graph : @graph.GraphInput,
   engine_name : String,
@@ -1542,6 +1660,248 @@ fn assert_empty_sequence_like_d2(
       }
     _ =>
       fail("\{engine_name} expected boxes for empty_sequence fixture objects")
+  }
+}
+
+///|
+fn assert_sequence_nested_span_reference(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  for
+    entry in [
+      ("scorer", @graph.Box::new(12.0, 52.0, 100.0, 66.0)),
+      ("scorer.abc", @graph.Box::new(56.0, 598.0, 12.0, 30.0)),
+      ("itemResponse", @graph.Box::new(152.0, 52.0, 140.0, 66.0)),
+      ("itemResponse.a", @graph.Box::new(216.0, 178.0, 12.0, 90.0)),
+      ("item", @graph.Box::new(322.0, 52.0, 100.0, 66.0)),
+      ("item.a", @graph.Box::new(366.0, 238.0, 12.0, 380.0)),
+      ("item.a.b", @graph.Box::new(362.0, 248.0, 20.0, 90.0)),
+      ("essayRubric", @graph.Box::new(462.0, 52.0, 126.0, 66.0)),
+      ("essayRubric.a", @graph.Box::new(519.0, 298.0, 12.0, 190.0)),
+      ("essayRubric.a.b", @graph.Box::new(515.0, 308.0, 20.0, 170.0)),
+      ("essayRubric.a.b.c", @graph.Box::new(511.0, 318.0, 28.0, 90.0)),
+      ("concept", @graph.Box::new(628.0, 52.0, 100.0, 66.0)),
+      ("concept.a", @graph.Box::new(672.0, 358.0, 12.0, 220.0)),
+      ("concept.a.b", @graph.Box::new(668.0, 368.0, 20.0, 200.0)),
+      ("concept.a.b.c", @graph.Box::new(664.0, 378.0, 28.0, 180.0)),
+      ("concept.a.b.c.d", @graph.Box::new(660.0, 388.0, 36.0, 160.0)),
+      ("itemOutcome", @graph.Box::new(768.0, 52.0, 137.0, 66.0)),
+      ("itemOutcome.a", @graph.Box::new(830.0, 488.0, 12.0, 240.0)),
+      ("itemOutcome.a.b", @graph.Box::new(826.0, 498.0, 20.0, 220.0)),
+      ("itemOutcome.a.b.c", @graph.Box::new(822.0, 508.0, 28.0, 200.0)),
+      ("itemOutcome.a.b.c.d", @graph.Box::new(818.0, 518.0, 36.0, 180.0)),
+      ("itemOutcome.a.b.c.d.e", @graph.Box::new(814.0, 528.0, 44.0, 160.0)),
+      ("itemResponse.c", @graph.Box::new(216.0, 738.0, 12.0, 30.0)),
+    ] {
+    let (id, expected) = entry
+    let shape = target.find_object(id).unwrap()
+    assert_eq(require_shape_box(shape, id, engine_name), expected)
+  }
+
+  let scorer_item_response = find_connections(target, "scorer", "itemResponse")
+  let item_response_item = find_connections(target, "itemResponse", "item")
+  let item_essay_rubric = find_connections(target, "item", "essayRubric")
+  let essay_rubric_concept = find_connections(target, "essayRubric", "concept")
+  let concept_item_outcome = find_connections(target, "concept", "itemOutcome")
+  let scorer_item = find_connections(target, "scorer", "item")
+  let item_outcome_scorer = find_connections(target, "itemOutcome", "scorer")
+
+  assert_eq(
+    scorer_item_response.length(),
+    2,
+    msg="\{engine_name} expected two scorer -> itemResponse messages",
+  )
+  assert_eq(
+    item_response_item.length(),
+    1,
+    msg="\{engine_name} expected one itemResponse -> item message",
+  )
+  assert_eq(
+    item_essay_rubric.length(),
+    2,
+    msg="\{engine_name} expected two item -> essayRubric messages",
+  )
+  assert_eq(
+    essay_rubric_concept.length(),
+    1,
+    msg="\{engine_name} expected one essayRubric -> concept message",
+  )
+  assert_eq(
+    concept_item_outcome.length(),
+    1,
+    msg="\{engine_name} expected one concept -> itemOutcome message",
+  )
+  assert_eq(
+    scorer_item.length(),
+    1,
+    msg="\{engine_name} expected one scorer -> item message",
+  )
+  assert_eq(
+    item_outcome_scorer.length(),
+    1,
+    msg="\{engine_name} expected one itemOutcome -> scorer message",
+  )
+
+  assert_route_points_close(scorer_item_response[0].route, [
+    @graph.Point::new(62.0, 188.0),
+    @graph.Point::new(216.0, 188.0),
+  ])
+  assert_route_points_close(scorer_item_response[1].route, [
+    @graph.Point::new(62.0, 748.0),
+    @graph.Point::new(216.0, 748.0),
+  ])
+  assert_route_points_close(item_response_item[0].route, [
+    @graph.Point::new(228.0, 258.0),
+    @graph.Point::new(362.0, 258.0),
+  ])
+  assert_route_points_close(item_essay_rubric[0].route, [
+    @graph.Point::new(382.0, 328.0),
+    @graph.Point::new(511.0, 328.0),
+  ])
+  assert_route_points_close(item_essay_rubric[1].route, [
+    @graph.Point::new(378.0, 468.0),
+    @graph.Point::new(515.0, 468.0),
+  ])
+  assert_route_points_close(essay_rubric_concept[0].route, [
+    @graph.Point::new(539.0, 398.0),
+    @graph.Point::new(660.0, 398.0),
+  ])
+  assert_route_points_close(concept_item_outcome[0].route, [
+    @graph.Point::new(696.0, 538.0),
+    @graph.Point::new(814.5, 538.0),
+  ])
+  assert_route_points_close(scorer_item[0].route, [
+    @graph.Point::new(68.0, 608.0),
+    @graph.Point::new(366.0, 608.0),
+  ])
+  assert_route_points_close(item_outcome_scorer[0].route, [
+    @graph.Point::new(814.5, 678.0),
+    @graph.Point::new(62.0, 678.0),
+  ])
+}
+
+///|
+fn assert_sequence_nested_groups_reference(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let a = target.find_object("a").unwrap()
+  let b = target.find_object("b").unwrap()
+  let c = target.find_object("c").unwrap()
+  let group1 = target.find_object("this is a message group").unwrap()
+  let group2 = target
+    .find_object("this is a message group.and this is a nested message group")
+    .unwrap()
+  let group3 = target
+    .find_object(
+      "this is a message group.and this is a nested message group.what about more nesting",
+    )
+    .unwrap()
+  let crazy_town = target
+    .find_object(
+      "this is a message group.and this is a nested message group.what about more nesting.crazy town",
+    )
+    .unwrap()
+  let a_group_note = target
+    .find_object(
+      "this is a message group.and this is a nested message group.what about more nesting.crazy town.a.a note",
+    )
+    .unwrap()
+  let whoa = target
+    .find_object(
+      "this is a message group.and this is a nested message group.what about more nesting.crazy town.whoa",
+    )
+    .unwrap()
+  let alt = target.find_object("alt").unwrap()
+  let case1 = target.find_object("alt.case 1").unwrap()
+  let case2 = target.find_object("alt.case 2").unwrap()
+  let case3 = target.find_object("alt.case 3").unwrap()
+  let case4 = target.find_object("alt.case 4").unwrap()
+  let b_note = target.find_object("b.note").unwrap()
+  let a_note = target.find_object("a.note").unwrap()
+  let a_box = require_shape_box(a, "a", engine_name)
+  let b_box = require_shape_box(b, "b", engine_name)
+  let c_box = require_shape_box(c, "c", engine_name)
+  let group1_box = require_shape_box(
+    group1, "this is a message group", engine_name,
+  )
+  let group2_box = require_shape_box(
+    group2, "this is a message group.and this is a nested message group", engine_name,
+  )
+  let group3_box = require_shape_box(
+    group3, "this is a message group.and this is a nested message group.what about more nesting",
+    engine_name,
+  )
+  let crazy_town_box = require_shape_box(
+    crazy_town, "this is a message group.and this is a nested message group.what about more nesting.crazy town",
+    engine_name,
+  )
+  let a_group_note_box = require_shape_box(
+    a_group_note, "this is a message group.and this is a nested message group.what about more nesting.crazy town.a.a note",
+    engine_name,
+  )
+  let whoa_box = require_shape_box(
+    whoa, "this is a message group.and this is a nested message group.what about more nesting.crazy town.whoa",
+    engine_name,
+  )
+  let alt_box = require_shape_box(alt, "alt", engine_name)
+  let case1_box = require_shape_box(case1, "alt.case 1", engine_name)
+  let case2_box = require_shape_box(case2, "alt.case 2", engine_name)
+  let case3_box = require_shape_box(case3, "alt.case 3", engine_name)
+  let case4_box = require_shape_box(case4, "alt.case 4", engine_name)
+  let b_note_box = require_shape_box(b_note, "b.note", engine_name)
+  let a_note_box = require_shape_box(a_note, "a.note", engine_name)
+
+  assert_eq(a_box, @graph.Box::new(12.0, 52.0, 100.0, 66.0))
+  assert_eq(b_box, @graph.Box::new(285.0, 52.0, 100.0, 66.0))
+  assert_eq(c_box, @graph.Box::new(542.0, 52.0, 130.0, 66.0))
+  assert_eq(group1_box, @graph.Box::new(-58.0, 173.0, 481.0, 711.0))
+  assert_eq(group2_box, @graph.Box::new(-46.0, 274.0, 457.0, 567.0))
+  assert_eq(group3_box, @graph.Box::new(-34.0, 375.0, 433.0, 423.0))
+  assert_eq(crazy_town_box, @graph.Box::new(-22.0, 476.0, 409.0, 310.0))
+  assert_eq(a_group_note_box, @graph.Box::new(18.0, 522.0, 88.0, 66.0))
+  assert_eq(whoa_box, @graph.Box::new(22.0, 713.0, 353.0, 61.0))
+  assert_eq(alt_box, @graph.Box::new(283.0, 802.0, 376.0, 419.0))
+  assert_eq(case1_box, @graph.Box::new(295.0, 845.0, 352.0, 61.0))
+  assert_eq(case2_box, @graph.Box::new(295.0, 946.0, 352.0, 61.0))
+  assert_eq(case3_box, @graph.Box::new(295.0, 1047.0, 352.0, 61.0))
+  assert_eq(case4_box, @graph.Box::new(295.0, 1148.0, 352.0, 61.0))
+  assert_eq(b_note_box, @graph.Box::new(102.0, 1264.0, 465.0, 66.0))
+  assert_eq(a_note_box, @graph.Box::new(23.0, 1400.0, 77.0, 130.0))
+
+  let ab = find_connections(target, "a", "b")
+  let bc = find_connections(target, "b", "c")
+  assert_eq(
+    ab.length(),
+    5,
+    msg="\{engine_name} expected five a -> b messages in sequence nested groups",
+  )
+  assert_eq(
+    bc.length(),
+    4,
+    msg="\{engine_name} expected four b -> c messages in sequence nested groups",
+  )
+  for
+    i, expected in [
+      [@graph.Point::new(62.0, 219.0), @graph.Point::new(335.0, 219.0)],
+      [@graph.Point::new(62.0, 320.0), @graph.Point::new(335.0, 320.0)],
+      [@graph.Point::new(62.0, 421.0), @graph.Point::new(335.0, 421.0)],
+      [@graph.Point::new(62.0, 658.0), @graph.Point::new(335.0, 658.0)],
+      [@graph.Point::new(62.0, 759.0), @graph.Point::new(335.0, 759.0)],
+    ] {
+    assert_route_points_close(ab[i].route, expected)
+  }
+  for
+    i, expected in [
+      [@graph.Point::new(335.0, 891.0), @graph.Point::new(607.0, 891.0)],
+      [@graph.Point::new(335.0, 992.0), @graph.Point::new(607.0, 992.0)],
+      [@graph.Point::new(335.0, 1093.0), @graph.Point::new(607.0, 1093.0)],
+      [@graph.Point::new(335.0, 1194.0), @graph.Point::new(607.0, 1194.0)],
+    ] {
+    assert_route_points_close(bc[i].route, expected)
   }
 }
 
@@ -2248,6 +2608,26 @@ fn find_connection(
 }
 
 ///|
+fn find_connections(
+  diagram : @diagram.Diagram,
+  src_id : String,
+  dst_id : String,
+) -> Array[@diagram.Connection] {
+  let matches : Array[@diagram.Connection] = []
+  for connection in diagram.get_edges() {
+    if connection.src_lookup_id == src_id && connection.dst_lookup_id == dst_id {
+      matches.push(connection)
+    }
+  }
+  matches.sort_by(fn(a, b) {
+    let ay = if a.route.is_empty() { 0.0 } else { a.route[0].y }
+    let by = if b.route.is_empty() { 0.0 } else { b.route[0].y }
+    ay.compare(by)
+  })
+  matches
+}
+
+///|
 fn assert_route_points_close(
   actual : Array[@graph.Point],
   expected : Array[@graph.Point],
@@ -2261,6 +2641,18 @@ fn assert_route_points_close(
       dx <= tolerance && dy <= tolerance,
       msg="route point \{i} mismatch: actual=\{actual[i]}, expected=\{expected[i]}, dx=\{dx}, dy=\{dy}",
     )
+  }
+}
+
+///|
+fn require_shape_box(
+  shape : @diagram.Shape,
+  id : String,
+  engine_name : String,
+) -> @graph.Box raise {
+  match shape.get_box() {
+    Some(box) => box
+    None => fail("\{engine_name} expected box for \{id}")
   }
 }
 
