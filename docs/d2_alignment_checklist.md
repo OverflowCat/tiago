@@ -134,7 +134,7 @@ The implementation language will remain MoonBit. Alignment therefore means parit
 
 - [ ] Validate ELK behavior and supported options against D2 fixtures.
   - Includes container dimensions, descendant edges, and ELK option mapping.
-  - Blocker: `moon_elk/core` still diverges from D2's bundled `elk.js` on some layered `INCLUDE_CHILDREN` inputs, including the `ExtractSubgraph(includeSelf=true)` shape exercised by `grid_edge_across_cell.d2`. Diago intentionally does not carry a local shim for this anymore and should wait for an upstream `moon_elk` fix.
+  - Update: `moon_elk` `0.1.13` fixes the reduced layered `INCLUDE_CHILDREN` include-self repro from `grid_edge_across_cell.d2`. Diago now tracks that upstream fix directly without carrying any local ELK parity shim.
 
 - [ ] Align grid diagram behavior with D2.
   - Verify row/column layout rules, gap semantics, spans, nested containers, label/icon padding, and edge routing through grid content.
