@@ -585,20 +585,6 @@ fn edge_prefers_curved(edge : @graph.EdgeInput) -> Bool {
 }
 
 ///|
-priv struct GridSemanticPlan {
-  rows : Int
-  cols : Int
-  column_widths : Array[Double]
-  row_heights : Array[Double]
-  hgap : Double
-  vgap : Double
-  pad_x : Double
-  pad_top : Double
-  width : Double
-  height : Double
-}
-
-///|
 priv struct GridChildLayoutMetrics {
   layout_width : Double
   layout_height : Double
@@ -637,6 +623,13 @@ const D2_GRID_SKIP_LIMIT : Int = 10000000
 priv struct GridSemanticContext {
   groups : Map[String, Array[String]]
   child_ids : Map[String, Bool]
+}
+
+///|
+priv struct GridContainerLayout {
+  width : Double
+  height : Double
+  child_boxes : Map[String, @graph.Box]
 }
 
 ///|
@@ -742,8 +735,11 @@ fn apply_grid_semantic_parent_boxes(
         None => ()
       }
     }
-    match estimate_grid_semantic_plan(parent, child_ids, child_size_by_id) {
-      Some(plan) => {
+    match
+      estimate_grid_container_layout_like_d2(
+        parent, child_ids, child_size_by_id,
+      ) {
+      Some(layout) => {
         let (x, y) = match parent.box {
           Some(box) => (box.x, box.y)
           None => (0.0, 0.0)
@@ -751,8 +747,8 @@ fn apply_grid_semantic_parent_boxes(
         parent_box_by_id[parent_id] = @graph.Box::new(
           x,
           y,
-          plan.width,
-          plan.height,
+          layout.width,
+          layout.height,
         )
       }
       None => ()
@@ -846,81 +842,46 @@ fn detach_grid_children(
 }
 
 ///|
-fn estimate_grid_semantic_plan(
+fn estimate_grid_container_layout_like_d2(
   parent : @graph.ObjectInput,
   child_ids : Array[String],
   child_size_by_id : Map[String, (Double, Double)],
-) -> GridSemanticPlan? {
-  if child_ids.is_empty() {
-    return None
-  }
-  let n = child_ids.length()
-  let rows = match parent.grid_rows {
-    Some(v) => if v > 0 { v } else { 0 }
-    None => 0
-  }
-  let cols = match parent.grid_columns {
-    Some(v) => if v > 0 { v } else { 0 }
-    None => 0
-  }
-  let (rows, cols) = if rows > 0 && cols > 0 {
-    (rows, cols)
-  } else if rows > 0 {
-    (rows, ceil_div(n, rows))
-  } else if cols > 0 {
-    (ceil_div(n, cols), cols)
-  } else {
-    return None
-  }
-  if rows <= 0 || cols <= 0 {
-    return None
-  }
-
-  let column_widths : Array[Double] = []
-  for _ in 0..<cols {
-    column_widths.push(0.0)
-  }
-  let row_heights : Array[Double] = []
-  for _ in 0..<rows {
-    row_heights.push(0.0)
-  }
-  let limit = min_int(n, rows * cols)
-  for i in 0..<limit {
-    let (child_w, child_h) = match child_size_by_id.get(child_ids[i]) {
-      Some(v) => v
-      None => continue
+) -> GridContainerLayout? {
+  match estimate_root_grid_child_boxes(parent, child_ids, child_size_by_id) {
+    Some(content_child_boxes) => {
+      let mut content_width = 0.0
+      let mut content_height = 0.0
+      for _, box in content_child_boxes {
+        let right = box.x + box.width
+        let bottom = box.y + box.height
+        if right > content_width {
+          content_width = right
+        }
+        if bottom > content_height {
+          content_height = bottom
+        }
+      }
+      let (hgap, vgap) = grid_semantic_gaps(parent)
+      let padding = grid_semantic_padding_like_d2(
+        parent, content_width, content_height, hgap, vgap,
+      )
+      let child_boxes : Map[String, @graph.Box] = {}
+      for child_id, box in content_child_boxes {
+        child_boxes[child_id] = @graph.Box::new(
+          box.x + padding.left,
+          box.y + padding.top,
+          box.width,
+          box.height,
+        )
+      }
+      Some({
+        width: content_width + padding.left + padding.right,
+        height: content_height + padding.top + padding.bottom,
+        child_boxes,
+      })
     }
-    let row = i / cols
-    let col = i % cols
-    if child_w > column_widths[col] {
-      column_widths[col] = child_w
-    }
-    if child_h > row_heights[row] {
-      row_heights[row] = child_h
-    }
+    None => None
   }
-
-  let (hgap, vgap) = grid_semantic_gaps(parent)
-  let (pad_x, pad_top, pad_bottom) = grid_semantic_paddings(parent, hgap, vgap)
-  let width = sum_double(column_widths) +
-    hgap * (cols - 1).to_double() +
-    pad_x * 2.0
-  let height = sum_double(row_heights) +
-    vgap * (rows - 1).to_double() +
-    pad_top +
-    pad_bottom
-  Some({
-    rows,
-    cols,
-    column_widths,
-    row_heights,
-    hgap,
-    vgap,
-    pad_x,
-    pad_top,
-    width,
-    height,
-  })
 }
 
 ///|
@@ -1167,37 +1128,242 @@ fn grid_child_restored_box_like_d2(
 
 ///|
 fn grid_semantic_gaps(parent : @graph.ObjectInput) -> (Double, Double) {
-  let fallback = match parent.grid_gap {
-    Some(v) => positive_or(v, 10.0)
-    None => 40.0
+  let mut hgap = 40.0
+  let mut vgap = 40.0
+  match parent.grid_gap {
+    Some(v) => {
+      hgap = v
+      vgap = v
+    }
+    None => ()
   }
-  let hgap = match parent.horizontal_gap {
-    Some(v) => positive_or(v, fallback)
-    None => fallback
+  match parent.horizontal_gap {
+    Some(v) => hgap = v
+    None => ()
   }
-  let vgap = match parent.vertical_gap {
-    Some(v) => positive_or(v, fallback)
-    None => fallback
+  match parent.vertical_gap {
+    Some(v) => vgap = v
+    None => ()
   }
   (hgap, vgap)
 }
 
 ///|
-fn grid_semantic_paddings(
+fn grid_semantic_padding_like_d2(
   parent : @graph.ObjectInput,
+  content_width : Double,
+  content_height : Double,
   hgap : Double,
   vgap : Double,
-) -> (Double, Double, Double) {
-  match parent.grid_gap {
-    Some(v) => {
-      let pad = positive_or(v, 10.0)
-      (pad, pad + 36.0, pad)
+) -> GridMargin {
+  let (label_position, icon_position) = grid_container_effective_positions_like_d2(
+    parent,
+  )
+  let spacing_padding = grid_container_spacing_padding_like_d2(
+    parent, label_position, icon_position,
+  )
+  let mut left = spacing_padding.left
+  let mut top = spacing_padding.top
+  let mut right = spacing_padding.right
+  let mut bottom = spacing_padding.bottom
+  let (label_width, label_height) = if grid_child_has_label_like_d2(parent) {
+    object_label_dimensions_like_d2(parent, 2.0 * D2_LABEL_PADDING)
+  } else {
+    (0.0, 0.0)
+  }
+
+  match label_position {
+    Some(position) => {
+      let upper = position.to_upper()
+      if label_width > 0.0 &&
+        (
+          upper.contains("OUTSIDE_TOP_") ||
+          upper.contains("INSIDE_TOP_") ||
+          upper.contains("INSIDE_BOTTOM_") ||
+          upper.contains("OUTSIDE_BOTTOM_")
+        ) {
+        let overflow = label_width - content_width
+        if overflow > 0.0 {
+          let half = overflow / 2.0
+          left = left + half
+          right = right + half
+        }
+      }
+      if label_height > 0.0 &&
+        (
+          upper.contains("OUTSIDE_LEFT_") ||
+          upper.contains("INSIDE_MIDDLE_") ||
+          upper.contains("OUTSIDE_RIGHT_")
+        ) {
+        let overflow = label_height - content_height
+        if overflow > 0.0 {
+          let half = overflow / 2.0
+          top = top + half
+          bottom = bottom + half
+        }
+      }
     }
-    None => {
-      let pad = max_double(60.0, max_double(hgap, vgap))
-      (pad, pad, pad)
+    None => ()
+  }
+
+  if icon_position == Some("INSIDE_TOP_LEFT") &&
+    label_position == Some("INSIDE_TOP_CENTER") {
+    let icon_size = D2_MAX_ICON_SIZE + 2.0 * D2_LABEL_PADDING
+    if left < icon_size {
+      left = icon_size
+    }
+    if right < icon_size {
+      right = icon_size
+    }
+    let min_width = 2.0 * icon_size + label_width
+    let overflow = min_width - content_width
+    if overflow > 0.0 {
+      let half = overflow / 2.0
+      if left < half {
+        left = half
+      }
+      if right < half {
+        right = half
+      }
     }
   }
+
+  let horizontal_padding = if parent.grid_gap is Some(_) ||
+    parent.horizontal_gap is Some(_) {
+    hgap
+  } else {
+    60.0
+  }
+  let vertical_padding = if parent.grid_gap is Some(_) ||
+    parent.vertical_gap is Some(_) {
+    vgap
+  } else {
+    60.0
+  }
+  if top < vertical_padding {
+    top = vertical_padding
+  }
+  if bottom < vertical_padding {
+    bottom = vertical_padding
+  }
+  if left < horizontal_padding {
+    left = horizontal_padding
+  }
+  if right < horizontal_padding {
+    right = horizontal_padding
+  }
+  { left, top, right, bottom }
+}
+
+///|
+fn grid_container_effective_positions_like_d2(
+  obj : @graph.ObjectInput,
+) -> (String?, String?) {
+  let label_position = if obj.label_position is Some(_) {
+    obj.label_position
+  } else if grid_child_has_label_like_d2(obj) {
+    Some("INSIDE_TOP_CENTER")
+  } else {
+    None
+  }
+  let icon_position = if obj.icon_position is Some(_) {
+    obj.icon_position
+  } else if obj.icon is Some(_) {
+    Some("INSIDE_TOP_LEFT")
+  } else {
+    None
+  }
+  (label_position, icon_position)
+}
+
+///|
+fn grid_container_spacing_padding_like_d2(
+  obj : @graph.ObjectInput,
+  label_position : String?,
+  icon_position : String?,
+) -> GridMargin {
+  let mut left = 0.0
+  let mut top = 0.0
+  let mut right = 0.0
+  let mut bottom = 0.0
+
+  if grid_child_has_label_like_d2(obj) {
+    let (label_width, label_height) = object_label_dimensions_like_d2(
+      obj,
+      2.0 * D2_LABEL_PADDING,
+    )
+    match label_position {
+      Some(position) => {
+        let upper = position.to_upper()
+        if upper.contains("INSIDE_TOP_") {
+          top = label_height
+        } else if upper.contains("INSIDE_BOTTOM_") {
+          bottom = label_height
+        } else if upper == "INSIDE_MIDDLE_LEFT" {
+          left = label_width
+        } else if upper == "INSIDE_MIDDLE_RIGHT" {
+          right = label_width
+        }
+      }
+      None => ()
+    }
+  }
+
+  if obj.icon is Some(_) {
+    let icon_size = D2_MAX_ICON_SIZE + 2.0 * D2_LABEL_PADDING
+    match icon_position {
+      Some(position) => {
+        let upper = position.to_upper()
+        if upper.contains("INSIDE_TOP_") {
+          if top < icon_size {
+            top = icon_size
+          }
+        } else if upper.contains("INSIDE_BOTTOM_") {
+          if bottom < icon_size {
+            bottom = icon_size
+          }
+        } else if upper == "INSIDE_MIDDLE_LEFT" {
+          if left < icon_size {
+            left = icon_size
+          }
+        } else if upper == "INSIDE_MIDDLE_RIGHT" {
+          if right < icon_size {
+            right = icon_size
+          }
+        }
+      }
+      None => ()
+    }
+  }
+
+  { left, top, right, bottom }
+}
+
+///|
+fn object_label_dimensions_like_d2(
+  obj : @graph.ObjectInput,
+  padding : Double,
+) -> (Double, Double) {
+  let font_size = match obj.style.font_size {
+    Some(v) => v.as_int().unwrap_or(16)
+    None => 16
+  }
+  let is_bold = style_bool(obj.style.bold, false)
+  let is_italic = style_bool(obj.style.italic, false)
+  let is_mono = obj.shape_type == @graph.Code ||
+    style_is_mono(obj.style.font_family)
+  let dims = if obj.shape_type == @graph.Code {
+    @text_metrics.measure_label_code(obj.label, font_size, is_bold, is_italic)
+  } else {
+    @text_metrics.measure_label(
+      obj.label,
+      font_size,
+      is_mono,
+      is_bold,
+      is_italic,
+    )
+  }
+  (dims.width + padding, dims.height + padding)
 }
 
 ///|
@@ -1887,57 +2053,53 @@ fn restore_grid_semantics(
         )
       }
       if root_uses_container_grid_semantics(parent) {
-        match estimate_grid_semantic_plan(parent, child_ids, child_size_by_id) {
-          Some(plan) => {
+        match
+          estimate_grid_container_layout_like_d2(
+            parent, child_ids, child_size_by_id,
+          ) {
+          Some(layout) => {
             override_boxes[parent.abs_id_syntax] = @graph.Box::new(
               0.0,
               0.0,
-              plan.width,
-              plan.height,
+              layout.width,
+              layout.height,
             )
-            let mut y = plan.pad_top
-            for row in 0..<plan.rows {
-              let mut x = plan.pad_x
-              for col in 0..<plan.cols {
-                let idx = row * plan.cols + col
-                if idx >= child_ids.length() {
-                  break
-                }
-                let child_id = child_ids[idx]
-                let cell_w = plan.column_widths[col]
-                let cell_h = plan.row_heights[row]
-                let child = match original_by_id.get(child_id) {
-                  Some(value) => value
-                  None => {
-                    override_boxes[child_id] = @graph.Box::new(
-                      x, y, cell_w, cell_h,
-                    )
-                    x = x + cell_w + plan.hgap
-                    continue
-                  }
-                }
-                let metrics = match child_metrics_by_id.get(child_id) {
-                  Some(value) => value
-                  None =>
-                    {
-                      layout_width: cell_w,
-                      layout_height: cell_h,
-                      label_position: None,
-                      icon_position: None,
-                      initial_margin: {
-                        left: 0.0,
-                        top: 0.0,
-                        right: 0.0,
-                        bottom: 0.0,
-                      },
-                    }
-                }
-                override_boxes[child_id] = grid_child_restored_box_like_d2(
-                  child, metrics, x, y, cell_w, cell_h,
-                )
-                x = x + cell_w + plan.hgap
+            for child_id in child_ids {
+              let content_box = match layout.child_boxes.get(child_id) {
+                Some(value) => value
+                None => continue
               }
-              y = y + plan.row_heights[row] + plan.vgap
+              let child = match original_by_id.get(child_id) {
+                Some(value) => value
+                None => {
+                  override_boxes[child_id] = content_box
+                  continue
+                }
+              }
+              let metrics = match child_metrics_by_id.get(child_id) {
+                Some(value) => value
+                None =>
+                  {
+                    layout_width: content_box.width,
+                    layout_height: content_box.height,
+                    label_position: None,
+                    icon_position: None,
+                    initial_margin: {
+                      left: 0.0,
+                      top: 0.0,
+                      right: 0.0,
+                      bottom: 0.0,
+                    },
+                  }
+              }
+              override_boxes[child_id] = grid_child_restored_box_like_d2(
+                child,
+                metrics,
+                content_box.x,
+                content_box.y,
+                content_box.width,
+                content_box.height,
+              )
             }
           }
           None => ()
@@ -1973,8 +2135,10 @@ fn restore_grid_semantics(
       child_metrics_by_id[child_id] = metrics
       child_size_by_id[child_id] = (metrics.layout_width, metrics.layout_height)
     }
-    let plan = match
-      estimate_grid_semantic_plan(parent, child_ids, child_size_by_id) {
+    let layout = match
+      estimate_grid_container_layout_like_d2(
+        parent, child_ids, child_size_by_id,
+      ) {
       Some(v) => v
       None => continue
     }
@@ -1982,48 +2146,42 @@ fn restore_grid_semantics(
     let parent_new = parent_box
     override_boxes[parent_id] = parent_new
 
-    let mut y = parent_new.y + plan.pad_top
-    for row in 0..<plan.rows {
-      let mut x = parent_new.x + plan.pad_x
-      for col in 0..<plan.cols {
-        let idx = row * plan.cols + col
-        if idx >= child_ids.length() {
-          break
-        }
-        let child_id = child_ids[idx]
-        let (child_w, child_h) = match child_size_by_id.get(child_id) {
-          Some(v) => v
-          None => continue
-        }
-        let cell_w = plan.column_widths[col]
-        let cell_h = plan.row_heights[row]
-        let _ = child_w
-        let _ = child_h
-        let metrics = match child_metrics_by_id.get(child_id) {
-          Some(value) => value
-          None =>
-            {
-              layout_width: cell_w,
-              layout_height: cell_h,
-              label_position: None,
-              icon_position: None,
-              initial_margin: { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 },
-            }
-        }
-        let child = match original_by_id.get(child_id) {
-          Some(value) => value
-          None => {
-            override_boxes[child_id] = @graph.Box::new(x, y, cell_w, cell_h)
-            x = x + cell_w + plan.hgap
-            continue
-          }
-        }
-        override_boxes[child_id] = grid_child_restored_box_like_d2(
-          child, metrics, x, y, cell_w, cell_h,
-        )
-        x = x + cell_w + plan.hgap
+    for child_id in child_ids {
+      let content_box = match layout.child_boxes.get(child_id) {
+        Some(value) => value
+        None => continue
       }
-      y = y + plan.row_heights[row] + plan.vgap
+      let metrics = match child_metrics_by_id.get(child_id) {
+        Some(value) => value
+        None =>
+          {
+            layout_width: content_box.width,
+            layout_height: content_box.height,
+            label_position: None,
+            icon_position: None,
+            initial_margin: { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 },
+          }
+      }
+      let child = match original_by_id.get(child_id) {
+        Some(value) => value
+        None => {
+          override_boxes[child_id] = @graph.Box::new(
+            parent_new.x + content_box.x,
+            parent_new.y + content_box.y,
+            content_box.width,
+            content_box.height,
+          )
+          continue
+        }
+      }
+      override_boxes[child_id] = grid_child_restored_box_like_d2(
+        child,
+        metrics,
+        parent_new.x + content_box.x,
+        parent_new.y + content_box.y,
+        content_box.width,
+        content_box.height,
+      )
     }
   }
   normalize_override_boxes_origin(override_boxes)
@@ -2669,42 +2827,6 @@ fn positive_or(value : Double, fallback : Double) -> Double {
     value
   } else {
     fallback
-  }
-}
-
-///|
-fn ceil_div(n : Int, d : Int) -> Int {
-  if n <= 0 || d <= 0 {
-    0
-  } else {
-    (n + d - 1) / d
-  }
-}
-
-///|
-fn sum_double(values : Array[Double]) -> Double {
-  let mut sum = 0.0
-  for v in values {
-    sum = sum + v
-  }
-  sum
-}
-
-///|
-fn max_double(a : Double, b : Double) -> Double {
-  if a > b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn min_int(a : Int, b : Int) -> Int {
-  if a < b {
-    a
-  } else {
-    b
   }
 }
 

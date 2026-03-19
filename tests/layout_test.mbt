@@ -552,6 +552,120 @@ fn assert_grid_nested_simple_edges_order_like_d2(
 }
 
 ///|
+test "d2 grid_nested_gap0 matches stable nested grid boxes" {
+  let source =
+    #|The Universe: {
+    #|  grid-rows: 3
+    #|  grid-gap: 0
+    #|
+    #|  FirstTwo.width: 300
+    #|  Last.style.fill: red
+    #|
+    #|  TALA: "" {
+    #|    grid-rows: 3
+    #|    grid-gap: 0
+    #|    TALA.width: 100
+    #|    D2
+    #|    Cloud
+    #|  }
+    #|  D2.width: 200
+    #|  Cloud.width: 100
+    #|  Terrastruct.width: 400
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_grid_nested_gap0_like_d2(dagre, "dagre")
+  assert_grid_nested_gap0_like_d2(elk, "elk")
+}
+
+///|
+fn assert_grid_nested_gap0_like_d2(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let universe = graph.find_object("The Universe").unwrap()
+  let first_two = graph.find_object("The Universe.FirstTwo").unwrap()
+  let last = graph.find_object("The Universe.Last").unwrap()
+  let tala = graph.find_object("The Universe.TALA").unwrap()
+  let tala_tala = graph.find_object("The Universe.TALA.TALA").unwrap()
+  let tala_d2 = graph.find_object("The Universe.TALA.D2").unwrap()
+  let tala_cloud = graph.find_object("The Universe.TALA.Cloud").unwrap()
+  let d2 = graph.find_object("The Universe.D2").unwrap()
+  let cloud = graph.find_object("The Universe.Cloud").unwrap()
+  let terrastruct = graph.find_object("The Universe.Terrastruct").unwrap()
+
+  match
+    (
+      universe.get_box(),
+      first_two.get_box(),
+      last.get_box(),
+      tala.get_box(),
+      tala_tala.get_box(),
+      tala_d2.get_box(),
+      tala_cloud.get_box(),
+      d2.get_box(),
+      cloud.get_box(),
+      terrastruct.get_box(),
+    ) {
+    (
+      Some(universe_box),
+      Some(first_two_box),
+      Some(last_box),
+      Some(tala_box),
+      Some(tala_tala_box),
+      Some(tala_d2_box),
+      Some(tala_cloud_box),
+      Some(d2_box),
+      Some(cloud_box),
+      Some(terrastruct_box),
+    ) =>
+      if engine_name == "dagre" {
+        assert_eq(universe_box, @graph.Box::new(0.0, 0.0, 400.0, 366.0))
+        assert_eq(first_two_box, @graph.Box::new(0.0, 46.0, 300.0, 66.0))
+        assert_eq(last_box, @graph.Box::new(300.0, 46.0, 100.0, 66.0))
+        assert_eq(tala_box, @graph.Box::new(0.0, 112.0, 100.0, 193.0))
+        assert_eq(tala_tala_box, @graph.Box::new(0.0, 112.0, 100.0, 61.0))
+        assert_eq(tala_d2_box, @graph.Box::new(0.0, 173.0, 100.0, 66.0))
+        assert_eq(tala_cloud_box, @graph.Box::new(0.0, 239.0, 100.0, 66.0))
+        assert_eq(d2_box, @graph.Box::new(100.0, 112.0, 200.0, 193.0))
+        assert_eq(cloud_box, @graph.Box::new(300.0, 112.0, 100.0, 193.0))
+        assert_eq(terrastruct_box, @graph.Box::new(0.0, 305.0, 400.0, 61.0))
+      } else {
+        assert_eq(universe_box, @graph.Box::new(12.0, 12.0, 400.0, 366.0))
+        assert_eq(first_two_box, @graph.Box::new(12.0, 58.0, 300.0, 66.0))
+        assert_eq(last_box, @graph.Box::new(312.0, 58.0, 100.0, 66.0))
+        assert_eq(tala_box, @graph.Box::new(12.0, 124.0, 100.0, 193.0))
+        assert_eq(tala_tala_box, @graph.Box::new(12.0, 124.0, 100.0, 61.0))
+        assert_eq(tala_d2_box, @graph.Box::new(12.0, 185.0, 100.0, 66.0))
+        assert_eq(tala_cloud_box, @graph.Box::new(12.0, 251.0, 100.0, 66.0))
+        assert_eq(d2_box, @graph.Box::new(112.0, 124.0, 200.0, 193.0))
+        assert_eq(cloud_box, @graph.Box::new(312.0, 124.0, 100.0, 193.0))
+        assert_eq(terrastruct_box, @graph.Box::new(12.0, 317.0, 400.0, 61.0))
+      }
+    _ =>
+      fail("\{engine_name} expected boxes for grid_nested_gap0 fixture objects")
+  }
+}
+
+///|
 test "container contains children" {
   let source =
     #|parent {
