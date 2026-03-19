@@ -182,7 +182,6 @@ fn write_compiled_output(
   output_mode : OutputMode,
   output_path : String?,
   output : String,
-  announce_write? : Bool = true,
 ) -> Result[Unit, String] {
   match output_path {
     Some(path) =>
@@ -190,9 +189,8 @@ fn write_compiled_output(
         OutputMode::Png
         | OutputMode::Pdf
         | OutputMode::Pptx
-        | OutputMode::Gif =>
-          write_svg_binary_output(path, output, output_mode, announce_write~)
-        _ => write_output(path, output, announce_write~)
+        | OutputMode::Gif => write_svg_binary_output(path, output, output_mode)
+        _ => write_output(path, output)
       }
     None =>
       match output_mode {
@@ -218,17 +216,11 @@ fn write_compiled_output(
 }
 
 ///|
-fn write_output(
-  path : String,
-  content : String,
-  announce_write? : Bool = true,
-) -> Result[Unit, String] {
+fn write_output(path : String, content : String) -> Result[Unit, String] {
   @fs.write_string_to_file(path, content) catch {
     e => return Err("Error writing file '\{path}': \{e}")
   }
-  if announce_write {
-    println("Written to \{path}")
-  }
+  println("Written to \{path}")
   Ok(())
 }
 
