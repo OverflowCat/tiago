@@ -20,7 +20,13 @@ test "write_render_output writes svg before returning bundling warning" {
     output: "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>",
     warning: Some("failed to bundle local images: [./missing.svg]"),
   }
-  match write_render_output(OutputMode::Svg, Some(out_path), compiled) {
+  match
+    write_render_output(
+      OutputMode::Svg,
+      Some(out_path),
+      compiled,
+      announce_write=false,
+    ) {
     Ok(_) => fail("expected bundling warning after writing svg")
     Err(msg) => assert_eq(msg, "failed to bundle local images: [./missing.svg]")
   }
@@ -41,7 +47,13 @@ test "write_render_output does not write binary targets when bundling warns" {
       "failed to bundle remote images: [https://example.com/icon.svg]",
     ),
   }
-  match write_render_output(OutputMode::Png, Some(out_path), compiled) {
+  match
+    write_render_output(
+      OutputMode::Png,
+      Some(out_path),
+      compiled,
+      announce_write=false,
+    ) {
     Ok(_) => fail("expected bundling warning to stop binary conversion")
     Err(msg) =>
       assert_eq(

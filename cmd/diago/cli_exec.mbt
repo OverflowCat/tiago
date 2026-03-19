@@ -181,18 +181,31 @@ fn write_render_output(
   output_mode : OutputMode,
   output_path : String?,
   compiled : CompiledSourceResult,
+  announce_write? : Bool = true,
 ) -> Result[Unit, String] {
   match compiled.warning {
     Some(warning) =>
       if output_mode == OutputMode::Svg {
-        match write_compiled_output(output_mode, output_path, compiled.output) {
+        match
+          write_compiled_output(
+            output_mode,
+            output_path,
+            compiled.output,
+            announce_write~,
+          ) {
           Ok(_) => Err(warning)
           Err(err) => Err(err)
         }
       } else {
         Err(warning)
       }
-    None => write_compiled_output(output_mode, output_path, compiled.output)
+    None =>
+      write_compiled_output(
+        output_mode,
+        output_path,
+        compiled.output,
+        announce_write~,
+      )
   }
 }
 
