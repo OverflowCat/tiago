@@ -1,4 +1,4 @@
-// Generated from ../d2 embedded fonts by text_metrics/gen_font_metrics.go. Do not edit by hand.
+// Generated from upstream D2 embedded fonts by text_metrics/gen_font_metrics.go. Do not edit by hand.
 
 ///|
 const BASE_FONT_SIZE : Int = 16

@@ -6667,7 +6667,7 @@ fn render_svg_diamond(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_diamond.go (diamondPath).
+  // Ported from upstream D2 lib/shape/shape_diamond.go (diamondPath).
   let sx = box.width / 77.0
   let sy = box.height / 76.9
   let abs = fn(x : Double, y : Double) {
@@ -6776,7 +6776,7 @@ fn render_svg_hexagon(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_hexagon.go (hexagonPath).
+  // Ported from upstream D2 lib/shape/shape_hexagon.go (hexagonPath).
   let half_y_factor = 43.6 / 87.3
   let x0 = box.x
   let y0 = box.y
@@ -6828,7 +6828,7 @@ fn render_svg_parallelogram(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_parallelogram.go (parallelogramPath).
+  // Ported from upstream D2 lib/shape/shape_parallelogram.go (parallelogramPath).
   let wedge = if box.width <= 26.0 { box.width / 2.0 } else { 26.0 }
   let commands : Array[String] = []
   commands.push(
@@ -6863,7 +6863,7 @@ fn render_svg_parallelogram(
 
 ///|
 fn d2_path_chop_precision(value : Double) -> Double {
-  // Match ../d2/lib/svg/path.go::chopPrecision.
+  // Match upstream D2 lib/svg/path.go::chopPrecision.
   // D2 rounds to integer after bringing the value down to float32 precision.
   // Go reference:
   // math.Round(float64(float32(f*10000)) / 10000)
@@ -6892,7 +6892,7 @@ fn render_svg_person(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_person.go (personPath) + ../d2/lib/svg/path.go precision.
+  // Ported from upstream D2 lib/shape/shape_person.go (personPath) + lib/svg/path.go precision.
   let sx = box.width / 68.3
   let sy = box.height / 77.4
   let abs_point = fn(x : Double, y : Double) {
@@ -7019,8 +7019,8 @@ fn render_svg_cloud(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_cloud.go (cloudPath) and aligned to
-  // ../d2/lib/svg/path.go chopPrecision behavior.
+  // Ported from upstream D2 lib/shape/shape_cloud.go (cloudPath) and aligned to
+  // upstream D2 lib/svg/path.go chopPrecision behavior.
   let sx = box.width / 834.0
   let sy = box.height / 523.0
   let abs = fn(x : Double, y : Double) {
@@ -7167,7 +7167,7 @@ fn render_svg_document(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_document.go (documentPath).
+  // Ported from upstream D2 lib/shape/shape_document.go (documentPath).
   let doc_path_height = 18.925
   let doc_path_bottom = 16.3
   let sy = box.height
@@ -7223,7 +7223,7 @@ fn render_svg_queue(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
+  // Ported from upstream D2 lib/shape/shape_queue.go (queueOuterPath/queueInnerPath).
   let arc_w = if box.width < 48.0 { box.width / 2.0 } else { 24.0 }
   let m = 0.45
   let x0 = box.x
@@ -7298,7 +7298,7 @@ fn render_svg_stored_data(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_stored_data.go (storedDataPath).
+  // Ported from upstream D2 lib/shape/shape_stored_data.go (storedDataPath).
   let wedge = if box.width < 30.0 { box.width / 2.0 } else { 15.0 }
   let m = 0.27
   let x0 = box.x
@@ -7351,7 +7351,7 @@ fn render_svg_page(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_page.go (pageOuterPath/pageInnerPath).
+  // Ported from upstream D2 lib/shape/shape_page.go (pageOuterPath/pageInnerPath).
   let x0 = box.x
   let y0 = box.y
   let w = box.width
@@ -7531,7 +7531,7 @@ fn render_svg_package(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_package.go (getTopDimensions/packagePath).
+  // Ported from upstream D2 lib/shape/shape_package.go (getTopDimensions/packagePath).
   let mut top_width = box.width * 0.5
   if box.width >= 100.0 {
     top_width = if top_width > 150.0 {
@@ -7589,7 +7589,7 @@ fn render_svg_step(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_step.go (stepPath).
+  // Ported from upstream D2 lib/shape/shape_step.go (stepPath).
   let wedge = if box.width <= 35.0 { box.width / 2.0 } else { 35.0 }
   let commands : Array[String] = []
   commands.push("M \{d2_path_number(box.x)} \{d2_path_number(box.y)}")
@@ -7635,7 +7635,7 @@ fn render_svg_callout(
   fill_class_token : String?,
   stroke_class_token : String?,
 ) -> Unit {
-  // Ported from ../d2/lib/shape/shape_callout.go (calloutPath).
+  // Ported from upstream D2 lib/shape/shape_callout.go (calloutPath).
   let tip_w = if box.width < 60.0 { box.width / 2.0 } else { 30.0 }
   let tip_h = if box.height < 90.0 { box.height / 2.0 } else { 45.0 }
   let commands : Array[String] = []
@@ -7702,7 +7702,7 @@ fn render_svg_3d_rect(
   theme : @themes.Theme,
   _use_css_theme_vars : Bool,
 ) -> Unit {
-  // Ported from ../d2/d2renderers/d2svg/d2svg.go (render3DRect).
+  // Ported from upstream D2 d2renderers/d2svg/d2svg.go (render3DRect).
   let xi = round_double(box.x).to_int()
   let yi = round_double(box.y).to_int()
   let wi = round_double(box.width).to_int()
@@ -7951,7 +7951,7 @@ fn point_at_distance_on_route(
   if points.length() < 2 {
     return (Point::new(0.0, 0.0), 0)
   }
-  // Match ../d2/lib/geo/route.go::GetPointAtDistance:
+  // Match upstream D2 lib/geo/route.go::GetPointAtDistance:
   // do not clamp distance into [0, total], extrapolate on the last segment.
   let mut remaining = distance
   let mut curr = points[0]

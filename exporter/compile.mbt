@@ -3298,7 +3298,7 @@ fn near_constants_message() -> String {
 }
 
 ///|
-/// Compile D2 legend from `vars.d2-legend` (see ../d2/d2compiler/compile.go).
+/// Compile D2 legend from `vars.d2-legend` (see upstream D2 d2compiler/compile.go).
 ///
 /// Note: `legend` is not treated as a reserved keyword; it is compiled as a
 /// normal object to match D2 semantics and the reference SVGs in this repo.

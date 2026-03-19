@@ -437,7 +437,7 @@ fn stroke_dash_attributes(
   stroke_width : Double,
   dash_gap_size : Double,
 ) -> (Double, Double) {
-  // Ported from ../d2/lib/svg/path.go GetStrokeDashAttributes.
+  // Ported from upstream D2 lib/svg/path.go GetStrokeDashAttributes.
   let scale = @math.log10(-0.6 * stroke_width + 10.6) * 0.5 + 0.5
   let scaled_dash_size = stroke_width * dash_gap_size
   let scaled_gap_size = scale * scaled_dash_size

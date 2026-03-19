@@ -1,4 +1,4 @@
-// Generated from ../d2 embedded fonts by text_metrics/gen_font_metrics.go.
+// Generated from upstream D2 embedded fonts by text_metrics/gen_font_metrics.go.
 // Size-specific metrics to match D2 ruler hinting at selected sizes.
 
 ///|

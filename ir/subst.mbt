@@ -662,7 +662,7 @@ fn replace_substitutions_markdown(
   md_text : String,
   variables : Array[(String, String)],
 ) -> String {
-  // Best-effort port of ../d2/lib/textmeasure/substitutions.go:
+  // Best-effort port of upstream D2 lib/textmeasure/substitutions.go:
   // replace ${var} outside inline/fenced code spans.
   let chars = md_text.to_array()
   let out = StringBuilder::new()

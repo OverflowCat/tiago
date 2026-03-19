@@ -1306,7 +1306,7 @@ fn Parser::parse_unquoted_scalar_run(self : Parser) -> @ast.Scalar? {
 
 ///|
 fn Parser::parse_block_string(self : Parser) -> @ast.BlockString? {
-  // Ported from ../d2/d2parser/parse.go:parseBlockString (adapted to token-based parsing).
+  // Ported from upstream D2 d2parser/parse.go:parseBlockString (adapted to token-based parsing).
   let pipe = self.advance() // consume '|'
   let start = pipe.range.start
   let path = pipe.range.path

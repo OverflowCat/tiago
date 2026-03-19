@@ -16,11 +16,7 @@ cd "$root_dir"
 
 d2_cmd="${D2_CMD:-}"
 if [[ -z "$d2_cmd" ]]; then
-  if [[ -x "$root_dir/../d2/bin/d2" ]]; then
-    d2_cmd="$root_dir/../d2/bin/d2"
-  else
-    d2_cmd="$(command -v d2 || true)"
-  fi
+  d2_cmd="$(command -v d2 || true)"
 fi
 
 need_d2=false

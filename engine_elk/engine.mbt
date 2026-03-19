@@ -4917,7 +4917,7 @@ fn extended_trace_segment_end(
 
 ///|
 fn d2_path_chop_precision_for_trace(value : Double) -> Double {
-  // Match ../d2/lib/svg/path.go::chopPrecision used by shape perimeters.
+  // Match upstream D2 lib/svg/path.go::chopPrecision used by shape perimeters.
   let rounded = (Float::from_double(value * 10000.0).to_double() / 10000.0).round()
   if rounded == 0.0 {
     0.0
