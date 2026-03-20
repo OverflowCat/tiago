@@ -33,7 +33,7 @@ pub fn debug_build_dagre_input_json(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> Json raise @engine_api.LayoutError {
-  let (dagre_graph, _, _, _, _) = build_dagre_graph(graph, config, direction)
+  let (dagre_graph, _, _, _, _, _) = build_dagre_graph(graph, config, direction)
   dagre_graph_to_json(dagre_graph)
 }
 
@@ -488,12 +488,16 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   }
   let (
     dagre_graph,
+    order_constraints,
     edge_layout_by_key,
     node_size_by_id,
     dagre_node_id_by_object_id,
     parent_id_by_child_id,
   ) = build_dagre_graph(graph, config, direction)
-  let laid_out_graph = @moon_dagre.layout(dagre_graph)
+  let laid_out_graph = @moon_dagre.layout(
+    dagre_graph,
+    constraints=order_constraints,
+  )
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
   fill_patch_nodes(
@@ -2188,6 +2192,7 @@ fn build_dagre_graph(
   direction : @engine_api.Direction,
 ) -> (
   @moon_dagre.Graph,
+  Array[@moon_dagre.OrderConstraint],
   Map[String, EdgeLayoutInfo],
   Map[String, (Double, Double)],
   Map[String, String],
@@ -2350,10 +2355,68 @@ fn build_dagre_graph(
     }
   }
 
+  let order_constraints = build_dagre_order_constraints(
+    graph, dagre_node_id_by_object_id, object_by_id, parent_id_by_child_id,
+  )
+
   (
-    dagre_graph, edge_layout_by_key, node_size_by_id, dagre_node_id_by_object_id,
+    dagre_graph, order_constraints, edge_layout_by_key, node_size_by_id, dagre_node_id_by_object_id,
     parent_id_by_child_id,
   )
+}
+
+///|
+fn build_dagre_order_constraints(
+  graph : @graph.GraphInput,
+  dagre_node_id_by_object_id : Map[String, String],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> Array[@moon_dagre.OrderConstraint] {
+  let targets_by_src : Map[String, Array[String]] = {}
+  for edge in graph.edges {
+    let src_id = collapse_sql_or_class_endpoint_id(
+      edge.src_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+    let dst_id = collapse_sql_or_class_endpoint_id(
+      edge.dst_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+    if src_id == dst_id ||
+      !dagre_node_id_by_object_id.contains(src_id) ||
+      !dagre_node_id_by_object_id.contains(dst_id) {
+      continue
+    }
+    let targets = targets_by_src.get_or_default(src_id, [])
+    let mut seen = false
+    for existing in targets {
+      if existing == dst_id {
+        seen = true
+        break
+      }
+    }
+    if !seen {
+      targets.push(dst_id)
+      targets_by_src[src_id] = targets
+    }
+  }
+
+  let constraints : Array[@moon_dagre.OrderConstraint] = []
+  for _, targets in targets_by_src {
+    if targets.length() <= 1 {
+      continue
+    }
+    let mut i = 0
+    while i + 1 < targets.length() {
+      let left = dagre_node_id_by_object_id.get(targets[i]).unwrap()
+      let right = dagre_node_id_by_object_id.get(targets[i + 1]).unwrap()
+      constraints.push(@moon_dagre.order_constraint(left, right))
+      i = i + 1
+    }
+  }
+  constraints
 }
 
 ///|
