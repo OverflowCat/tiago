@@ -1741,8 +1741,7 @@ fn sequence_object_contained_by_like_d2(
       return true
     }
   }
-  let prefix = abs_id_syntax + "."
-  obj.abs_id_syntax.has_prefix(prefix)
+  false
 }
 
 ///|
@@ -1812,8 +1811,7 @@ fn sequence_edge_contained_by_like_d2(
       return true
     }
   }
-  let prefix = abs_id_syntax + "."
-  edge.src_id_syntax.has_prefix(prefix) || edge.dst_id_syntax.has_prefix(prefix)
+  false
 }
 
 ///|
@@ -2048,7 +2046,11 @@ fn sequence_participant_ids(graph : @graph.GraphInput) -> Array[String] {
         obj, graph,
       )
       let is_explicit_actor = has_non_edge_ref &&
-        (!contains_any_edge || has_incident_edge)
+        (
+          !contains_any_edge ||
+          has_incident_edge ||
+          (has_descendant_endpoint && obj.child_ids.is_empty())
+        )
       let is_implicit_actor = !has_non_edge_ref &&
         (has_incident_edge || has_descendant_endpoint)
       if is_explicit_actor || is_implicit_actor {

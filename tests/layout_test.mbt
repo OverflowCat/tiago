@@ -1620,6 +1620,40 @@ test "reference sequence nested span matches stable boxes" {
 }
 
 ///|
+test "reference sequence inter span self matches stable boxes" {
+  let source =
+    #|shape: sequence_diagram
+    #|a: A
+    #|b: B
+    #|
+    #|a.sp1 -> b: foo
+    #|a.sp1 -> a.sp2: redirect
+    #|a.sp2 -> b: bar
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_sequence_inter_span_self_reference(dagre, "dagre")
+  assert_sequence_inter_span_self_reference(elk, "elk")
+}
+
+///|
 fn assert_empty_sequence_like_d2(
   graph : @graph.GraphInput,
   engine_name : String,
@@ -1779,6 +1813,50 @@ fn assert_sequence_nested_span_reference(
   assert_route_points_close(item_outcome_scorer[0].route, [
     @graph.Point::new(814.5, 678.0),
     @graph.Point::new(62.0, 678.0),
+  ])
+}
+
+///|
+fn assert_sequence_inter_span_self_reference(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  for
+    entry in [
+      ("a", @graph.Box::new(12.0, 52.0, 100.0, 66.0)),
+      ("b", @graph.Box::new(162.0, 52.0, 100.0, 66.0)),
+      ("a.sp1", @graph.Box::new(56.0, 188.0, 12.0, 100.0)),
+      ("a.sp2", @graph.Box::new(56.0, 313.0, 12.0, 100.0)),
+    ] {
+    let (id, expected) = entry
+    let shape = target.find_object(id).unwrap()
+    assert_eq(require_shape_box(shape, id, engine_name), expected)
+  }
+
+  let a_b = find_connections(target, "a", "b")
+  assert_eq(
+    a_b.length(),
+    2,
+    msg="\{engine_name} expected two a -> b messages in sequence inter span self",
+  )
+  let sp1_sp2 = find_connection(target, "a", "a").unwrap()
+  let sp1_b = a_b[0]
+  let sp2_b = a_b[1]
+
+  assert_route_points_close(sp1_b.route, [
+    @graph.Point::new(68.0, 198.0),
+    @graph.Point::new(212.0, 198.0),
+  ])
+  assert_route_points_close(sp1_sp2.route, [
+    @graph.Point::new(68.0, 278.0),
+    @graph.Point::new(142.0, 278.0),
+    @graph.Point::new(142.0, 323.0),
+    @graph.Point::new(68.0, 323.0),
+  ])
+  assert_route_points_close(sp2_b.route, [
+    @graph.Point::new(68.0, 403.0),
+    @graph.Point::new(212.0, 403.0),
   ])
 }
 
