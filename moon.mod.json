@@ -4,7 +4,7 @@
   "deps": {
     "moonbitlang/x": "0.4.38",
     "Milky2018/xml": "0.2.0",
-    "Milky2018/moon_dagre": "0.2.1",
+    "Milky2018/moon_dagre": "0.2.2",
     "Milky2018/moon_elk": "0.1.13",
     "moonbit-community/cmark": "0.4.3",
     "Milky2018/moon_swash": "0.1.3",
