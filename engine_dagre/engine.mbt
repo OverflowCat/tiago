@@ -33,7 +33,7 @@ pub fn debug_build_dagre_input_json(
   config : @engine_api.LayoutConfig,
   direction : @engine_api.Direction,
 ) -> Json raise @engine_api.LayoutError {
-  let (dagre_graph, _, _, _, _) = build_dagre_graph(graph, config, direction)
+  let (dagre_graph, _, _, _, _, _) = build_dagre_graph(graph, config, direction)
   dagre_graph_to_json(dagre_graph)
 }
 
@@ -278,14 +278,6 @@ priv struct EdgeLayoutInfo {
 }
 
 ///|
-priv struct RawNodeGeometry {
-  left : Double
-  top : Double
-  width : Double
-  height : Double
-}
-
-///|
 const D2_EDGE_LABEL_GAP : Double = 20.0
 
 ///|
@@ -496,22 +488,22 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
   }
   let (
     dagre_graph,
+    order_constraints,
     edge_layout_by_key,
     node_size_by_id,
     dagre_node_id_by_object_id,
     parent_id_by_child_id,
   ) = build_dagre_graph(graph, config, direction)
-  let laid_out_graph = @moon_dagre.layout(dagre_graph)
+  let laid_out_graph = @moon_dagre.layout_with_constraints(
+    dagre_graph, order_constraints,
+  )
   let patch = @graph.LayoutPatch::new()
   copy_passthrough_layout_data(patch, graph)
-  let raw_node_geometry = fill_patch_nodes(
+  fill_patch_nodes(
     patch, laid_out_graph, graph, node_size_by_id, dagre_node_id_by_object_id, config,
   )
   fill_patch_edges(patch, laid_out_graph, edge_layout_by_key, direction)
   orient_edge_routes_to_semantic_direction(patch, graph, parent_id_by_child_id)
-  let mirrored_pre = maybe_unmirror_layout(
-    patch, graph, direction, parent_id_by_child_id, raw_node_geometry,
-  )
   adjust_rank_spacing(
     patch,
     graph,
@@ -526,11 +518,6 @@ pub impl @engine_api.LayoutEngine for DagreEngine with layout(
     !(direction == Right || direction == Left),
   )
   fit_container_boxes(patch, graph, parent_id_by_child_id)
-  if !mirrored_pre {
-    ignore(
-      maybe_unmirror_layout(patch, graph, direction, parent_id_by_child_id, {}),
-    )
-  }
   trace_routes_to_object_boundaries(patch, graph)
   convert_dagre_routes_to_d2_curves(patch, graph)
   apply_root_grid_positions_like_d2(patch, graph)
@@ -2204,6 +2191,7 @@ fn build_dagre_graph(
   direction : @engine_api.Direction,
 ) -> (
   @moon_dagre.Graph,
+  Array[@moon_dagre.OrderConstraint],
   Map[String, EdgeLayoutInfo],
   Map[String, (Double, Double)],
   Map[String, String],
@@ -2366,10 +2354,68 @@ fn build_dagre_graph(
     }
   }
 
+  let order_constraints = build_dagre_order_constraints(
+    graph, dagre_node_id_by_object_id, object_by_id, parent_id_by_child_id,
+  )
+
   (
-    dagre_graph, edge_layout_by_key, node_size_by_id, dagre_node_id_by_object_id,
+    dagre_graph, order_constraints, edge_layout_by_key, node_size_by_id, dagre_node_id_by_object_id,
     parent_id_by_child_id,
   )
+}
+
+///|
+fn build_dagre_order_constraints(
+  graph : @graph.GraphInput,
+  dagre_node_id_by_object_id : Map[String, String],
+  object_by_id : Map[String, @graph.ObjectInput],
+  parent_id_by_child_id : Map[String, String],
+) -> Array[@moon_dagre.OrderConstraint] {
+  let targets_by_src : Map[String, Array[String]] = {}
+  for edge in graph.edges {
+    let src_id = collapse_sql_or_class_endpoint_id(
+      edge.src_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+    let dst_id = collapse_sql_or_class_endpoint_id(
+      edge.dst_id,
+      object_by_id,
+      parent_id_by_child_id,
+    )
+    if src_id == dst_id ||
+      !dagre_node_id_by_object_id.contains(src_id) ||
+      !dagre_node_id_by_object_id.contains(dst_id) {
+      continue
+    }
+    let targets = targets_by_src.get_or_default(src_id, [])
+    let mut seen = false
+    for existing in targets {
+      if existing == dst_id {
+        seen = true
+        break
+      }
+    }
+    if !seen {
+      targets.push(dst_id)
+      targets_by_src[src_id] = targets
+    }
+  }
+
+  let constraints : Array[@moon_dagre.OrderConstraint] = []
+  for _, targets in targets_by_src {
+    if targets.length() <= 1 {
+      continue
+    }
+    let mut i = 0
+    while i + 1 < targets.length() {
+      let left = dagre_node_id_by_object_id.get(targets[i]).unwrap()
+      let right = dagre_node_id_by_object_id.get(targets[i + 1]).unwrap()
+      constraints.push(@moon_dagre.order_constraint(left, right))
+      i = i + 1
+    }
+  }
+  constraints
 }
 
 ///|
@@ -4139,8 +4185,7 @@ fn fill_patch_nodes(
   node_size_by_id : Map[String, (Double, Double)],
   dagre_node_id_by_object_id : Map[String, String],
   config : @engine_api.LayoutConfig,
-) -> Map[String, RawNodeGeometry] {
-  let raw_node_geometry : Map[String, RawNodeGeometry] = {}
+) -> Unit {
   for obj in graph.objects {
     let dagre_id = match dagre_node_id_by_object_id.get(obj.id) {
       Some(v) => v
@@ -4157,13 +4202,6 @@ fn fill_patch_nodes(
               clamp_positive(config.default_height, 60.0),
             )
         }
-        match
-          raw_node_geometry_from_dagre_node(
-            node_attrs, fallback_width, fallback_height,
-          ) {
-          Some(raw) => raw_node_geometry[obj.id] = raw
-          None => ()
-        }
         match box_from_dagre_node(node_attrs, fallback_width, fallback_height) {
           Some(box) => patch.nodes[obj.id] = box
           None => ()
@@ -4172,27 +4210,6 @@ fn fill_patch_nodes(
       None => ()
     }
   }
-  raw_node_geometry
-}
-
-///|
-fn raw_node_geometry_from_dagre_node(
-  attrs : @moon_dagre.Attrs,
-  fallback_width : Double,
-  fallback_height : Double,
-) -> RawNodeGeometry? {
-  guard attrs.get_float("x") is Some(x) && attrs.get_float("y") is Some(y) else {
-    return None
-  }
-  let width = clamp_positive(
-    attrs.get_float_or("width", fallback_width),
-    fallback_width,
-  )
-  let height = clamp_positive(
-    attrs.get_float_or("height", fallback_height),
-    fallback_height,
-  )
-  Some({ left: x - width / 2.0, top: y - height / 2.0, width, height })
 }
 
 ///|
@@ -4382,324 +4399,6 @@ fn stabilize_parallel_edge_routes(
       i = i + 1
     }
   }
-}
-
-///|
-fn maybe_unmirror_layout(
-  patch : @graph.LayoutPatch,
-  graph : @graph.GraphInput,
-  direction : @engine_api.Direction,
-  parent_id_by_child_id : Map[String, String],
-  raw_node_geometry : Map[String, RawNodeGeometry],
-) -> Bool {
-  if direction != Down && direction != Up {
-    return false
-  }
-
-  let object_index : Map[String, Int] = {}
-  let object_by_id : Map[String, @graph.ObjectInput] = {}
-  for i, obj in graph.objects {
-    object_index[obj.id] = i
-    object_by_id[obj.id] = obj
-  }
-
-  let mut should_mirror = false
-
-  let top_level_ids : Array[String] = []
-  for obj in graph.objects {
-    if parent_id_by_child_id.contains(obj.id) {
-      continue
-    }
-    if patch.nodes.contains(obj.id) {
-      top_level_ids.push(obj.id)
-    }
-  }
-
-  let ids_by_rank : Map[Int, Array[String]] = {}
-  for id in top_level_ids {
-    match patch.nodes.get(id) {
-      Some(box) => {
-        let rank_key = round_double(box.y).to_int()
-        let group = ids_by_rank.get_or_default(rank_key, [])
-        group.push(id)
-        ids_by_rank[rank_key] = group
-      }
-      None => ()
-    }
-  }
-
-  let mut saw_multi_rank = false
-  let mut all_rank_reversed = true
-  for _, ids in ids_by_rank {
-    if ids.length() <= 1 {
-      continue
-    }
-    saw_multi_rank = true
-    let x_order = ids.copy()
-    x_order.sort_by((a, b) => {
-      let a_box = patch.nodes.get(a).unwrap()
-      let b_box = patch.nodes.get(b).unwrap()
-      let ax = a_box.x + a_box.width / 2.0
-      let bx = b_box.x + b_box.width / 2.0
-      if ax < bx {
-        -1
-      } else if ax > bx {
-        1
-      } else {
-        object_index.get_or_default(a, 0) - object_index.get_or_default(b, 0)
-      }
-    })
-
-    let def_order = ids.copy()
-    def_order.sort_by((a, b) => {
-      object_index.get_or_default(a, 0) - object_index.get_or_default(b, 0)
-    })
-    let def_rev = reverse_ids(def_order)
-    if !ids_equal(x_order, def_rev) {
-      all_rank_reversed = false
-      break
-    }
-  }
-  if saw_multi_rank && all_rank_reversed {
-    should_mirror = true
-  }
-
-  if !should_mirror && top_level_ids.length() > 1 {
-    let first_id = top_level_ids[0]
-    let last_id = top_level_ids[top_level_ids.length() - 1]
-    if patch.nodes.contains(first_id) && patch.nodes.contains(last_id) {
-      let first_box = patch.nodes.get(first_id).unwrap()
-      let last_box = patch.nodes.get(last_id).unwrap()
-      let first_center = first_box.x + first_box.width / 2.0
-      let last_center = last_box.x + last_box.width / 2.0
-      if first_center > last_center + 1.0 {
-        should_mirror = true
-      }
-    }
-  }
-
-  if !should_mirror {
-    let mut min_depth = 1000000
-    for parent in graph.objects {
-      if parent.child_ids.length() <= 1 {
-        continue
-      }
-      let child_ids : Array[String] = []
-      for child_id in parent.child_ids {
-        if patch.nodes.contains(child_id) {
-          child_ids.push(child_id)
-        }
-      }
-      if child_ids.length() <= 1 {
-        continue
-      }
-      let depth = object_depth_from_id(parent.id)
-      if depth < min_depth {
-        min_depth = depth
-      }
-    }
-
-    if min_depth < 1000000 {
-      let mut reversed_groups = 0
-      let mut forward_groups = 0
-      for parent in graph.objects {
-        if object_depth_from_id(parent.id) != min_depth {
-          continue
-        }
-        if parent.child_ids.length() <= 1 {
-          continue
-        }
-        let child_ids : Array[String] = []
-        for child_id in parent.child_ids {
-          if patch.nodes.contains(child_id) {
-            child_ids.push(child_id)
-          }
-        }
-        if child_ids.length() <= 1 {
-          continue
-        }
-
-        let first_id = child_ids[0]
-        let last_id = child_ids[child_ids.length() - 1]
-        let first_box = patch.nodes.get(first_id).unwrap()
-        let last_box = patch.nodes.get(last_id).unwrap()
-        let first_center = first_box.x + first_box.width / 2.0
-        let last_center = last_box.x + last_box.width / 2.0
-        if first_center > last_center + 1.0 {
-          reversed_groups = reversed_groups + 1
-        } else if first_center + 1.0 < last_center {
-          forward_groups = forward_groups + 1
-        }
-      }
-      if reversed_groups > forward_groups {
-        should_mirror = true
-      }
-    }
-  }
-
-  if !should_mirror {
-    let targets_by_src : Map[String, Array[String]] = {}
-    for edge in graph.edges {
-      let src_id = collapse_sql_or_class_endpoint_id(
-        edge.src_id,
-        object_by_id,
-        parent_id_by_child_id,
-      )
-      let dst_id = collapse_sql_or_class_endpoint_id(
-        edge.dst_id,
-        object_by_id,
-        parent_id_by_child_id,
-      )
-      if src_id == dst_id ||
-        !patch.nodes.contains(src_id) ||
-        !patch.nodes.contains(dst_id) {
-        continue
-      }
-      let targets = targets_by_src.get_or_default(src_id, [])
-      let mut exists = false
-      for id in targets {
-        if id == dst_id {
-          exists = true
-          break
-        }
-      }
-      if !exists {
-        targets.push(dst_id)
-        targets_by_src[src_id] = targets
-      }
-    }
-    let mut reversed_fanout = 0
-    let mut forward_fanout = 0
-    for _, targets in targets_by_src {
-      if targets.length() <= 1 {
-        continue
-      }
-      let x_order = targets.copy()
-      x_order.sort_by((a, b) => {
-        let a_box = patch.nodes.get(a).unwrap()
-        let b_box = patch.nodes.get(b).unwrap()
-        let ax = a_box.x + a_box.width / 2.0
-        let bx = b_box.x + b_box.width / 2.0
-        if ax < bx {
-          -1
-        } else if ax > bx {
-          1
-        } else {
-          object_index.get_or_default(a, 0) - object_index.get_or_default(b, 0)
-        }
-      })
-      let def_order = targets.copy()
-      def_order.sort_by((a, b) => {
-        object_index.get_or_default(a, 0) - object_index.get_or_default(b, 0)
-      })
-      let def_rev = reverse_ids(def_order)
-      if ids_equal(x_order, def_rev) {
-        reversed_fanout = reversed_fanout + 1
-      } else if ids_equal(x_order, def_order) {
-        forward_fanout = forward_fanout + 1
-      }
-    }
-    if reversed_fanout > forward_fanout && reversed_fanout > 0 {
-      should_mirror = true
-    }
-  }
-
-  if !should_mirror {
-    return false
-  }
-
-  let mut min_x = 1000000000000.0
-  let mut max_x = -1000000000000.0
-  let mut seen = false
-  for id, box in patch.nodes {
-    seen = true
-    match raw_node_geometry.get(id) {
-      Some(raw) => {
-        if raw.left < min_x {
-          min_x = raw.left
-        }
-        let right = raw.left + raw.width
-        if right > max_x {
-          max_x = right
-        }
-      }
-      None => {
-        if box.x < min_x {
-          min_x = box.x
-        }
-        let right = box.x + box.width
-        if right > max_x {
-          max_x = right
-        }
-      }
-    }
-  }
-  if !seen {
-    return false
-  }
-  let axis_sum = min_x + max_x
-
-  for id, box in patch.nodes {
-    match raw_node_geometry.get(id) {
-      Some(raw) =>
-        patch.nodes[id] = @graph.Box::new(
-          round_double(axis_sum - raw.left - raw.width),
-          round_double(raw.top),
-          raw.width.ceil(),
-          raw.height.ceil(),
-        )
-      _ =>
-        patch.nodes[id] = @graph.Box::new(
-          axis_sum - box.x - box.width,
-          box.y,
-          box.width,
-          box.height,
-        )
-    }
-  }
-  for edge_index, route in patch.edges {
-    let mirrored : Array[@graph.Point] = []
-    for p in route {
-      mirrored.push(@graph.Point::new(axis_sum - p.x, p.y))
-    }
-    patch.edges[edge_index] = mirrored
-  }
-  for edge_index, label_box in patch.edge_labels {
-    patch.edge_labels[edge_index] = @graph.Box::new(
-      axis_sum - label_box.x - label_box.width,
-      label_box.y,
-      label_box.width,
-      label_box.height,
-    )
-  }
-
-  true
-}
-
-///|
-fn reverse_ids(ids : Array[String]) -> Array[String] {
-  let out : Array[String] = []
-  let mut i = ids.length()
-  while i > 0 {
-    i = i - 1
-    out.push(ids[i])
-  }
-  out
-}
-
-///|
-fn ids_equal(a : Array[String], b : Array[String]) -> Bool {
-  if a.length() != b.length() {
-    return false
-  }
-  let mut i = 0
-  while i < a.length() {
-    if a[i] != b[i] {
-      return false
-    }
-    i = i + 1
-  }
-  true
 }
 
 ///|

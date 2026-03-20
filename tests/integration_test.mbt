@@ -341,12 +341,13 @@ test "sketch mode style" {
     #|  style.sketch: true
     #|}
   let svg = compile(source).unwrap()
-  // Should have sketch filter definition
-  assert_true(svg.contains("sketch-filter"))
-  assert_true(svg.contains("feTurbulence"))
-  assert_true(svg.contains("feDisplacementMap"))
-  // Should apply filter to element
-  assert_true(svg.contains("filter=\"url(#sketch-filter)\""))
+  assert_false(svg.contains("sketch-filter"))
+  assert_false(svg.contains("feTurbulence"))
+  assert_false(svg.contains("feDisplacementMap"))
+  assert_true(svg.contains("class=\"sketch-overlay-"))
+  assert_true(svg.contains("id=\"streaks-"))
+  let path_count = svg.split("<path").collect().length() - 1
+  assert_true(path_count >= 2, msg="expected rough paths, got \{path_count}")
 }
 
 ///|
@@ -356,9 +357,15 @@ test "sketch mode on edge" {
     #|  style.sketch: true
     #|}
   let svg = compile(source).unwrap()
-  // Should have sketch filter definition and apply it
-  assert_true(svg.contains("sketch-filter"))
-  assert_true(svg.contains("filter=\"url(#sketch-filter)\""))
+  assert_false(svg.contains("sketch-filter"))
+  assert_false(svg.contains("filter=\"url(#sketch-filter)\""))
+  assert_true(svg.contains("id=\"streaks-"))
+  assert_false(svg.contains("marker-end="))
+  let path_count = svg.split("<path").collect().length() - 1
+  assert_true(
+    path_count >= 2,
+    msg="expected sketch connection paths, got \{path_count}",
+  )
 }
 
 ///|

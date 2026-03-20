@@ -1310,26 +1310,8 @@ fn graph_has_markdown_shape(graph : Diagram) -> Bool {
 }
 
 ///|
-fn hash_u32(s : String) -> Int {
-  d2_fnv32a(s)
-}
-
-///|
 fn style_scope_class(graph : Diagram, config : SvgConfig) -> String {
   diagram_scope_class(graph, config)
-}
-
-///|
-fn defs_prefix(config : SvgConfig) -> String {
-  match config.salt {
-    Some(s) => if s == "" { "" } else { "s\{hash_u32(s).to_string()}-" }
-    None => ""
-  }
-}
-
-///|
-fn defs_id(config : SvgConfig, base : String) -> String {
-  defs_prefix(config) + base
 }
 
 ///|
@@ -2222,13 +2204,19 @@ pub fn render_svg(
   }
   let scope_class = style_scope_class(graph, config)
   let has_markdown_shape = graph_has_markdown_shape(graph)
+  let needs_sketch = sketch_needed(graph, config)
   let emit_assets = SvgEmitAssets::new(
-    scope_class, light_theme, dark_theme, has_markdown_shape,
+    scope_class, light_theme, dark_theme, has_markdown_shape, needs_sketch,
   )
   // Add fill patterns
   add_fill_patterns(emit_assets, graph, config, light_theme, use_css_theme_vars)
-  // Add sketch filter if needed
-  add_sketch_filter(emit_assets, graph, config)
+  // Add sketch runtime assets if needed
+  add_sketch_assets(emit_assets, graph, config)
+  let sketch_session = if needs_sketch {
+    Some(SketchSession::new())
+  } else {
+    None
+  }
   // Add drop-shadow filter if any object uses `shadow: true`
   add_shadow_filter(emit_assets, graph)
   // reference behavior: all connection labels are cut out via a shared mask.
@@ -2268,6 +2256,7 @@ pub fn render_svg(
           appendix_items,
           shape,
           graph.shapes,
+          sketch_session,
           config,
           light_theme,
           use_css_theme_vars,
@@ -2279,6 +2268,7 @@ pub fn render_svg(
           appendix_items,
           shape,
           graph.shapes,
+          sketch_session,
           config,
           light_theme,
           use_css_theme_vars,
@@ -2291,6 +2281,7 @@ pub fn render_svg(
           edge,
           repeat_index_by_edge_index.get(edge.index).unwrap_or(0),
           graph.shapes,
+          sketch_session,
           edge_label_mask_url,
           edge_marker_ids,
           scope_class,
@@ -2778,34 +2769,6 @@ fn add_fill_patterns(
 
 ///|
 /// Add sketch filter if any object uses sketch mode
-fn add_sketch_filter(
-  assets : SvgEmitAssets,
-  graph : Diagram,
-  config : SvgConfig,
-) -> Unit {
-  // Check if any object uses sketch mode
-  let mut needs_sketch = config.sketch
-  for obj in graph.shapes {
-    if sketch_enabled(obj.style.sketch, config) {
-      needs_sketch = true
-      break
-    }
-  }
-  // Also check edges
-  if not(needs_sketch) {
-    for edge in graph.connections {
-      if sketch_enabled(edge.style.sketch, config) {
-        needs_sketch = true
-        break
-      }
-    }
-  }
-  if needs_sketch {
-    assets.add_def(@svg.sketch_filter(defs_id(config, "sketch-filter")))
-  }
-}
-
-///|
 fn add_shadow_filter(assets : SvgEmitAssets, graph : Diagram) -> Unit {
   for obj in graph.shapes {
     if style_bool(obj.style.shadow, false) {
@@ -3483,11 +3446,12 @@ fn render_svg_object(
   appendix_items : Array[String],
   obj : Shape,
   all_objects : Array[Shape],
+  sketch_session : SketchSession?,
   config : SvgConfig,
   theme : @themes.Theme,
   use_css_theme_vars : Bool,
   pass? : RenderPass = Foreground,
-) -> Unit {
+) -> Unit raise @render_api.RenderError {
   guard obj.box is Some(box) else { return }
   // Skip inline-rendered children of sql_table/class.
   if is_inline_container_child(obj, all_objects) {
@@ -3561,12 +3525,9 @@ fn render_svg_object(
       ),
     )
   }
-  // Apply sketch filter if enabled (only in foreground pass)
   let use_sketch = sketch_enabled(obj.style.sketch, config) &&
-    object_pass_active
-  if use_sketch {
-    svg.open_group_with_filter(defs_id(config, "sketch-filter"))
-  }
+    object_pass_active &&
+    sketch_session is Some(_)
   // Get style values
   let raw_fill = style_string(obj.style.fill, "N7")
   let fill_class_token = d2_theme_token(raw_fill, theme)
@@ -3670,11 +3631,6 @@ fn render_svg_object(
         font_size,
         pass~,
       )
-      if is_foreground {
-        if use_sketch {
-          svg.close_group()
-        }
-      }
       append_object_title(svg, obj, object_pass_active)
       if object_pass_active {
         svg.close_group()
@@ -3724,11 +3680,6 @@ fn render_svg_object(
       if object_pass_active {
         svg.close_group()
       }
-      if is_foreground {
-        if use_sketch {
-          svg.close_group()
-        }
-      }
       append_object_title(svg, obj, object_pass_active)
       if object_pass_active {
         svg.close_group()
@@ -3777,11 +3728,6 @@ fn render_svg_object(
       if object_pass_active {
         svg.close_group()
       }
-      if is_foreground {
-        if use_sketch {
-          svg.close_group()
-        }
-      }
       append_object_title(svg, obj, object_pass_active)
       if object_pass_active {
         svg.close_group()
@@ -3798,7 +3744,26 @@ fn render_svg_object(
     }
     "circle" | "oval" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           svg.add(
             d2_shape_ellipse(
@@ -3815,26 +3780,61 @@ fn render_svg_object(
               stroke_class_token~,
             ),
           )
+          svg.add(
+            d2_shape_ellipse(
+              box.x + box.width / 2.0,
+              box.y + box.height / 2.0,
+              box.width / 2.0,
+              box.height / 2.0,
+              fill,
+              stroke,
+              stroke_width,
+              theme,
+              !use_css_theme_vars,
+              fill_class_token~,
+              stroke_class_token~,
+            ),
+          )
+        } else {
+          svg.add(
+            d2_shape_ellipse(
+              box.x + box.width / 2.0,
+              box.y + box.height / 2.0,
+              box.width / 2.0,
+              box.height / 2.0,
+              fill,
+              stroke,
+              stroke_width,
+              theme,
+              !use_css_theme_vars,
+              fill_class_token~,
+              stroke_class_token~,
+            ),
+          )
         }
-        svg.add(
-          d2_shape_ellipse(
-            box.x + box.width / 2.0,
-            box.y + box.height / 2.0,
-            box.width / 2.0,
-            box.height / 2.0,
-            fill,
-            stroke,
-            stroke_width,
-            theme,
-            !use_css_theme_vars,
-            fill_class_token~,
-            stroke_class_token~,
-          ),
-        )
       }
     "cylinder" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_cylinder(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3848,7 +3848,26 @@ fn render_svg_object(
       }
     "diamond" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_diamond(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3862,7 +3881,26 @@ fn render_svg_object(
       }
     "hexagon" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_hexagon(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3876,7 +3914,26 @@ fn render_svg_object(
       }
     "octagon" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_octagon(svg, mbox, fill, stroke, stroke_width)
         }
@@ -3884,7 +3941,26 @@ fn render_svg_object(
       }
     "parallelogram" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_parallelogram(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3898,7 +3974,26 @@ fn render_svg_object(
       }
     "person" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_person(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3960,7 +4055,26 @@ fn render_svg_object(
       }
     "cloud" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_cloud(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3974,7 +4088,26 @@ fn render_svg_object(
       }
     "document" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_document(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -3988,7 +4121,26 @@ fn render_svg_object(
       }
     "queue" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_queue(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4002,7 +4154,26 @@ fn render_svg_object(
       }
     "stored_data" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_stored_data(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4016,7 +4187,26 @@ fn render_svg_object(
       }
     "page" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_page(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4030,7 +4220,26 @@ fn render_svg_object(
       }
     "package" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_package(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4044,7 +4253,26 @@ fn render_svg_object(
       }
     "step" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_step(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4058,7 +4286,26 @@ fn render_svg_object(
       }
     "callout" =>
       if not(is_foreground) {
-        if is_multiple {
+        if use_sketch &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            shape_name,
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_multiple {
           let mbox = shifted_multiple_box(box)
           render_svg_callout(
             svg, mbox, fill, stroke, stroke_width, theme, use_css_theme_vars, fill_class_token,
@@ -4072,7 +4319,27 @@ fn render_svg_object(
       }
     _ =>
       if not(is_foreground) {
-        if is_three_d {
+        if use_sketch &&
+          !is_three_d &&
+          render_sketch_box_shape(
+            svg,
+            sketch_session.unwrap(),
+            "rectangle",
+            diagram_hash,
+            obj,
+            box,
+            fill,
+            base_fill,
+            stroke,
+            stroke_width,
+            border_radius,
+            theme,
+            use_css_theme_vars,
+            fill_class_token,
+            stroke_class_token,
+          ) {
+          ()
+        } else if is_three_d {
           render_svg_3d_rect(
             svg,
             diagram_hash,
@@ -8195,6 +8462,7 @@ fn render_svg_edge(
   edge : Connection,
   repeat_index : Int,
   shapes : Array[Shape],
+  sketch_session : SketchSession?,
   edge_label_mask_url : String,
   edge_marker_ids : Map[String, String],
   diagram_hash : String,
@@ -8216,11 +8484,8 @@ fn render_svg_edge(
       style=wrapper_style,
     ),
   )
-  // Apply sketch filter if enabled
-  let use_sketch = sketch_enabled(edge.style.sketch, config)
-  if use_sketch {
-    svg.open_group_with_filter(defs_id(config, "sketch-filter"))
-  }
+  let use_sketch = sketch_enabled(edge.style.sketch, config) &&
+    sketch_session is Some(_)
   // Get style values
   let stroke_default = default_edge_stroke_token(edge)
   let stroke_signature = style_string(edge.style.stroke, stroke_default)
@@ -8243,44 +8508,56 @@ fn render_svg_edge(
     config.default_stroke_width,
   )
   let path_data = d2_path_data(edge, src_adj, dst_adj, connection_border_radius)
-  // Determine markers based on arrowhead types
-  let marker_start = marker_url_for_edge(
-    svg,
-    diagram_hash,
-    edge_marker_ids,
-    edge.src_arrowhead,
-    false,
-    stroke_signature,
-    stroke,
-    stroke_width,
-    theme,
-  )
-  let marker_end = marker_url_for_edge(
-    svg,
-    diagram_hash,
-    edge_marker_ids,
-    edge.dst_arrowhead,
-    true,
-    stroke_signature,
-    stroke,
-    stroke_width,
-    theme,
-  )
-  svg.add(
-    d2_connection_path_element(
-      path_data,
-      stroke,
-      stroke_signature,
-      stroke_width,
-      stroke_dash,
-      marker_start,
-      marker_end,
+  if use_sketch {
+    render_sketch_edge(
+      svg,
+      sketch_session.unwrap(),
+      edge,
+      shapes,
       edge_label_mask_url,
-      style_bool(edge.style.animated, false),
+      config,
       theme,
-      !use_css_theme_vars,
-    ),
-  )
+      use_css_theme_vars,
+    )
+  } else {
+    let marker_start = marker_url_for_edge(
+      svg,
+      diagram_hash,
+      edge_marker_ids,
+      edge.src_arrowhead,
+      false,
+      stroke_signature,
+      stroke,
+      stroke_width,
+      theme,
+    )
+    let marker_end = marker_url_for_edge(
+      svg,
+      diagram_hash,
+      edge_marker_ids,
+      edge.dst_arrowhead,
+      true,
+      stroke_signature,
+      stroke,
+      stroke_width,
+      theme,
+    )
+    svg.add(
+      d2_connection_path_element(
+        path_data,
+        stroke,
+        stroke_signature,
+        stroke_width,
+        stroke_dash,
+        marker_start,
+        marker_end,
+        edge_label_mask_url,
+        style_bool(edge.style.animated, false),
+        theme,
+        !use_css_theme_vars,
+      ),
+    )
+  }
   // Render edge label
   if edge.label != "" {
     // Use precomputed label_box from the layout pipeline.
@@ -8354,10 +8631,6 @@ fn render_svg_edge(
         stroke_width,
       )
     None => ()
-  }
-  // Close sketch filter group if opened
-  if use_sketch {
-    svg.close_group()
   }
   svg.close_group()
 }

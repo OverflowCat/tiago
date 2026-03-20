@@ -34,6 +34,7 @@ priv struct SvgEmitAssets {
   light_theme : @themes.Theme
   dark_theme : @themes.Theme?
   has_markdown_shape : Bool
+  has_sketch_styles : Bool
   style_blocks : Array[String]
   defs : Array[String]
   tail_elements : Array[String]
@@ -45,12 +46,14 @@ fn SvgEmitAssets::new(
   light_theme : @themes.Theme,
   dark_theme : @themes.Theme?,
   has_markdown_shape : Bool,
+  has_sketch_styles : Bool,
 ) -> SvgEmitAssets {
   {
     diagram_hash,
     light_theme,
     dark_theme,
     has_markdown_shape,
+    has_sketch_styles,
     style_blocks: [],
     defs: [],
     tail_elements: [],
@@ -194,6 +197,17 @@ fn d2_markdown_theme_vars(theme : @themes.Theme) -> String {
 ///|
 fn d2_sketch_rules(diagram_hash : String, theme : @themes.Theme) -> String {
   let sb = StringBuilder::new()
+  let categories = [
+    ("bright", "darken"),
+    ("normal", "color-burn"),
+    ("dark", "overlay"),
+    ("darker", "lighten"),
+  ]
+  for entry in categories {
+    sb.write_string(
+      ".sketch-overlay-\{entry.0}{fill:url(#streaks-\{entry.0}-\{diagram_hash});mix-blend-mode:\{entry.1}}",
+    )
+  }
   for entry in d2_sketch_color_pairs(theme) {
     let mode = match color_luminance_category(entry.1) {
       "bright" => "darken"
@@ -237,6 +251,7 @@ fn d2_theme_stylesheet(
   diagram_hash : String,
   light_theme : @themes.Theme,
   dark_theme : @themes.Theme?,
+  include_sketch_rules : Bool,
 ) -> String {
   let base = StringBuilder::new()
   for property in ["fill", "stroke", "background-color", "color"] {
@@ -244,7 +259,9 @@ fn d2_theme_stylesheet(
   }
   base.write_string(".appendix text.text{fill:\{light_theme.colors.n1}}")
   base.write_string(d2_markdown_theme_vars(light_theme))
-  base.write_string(d2_sketch_rules(diagram_hash, light_theme))
+  if include_sketch_rules {
+    base.write_string(d2_sketch_rules(diagram_hash, light_theme))
+  }
   base.write_string(".light-code{display: block}.dark-code{display: none}")
   match dark_theme {
     Some(theme) => {
@@ -254,7 +271,9 @@ fn d2_theme_stylesheet(
       }
       dark.write_string(".appendix text.text{fill:\{theme.colors.n1}}")
       dark.write_string(d2_markdown_theme_vars(theme))
-      dark.write_string(d2_sketch_rules(diagram_hash, theme))
+      if include_sketch_rules {
+        dark.write_string(d2_sketch_rules(diagram_hash, theme))
+      }
       dark.write_string(".light-code{display: none}.dark-code{display: block}")
       base.write_string(
         "@media screen and (prefers-color-scheme:dark){\{dark.to_string()}}",
@@ -2216,6 +2235,7 @@ fn emit_svg_document(
         assets.diagram_hash,
         assets.light_theme,
         assets.dark_theme,
+        assets.has_sketch_styles,
       ),
     )
     .build(),

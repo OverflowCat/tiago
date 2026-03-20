@@ -32,3 +32,37 @@ test "compile_graph attaches vars config data to graph input" {
     @graph.GraphDataValue::StringArray(["1", "5", "2"]),
   )
 }
+
+///|
+test "compile_graph preserves sequence edge reference ordering without imports" {
+  let source =
+    #|shape: sequence_diagram
+    #|alice -> bob: What does it mean
+    #|to be well-adjusted?
+    #|bob -> alice: The ability to play bridge or
+    #|golf as if they were games.
+  let (ast, errors) = @parser.parse(source)
+  assert_true(errors.is_empty())
+  let direct_graph = @exporter.compile("diagram", @ir.compile(ast))
+  let compiled_graph = compile_graph("diagram", source).unwrap().graph_input()
+
+  let direct_object_ids : Array[String] = []
+  for obj in direct_graph.objects {
+    direct_object_ids.push(obj.lookup_id())
+  }
+  let compiled_object_ids : Array[String] = []
+  for obj in compiled_graph.objects {
+    compiled_object_ids.push(obj.lookup_id())
+  }
+  assert_eq(compiled_object_ids, direct_object_ids)
+
+  let direct_edge_ids : Array[String] = []
+  for edge in direct_graph.edges {
+    direct_edge_ids.push("\{edge.lookup_src_id()}->\{edge.lookup_dst_id()}")
+  }
+  let compiled_edge_ids : Array[String] = []
+  for edge in compiled_graph.edges {
+    compiled_edge_ids.push("\{edge.lookup_src_id()}->\{edge.lookup_dst_id()}")
+  }
+  assert_eq(compiled_edge_ids, direct_edge_ids)
+}

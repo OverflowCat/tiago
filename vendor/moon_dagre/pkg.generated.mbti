@@ -1,0 +1,391 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "Milky2018/moon_dagre"
+
+import {
+  "moonbitlang/core/set",
+}
+
+// Values
+pub fn acyclic_run(Graph) -> Unit
+
+pub fn acyclic_undo(Graph) -> Unit
+
+pub fn add_border_node(Graph, String, rank? : Int, order? : Int) -> String
+
+pub fn add_border_segments(Graph) -> Unit
+
+pub fn add_dummy_node(Graph, String, Attrs, String) -> String
+
+pub fn apply_with_chunking_max(Array[Int]) -> Int
+
+pub fn apply_with_chunking_min(Array[Int]) -> Int
+
+pub fn as_non_compound_graph(Graph) -> Graph
+
+pub fn attrs_value(Attrs) -> Value
+
+pub fn build_layer_matrix(Graph) -> Array[Array[String]]
+
+pub fn clone_attrs(Attrs) -> Attrs
+
+pub fn clone_value(Value) -> Value
+
+pub fn components(Graph) -> Array[Array[String]]
+
+pub fn coordinate_adjust(Graph) -> Unit
+
+pub fn coordinate_undo(Graph) -> Unit
+
+pub fn edge_obj(String, String, name? : String) -> EdgeObj
+
+pub fn empty_attrs() -> Attrs
+
+pub fn find_cycles(Graph) -> Array[Array[String]]
+
+pub fn greedy_fas(Graph, weight_fn? : (EdgeObj) -> Double) -> Array[EdgeObj]
+
+pub fn intersect_rect(Rect, Point) -> Point
+
+pub fn layout(Graph, debug_timing? : Bool) -> Graph
+
+pub fn layout_layout_graph_debug(Graph, stop_before_remove_border_nodes? : Bool, stop_after_rank? : Bool, stop_after_order? : Bool, stop_after_normalize_undo? : Bool, stop_after_coordinate_undo? : Bool, stop_after_translate_graph? : Bool) -> Graph
+
+pub fn layout_run(Graph, debug_timing? : Bool) -> Graph
+
+pub fn[V, U] map_values(Map[String, V], (V, String) -> U) -> Map[String, U]
+
+pub fn map_values_prop(Map[String, Attrs], String) -> Map[String, Attr]
+
+pub fn max_rank(Graph) -> Int
+
+pub fn nesting_graph_cleanup(Graph) -> Unit
+
+pub fn nesting_graph_run(Graph) -> Unit
+
+pub fn new_graph(directed? : Bool, multigraph? : Bool, compound? : Bool) -> Graph
+
+pub fn normalize_ranks(Graph) -> Unit
+
+pub fn normalize_run(Graph) -> Unit
+
+pub fn normalize_undo(Graph) -> Unit
+
+pub fn[T] notime(String, () -> T) -> T
+
+pub fn order_add_subgraph_constraints(Graph, Graph, Array[String]) -> Unit
+
+pub fn order_bary_entry(String, barycenter? : Double?, weight? : Double?) -> OrderBarycenterEntry
+
+pub fn order_barycenter(Graph, movable? : Array[String]) -> Array[OrderBarycenterEntry]
+
+pub fn order_build_layer_graph(Graph, Int, String, nodes_with_rank? : Array[String]?) -> Graph
+
+pub fn order_constraint(String, String) -> OrderConstraint
+
+pub fn order_cross_count(Graph, Array[Array[String]]) -> Double
+
+pub fn order_entry(Array[String], Int, barycenter? : Double?, weight? : Double?) -> OrderEntry
+
+pub fn order_init_order(Graph) -> Array[Array[String]]
+
+pub fn order_resolve_conflicts(Array[OrderBarycenterEntry], Graph) -> Array[OrderEntry]
+
+pub fn order_result(Array[String], barycenter? : Double?, weight? : Double?) -> OrderResult
+
+pub fn order_run(Graph, disable_optimal_order_heuristic? : Bool, constraints? : Array[OrderConstraint]) -> Unit
+
+pub fn order_sort(Array[OrderEntry], bias_right? : Bool) -> OrderResult
+
+pub fn order_sort_subgraph(Graph, String, Graph, bias_right? : Bool) -> OrderResult
+
+pub fn parent_dummy_chains(Graph) -> Unit
+
+pub fn[T] partition(Array[T], (T) -> Bool) -> Partition[T]
+
+pub fn pick(Attrs, Array[String]) -> Attrs
+
+pub fn point(Double, Double) -> Point
+
+pub fn position(Graph) -> Unit
+
+pub fn position_bk_add_conflict(Map[String, @set.Set[String]], String, String) -> Unit
+
+pub fn position_bk_align_coordinates(Map[String, Map[String, Double]], Map[String, Double]) -> Unit
+
+pub fn position_bk_balance(Map[String, Map[String, Double]], align? : String) -> Map[String, Double]
+
+pub fn position_bk_find_smallest_width_alignment(Graph, Map[String, Map[String, Double]]) -> Map[String, Double]
+
+pub fn position_bk_find_type1_conflicts(Graph, Array[Array[String]]) -> Map[String, @set.Set[String]]
+
+pub fn position_bk_find_type2_conflicts(Graph, Array[Array[String]]) -> Map[String, @set.Set[String]]
+
+pub fn position_bk_has_conflict(Map[String, @set.Set[String]], String, String) -> Bool
+
+pub fn position_bk_horizontal_compaction(Graph, Array[Array[String]], Map[String, String], Map[String, String], reverse_sep? : Bool) -> Map[String, Double]
+
+pub fn position_bk_vertical_alignment(Graph, Array[Array[String]], Map[String, @set.Set[String]], (String) -> Array[String]) -> PositionBkAlignment
+
+pub fn position_bk_x(Graph) -> Map[String, Double]
+
+pub fn position_x(Graph) -> Map[String, Double]
+
+pub fn position_y(Graph) -> Unit
+
+pub fn postorder(Graph, Array[String]) -> Array[String]
+
+pub fn predecessor_weights(Graph) -> Map[String, Map[String, Double]]
+
+pub fn preorder(Graph, Array[String]) -> Array[String]
+
+pub fn range(Int, limit? : Int, step? : Int) -> Array[Int]
+
+pub fn rank(Graph) -> Unit
+
+pub fn rank_feasible_tree(Graph) -> Graph
+
+pub fn rank_longest_path(Graph) -> Unit
+
+pub fn rank_network_simplex(Graph) -> Unit
+
+pub fn rank_network_simplex_calc_cut_value(Graph, Graph, String) -> Int
+
+pub fn rank_network_simplex_enter_edge(Graph, Graph, EdgeObj) -> EdgeObj
+
+pub fn rank_network_simplex_exchange_edges(Graph, Graph, EdgeObj, EdgeObj) -> Unit
+
+pub fn rank_network_simplex_init_cut_values(Graph, Graph) -> Unit
+
+pub fn rank_network_simplex_init_low_lim_values(Graph, root? : String) -> Unit
+
+pub fn rank_network_simplex_leave_edge(Graph) -> EdgeObj?
+
+pub fn rank_slack(Graph, EdgeObj) -> Int
+
+pub fn rect(Double, Double, Double, Double) -> Rect
+
+pub fn remove_empty_ranks(Graph) -> Unit
+
+pub fn simplify(Graph) -> Graph
+
+pub fn successor_weights(Graph) -> Map[String, Map[String, Double]]
+
+pub fn[T] time(String, () -> T) -> T
+
+pub fn unique_id(String) -> String
+
+pub fn unique_id_for_graph(Graph, String) -> String
+
+pub fn value_as_attrs(Value?) -> Attrs?
+
+pub fn value_as_bool(Value?) -> Bool?
+
+pub fn value_as_float(Value?) -> Double?
+
+pub fn value_as_int(Value?) -> Int?
+
+pub fn value_as_string(Value?) -> String?
+
+pub fn value_bool(Bool) -> Value
+
+pub fn value_float(Double) -> Value
+
+pub fn value_int(Int) -> Value
+
+pub fn value_null() -> Value
+
+pub fn value_string(String) -> Value
+
+pub fn version() -> String
+
+pub fn[T] zip_object(Array[String], Array[T]) -> Map[String, T]
+
+// Errors
+
+// Types and methods
+pub enum Attr {
+  Bool(Bool)
+  Int(Int)
+  Float(Double)
+  String(String)
+  Val(Value)
+  Point(Point)
+  Points(Array[Point])
+  Edge(EdgeObj)
+  Edges(Array[EdgeObj])
+  Strings(Array[String])
+  Ints(Array[Int])
+}
+
+pub struct Attrs {
+  map : Map[String, Attr]
+}
+pub fn Attrs::contains(Self, String) -> Bool
+pub fn Attrs::get(Self, String) -> Attr?
+pub fn Attrs::get_bool(Self, String) -> Bool?
+pub fn Attrs::get_bool_or(Self, String, Bool) -> Bool
+pub fn Attrs::get_edge(Self, String) -> EdgeObj?
+pub fn Attrs::get_edges(Self, String) -> Array[EdgeObj]?
+pub fn Attrs::get_float(Self, String) -> Double?
+pub fn Attrs::get_float_or(Self, String, Double) -> Double
+pub fn Attrs::get_int(Self, String) -> Int?
+pub fn Attrs::get_int_or(Self, String, Int) -> Int
+pub fn Attrs::get_ints(Self, String) -> Array[Int]?
+pub fn Attrs::get_point(Self, String) -> Point?
+pub fn Attrs::get_points(Self, String) -> Array[Point]?
+pub fn Attrs::get_string(Self, String) -> String?
+pub fn Attrs::get_string_or(Self, String, String) -> String
+pub fn Attrs::get_strings(Self, String) -> Array[String]?
+pub fn Attrs::get_value(Self, String) -> Value?
+pub fn Attrs::keys(Self) -> Array[String]
+pub fn Attrs::length(Self) -> Int
+pub fn Attrs::remove(Self, String) -> Unit
+pub fn Attrs::set(Self, String, Attr) -> Unit
+pub fn Attrs::set_bool(Self, String, Bool) -> Unit
+pub fn Attrs::set_edge(Self, String, EdgeObj) -> Unit
+pub fn Attrs::set_edges(Self, String, Array[EdgeObj]) -> Unit
+pub fn Attrs::set_float(Self, String, Double) -> Unit
+pub fn Attrs::set_int(Self, String, Int) -> Unit
+pub fn Attrs::set_ints(Self, String, Array[Int]) -> Unit
+pub fn Attrs::set_point(Self, String, Point) -> Unit
+pub fn Attrs::set_points(Self, String, Array[Point]) -> Unit
+pub fn Attrs::set_string(Self, String, String) -> Unit
+pub fn Attrs::set_strings(Self, String, Array[String]) -> Unit
+pub fn Attrs::set_value(Self, String, Value) -> Unit
+
+pub struct EdgeObj {
+  v : String
+  w : String
+  name : String?
+}
+
+type EdgeRecord
+
+pub struct Graph {
+  directed : Bool
+  multigraph : Bool
+  compound : Bool
+  mut graph_label : Attrs
+  nodes : Map[String, Attrs]
+  node_order : Array[String]
+  node_index : Map[String, Int]
+  node_seen : @set.Set[String]
+  edges : Map[String, EdgeRecord]
+  edge_order : Array[String]
+  edge_seen : @set.Set[String]
+  parent_by_node : Map[String, String]
+  children_by_node : Map[String, @set.Set[String]]
+  mut child_seq : Int
+  child_add_index : Map[String, Int]
+  mut default_edge_label_fn : () -> Value
+
+  fn new(directed? : Bool, multigraph? : Bool, compound? : Bool) -> Graph
+}
+pub fn Graph::children(Self, v? : String) -> Array[String]
+pub fn Graph::edge(Self, String, String, name? : String) -> Value?
+pub fn Graph::edge_count(Self) -> Int
+pub fn Graph::edge_obj(Self, EdgeObj) -> Value?
+pub fn Graph::edges(Self) -> Array[EdgeObj]
+pub fn Graph::graph(Self) -> Attrs
+pub fn Graph::has_edge(Self, String, String, name? : String) -> Bool
+pub fn Graph::has_node(Self, String) -> Bool
+pub fn Graph::in_edges(Self, String, u? : String) -> Array[EdgeObj]
+pub fn Graph::is_compound(Self) -> Bool
+pub fn Graph::is_directed(Self) -> Bool
+pub fn Graph::is_multigraph(Self) -> Bool
+pub fn Graph::neighbors(Self, String) -> Array[String]
+pub fn Graph::new(directed? : Bool, multigraph? : Bool, compound? : Bool) -> Self
+pub fn Graph::node(Self, String) -> Attrs
+pub fn Graph::node_count(Self) -> Int
+pub fn Graph::node_edges(Self, String, w? : String) -> Array[EdgeObj]
+pub fn Graph::node_opt(Self, String) -> Attrs?
+pub fn Graph::nodes(Self) -> Array[String]
+pub fn Graph::out_edges(Self, String, w? : String) -> Array[EdgeObj]
+pub fn Graph::parent(Self, String) -> String?
+pub fn Graph::predecessors(Self, String) -> Array[String]
+pub fn Graph::remove_edge(Self, String, String, name? : String) -> Unit
+pub fn Graph::remove_edge_obj(Self, EdgeObj) -> Unit
+pub fn Graph::remove_node(Self, String) -> Unit
+pub fn Graph::set_default_edge_label(Self, () -> Value) -> Unit
+pub fn Graph::set_edge(Self, String, String, label? : Value, name? : String) -> Unit
+pub fn Graph::set_edge_obj(Self, EdgeObj, label? : Value) -> Unit
+pub fn Graph::set_graph(Self, Attrs) -> Unit
+pub fn Graph::set_node(Self, String, label? : Attrs) -> Unit
+pub fn Graph::set_nodes(Self, Array[String], label? : Attrs) -> Unit
+pub fn Graph::set_parent(Self, String, parent? : String) -> Unit
+pub fn Graph::set_path(Self, Array[String], label? : Value) -> Unit
+pub fn Graph::sinks(Self) -> Array[String]
+pub fn Graph::sources(Self) -> Array[String]
+pub fn Graph::successors(Self, String) -> Array[String]
+
+pub struct List[T] {
+  items : Array[T]
+
+  fn[T] new() -> List[T]
+}
+pub fn[T] List::dequeue(Self[T]) -> T?
+pub fn[T : Eq] List::enqueue(Self[T], T) -> Unit
+pub fn[T] List::is_empty(Self[T]) -> Bool
+pub fn[T] List::new() -> Self[T]
+pub fn[T] List::to_array(Self[T]) -> Array[T]
+pub fn[T : Show] List::to_string(Self[T]) -> String
+
+pub struct OrderBarycenterEntry {
+  v : String
+  mut barycenter : Double?
+  mut weight : Double?
+}
+
+pub struct OrderConstraint {
+  left : String
+  right : String
+}
+
+pub struct OrderEntry {
+  mut vs : Array[String]
+  i : Int
+  barycenter : Double?
+  weight : Double?
+}
+
+pub struct OrderResult {
+  mut vs : Array[String]
+  mut barycenter : Double?
+  mut weight : Double?
+}
+
+pub struct Partition[T] {
+  lhs : Array[T]
+  rhs : Array[T]
+}
+
+pub struct Point {
+  mut x : Double
+  mut y : Double
+}
+
+pub struct PositionBkAlignment {
+  root : Map[String, String]
+  align : Map[String, String]
+}
+
+pub struct Rect {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+}
+
+pub enum Value {
+  VNull
+  VBool(Bool)
+  VInt(Int)
+  VFloat(Double)
+  VString(String)
+  VAttrs(Attrs)
+}
+
+// Type aliases
+
+// Traits
+

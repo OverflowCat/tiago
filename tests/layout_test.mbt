@@ -648,6 +648,394 @@ fn assert_container_edges_like_d2(
 }
 
 ///|
+test "reference container geometry matches stable target output" {
+  let source =
+    #|a: {
+    #|  a
+    #|  b
+    #|  c
+    #|}
+    #|
+    #|b: {
+    #|  a
+    #|  b
+    #|  c
+    #|}
+    #|
+    #|a -> b
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_reference_container_geometry(dagre, "dagre")
+  assert_reference_container_geometry(elk, "elk")
+}
+
+///|
+fn assert_reference_container_geometry(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let expected = if engine_name == "dagre" {
+    [
+      ("a", @graph.Box::new(10.0, 20.0, 339.0, 126.0)),
+      ("a.a", @graph.Box::new(40.0, 50.0, 53.0, 66.0)),
+      ("a.b", @graph.Box::new(153.0, 50.0, 53.0, 66.0)),
+      ("a.c", @graph.Box::new(266.0, 50.0, 53.0, 66.0)),
+      ("b", @graph.Box::new(10.0, 286.0, 339.0, 126.0)),
+      ("b.a", @graph.Box::new(40.0, 316.0, 53.0, 66.0)),
+      ("b.b", @graph.Box::new(153.0, 316.0, 53.0, 66.0)),
+      ("b.c", @graph.Box::new(266.0, 316.0, 53.0, 66.0)),
+    ]
+  } else {
+    [
+      ("a", @graph.Box::new(12.0, 12.0, 299.0, 166.0)),
+      ("a.a", @graph.Box::new(62.0, 62.0, 53.0, 66.0)),
+      ("a.b", @graph.Box::new(135.0, 62.0, 53.0, 66.0)),
+      ("a.c", @graph.Box::new(208.0, 62.0, 53.0, 66.0)),
+      ("b", @graph.Box::new(12.0, 248.0, 299.0, 166.0)),
+      ("b.a", @graph.Box::new(62.0, 298.0, 53.0, 66.0)),
+      ("b.b", @graph.Box::new(135.0, 298.0, 53.0, 66.0)),
+      ("b.c", @graph.Box::new(208.0, 298.0, 53.0, 66.0)),
+    ]
+  }
+
+  for entry in expected {
+    let (id, expected_box) = entry
+    let shape = target.find_object(id).unwrap()
+    assert_eq(require_shape_box(shape, id, engine_name), expected_box)
+  }
+
+  let edge = find_connection(target, "a", "b").unwrap()
+  if engine_name == "dagre" {
+    assert_route_points_close(edge.route, [
+      @graph.Point::new(179.5, 146.0),
+      @graph.Point::new(179.5, 202.0),
+      @graph.Point::new(179.5, 221.8000030517578),
+      @graph.Point::new(179.5, 245.0),
+    ])
+  } else {
+    assert_route_points_close(edge.route, [
+      @graph.Point::new(161.5, 178.0),
+      @graph.Point::new(161.5, 248.0),
+    ])
+  }
+}
+
+///|
+test "reference straight hierarchy geometry matches stable target output" {
+  let source =
+    #|a
+    #|c
+    #|b
+    #|
+    #|l1: {
+    #|  b
+    #|  a
+    #|  c
+    #|}
+    #|
+    #|b -> l1.b
+    #|a -> l1.a
+    #|c -> l1.c
+    #|
+    #|l2c1: {
+    #|  a
+    #|}
+    #|l1.a -> l2c1.a
+    #|
+    #|l2c3: {
+    #|  c
+    #|}
+    #|l1.c -> l2c3.c
+    #|
+    #|l2c2: {
+    #|  b
+    #|}
+    #|l1.b -> l2c2.b
+    #|
+    #|l3c1: {
+    #|  a
+    #|  b
+    #|}
+    #|l2c1.a -> l3c1.a
+    #|l2c2.b -> l3c1.b
+    #|
+    #|l3c2: {
+    #|  c
+    #|}
+    #|l2c3.c -> l3c2.c
+    #|
+    #|l4: {
+    #|  c1: {
+    #|    a
+    #|  }
+    #|  c2: {
+    #|    b
+    #|  }
+    #|  c3: {
+    #|    c
+    #|  }
+    #|}
+    #|l3c1.a -> l4.c1.a
+    #|l3c1.b -> l4.c2.b
+    #|l3c2.c -> l4.c3.c
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_reference_straight_hierarchy_geometry(dagre, "dagre")
+  assert_reference_straight_hierarchy_geometry(elk, "elk")
+}
+
+///|
+fn assert_reference_straight_hierarchy_geometry(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let expected = if engine_name == "dagre" {
+    [
+      ("a", @graph.Box::new(60.0, 0.0, 53.0, 66.0)),
+      ("b", @graph.Box::new(213.0, 0.0, 53.0, 66.0)),
+      ("c", @graph.Box::new(366.0, 0.0, 53.0, 66.0)),
+      ("l1", @graph.Box::new(30.0, 186.0, 419.0, 126.0)),
+      ("l1.a", @graph.Box::new(60.0, 216.0, 53.0, 66.0)),
+      ("l1.b", @graph.Box::new(213.0, 216.0, 53.0, 66.0)),
+      ("l1.c", @graph.Box::new(366.0, 216.0, 53.0, 66.0)),
+      ("l2c1", @graph.Box::new(30.0, 452.0, 113.0, 126.0)),
+      ("l2c1.a", @graph.Box::new(60.0, 482.0, 53.0, 66.0)),
+      ("l2c2", @graph.Box::new(183.0, 452.0, 113.0, 126.0)),
+      ("l2c2.b", @graph.Box::new(213.0, 482.0, 53.0, 66.0)),
+      ("l2c3", @graph.Box::new(336.0, 452.0, 113.0, 126.0)),
+      ("l2c3.c", @graph.Box::new(366.0, 482.0, 53.0, 66.0)),
+      ("l3c1", @graph.Box::new(30.0, 718.0, 266.0, 126.0)),
+      ("l3c1.a", @graph.Box::new(60.0, 748.0, 53.0, 66.0)),
+      ("l3c1.b", @graph.Box::new(213.0, 748.0, 53.0, 66.0)),
+      ("l3c2", @graph.Box::new(336.0, 718.0, 113.0, 126.0)),
+      ("l3c2.c", @graph.Box::new(366.0, 748.0, 53.0, 66.0)),
+      ("l4", @graph.Box::new(0.0, 993.0, 479.0, 197.0)),
+      ("l4.c1", @graph.Box::new(30.0, 1034.0, 113.0, 126.0)),
+      ("l4.c1.a", @graph.Box::new(60.0, 1064.0, 53.0, 66.0)),
+      ("l4.c2", @graph.Box::new(183.0, 1034.0, 113.0, 126.0)),
+      ("l4.c2.b", @graph.Box::new(213.0, 1064.0, 53.0, 66.0)),
+      ("l4.c3", @graph.Box::new(336.0, 1034.0, 113.0, 126.0)),
+      ("l4.c3.c", @graph.Box::new(366.0, 1064.0, 53.0, 66.0)),
+    ]
+  } else {
+    [
+      ("a", @graph.Box::new(250.0, 12.0, 53.0, 66.0)),
+      ("b", @graph.Box::new(177.0, 12.0, 53.0, 66.0)),
+      ("c", @graph.Box::new(323.0, 12.0, 53.0, 66.0)),
+      ("l1", @graph.Box::new(127.0, 153.0, 299.0, 296.0)),
+      ("l1.a", @graph.Box::new(250.0, 203.0, 53.0, 66.0)),
+      ("l1.b", @graph.Box::new(177.0, 203.0, 53.0, 66.0)),
+      ("l1.c", @graph.Box::new(323.0, 203.0, 53.0, 66.0)),
+      ("l2c1", @graph.Box::new(12.0, 539.0, 153.0, 166.0)),
+      ("l2c1.a", @graph.Box::new(62.0, 589.0, 53.0, 66.0)),
+      ("l2c2", @graph.Box::new(185.0, 539.0, 153.0, 166.0)),
+      ("l2c2.b", @graph.Box::new(235.0, 589.0, 53.0, 66.0)),
+      ("l2c3", @graph.Box::new(408.0, 539.0, 153.0, 166.0)),
+      ("l2c3.c", @graph.Box::new(458.0, 589.0, 53.0, 66.0)),
+      ("l3c1", @graph.Box::new(62.0, 795.0, 226.0, 166.0)),
+      ("l3c1.a", @graph.Box::new(112.0, 845.0, 53.0, 66.0)),
+      ("l3c1.b", @graph.Box::new(185.0, 845.0, 53.0, 66.0)),
+      ("l3c2", @graph.Box::new(408.0, 795.0, 153.0, 166.0)),
+      ("l3c2.c", @graph.Box::new(458.0, 845.0, 53.0, 66.0)),
+      ("l4", @graph.Box::new(12.0, 1051.0, 599.0, 271.0)),
+      ("l4.c1", @graph.Box::new(62.0, 1106.0, 153.0, 166.0)),
+      ("l4.c1.a", @graph.Box::new(112.0, 1156.0, 53.0, 66.0)),
+      ("l4.c2", @graph.Box::new(235.0, 1106.0, 153.0, 166.0)),
+      ("l4.c2.b", @graph.Box::new(285.0, 1156.0, 53.0, 66.0)),
+      ("l4.c3", @graph.Box::new(408.0, 1106.0, 153.0, 166.0)),
+      ("l4.c3.c", @graph.Box::new(458.0, 1156.0, 53.0, 66.0)),
+    ]
+  }
+
+  for entry in expected {
+    let (id, expected_box) = entry
+    let shape = target.find_object(id).unwrap()
+    assert_eq(require_shape_box(shape, id, engine_name), expected_box)
+  }
+
+  let final_connections = [
+    ("l3c1.a", "l4.c1.a"),
+    ("l3c1.b", "l4.c2.b"),
+    ("l3c2.c", "l4.c3.c"),
+  ]
+  for connection in final_connections {
+    let (src_id, dst_id) = connection
+    let edge = find_connection(target, src_id, dst_id).unwrap()
+    assert_true(
+      edge.route.length() >= 2,
+      msg="\{engine_name} expected routed \{src_id} -> \{dst_id} connection",
+    )
+  }
+}
+
+///|
+test "reference different subgraphs match stable target output" {
+  let source =
+    #|a -> tree
+    #|a -> and
+    #|a -> nodes
+    #|and -> some
+    #|tree -> more
+    #|tree -> many
+    #|
+    #|then -> here
+    #|here -> you
+    #|have -> hierarchy
+    #|then -> hierarchy
+    #|
+    #|finally -> another
+    #|another -> of
+    #|nesting -> trees
+    #|finally -> trees
+    #|finally: {
+    #|  a -> tree
+    #|  inside -> a
+    #|  tree -> hierarchy
+    #|  a -> root
+    #|}
+  let graph_input = compile_graph_no_layout(source).unwrap()
+  let config = @engine_api.LayoutConfig::new()
+
+  let dagre = @engine_api.layout_with_engine(
+    @engine_dagre.DagreEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("dagre layout error: \{e}")
+  }
+  let elk = @engine_api.layout_with_engine(
+    @engine_elk.ElkEngine::new(),
+    graph_input,
+    config,
+    @engine_api.Direction::Down,
+  ) catch {
+    e => fail("elk layout error: \{e}")
+  }
+
+  assert_reference_different_subgraphs_geometry(dagre, "dagre")
+  assert_reference_different_subgraphs_geometry(elk, "elk")
+}
+
+///|
+fn assert_reference_different_subgraphs_geometry(
+  graph : @graph.GraphInput,
+  engine_name : String,
+) -> Unit raise {
+  let target = @diagram.from_graph(graph, None)
+  let expected = if engine_name == "dagre" {
+    [
+      ("a", @graph.Box::new(301.0, 50.0, 53.0, 66.0)),
+      ("tree", @graph.Box::new(75.0, 216.0, 74.0, 66.0)),
+      ("and", @graph.Box::new(292.0, 216.0, 72.0, 66.0)),
+      ("nodes", @graph.Box::new(424.0, 216.0, 87.0, 66.0)),
+      ("some", @graph.Box::new(286.0, 382.0, 83.0, 66.0)),
+      ("more", @graph.Box::new(0.0, 382.0, 81.0, 66.0)),
+      ("many", @graph.Box::new(141.0, 382.0, 85.0, 66.0)),
+      ("then", @graph.Box::new(580.0, 50.0, 78.0, 66.0)),
+      ("here", @graph.Box::new(571.0, 216.0, 76.0, 66.0)),
+      ("you", @graph.Box::new(573.0, 382.0, 72.0, 66.0)),
+      ("have", @graph.Box::new(736.0, 50.0, 78.0, 66.0)),
+      ("hierarchy", @graph.Box::new(708.0, 216.0, 113.0, 66.0)),
+      ("finally", @graph.Box::new(873.0, 20.0, 288.0, 624.0)),
+      ("another", @graph.Box::new(879.0, 764.0, 103.0, 66.0)),
+      ("of", @graph.Box::new(901.0, 930.0, 60.0, 66.0)),
+      ("nesting", @graph.Box::new(1214.0, 548.0, 98.0, 66.0)),
+      ("trees", @graph.Box::new(1168.0, 764.0, 82.0, 66.0)),
+      ("finally.a", @graph.Box::new(1000.0, 216.0, 53.0, 66.0)),
+      ("finally.tree", @graph.Box::new(922.0, 382.0, 74.0, 66.0)),
+      ("finally.inside", @graph.Box::new(982.0, 50.0, 88.0, 66.0)),
+      ("finally.hierarchy", @graph.Box::new(903.0, 548.0, 113.0, 66.0)),
+      ("finally.root", @graph.Box::new(1056.0, 382.0, 75.0, 66.0)),
+    ]
+  } else {
+    [
+      ("a", @graph.Box::new(199.0, 530.0, 120.0, 66.0)),
+      ("tree", @graph.Box::new(64.0, 676.0, 80.0, 66.0)),
+      ("and", @graph.Box::new(223.0, 676.0, 72.0, 66.0)),
+      ("nodes", @graph.Box::new(315.0, 676.0, 87.0, 66.0)),
+      ("some", @graph.Box::new(218.0, 822.0, 83.0, 66.0)),
+      ("more", @graph.Box::new(12.0, 822.0, 81.0, 66.0)),
+      ("many", @graph.Box::new(113.0, 822.0, 85.0, 66.0)),
+      ("then", @graph.Box::new(433.0, 530.0, 80.0, 66.0)),
+      ("here", @graph.Box::new(422.0, 676.0, 76.0, 66.0)),
+      ("you", @graph.Box::new(424.0, 822.0, 72.0, 66.0)),
+      ("have", @graph.Box::new(554.0, 530.0, 78.0, 66.0)),
+      ("hierarchy", @graph.Box::new(518.0, 676.0, 113.0, 66.0)),
+      ("finally", @graph.Box::new(652.0, 12.0, 289.0, 584.0)),
+      ("another", @graph.Box::new(697.0, 676.0, 103.0, 66.0)),
+      ("of", @graph.Box::new(719.0, 822.0, 60.0, 66.0)),
+      ("nesting", @graph.Box::new(961.0, 530.0, 98.0, 66.0)),
+      ("trees", @graph.Box::new(955.0, 676.0, 82.0, 66.0)),
+      ("finally.a", @graph.Box::new(766.0, 198.0, 80.0, 66.0)),
+      ("finally.tree", @graph.Box::new(722.0, 344.0, 74.0, 66.0)),
+      ("finally.inside", @graph.Box::new(762.0, 62.0, 88.0, 66.0)),
+      ("finally.hierarchy", @graph.Box::new(702.0, 480.0, 113.0, 66.0)),
+      ("finally.root", @graph.Box::new(816.0, 344.0, 75.0, 66.0)),
+    ]
+  }
+
+  for entry in expected {
+    let (id, expected_box) = entry
+    let shape = target.find_object(id).unwrap()
+    assert_eq(require_shape_box(shape, id, engine_name), expected_box)
+  }
+
+  let links = [
+    ("a", "tree"),
+    ("tree", "many"),
+    ("then", "hierarchy"),
+    ("finally.a", "finally.root"),
+  ]
+  for link in links {
+    let (src_id, dst_id) = link
+    let edge = find_connection(target, src_id, dst_id).unwrap()
+    assert_true(
+      edge.route.length() >= 2,
+      msg="\{engine_name} expected routed \{src_id} -> \{dst_id} connection",
+    )
+  }
+}
+
+///|
 test "reference grid_nested_simple_edges preserves nested grid child order" {
   let source =
     #|direction: right

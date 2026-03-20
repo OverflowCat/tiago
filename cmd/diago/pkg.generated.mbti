@@ -29,6 +29,8 @@ type OutputMode
 pub impl Eq for OutputMode
 pub impl Show for OutputMode
 
+type RenderOutputWritePlan
+
 // Type aliases
 
 // Traits

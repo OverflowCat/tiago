@@ -789,6 +789,14 @@ fn compile_edges_with_imports(
                     due_to_glob=true,
                   ),
                 )
+                ensure_field_path(ir, src_path)
+                ensure_field_path(ir, dst_path)
+                append_field_references_for_path(
+                  ir, src_path, edge_context, true,
+                )
+                append_field_references_for_path(
+                  ir, dst_path, edge_context, true,
+                )
                 let (primary, edge_map) = compile_edge_value(
                   Some(e),
                   key.value,
@@ -819,6 +827,20 @@ fn compile_edges_with_imports(
                       due_to_glob=src_has_glob || dst_has_glob,
                     ),
                   )
+                  ensure_field_path(ir, src_path)
+                  ensure_field_path(ir, dst_path)
+                  append_field_references_for_path(
+                    ir,
+                    src_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
+                  append_field_references_for_path(
+                    ir,
+                    dst_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
                   let (primary, edge_map) = compile_edge_value(
                     Some(e),
                     key.value,
@@ -846,6 +868,18 @@ fn compile_edges_with_imports(
                   ir.add_edge(new_edge)
                   ensure_field_path(ir, src_path)
                   ensure_field_path(ir, dst_path)
+                  append_field_references_for_path(
+                    ir,
+                    src_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
+                  append_field_references_for_path(
+                    ir,
+                    dst_path,
+                    edge_context,
+                    src_has_glob || dst_has_glob,
+                  )
                 }
               }
             }
@@ -878,6 +912,18 @@ fn compile_edges_with_imports(
             ir.add_edge(new_edge)
             ensure_field_path(ir, src_path)
             ensure_field_path(ir, dst_path)
+            append_field_references_for_path(
+              ir,
+              src_path,
+              edge_context,
+              src_has_glob || dst_has_glob,
+            )
+            append_field_references_for_path(
+              ir,
+              dst_path,
+              edge_context,
+              src_has_glob || dst_has_glob,
+            )
           }
         }
       }

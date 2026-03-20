@@ -8,6 +8,8 @@ import {
   "Milky2018/diago/text_metrics",
   "Milky2018/diago/themes",
   "Milky2018/diago/render_api",
+  "dowdiness/js_engine/parser",
+  "dowdiness/js_engine/interpreter",
   "moonbitlang/core/json",
   "moonbitlang/core/cmp",
   "moonbitlang/core/encoding/utf8",

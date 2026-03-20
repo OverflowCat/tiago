@@ -414,7 +414,8 @@ test "vars config sketch enables global svg sketch mode" {
     false,
     None,
   ).unwrap()
-  assert_true(svg.contains("sketch-filter"))
+  assert_true(svg.contains("id=\"streaks-"))
+  assert_false(svg.contains("sketch-filter"))
 }
 
 ///|
@@ -457,9 +458,11 @@ test "cli sketch overrides vars config sketch=false and sketch=true" {
     None,
     sketch=Some(true),
   ).unwrap()
-  assert_true(source_svg.contains("sketch-filter"))
-  assert_false(cli_disabled_svg.contains("sketch-filter"))
-  assert_true(cli_enabled_svg.contains("sketch-filter"))
+  assert_true(source_svg.contains("id=\"streaks-"))
+  assert_false(cli_disabled_svg.contains("id=\"streaks-"))
+  assert_true(cli_enabled_svg.contains("id=\"streaks-"))
+  assert_false(source_svg.contains("sketch-filter"))
+  assert_false(cli_enabled_svg.contains("sketch-filter"))
 }
 
 ///|

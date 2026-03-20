@@ -177,22 +177,43 @@ fn compile_render_source(
 }
 
 ///|
+enum RenderOutputWritePlan {
+  WriteOnly
+  WriteThenWarn(String)
+  WarnOnly(String)
+}
+
+///|
+fn render_output_write_plan(
+  output_mode : OutputMode,
+  compiled : CompiledSourceResult,
+) -> RenderOutputWritePlan {
+  match compiled.warning {
+    Some(warning) =>
+      if output_mode == OutputMode::Svg {
+        RenderOutputWritePlan::WriteThenWarn(warning)
+      } else {
+        RenderOutputWritePlan::WarnOnly(warning)
+      }
+    None => RenderOutputWritePlan::WriteOnly
+  }
+}
+
+///|
 fn write_render_output(
   output_mode : OutputMode,
   output_path : String?,
   compiled : CompiledSourceResult,
 ) -> Result[Unit, String] {
-  match compiled.warning {
-    Some(warning) =>
-      if output_mode == OutputMode::Svg {
-        match write_compiled_output(output_mode, output_path, compiled.output) {
-          Ok(_) => Err(warning)
-          Err(err) => Err(err)
-        }
-      } else {
-        Err(warning)
+  match render_output_write_plan(output_mode, compiled) {
+    RenderOutputWritePlan::WriteOnly =>
+      write_compiled_output(output_mode, output_path, compiled.output)
+    RenderOutputWritePlan::WriteThenWarn(warning) =>
+      match write_compiled_output(output_mode, output_path, compiled.output) {
+        Ok(_) => Err(warning)
+        Err(err) => Err(err)
       }
-    None => write_compiled_output(output_mode, output_path, compiled.output)
+    RenderOutputWritePlan::WarnOnly(warning) => Err(warning)
   }
 }
 
