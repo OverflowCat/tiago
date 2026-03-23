@@ -26,23 +26,15 @@ test "render output plan writes svg before surfacing bundling warning" {
 }
 
 ///|
-test "render output plan skips binary writes when bundling warning exists" {
+test "render output plan keeps warnings write-free for non-svg outputs" {
   let compiled : CompiledSourceResult = {
     output: "<svg/>",
     warning: Some("bundle warning"),
   }
-  for
-    mode in [
-      OutputMode::Png,
-      OutputMode::Pdf,
-      OutputMode::Pptx,
-      OutputMode::Gif,
-    ] {
-    match render_output_write_plan(mode, compiled) {
-      RenderOutputWritePlan::WarnOnly(warning) =>
-        assert_eq(warning, "bundle warning")
-      _ => fail("expected binary warning plan to skip writing output")
-    }
+  match render_output_write_plan(OutputMode::Unicode, compiled) {
+    RenderOutputWritePlan::WarnOnly(warning) =>
+      assert_eq(warning, "bundle warning")
+    _ => fail("expected non-svg warning plan to skip writing output")
   }
 }
 
@@ -53,8 +45,8 @@ test "render output plan writes normally when no warning exists" {
     RenderOutputWritePlan::WriteOnly => ()
     _ => fail("expected svg output without warning to write normally")
   }
-  match render_output_write_plan(OutputMode::Png, compiled) {
+  match render_output_write_plan(OutputMode::Unicode, compiled) {
     RenderOutputWritePlan::WriteOnly => ()
-    _ => fail("expected binary output without warning to write normally")
+    _ => fail("expected non-svg output without warning to write normally")
   }
 }

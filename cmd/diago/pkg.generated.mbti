@@ -13,10 +13,6 @@ pub fn sleep_ms(Int) -> Unit
 // Errors
 
 // Types and methods
-type AsciiMode
-pub impl Eq for AsciiMode
-pub impl Show for AsciiMode
-
 type DumpInputEngine
 pub impl Eq for DumpInputEngine
 pub impl Show for DumpInputEngine

@@ -877,15 +877,12 @@ test "top/left compatibility checks for hierarchy sequence and grid" {
 }
 
 ///|
-test "stdout-format parser supports compatibility format names" {
+test "format parser supports supported format names" {
   guard parse_stdout_format("svg") is Some(OutputMode::Svg) else {
     fail("svg should parse")
   }
-  guard parse_stdout_format("png") is Some(OutputMode::Png) else {
-    fail("png should parse")
-  }
-  guard parse_stdout_format("txt") is Some(OutputMode::Txt) else {
-    fail("txt should parse")
+  guard parse_stdout_format("ascii") is Some(OutputMode::Ascii) else {
+    fail("ascii should parse")
   }
   guard parse_stdout_format("unicode") is Some(OutputMode::Unicode) else {
     fail("unicode should parse")
@@ -900,43 +897,16 @@ test "output mode can be inferred from output extension" {
   guard infer_output_mode_from_path("diagram.svg") is Some(OutputMode::Svg) else {
     fail("svg extension should map to svg mode")
   }
-  guard infer_output_mode_from_path("diagram.txt") is Some(OutputMode::Txt) else {
-    fail("txt extension should map to txt mode")
+  guard infer_output_mode_from_path("diagram.ascii.txt")
+    is Some(OutputMode::Ascii) else {
+    fail("ascii text extension should map to ascii mode")
   }
-  guard infer_output_mode_from_path("diagram.pptx") is Some(OutputMode::Pptx) else {
-    fail("pptx extension should map to pptx mode")
+  guard infer_output_mode_from_path("diagram.unicode.txt")
+    is Some(OutputMode::Unicode) else {
+    fail("unicode text extension should map to unicode mode")
   }
   guard infer_output_mode_from_path("diagram") is None else {
     fail("unknown extension should not infer mode")
-  }
-}
-
-///|
-test "binary output modes compile through svg intermediate" {
-  guard source_compile_mode(OutputMode::Png) is OutputMode::Svg else {
-    fail("png should compile through svg intermediate")
-  }
-  guard source_compile_mode(OutputMode::Pdf) is OutputMode::Svg else {
-    fail("pdf should compile through svg intermediate")
-  }
-  guard source_compile_mode(OutputMode::Pptx) is OutputMode::Svg else {
-    fail("pptx should compile through svg intermediate")
-  }
-  guard source_compile_mode(OutputMode::Gif) is OutputMode::Svg else {
-    fail("gif should compile through svg intermediate")
-  }
-}
-
-///|
-test "ascii-mode parser supports standard and extended" {
-  guard parse_ascii_mode("standard") is Some(AsciiMode::Standard) else {
-    fail("standard should parse")
-  }
-  guard parse_ascii_mode("extended") is Some(AsciiMode::Extended) else {
-    fail("extended should parse")
-  }
-  guard parse_ascii_mode("bad-mode") is None else {
-    fail("unknown ascii mode should fail")
   }
 }
 
@@ -958,88 +928,30 @@ test "layout parser supports dagre elk railway" {
 }
 
 ///|
-test "txt output mode honors ascii-mode" {
+test "ascii and unicode output modes render different text charsets" {
   let source =
     #|a -> b
-  let txt_default = compile_source(
+  let ascii_output = compile_source(
     source,
-    OutputMode::Txt,
+    OutputMode::Ascii,
     None,
     None,
     LayoutEngineChoice::Dagre,
     false,
     None,
   ).unwrap()
-  let txt_standard = compile_source(
+  let unicode_output = compile_source(
     source,
-    OutputMode::Txt,
+    OutputMode::Unicode,
     None,
     None,
     LayoutEngineChoice::Dagre,
     false,
     None,
-    ascii_mode=AsciiMode::Standard,
   ).unwrap()
-  assert_true(txt_default.contains("┌"))
-  assert_true(txt_standard.contains("+"))
-  assert_true(txt_default != txt_standard)
-}
-
-///|
-test "unsupported binary output formats return explicit errors" {
-  let source =
-    #|a -> b
-  match
-    compile_source(
-      source,
-      OutputMode::Png,
-      None,
-      None,
-      LayoutEngineChoice::Dagre,
-      false,
-      None,
-    ) {
-    Ok(_) => fail("expected png mode to be unsupported")
-    Err(msg) => assert_true(msg.contains("not supported yet"))
-  }
-}
-
-///|
-test "binary stdout output is rejected in native pipeline" {
-  match write_compiled_output(OutputMode::Png, None, "<svg/>") {
-    Ok(_) => fail("expected png stdout to be rejected")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
-  match write_compiled_output(OutputMode::Pptx, None, "<svg/>") {
-    Ok(_) => fail("expected pptx stdout to be rejected")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
-  match write_compiled_output(OutputMode::Gif, None, "<svg/>") {
-    Ok(_) => fail("expected gif stdout to be rejected")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
-}
-
-///|
-test "binary file output requires native command execution support" {
-  match write_compiled_output(OutputMode::Png, Some("out.png"), "<svg/>") {
-    Ok(_) => fail("expected png file export to require command execution")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
-  match write_compiled_output(OutputMode::Pptx, Some("out.pptx"), "<svg/>") {
-    Ok(_) => fail("expected pptx file export to require command execution")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
-  match write_compiled_output(OutputMode::Gif, Some("out.gif"), "<svg/>") {
-    Ok(_) => fail("expected gif file export to require command execution")
-    Err(msg) =>
-      assert_true(msg.contains("requires native command execution support"))
-  }
+  assert_true(ascii_output.contains("+"))
+  assert_true(unicode_output.contains("┌"))
+  assert_true(ascii_output != unicode_output)
 }
 
 ///|

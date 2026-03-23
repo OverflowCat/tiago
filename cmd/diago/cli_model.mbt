@@ -29,7 +29,6 @@ priv struct RenderRequest {
   output_path : String?
   from_stdin : Bool
   output_mode : OutputMode
-  ascii_mode : AsciiMode
   layout_engine : LayoutEngineChoice
   layout_explicit : Bool
   target_spec : String?

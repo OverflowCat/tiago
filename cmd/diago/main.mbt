@@ -23,30 +23,14 @@ enum OutputMode {
   Svg
   Ascii
   Unicode
-  Txt
-  Png
-  Pdf
-  Pptx
-  Gif
-} derive(Show, Eq)
-
-///|
-enum AsciiMode {
-  Standard
-  Extended
 } derive(Show, Eq)
 
 ///|
 fn output_extension(mode : OutputMode) -> String {
   match mode {
     OutputMode::Svg => ".svg"
-    OutputMode::Ascii => ".txt"
-    OutputMode::Unicode => ".txt"
-    OutputMode::Txt => ".txt"
-    OutputMode::Png => ".png"
-    OutputMode::Pdf => ".pdf"
-    OutputMode::Pptx => ".pptx"
-    OutputMode::Gif => ".gif"
+    OutputMode::Ascii => ".ascii.txt"
+    OutputMode::Unicode => ".unicode.txt"
   }
 }
 
@@ -56,29 +40,6 @@ fn output_mode_name(mode : OutputMode) -> String {
     OutputMode::Svg => "svg"
     OutputMode::Ascii => "ascii"
     OutputMode::Unicode => "unicode"
-    OutputMode::Txt => "txt"
-    OutputMode::Png => "png"
-    OutputMode::Pdf => "pdf"
-    OutputMode::Pptx => "pptx"
-    OutputMode::Gif => "gif"
-  }
-}
-
-///|
-fn source_compile_mode(mode : OutputMode) -> OutputMode {
-  match mode {
-    OutputMode::Png | OutputMode::Pdf | OutputMode::Pptx | OutputMode::Gif =>
-      OutputMode::Svg
-    _ => mode
-  }
-}
-
-///|
-fn parse_ascii_mode(value : String) -> AsciiMode? {
-  match value.to_lower() {
-    "standard" => Some(AsciiMode::Standard)
-    "extended" => Some(AsciiMode::Extended)
-    _ => None
   }
 }
 
@@ -88,11 +49,6 @@ fn parse_stdout_format(value : String) -> OutputMode? {
     "svg" => Some(OutputMode::Svg)
     "ascii" => Some(OutputMode::Ascii)
     "unicode" => Some(OutputMode::Unicode)
-    "txt" => Some(OutputMode::Txt)
-    "png" => Some(OutputMode::Png)
-    "pdf" => Some(OutputMode::Pdf)
-    "pptx" => Some(OutputMode::Pptx)
-    "gif" => Some(OutputMode::Gif)
     _ => None
   }
 }
@@ -105,16 +61,6 @@ fn infer_output_mode_from_path(path : String) -> OutputMode? {
     Some(OutputMode::Ascii)
   } else if path.has_suffix(".unicode.txt") {
     Some(OutputMode::Unicode)
-  } else if path.has_suffix(".txt") {
-    Some(OutputMode::Txt)
-  } else if path.has_suffix(".png") {
-    Some(OutputMode::Png)
-  } else if path.has_suffix(".pdf") {
-    Some(OutputMode::Pdf)
-  } else if path.has_suffix(".pptx") {
-    Some(OutputMode::Pptx)
-  } else if path.has_suffix(".gif") {
-    Some(OutputMode::Gif)
   } else {
     None
   }
@@ -179,39 +125,16 @@ fn main {
 
 ///|
 fn write_compiled_output(
-  output_mode : OutputMode,
+  _output_mode : OutputMode,
   output_path : String?,
   output : String,
 ) -> Result[Unit, String] {
   match output_path {
-    Some(path) =>
-      match output_mode {
-        OutputMode::Png
-        | OutputMode::Pdf
-        | OutputMode::Pptx
-        | OutputMode::Gif => write_svg_binary_output(path, output, output_mode)
-        _ => write_output(path, output)
-      }
-    None =>
-      match output_mode {
-        OutputMode::Png
-        | OutputMode::Pdf
-        | OutputMode::Pptx
-        | OutputMode::Gif =>
-          if !command_exec_is_supported() {
-            Err(
-              "Output format '" +
-              output_mode_name(output_mode) +
-              "' requires native command execution support.",
-            )
-          } else {
-            write_svg_binary_stdout(output_mode, output)
-          }
-        _ => {
-          println(output)
-          Ok(())
-        }
-      }
+    Some(path) => write_output(path, output)
+    None => {
+      println(output)
+      Ok(())
+    }
   }
 }
 
@@ -222,201 +145,6 @@ fn write_output(path : String, content : String) -> Result[Unit, String] {
   }
   println("Written to \{path}")
   Ok(())
-}
-
-///|
-fn write_svg_binary_output(
-  path : String,
-  svg : String,
-  output_mode : OutputMode,
-  announce_write? : Bool = true,
-) -> Result[Unit, String] {
-  if !command_exec_is_supported() {
-    return Err(
-      "Output format '" +
-      output_mode_name(output_mode) +
-      "' requires native command execution support.",
-    )
-  }
-  if command_exec("command -v rsvg-convert >/dev/null 2>&1") != 0 {
-    return Err(
-      "rsvg-convert is required for native \{output_mode_name(output_mode)} export.",
-    )
-  }
-  let tmp_svg = path + ".diago_tmp.svg"
-  @fs.write_string_to_file(tmp_svg, svg) catch {
-    e => return Err("Error writing temporary SVG file '\{tmp_svg}': \{e}")
-  }
-  let mut exit_code = 0
-  let mut failed_stage = ""
-  match output_mode {
-    OutputMode::Png => {
-      let format = "png"
-      let command = "rsvg-convert --format=\{format} -o " +
-        shell_quote(path) +
-        " " +
-        shell_quote(tmp_svg)
-      exit_code = command_exec(command)
-      failed_stage = "rsvg-convert"
-    }
-    OutputMode::Pdf => {
-      let format = "pdf"
-      let command = "rsvg-convert --format=\{format} -o " +
-        shell_quote(path) +
-        " " +
-        shell_quote(tmp_svg)
-      exit_code = command_exec(command)
-      failed_stage = "rsvg-convert"
-    }
-    OutputMode::Pptx => {
-      let tmp_png = path + ".diago_tmp.png"
-      let tmp_py = path + ".diago_tmp_pptx.py"
-      let render_png_command = "rsvg-convert --format=png -o " +
-        shell_quote(tmp_png) +
-        " " +
-        shell_quote(tmp_svg)
-      let render_png_exit = command_exec(render_png_command)
-      if render_png_exit != 0 {
-        remove_file_quiet(tmp_svg)
-        remove_file_quiet(tmp_png)
-        return Err(
-          "rsvg-convert failed for pptx export (exit code \{render_png_exit}).",
-        )
-      }
-      if command_exec("command -v python3 >/dev/null 2>&1") != 0 {
-        remove_file_quiet(tmp_svg)
-        remove_file_quiet(tmp_png)
-        return Err("python3 is required for native pptx export.")
-      }
-      if command_exec(
-          "python3 -c " + shell_quote("import pptx") + " >/dev/null 2>&1",
-        ) !=
-        0 {
-        remove_file_quiet(tmp_svg)
-        remove_file_quiet(tmp_png)
-        return Err("python-pptx is required for native pptx export.")
-      }
-      let script =
-        #|from pptx import Presentation
-        #|import sys
-        #|
-        #|png_path = sys.argv[1]
-        #|out_path = sys.argv[2]
-        #|
-        #|prs = Presentation()
-        #|blank_layout = prs.slide_layouts[6]
-        #|slide = prs.slides.add_slide(blank_layout)
-        #|slide.shapes.add_picture(
-        #|    png_path,
-        #|    0,
-        #|    0,
-        #|    width=prs.slide_width,
-        #|    height=prs.slide_height,
-        #|)
-        #|prs.save(out_path)
-      @fs.write_string_to_file(tmp_py, script) catch {
-        e => {
-          remove_file_quiet(tmp_svg)
-          remove_file_quiet(tmp_png)
-          return Err("Error writing temporary Python file '\{tmp_py}': \{e}")
-        }
-      }
-      exit_code = command_exec(
-        "python3 " +
-        shell_quote(tmp_py) +
-        " " +
-        shell_quote(tmp_png) +
-        " " +
-        shell_quote(path),
-      )
-      failed_stage = "python3-pptx"
-      remove_file_quiet(tmp_py)
-      remove_file_quiet(tmp_png)
-    }
-    OutputMode::Gif => {
-      let tmp_png = path + ".diago_tmp.png"
-      let render_png_command = "rsvg-convert --format=png -o " +
-        shell_quote(tmp_png) +
-        " " +
-        shell_quote(tmp_svg)
-      let render_png_exit = command_exec(render_png_command)
-      if render_png_exit != 0 {
-        remove_file_quiet(tmp_svg)
-        remove_file_quiet(tmp_png)
-        return Err(
-          "rsvg-convert failed for gif export (exit code \{render_png_exit}).",
-        )
-      }
-      if command_exec("command -v magick >/dev/null 2>&1") == 0 {
-        exit_code = command_exec(
-          "magick " + shell_quote(tmp_png) + " " + shell_quote(path),
-        )
-        failed_stage = "magick"
-      } else if command_exec("command -v ffmpeg >/dev/null 2>&1") == 0 {
-        exit_code = command_exec(
-          "ffmpeg -y -loglevel error -i " +
-          shell_quote(tmp_png) +
-          " " +
-          shell_quote(path),
-        )
-        failed_stage = "ffmpeg"
-      } else {
-        remove_file_quiet(tmp_svg)
-        remove_file_quiet(tmp_png)
-        return Err("magick or ffmpeg is required for native gif export.")
-      }
-      remove_file_quiet(tmp_png)
-    }
-    _ => {
-      remove_file_quiet(tmp_svg)
-      return Err("internal error: unsupported binary output mode")
-    }
-  }
-  remove_file_quiet(tmp_svg)
-  if exit_code != 0 {
-    return Err(
-      failed_stage +
-      " failed for \{output_mode_name(output_mode)} export (exit code \{exit_code}).",
-    )
-  }
-  if announce_write {
-    println("Written to \{path}")
-  }
-  Ok(())
-}
-
-///|
-fn write_svg_binary_stdout(
-  output_mode : OutputMode,
-  svg : String,
-) -> Result[Unit, String] {
-  let tmp_path = ".diago_stdout_tmp" + output_extension(output_mode)
-  let converted = write_svg_binary_output(
-    tmp_path,
-    svg,
-    output_mode,
-    announce_write=false,
-  )
-  match converted {
-    Err(e) => Err(e)
-    Ok(_) => {
-      let cat_exit = command_exec("cat " + shell_quote(tmp_path))
-      remove_file_quiet(tmp_path)
-      if cat_exit != 0 {
-        return Err(
-          "failed to stream \{output_mode_name(output_mode)} output to stdout (exit code \{cat_exit}).",
-        )
-      }
-      Ok(())
-    }
-  }
-}
-
-///|
-fn remove_file_quiet(path : String) -> Unit {
-  @fs.remove_file(path) catch {
-    _ => ()
-  }
 }
 
 ///|
@@ -894,7 +622,6 @@ fn compile_source(
   layout_engine : LayoutEngineChoice,
   layout_explicit : Bool,
   target_spec : String?,
-  ascii_mode? : AsciiMode = AsciiMode::Extended,
   dark_theme_id? : Int? = None,
   sketch? : Bool? = None,
   pad? : Double? = None,
@@ -916,7 +643,6 @@ fn compile_source(
       layout_engine,
       layout_explicit,
       target_spec,
-      ascii_mode~,
       dark_theme_id~,
       sketch~,
       pad~,
@@ -947,7 +673,6 @@ fn compile_source_with_warnings(
   layout_engine : LayoutEngineChoice,
   layout_explicit : Bool,
   target_spec : String?,
-  ascii_mode? : AsciiMode = AsciiMode::Extended,
   dark_theme_id? : Int? = None,
   sketch? : Bool? = None,
   pad? : Double? = None,
@@ -984,12 +709,7 @@ fn compile_source_with_warnings(
     OutputMode::Ascii =>
       match
         compile_diago_ascii(
-          source,
-          base_path,
-          layout_engine,
-          layout_explicit,
-          target_spec,
-          ascii_mode=AsciiMode::Standard,
+          source, base_path, layout_engine, layout_explicit, target_spec,
         ) {
         Ok(output) => Ok({ output, warning: None })
         Err(err) => Err(err)
@@ -1002,25 +722,6 @@ fn compile_source_with_warnings(
         Ok(output) => Ok({ output, warning: None })
         Err(err) => Err(err)
       }
-    OutputMode::Txt =>
-      match
-        compile_diago_ascii(
-          source,
-          base_path,
-          layout_engine,
-          layout_explicit,
-          target_spec,
-          ascii_mode~,
-        ) {
-        Ok(output) => Ok({ output, warning: None })
-        Err(err) => Err(err)
-      }
-    OutputMode::Png | OutputMode::Pdf | OutputMode::Pptx | OutputMode::Gif =>
-      Err(
-        "Output format '" +
-        output_mode_name(output_mode) +
-        "' is not supported yet in native export pipeline.",
-      )
   }
 }
 
@@ -1125,25 +826,14 @@ fn compile_diago_ascii(
   layout_engine : LayoutEngineChoice,
   layout_explicit : Bool,
   target_spec : String?,
-  ascii_mode? : AsciiMode = AsciiMode::Standard,
 ) -> Result[String, String] {
   match
     compile_to_diagram(
       source, base_path, layout_engine, layout_explicit, target_spec,
     ) {
-    Ok(diagram) => {
-      let render_config = ascii_render_config(ascii_mode)
-      Ok(@renderer_ascii.render(diagram, render_config))
-    }
+    Ok(diagram) =>
+      Ok(@renderer_ascii.render(diagram, @renderer_ascii.AsciiConfig::new()))
     Err(e) => Err(e)
-  }
-}
-
-///|
-fn ascii_render_config(mode : AsciiMode) -> @renderer_ascii.AsciiConfig {
-  match mode {
-    AsciiMode::Standard => @renderer_ascii.AsciiConfig::new()
-    AsciiMode::Extended => @renderer_ascii.AsciiConfig::unicode()
   }
 }
 

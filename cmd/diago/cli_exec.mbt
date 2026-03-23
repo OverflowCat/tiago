@@ -129,13 +129,12 @@ fn compile_render_source(
   if request.output_mode == OutputMode::Svg {
     return compile_source_with_warnings(
       source,
-      source_compile_mode(request.output_mode),
+      request.output_mode,
       request.theme_name,
       base_path,
       request.layout_engine,
       request.layout_explicit,
       request.target_spec,
-      ascii_mode=request.ascii_mode,
       dark_theme_id=request.dark_theme_id,
       sketch=request.sketch,
       pad=request.pad,
@@ -152,13 +151,12 @@ fn compile_render_source(
   match
     compile_source(
       source,
-      source_compile_mode(request.output_mode),
+      request.output_mode,
       request.theme_name,
       base_path,
       request.layout_engine,
       request.layout_explicit,
       request.target_spec,
-      ascii_mode=request.ascii_mode,
       dark_theme_id=request.dark_theme_id,
       sketch=request.sketch,
       pad=request.pad,

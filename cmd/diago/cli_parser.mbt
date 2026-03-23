@@ -62,7 +62,7 @@ fn build_cli_command() -> @argparse.Command {
 fn build_render_subcommand() -> @argparse.Command {
   @argparse.Command(
     "render",
-    about="Render diagram to svg/ascii/unicode/png/pdf/pptx/gif",
+    about="Render diagram to svg/ascii/unicode",
     flags=[
       @argparse.FlagArg(
         "stdin",
@@ -126,14 +126,8 @@ fn build_render_subcommand() -> @argparse.Command {
       @argparse.OptionArg(
         "format",
         long="format",
-        about="Output format: svg|ascii|unicode|txt|png|pdf|pptx|gif",
+        about="Output format: svg|ascii|unicode",
         env="DIAGO_FORMAT",
-      ),
-      @argparse.OptionArg(
-        "ascii-mode",
-        long="ascii-mode",
-        about="Text mode charset: standard|extended (default: extended)",
-        env="DIAGO_ASCII_MODE",
       ),
       @argparse.OptionArg(
         "layout",
@@ -373,20 +367,9 @@ fn parse_render_request(
       }
       None =>
         return Err(
-          "Error: unsupported --format '\{value}'. Expected svg, ascii, unicode, txt, png, pdf, pptx, or gif.",
+          "Error: unsupported --format '\{value}'. Expected svg, ascii, or unicode.",
         )
     }
-  }
-  let ascii_mode = match first_match_value(matches, "ascii-mode") {
-    Some(value) =>
-      match parse_ascii_mode(value) {
-        Some(mode) => mode
-        None =>
-          return Err(
-            "Error: unsupported --ascii-mode '\{value}'. Expected standard or extended.",
-          )
-      }
-    None => AsciiMode::Extended
   }
   let mut layout_engine = LayoutEngineChoice::Dagre
   let mut layout_explicit = false
@@ -532,7 +515,6 @@ fn parse_render_request(
     output_path,
     from_stdin,
     output_mode,
-    ascii_mode,
     layout_engine,
     layout_explicit,
     target_spec,
@@ -563,13 +545,7 @@ fn is_output_mode_extension_compatible(
   explicit_mode : OutputMode,
   inferred_mode : OutputMode,
 ) -> Bool {
-  if explicit_mode == inferred_mode {
-    return true
-  }
-  match explicit_mode {
-    OutputMode::Ascii | OutputMode::Unicode => inferred_mode == OutputMode::Txt
-    _ => false
-  }
+  explicit_mode == inferred_mode
 }
 
 ///|
