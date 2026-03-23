@@ -46,10 +46,6 @@ priv struct RenderRequest {
   omit_version : Bool?
   watch : Bool
   watch_interval_ms : Int
-  preview_enabled : Bool
-  preview_host : String
-  preview_port : Int
-  preview_open_browser : Bool
 }
 
 ///|

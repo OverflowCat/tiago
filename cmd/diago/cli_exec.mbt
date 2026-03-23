@@ -251,48 +251,18 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
     None => replace_extension(input, output_extension(request.output_mode))
   }
   let base_path = get_dir_path(input)
-  let mut preview_version_path : String? = None
-  let mut preview_error_path : String? = None
-  if request.preview_enabled {
-    match
-      start_watch_preview(
-        out_path,
-        request.preview_host,
-        request.preview_port,
-        request.preview_open_browser,
-      ) {
-      Ok((version_path, error_path)) => {
-        preview_version_path = Some(version_path)
-        preview_error_path = Some(error_path)
-      }
-      Err(e) => println("Warning: watch preview disabled: \{e}")
-    }
-  }
-
-  let mut preview_tick = 0
   let mut last_source = @fs.read_file_to_string(input) catch {
     e => return Err("Error reading file '\{input}': \{e}")
   }
   let initial = compile_render_source(request, last_source, base_path)
-  let mut initial_error : String? = None
   match initial {
     Ok(compiled) =>
       match write_render_output(request.output_mode, Some(out_path), compiled) {
         Ok(_) => ()
-        Err(e) => {
-          println("Error: \{e}")
-          initial_error = Some(e)
-        }
+        Err(e) => println("Error: \{e}")
       }
-    Err(e) => {
-      println("Error: \{e}")
-      initial_error = Some(e)
-    }
+    Err(e) => println("Error: \{e}")
   }
-  preview_tick = preview_tick + 1
-  publish_watch_preview_state(
-    preview_version_path, preview_error_path, preview_tick, initial_error,
-  )
   let selected_layout = if request.layout_explicit {
     layout_engine_name(request.layout_engine)
   } else {
@@ -308,13 +278,6 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
       e => {
         let message = "Error reading file '\{input}': \{e}"
         println(message)
-        preview_tick = preview_tick + 1
-        publish_watch_preview_state(
-          preview_version_path,
-          preview_error_path,
-          preview_tick,
-          Some(message),
-        )
         None
       }
     }
@@ -324,26 +287,15 @@ fn execute_render_watch(request : RenderRequest) -> Result[Unit, String] {
     }
     last_source = source
     let result = compile_render_source(request, last_source, base_path)
-    let mut compile_error : String? = None
     match result {
       Ok(compiled) =>
         match
           write_render_output(request.output_mode, Some(out_path), compiled) {
           Ok(_) => ()
-          Err(e) => {
-            println("Error: \{e}")
-            compile_error = Some(e)
-          }
+          Err(e) => println("Error: \{e}")
         }
-      Err(e) => {
-        println("Error: \{e}")
-        compile_error = Some(e)
-      }
+      Err(e) => println("Error: \{e}")
     }
-    preview_tick = preview_tick + 1
-    publish_watch_preview_state(
-      preview_version_path, preview_error_path, preview_tick, compile_error,
-    )
   }
   Ok(())
 }

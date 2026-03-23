@@ -955,18 +955,6 @@ test "ascii and unicode output modes render different text charsets" {
 }
 
 ///|
-test "watch preview html embeds asset and control files" {
-  let html = build_watch_preview_html(
-    "diagram.svg", "diagram.svg.watch.version", "diagram.svg.watch.error.txt",
-  )
-  assert_true(html.contains("diagram.svg"))
-  assert_true(html.contains("diagram.svg.watch.version"))
-  assert_true(html.contains("diagram.svg.watch.error.txt"))
-  assert_true(html.contains("setTimeout(poll, 500)"))
-}
-
-///|
-test "watch preview path helpers resolve directory and basename" {
-  assert_eq(dirname_or_dot("diagram.svg"), ".")
+test "basename helper resolves file name for dump output paths" {
   assert_eq(basename_string("foo/bar/diagram.svg"), "diagram.svg")
 }

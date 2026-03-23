@@ -56,10 +56,6 @@ fn parse_render(
             omit_version: None,
             watch: false,
             watch_interval_ms: 500,
-            preview_enabled: true,
-            preview_host: "127.0.0.1",
-            preview_port: 17396,
-            preview_open_browser: true,
           }
         }
       }
@@ -88,10 +84,6 @@ fn parse_render(
         omit_version: None,
         watch: false,
         watch_interval_ms: 500,
-        preview_enabled: true,
-        preview_host: "127.0.0.1",
-        preview_port: 17396,
-        preview_open_browser: true,
       }
     }
   }

@@ -53,7 +53,7 @@ moon run cmd/diago -- fmt diagram.txt
 moon run cmd/diago -- fmt --check diagram.txt
 moon run cmd/diago -- validate diagram.txt
 
-# Watch mode
+# Watch mode (rebuilds output on file changes)
 moon run cmd/diago -- render --watch diagram.txt
 
 # Introspection

@@ -107,20 +107,6 @@ fn build_render_subcommand() -> @argparse.Command {
         about="Omit the version attribute in SVG output",
         env="DIAGO_OMIT_VERSION",
       ),
-      @argparse.FlagArg(
-        "preview",
-        long="preview",
-        about="Enable watch preview server (default: true)",
-        negatable=true,
-        env="DIAGO_PREVIEW",
-      ),
-      @argparse.FlagArg(
-        "preview-open",
-        long="preview-open",
-        about="Open watch preview URL in browser (default: true)",
-        negatable=true,
-        env="DIAGO_PREVIEW_OPEN",
-      ),
     ],
     options=[
       @argparse.OptionArg(
@@ -196,18 +182,6 @@ fn build_render_subcommand() -> @argparse.Command {
         long="interval",
         about="Watch poll interval in milliseconds (default: 500)",
         env="DIAGO_WATCH_INTERVAL",
-      ),
-      @argparse.OptionArg(
-        "preview-host",
-        long="preview-host",
-        about="Watch preview host (default: 127.0.0.1)",
-        env="DIAGO_PREVIEW_HOST",
-      ),
-      @argparse.OptionArg(
-        "preview-port",
-        long="preview-port",
-        about="Watch preview port (default: 17396)",
-        env="DIAGO_PREVIEW_PORT",
       ),
       @argparse.OptionArg(
         "output",
@@ -435,25 +409,6 @@ fn parse_render_request(
   if first_match_value(matches, "interval") is Some(value) {
     watch_interval_ms = parse_interval_ms(value, watch_interval_ms)
   }
-  let preview_enabled = match matches.flags.get("preview") {
-    Some(value) => value
-    None => true
-  }
-  let preview_open_browser = match matches.flags.get("preview-open") {
-    Some(value) => value
-    None => true
-  }
-  let preview_host = match first_match_value(matches, "preview-host") {
-    Some(value) => value
-    None => "127.0.0.1"
-  }
-  let mut preview_port = 17396
-  if first_match_value(matches, "preview-port") is Some(value) {
-    match parse_uint(value) {
-      Some(v) => if v > 0 { preview_port = v }
-      None => ()
-    }
-  }
   let output_option = first_match_value(matches, "output")
   let paths = match_values(matches, "paths")
   if from_stdin && paths.length() > 0 {
@@ -532,10 +487,6 @@ fn parse_render_request(
     omit_version,
     watch,
     watch_interval_ms,
-    preview_enabled,
-    preview_host,
-    preview_port,
-    preview_open_browser,
   }
   Ok(request)
 }
