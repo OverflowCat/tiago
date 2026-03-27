@@ -308,50 +308,7 @@ fn d2_has_any_trigger(source : String, triggers : Array[String]) -> Bool {
 }
 
 ///|
-fn d2_subset_font_data_url(
-  ttf_bytes : Bytes,
-  corpus : String,
-  fallback_data_url : String,
-) -> String {
-  let unique_corpus = d2_unique_chars(corpus)
-  match @font_subset.utf8_cut_font(ttf_bytes, unique_corpus) {
-    Some(subset_sfnt) =>
-      if subset_sfnt.length() == 0 {
-        fallback_data_url
-      } else {
-        match @font_subset.sfnt_to_woff(subset_sfnt) {
-          Some(subset_woff) =>
-            if subset_woff.length() == 0 {
-              fallback_data_url
-            } else {
-              "data:application/font-woff;base64,\{@base64.encode(subset_woff)}"
-            }
-          None => fallback_data_url
-        }
-      }
-    None => fallback_data_url
-  }
-}
-
-///|
-fn d2_unique_chars(text : String) -> String {
-  let seen : Map[Char, Bool] = {}
-  let out = StringBuilder::new()
-  for ch in text.to_array() {
-    if !seen.contains(ch) {
-      seen[ch] = true
-      out.write_char(ch)
-    }
-  }
-  out.to_string()
-}
-
-///|
-fn d2_embed_fonts_styles(
-  diagram_hash : String,
-  source : String,
-  corpus : String,
-) -> String {
+fn d2_text_styles(diagram_hash : String, source : String) -> String {
   let out = StringBuilder::new()
   let regular_text_triggers = [
     "class=\"text\"", "class=\"text ", "class=\"md\"", "class=\"md ",
@@ -364,66 +321,17 @@ fn d2_embed_fonts_styles(
   ]
   let mono_bold_triggers = ["class=\"text-mono-bold"]
   let mono_italic_triggers = ["class=\"text-mono-italic"]
-  let regular_data = if d2_has_any_trigger(source, regular_text_triggers) {
-    d2_subset_font_data_url(
-      source_sans_pro_regular_ttf_bytes, corpus, source_sans_pro_regular_data,
-    )
-  } else {
-    source_sans_pro_regular_data
-  }
-  let semibold_data = if d2_has_any_trigger(source, markdown_triggers) {
-    d2_subset_font_data_url(
-      source_sans_pro_semibold_ttf_bytes, corpus, source_sans_pro_semibold_data,
-    )
-  } else {
-    source_sans_pro_semibold_data
-  }
-  let bold_data = if d2_has_any_trigger(source, bold_triggers) {
-    d2_subset_font_data_url(
-      source_sans_pro_bold_ttf_bytes, corpus, source_sans_pro_bold_data,
-    )
-  } else {
-    source_sans_pro_bold_data
-  }
-  let italic_data = if d2_has_any_trigger(source, italic_triggers) {
-    d2_subset_font_data_url(
-      source_sans_pro_italic_ttf_bytes, corpus, source_sans_pro_italic_data,
-    )
-  } else {
-    source_sans_pro_italic_data
-  }
-  let mono_regular_data = if d2_has_any_trigger(source, mono_triggers) {
-    d2_subset_font_data_url(
-      source_code_pro_regular_ttf_bytes, corpus, source_code_pro_regular_data,
-    )
-  } else {
-    source_code_pro_regular_data
-  }
-  let mono_bold_data = if d2_has_any_trigger(source, mono_bold_triggers) {
-    d2_subset_font_data_url(
-      source_code_pro_bold_ttf_bytes, corpus, source_code_pro_bold_data,
-    )
-  } else {
-    source_code_pro_bold_data
-  }
-  let mono_italic_data = if d2_has_any_trigger(source, mono_italic_triggers) {
-    d2_subset_font_data_url(
-      source_code_pro_italic_ttf_bytes, corpus, source_code_pro_italic_data,
-    )
-  } else {
-    source_code_pro_italic_data
-  }
   append_on_trigger(
     out,
     source,
     regular_text_triggers,
-    "\n.\{diagram_hash} .text {\n\tfont-family: \"\{diagram_hash}-font-regular\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-regular;\n\tsrc: url(\"\{regular_data}\");\n}",
+    "\n.\{diagram_hash} .text {\n\tfont-family: Arial, sans-serif;\n}",
   )
   append_on_trigger(
     out,
     source,
     markdown_triggers,
-    "\n@font-face {\n\tfont-family: \{diagram_hash}-font-semibold;\n\tsrc: url(\"\{semibold_data}\");\n}",
+    "\n.\{diagram_hash} .md h1,\n.\{diagram_hash} .md h2,\n.\{diagram_hash} .md h3,\n.\{diagram_hash} .md h4,\n.\{diagram_hash} .md h5,\n.\{diagram_hash} .md h6,\n.\{diagram_hash} .md th {\n\tfont-family: Arial, sans-serif;\n\tfont-weight: 600;\n}",
   )
   append_on_trigger(
     out,
@@ -459,31 +367,31 @@ fn d2_embed_fonts_styles(
     out,
     source,
     bold_triggers,
-    "\n.\{diagram_hash} .text-bold {\n\tfont-family: \"\{diagram_hash}-font-bold\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-bold;\n\tsrc: url(\"\{bold_data}\");\n}",
+    "\n.\{diagram_hash} .text-bold {\n\tfont-family: Arial, sans-serif;\n\tfont-weight: bold;\n}",
   )
   append_on_trigger(
     out,
     source,
     italic_triggers,
-    "\n.\{diagram_hash} .text-italic {\n\tfont-family: \"\{diagram_hash}-font-italic\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-italic;\n\tsrc: url(\"\{italic_data}\");\n}",
+    "\n.\{diagram_hash} .text-italic {\n\tfont-family: Arial, sans-serif;\n\tfont-style: italic;\n}",
   )
   append_on_trigger(
     out,
     source,
     mono_triggers,
-    "\n.\{diagram_hash} .text-mono {\n\tfont-family: \"\{diagram_hash}-font-mono\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono;\n\tsrc: url(\"\{mono_regular_data}\");\n}",
+    "\n.\{diagram_hash} .text-mono {\n\tfont-family: monospace;\n}",
   )
   append_on_trigger(
     out,
     source,
     mono_bold_triggers,
-    "\n.\{diagram_hash} .text-mono-bold {\n\tfont-family: \"\{diagram_hash}-font-mono-bold\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono-bold;\n\tsrc: url(\"\{mono_bold_data}\");\n}",
+    "\n.\{diagram_hash} .text-mono-bold {\n\tfont-family: monospace;\n\tfont-weight: bold;\n}",
   )
   append_on_trigger(
     out,
     source,
     mono_italic_triggers,
-    "\n.\{diagram_hash} .text-mono-italic {\n\tfont-family: \"\{diagram_hash}-font-mono-italic\";\n}\n@font-face {\n\tfont-family: \{diagram_hash}-font-mono-italic;\n\tsrc: url(\"\{mono_italic_data}\");\n}",
+    "\n.\{diagram_hash} .text-mono-italic {\n\tfont-family: monospace;\n\tfont-style: italic;\n}",
   )
   @xml_emit.Element::new("style")
   .attr("type", "text/css")
@@ -616,11 +524,11 @@ fn replace_all(text : String, old : String, new : String) -> String {
 fn d2_markdown_styles(diagram_hash : String) -> String {
   let mut css = markdown_css_template
   css = replace_all(css, ".md", ".\{diagram_hash} .md")
-  css = replace_all(css, "font-italic", "\{diagram_hash}-font-italic")
-  css = replace_all(css, "font-bold", "\{diagram_hash}-font-bold")
-  css = replace_all(css, "font-mono", "\{diagram_hash}-font-mono")
-  css = replace_all(css, "font-regular", "\{diagram_hash}-font-regular")
-  css = replace_all(css, "font-semibold", "\{diagram_hash}-font-semibold")
+  css = replace_all(css, "\"font-italic\"", "Arial, sans-serif")
+  css = replace_all(css, "\"font-bold\"", "Arial, sans-serif")
+  css = replace_all(css, "\"font-mono\"", "monospace")
+  css = replace_all(css, "\"font-regular\"", "Arial, sans-serif")
+  css = replace_all(css, "\"font-semibold\"", "Arial, sans-serif")
   if !css.has_suffix("\n") {
     css = css + "\n"
   }
@@ -2209,7 +2117,7 @@ fn d2_shape_ellipse(
 
 ///|
 fn emit_svg_document(
-  graph : Diagram,
+  _graph : Diagram,
   svg : @svg.Svg,
   config : SvgConfig,
   assets : SvgEmitAssets,
@@ -2222,10 +2130,9 @@ fn emit_svg_document(
   let inner_viewbox = "\{svg.viewbox_x().to_int()} \{svg.viewbox_y().to_int()} \{inner_width} \{inner_height}"
   let body_elements = svg.elements()
   let body_source = body_elements.join("") + assets.tail_elements.join("")
-  let corpus = graph.get_corpus()
   let upper_blocks : Array[String] = []
   upper_blocks.push(
-    d2_embed_fonts_styles(assets.diagram_hash, body_source, corpus),
+    d2_text_styles(assets.diagram_hash, body_source),
   )
   upper_blocks.push(
     @xml_emit.Element::new("style")
