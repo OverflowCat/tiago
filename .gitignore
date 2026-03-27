@@ -3,6 +3,7 @@ target/
 .mooncakes/
 .moonagent/
 web/*.wasm
+./*.wasm
 web/examples
 TODO.md
 .playwright-mcp
@@ -13,3 +14,4 @@ target
 examples/diago-output/*.svg
 examples/diago-output/*.routes.diff
 examples/diago-output/*.boxes.diff
+*.pdf

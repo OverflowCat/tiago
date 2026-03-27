@@ -3,7 +3,6 @@ import {
   "Milky2018/diago/lib",
   "Milky2018/diago/engine_api",
   "Milky2018/diago/diagram",
-  "Milky2018/diago/renderer_ascii",
   "Milky2018/diago/renderer_unicode",
   "moonbitlang/core/encoding/utf8",
 }
@@ -12,10 +11,6 @@ options(
   link: {
     "wasm": {
       "exports": [
-        "set_input:set_input",
-        "write_input_byte:write_input_byte",
-        "get_output_len:get_output_len",
-        "read_output_byte:read_output_byte",
         "render_svg:render_svg",
         "render_svg_with_engine:render_svg_with_engine",
         "render_ascii:render_ascii",
@@ -23,6 +18,7 @@ options(
         "render_unicode:render_unicode",
         "render_unicode_with_engine:render_unicode_with_engine",
       ],
+      "export-memory-name": "memory",
     },
   },
 )
