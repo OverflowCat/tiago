@@ -72,7 +72,7 @@ func loadFaceAtSize(v fontVariant, fontSize int) (font.Face, error) {
 }
 
 func emitArrayIntFlat(name string, values []int, perLine int) {
-	fmt.Printf("let %s : Array[Int] = [\n", name)
+	fmt.Printf("let %s : FixedArray[Int16] = [\n", name)
 	for i, v := range values {
 		if i%perLine == 0 {
 			fmt.Print("  ")

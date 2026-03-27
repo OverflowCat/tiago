@@ -2,7 +2,7 @@
 // Size-specific metrics to match the reference ruler hinting at selected sizes.
 
 ///|
-let glyph_x_mins_sans_regular_sz20 : Array[Int] = [
+let glyph_x_mins_sans_regular_sz20 : FixedArray[Int16] = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
   0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1,
@@ -16,7 +16,7 @@ let glyph_x_mins_sans_regular_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_regular_sz20 : Array[Int] = [
+let glyph_x_maxs_sans_regular_sz20 : FixedArray[Int16] = [
   12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
   12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0, 5, 8, 10, 9, 16, 12, 4, 6, 5,
   8, 10, 4, 6, 4, 7, 10, 9, 10, 9, 10, 9, 10, 10, 10, 9, 4, 4, 10, 10, 10, 8, 16,
@@ -32,7 +32,7 @@ let glyph_x_maxs_sans_regular_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_regular_sz20 : Array[Int] = [
+let glyph_advances_fixed_sans_regular_sz20 : FixedArray[Int16] = [
   836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836,
   836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836, 836,
   256, 370, 545, 636, 636, 1055, 780, 319, 388, 388, 535, 636, 319, 398, 319, 448,
@@ -52,7 +52,7 @@ let glyph_advances_fixed_sans_regular_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_regular_sz24 : Array[Int] = [
+let glyph_x_mins_sans_regular_sz24 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0,
   1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1, 2,
@@ -66,7 +66,7 @@ let glyph_x_mins_sans_regular_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_regular_sz24 : Array[Int] = [
+let glyph_x_maxs_sans_regular_sz24 : FixedArray[Int16] = [
   14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
   14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 0, 5, 9, 12, 11, 19, 15, 5, 7,
   6, 9, 12, 5, 7, 5, 9, 11, 11, 11, 11, 12, 11, 11, 11, 11, 11, 5, 5, 12, 12, 12,
@@ -83,7 +83,7 @@ let glyph_x_maxs_sans_regular_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_regular_sz24 : Array[Int] = [
+let glyph_advances_fixed_sans_regular_sz24 : FixedArray[Int16] = [
   1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003,
   1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003, 1003,
   1003, 1003, 1003, 1003, 307, 444, 654, 763, 763, 1266, 935, 382, 465, 465, 642,
@@ -104,7 +104,7 @@ let glyph_advances_fixed_sans_regular_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_regular_sz28 : Array[Int] = [
+let glyph_x_mins_sans_regular_sz28 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 0, 1, 0, 0, 2, 2, 1, 1, 0, 1, 1, 1, 0, 1, 2, 1, 0, 0, 0,
   1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1, 2,
@@ -118,7 +118,7 @@ let glyph_x_mins_sans_regular_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_regular_sz28 : Array[Int] = [
+let glyph_x_maxs_sans_regular_sz28 : FixedArray[Int16] = [
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16,
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 0, 6, 10, 14, 13, 23, 17, 5, 8,
   7, 11, 13, 6, 8, 6, 10, 13, 13, 13, 13, 14, 13, 13, 13, 13, 13, 6, 6, 13, 13, 13,
@@ -135,7 +135,7 @@ let glyph_x_maxs_sans_regular_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_regular_sz28 : Array[Int] = [
+let glyph_advances_fixed_sans_regular_sz28 : FixedArray[Int16] = [
   1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170,
   1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170, 1170,
   1170, 1170, 1170, 1170, 358, 518, 763, 891, 891, 1477, 1091, 446, 543, 543, 749,
@@ -156,7 +156,7 @@ let glyph_advances_fixed_sans_regular_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_bold_sz20 : Array[Int] = [
+let glyph_x_mins_sans_bold_sz20 : FixedArray[Int16] = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
   0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, -1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0,
@@ -170,7 +170,7 @@ let glyph_x_mins_sans_bold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_bold_sz20 : Array[Int] = [
+let glyph_x_maxs_sans_bold_sz20 : FixedArray[Int16] = [
   13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
   13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 0, 6, 10, 10, 10, 18, 13, 5, 6,
   6, 9, 10, 6, 6, 5, 7, 10, 10, 10, 10, 11, 10, 10, 10, 10, 10, 5, 6, 10, 10, 10,
@@ -187,7 +187,7 @@ let glyph_x_maxs_sans_bold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_bold_sz20 : Array[Int] = [
+let glyph_advances_fixed_sans_bold_sz20 : FixedArray[Int16] = [
   883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883,
   883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883, 883,
   256, 435, 687, 676, 676, 1097, 854, 384, 440, 440, 585, 676, 384, 425, 384, 434,
@@ -207,7 +207,7 @@ let glyph_advances_fixed_sans_bold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_bold_sz24 : Array[Int] = [
+let glyph_x_mins_sans_bold_sz24 : FixedArray[Int16] = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0,
   0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
@@ -221,7 +221,7 @@ let glyph_x_mins_sans_bold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_bold_sz24 : Array[Int] = [
+let glyph_x_maxs_sans_bold_sz24 : FixedArray[Int16] = [
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 0, 7, 12, 12, 12, 21, 16, 6, 8,
   7, 11, 12, 7, 7, 6, 8, 12, 12, 12, 12, 13, 12, 12, 12, 12, 12, 6, 7, 12, 12, 12,
@@ -238,7 +238,7 @@ let glyph_x_maxs_sans_bold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_bold_sz24 : Array[Int] = [
+let glyph_advances_fixed_sans_bold_sz24 : FixedArray[Int16] = [
   1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060,
   1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060, 1060,
   1060, 1060, 1060, 1060, 307, 522, 825, 811, 811, 1316, 1025, 461, 528, 528, 702,
@@ -259,7 +259,7 @@ let glyph_advances_fixed_sans_bold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_bold_sz28 : Array[Int] = [
+let glyph_x_mins_sans_bold_sz28 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 0, 1, 0, 0, 2, 2, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0,
   1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, -1, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1,
@@ -273,7 +273,7 @@ let glyph_x_mins_sans_bold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_bold_sz28 : Array[Int] = [
+let glyph_x_maxs_sans_bold_sz28 : FixedArray[Int16] = [
   18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
   18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 0, 8, 14, 14, 14, 23, 19, 7, 9,
   8, 12, 14, 8, 9, 7, 9, 14, 14, 14, 14, 15, 14, 14, 14, 14, 14, 7, 8, 14, 14, 14,
@@ -290,7 +290,7 @@ let glyph_x_maxs_sans_bold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_bold_sz28 : Array[Int] = [
+let glyph_advances_fixed_sans_bold_sz28 : FixedArray[Int16] = [
   1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236,
   1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236, 1236,
   1236, 1236, 1236, 1236, 358, 609, 962, 946, 946, 1536, 1195, 538, 616, 616, 819,
@@ -312,7 +312,7 @@ let glyph_advances_fixed_sans_bold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_bold_sz29 : Array[Int] = [
+let glyph_x_mins_sans_bold_sz29 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 0, 1, 0, 0, 2, 2, 1, 1, 0, 1, 1, 1, 0, 1, 2, 0, 0, 0, 0,
   1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, -1, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1,
@@ -326,7 +326,7 @@ let glyph_x_mins_sans_bold_sz29 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_bold_sz29 : Array[Int] = [
+let glyph_x_maxs_sans_bold_sz29 : FixedArray[Int16] = [
   18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
   18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 0, 8, 14, 15, 14, 25, 19, 7, 9,
   8, 13, 15, 8, 9, 7, 9, 15, 14, 15, 14, 15, 14, 15, 15, 15, 15, 7, 8, 15, 15, 15,
@@ -343,7 +343,7 @@ let glyph_x_maxs_sans_bold_sz29 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_bold_sz29 : Array[Int] = [
+let glyph_advances_fixed_sans_bold_sz29 : FixedArray[Int16] = [
   1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281,
   1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281, 1281,
   1281, 1281, 1281, 1281, 371, 631, 997, 980, 980, 1591, 1238, 557, 638, 638, 848,
@@ -365,7 +365,7 @@ let glyph_advances_fixed_sans_bold_sz29 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_bold_sz32 : Array[Int] = [
+let glyph_x_mins_sans_bold_sz32 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 1, 1, 0, 0, 2, 2, 1, 1, 1, 1, 1, 1, 0, 1, 2, 0, 0, 0, 0,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1,
@@ -379,7 +379,7 @@ let glyph_x_mins_sans_bold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_bold_sz32 : Array[Int] = [
+let glyph_x_maxs_sans_bold_sz32 : FixedArray[Int16] = [
   20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
   20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 0, 9, 16, 16, 15, 27, 21, 8, 10,
   9, 14, 16, 9, 10, 8, 10, 16, 16, 16, 16, 17, 16, 16, 16, 16, 16, 8, 9, 16, 16,
@@ -396,7 +396,7 @@ let glyph_x_maxs_sans_bold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_bold_sz32 : Array[Int] = [
+let glyph_advances_fixed_sans_bold_sz32 : FixedArray[Int16] = [
   1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413,
   1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413, 1413,
   1413, 1413, 1413, 1413, 410, 696, 1100, 1081, 1081, 1755, 1366, 614, 705, 705,
@@ -419,7 +419,7 @@ let glyph_advances_fixed_sans_bold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_semibold_sz20 : Array[Int] = [
+let glyph_x_mins_sans_semibold_sz20 : FixedArray[Int16] = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
   0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, -1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0,
@@ -433,7 +433,7 @@ let glyph_x_mins_sans_semibold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_semibold_sz20 : Array[Int] = [
+let glyph_x_maxs_sans_semibold_sz20 : FixedArray[Int16] = [
   12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
   12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 0, 5, 8, 10, 10, 16, 13, 4, 6,
   5, 8, 10, 5, 6, 5, 7, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 5, 5, 10, 10, 10,
@@ -450,7 +450,7 @@ let glyph_x_maxs_sans_semibold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_semibold_sz20 : Array[Int] = [
+let glyph_advances_fixed_sans_semibold_sz20 : FixedArray[Int16] = [
   860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860,
   860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860, 860,
   256, 403, 617, 657, 657, 1076, 818, 352, 415, 415, 561, 657, 352, 412, 352, 440,
@@ -470,7 +470,7 @@ let glyph_advances_fixed_sans_semibold_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_semibold_sz24 : Array[Int] = [
+let glyph_x_mins_sans_semibold_sz24 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0,
   1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, -1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,
@@ -484,7 +484,7 @@ let glyph_x_mins_sans_semibold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_semibold_sz24 : Array[Int] = [
+let glyph_x_maxs_sans_semibold_sz24 : FixedArray[Int16] = [
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 0, 6, 10, 12, 11, 20, 15, 5, 7,
   6, 10, 12, 6, 7, 6, 8, 12, 11, 12, 12, 12, 12, 12, 12, 12, 12, 6, 6, 12, 12, 12,
@@ -501,7 +501,7 @@ let glyph_x_maxs_sans_semibold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_semibold_sz24 : Array[Int] = [
+let glyph_advances_fixed_sans_semibold_sz24 : FixedArray[Int16] = [
   1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032,
   1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032, 1032,
   1032, 1032, 1032, 1032, 307, 484, 740, 788, 788, 1292, 982, 422, 498, 498, 673,
@@ -522,7 +522,7 @@ let glyph_advances_fixed_sans_semibold_sz24 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_semibold_sz28 : Array[Int] = [
+let glyph_x_mins_sans_semibold_sz28 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 0, 1, 0, 0, 2, 2, 1, 1, 0, 1, 1, 1, 0, 1, 2, 0, 0, 0, 0,
   1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, -1, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1,
@@ -536,7 +536,7 @@ let glyph_x_mins_sans_semibold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_semibold_sz28 : Array[Int] = [
+let glyph_x_maxs_sans_semibold_sz28 : FixedArray[Int16] = [
   17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17,
   17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 0, 7, 12, 14, 13, 23, 18, 6, 8,
   7, 11, 14, 7, 8, 6, 10, 14, 13, 14, 13, 14, 14, 14, 14, 14, 14, 6, 7, 14, 14, 14,
@@ -553,7 +553,7 @@ let glyph_x_maxs_sans_semibold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_semibold_sz28 : Array[Int] = [
+let glyph_advances_fixed_sans_semibold_sz28 : FixedArray[Int16] = [
   1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204,
   1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204, 1204,
   1204, 1204, 1204, 1204, 358, 564, 864, 919, 919, 1507, 1145, 493, 581, 581, 785,
@@ -575,7 +575,7 @@ let glyph_advances_fixed_sans_semibold_sz28 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_sans_semibold_sz32 : Array[Int] = [
+let glyph_x_mins_sans_semibold_sz32 : FixedArray[Int16] = [
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 0, 2, 2, 1, 1, 0, 0, 2, 2, 1, 1, 1, 1, 1, 2, 0, 1, 2, 1, 0, 0, 0,
   1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, -1, 2, 1, 2, 2, 2, 1, 2, 2, 0, 2, 2, 2, 2, 1,
@@ -589,7 +589,7 @@ let glyph_x_mins_sans_semibold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_sans_semibold_sz32 : Array[Int] = [
+let glyph_x_maxs_sans_semibold_sz32 : FixedArray[Int16] = [
   19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19,
   19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 0, 8, 14, 16, 15, 26, 20, 7, 9,
   8, 13, 16, 8, 9, 7, 11, 16, 15, 15, 15, 16, 15, 16, 16, 16, 15, 7, 8, 16, 16, 16,
@@ -606,7 +606,7 @@ let glyph_x_maxs_sans_semibold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_sans_semibold_sz32 : Array[Int] = [
+let glyph_advances_fixed_sans_semibold_sz32 : FixedArray[Int16] = [
   1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376,
   1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376, 1376,
   1376, 1376, 1376, 1376, 410, 645, 987, 1051, 1051, 1722, 1309, 563, 664, 664, 897,
@@ -629,7 +629,7 @@ let glyph_advances_fixed_sans_semibold_sz32 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_mins_mono_regular_sz20 : Array[Int] = [
+let glyph_x_mins_mono_regular_sz20 : FixedArray[Int16] = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 0, 4, 2, 1, 1, 0, 0, 4, 4, 2, 1, 1, 3, 1, 4, 1, 1, 1, 1, 1, 0, 1,
   1, 1, 1, 1, 4, 3, 2, 1, 2, 2, 0, 0, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 2, 1, 1, 0, 2,
@@ -643,7 +643,7 @@ let glyph_x_mins_mono_regular_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_x_maxs_mono_regular_sz20 : Array[Int] = [
+let glyph_x_maxs_mono_regular_sz20 : FixedArray[Int16] = [
   11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
   11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 0, 8, 10, 11, 11, 12, 12, 8, 10,
   8, 11, 11, 8, 11, 8, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 8, 8, 10, 11,
@@ -660,7 +660,7 @@ let glyph_x_maxs_mono_regular_sz20 : Array[Int] = [
 ]
 
 ///|
-let glyph_advances_fixed_mono_regular_sz20 : Array[Int] = [
+let glyph_advances_fixed_mono_regular_sz20 : FixedArray[Int16] = [
   768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768,
   768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768,
   768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768, 768,

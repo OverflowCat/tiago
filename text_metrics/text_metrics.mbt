@@ -83,9 +83,9 @@ fn select_font_kind(
 
 ///|
 priv struct GlyphMetrics {
-  x_min : Int
-  x_max : Int
-  advance_fixed : Int
+  x_min : Int16
+  x_max : Int16
+  advance_fixed : Int16
 }
 
 ///|
@@ -108,13 +108,13 @@ fn lookup_kerning_fixed(
     0
   } else {
     let idx = left_codepoint * 256 + right_codepoint
-    match kind {
+    (match kind {
       SansRegular => kernings_fixed_sans_regular[idx]
       SansBold => kernings_fixed_sans_bold[idx]
       SansSemibold => kernings_fixed_sans_semibold[idx]
       SansItalic => kernings_fixed_sans_italic[idx]
       MonoRegular => kernings_fixed_mono_regular[idx]
-    }
+    }).to_int()
   }
 }
 
@@ -408,7 +408,7 @@ fn measure_text_with_mode(
     scale,
     fixed_scale,
   )
-  let tab_width = space.metrics.advance_fixed.to_double() *
+  let tab_width = space.metrics.advance_fixed.to_int().to_double() *
     space.fixed_scale *
     TAB_SIZE
   let kerning_fixed_scale = space.fixed_scale
@@ -451,8 +451,8 @@ fn measure_text_with_mode(
           kind, cp, font_size, scale, fixed_scale,
         )
         let m = sized.metrics
-        let left = dot_x + m.x_min.to_double() * sized.scale
-        let right = dot_x + m.x_max.to_double() * sized.scale
+        let left = dot_x + m.x_min.to_int().to_double() * sized.scale
+        let right = dot_x + m.x_max.to_int().to_double() * sized.scale
         let is_area = left != right
 
         if bounds_with_dot {
@@ -477,7 +477,7 @@ fn measure_text_with_mode(
           }
         }
 
-        dot_x = dot_x + m.advance_fixed.to_double() * sized.fixed_scale
+        dot_x = dot_x + m.advance_fixed.to_int().to_double() * sized.fixed_scale
         prev_cp = cp
 
         if bounds_with_dot {
@@ -600,8 +600,8 @@ fn trailing_dot_delta_for_line(
   let glyph = lookup_sized_glyph_metrics(
     kind, last_cp, font_size, scale, fixed_scale,
   )
-  let advance = glyph.metrics.advance_fixed.to_double() * glyph.fixed_scale
-  let right = glyph.metrics.x_max.to_double() * glyph.scale
+  let advance = glyph.metrics.advance_fixed.to_int().to_double() * glyph.fixed_scale
+  let right = glyph.metrics.x_max.to_int().to_double() * glyph.scale
   let delta = advance - right
   if delta > 0.0 {
     delta
