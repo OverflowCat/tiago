@@ -1,1 +1,1 @@
-README.mbt.md
+typst-package/README.md

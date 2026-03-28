@@ -1,0 +1,28 @@
+#import "../lib.typ": *
+#set page(width: auto, height: auto, margin: 1pt)
+
+#let code = ```
+# Containers (nested structures)
+
+aws: AWS Cloud {
+  vpc: VPC {
+    subnet: Private Subnet {
+      server: EC2 Instance
+      database: RDS
+    }
+  }
+
+  cdn: CloudFront
+  s3: S3 Bucket
+}
+
+# Connection from outside to inside
+user -> aws.cdn
+aws.cdn -> aws.vpc.subnet.server
+
+# Connection inside container
+aws.vpc.subnet.server -> aws.vpc.subnet.database
+aws.vpc.subnet.server -> aws.s3
+```.text
+
+#render(code)

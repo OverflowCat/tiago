@@ -1,12 +1,45 @@
 # Tiago
 
-Tiago is a Typst package for rendering diagrams with [Diago](https://github.com/OverflowCat/tiago), a D2-compatible diagram engine implemented in MoonBit.
+[Tiago](https://github.com/OverflowCat/tiago) is a Typst package for rendering diagrams with [Diago](https://github.com/moonbit-community/diago), a D2-compatible diagram engine implemented in [MoonBit](https://www.moonbitlang.com/). It can render a D2 diagram to SVG, ASCII or Unicode text. 
 
-It can render the same diagram source as:
+The typst package removed embedded fonts and font metrics data from the WASM, and uses release build with `--strip` tag compared to diago's WASM demo, which reduces its binary size from ~21 MiB to ~5 MiB unzipped.
 
-- SVG
-- ASCII text
-- Unicode text
+## Examples
+
+<table>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/architecture.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/architecture.svg" height="300px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/c4.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/c4.svg" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/containers.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/containers.svg" height="300px"></a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/architecture.typ">architecture.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/c4.typ">c4.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/containers.typ">containers.typ</a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/isomorphic.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/isomorphic.svg" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sequence.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/sequence.svg" height="300px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sql_tables.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/sql_tables.svg" height="280px"></a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/isomorphic.typ">isomorphic.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sequence.typ">sequence.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sql_tables.typ">sql_tables.typ</a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/styles.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/styles.svg" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/markdown.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/markdown.svg" height="260px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/security.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/security.svg" height="260px"></a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/styles.typ">styles.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/markdown.typ">markdown.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/security.typ">security.typ</a></td>
+  </tr>
+  <tr>
+    <td><a>
+</table>
 
 ## Installation
 
@@ -100,6 +133,11 @@ cache -> database: fallback
 ```
 
 For a sample document, see `example.typ`.
+
+## Limitations
+
+* Image paths in D2 diagrams are linked images. Path to linked images are relative to the `--root` directory. Linked SVG images are not supported yet.
+* Some features are not properly supported. Switching rendering engines may help.
 
 ## License
 

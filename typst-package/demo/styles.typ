@@ -1,0 +1,65 @@
+#import "../lib.typ": *
+#set page(width: auto, height: auto, margin: 1pt)
+
+#let code = ```
+# Styling examples
+
+# Colors and fills
+server: Web Server {
+  style: {
+    fill: "#e8f4f8"
+    stroke: "#2196F3"
+    stroke-width: 2
+  }
+}
+
+database: Database {
+  shape: cylinder
+  style: {
+    fill: "#fff3e0"
+    stroke: "#FF9800"
+    stroke-width: 2
+    shadow: true
+  }
+}
+
+# Font styling
+important: Important Node {
+  style: {
+    fill: "#ffebee"
+    stroke: red
+    bold: true
+    font-size: 18
+  }
+}
+
+# Dashed connections
+server -> database: queries {
+  style: {
+    stroke-dash: 5
+    stroke: "#666"
+  }
+}
+
+# Multiple/stacked appearance
+queue: Task Queue {
+  shape: queue
+  style: {
+    multiple: true
+    fill: "#e8f5e9"
+  }
+}
+
+# 3D effect
+box3d: 3D Box {
+  style: {
+    3d: true
+    fill: "#f3e5f5"
+  }
+}
+
+server -> queue -> important
+database -> box3d
+```.text
+
+#render(code)

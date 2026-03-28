@@ -1,0 +1,106 @@
+#import "../lib.typ": *
+#set page(width: auto, height: auto, margin: 1pt)
+
+#let code = ```
+# Architecture diagram example
+
+title: Web Application Architecture {
+  style: {
+    font-size: 24
+    bold: true
+  }
+}
+
+users: Users {
+  shape: person
+  style.multiple: true
+}
+
+cdn: CDN {
+  shape: cloud
+  style.fill: "#e3f2fd"
+}
+
+load_balancer: Load Balancer {
+  shape: hexagon
+  style.fill: "#fff3e0"
+}
+
+web_tier: Web Tier {
+  style.fill: "#e8f5e9"
+
+  web1: Web Server 1
+  web2: Web Server 2
+  web3: Web Server 3
+}
+
+app_tier: Application Tier {
+  style.fill: "#f3e5f5"
+
+  app1: App Server 1
+  app2: App Server 2
+}
+
+cache: Redis Cache {
+  shape: cylinder
+  style.fill: "#ffebee"
+}
+
+database: Database Cluster {
+  style.fill: "#fff8e1"
+
+  primary: Primary DB {
+    shape: cylinder
+  }
+  replica1: Replica 1 {
+    shape: cylinder
+  }
+  replica2: Replica 2 {
+    shape: cylinder
+  }
+
+  primary -> replica1: sync
+  primary -> replica2: sync
+}
+
+queue: Message Queue {
+  shape: queue
+  style.fill: "#e0f2f1"
+}
+
+workers: Background Workers {
+  style.fill: "#fce4ec"
+
+  worker1: Worker 1
+  worker2: Worker 2
+}
+
+storage: Object Storage {
+  shape: stored_data
+  style.fill: "#f5f5f5"
+}
+
+# Connections
+users -> cdn
+cdn -> load_balancer
+load_balancer -> web_tier.web1
+load_balancer -> web_tier.web2
+load_balancer -> web_tier.web3
+
+web_tier.web1 -> app_tier.app1
+web_tier.web2 -> app_tier.app1
+web_tier.web2 -> app_tier.app2
+web_tier.web3 -> app_tier.app2
+
+app_tier.app1 -> cache
+app_tier.app2 -> cache
+app_tier.app1 -> database.primary
+app_tier.app2 -> database.primary
+
+app_tier.app1 -> queue
+app_tier.app2 -> queue
+queue -> workers.worker1
+queue -> workers.worker2
+```.text
+
+#render(code)

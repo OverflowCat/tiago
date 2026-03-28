@@ -1,0 +1,45 @@
+#import "../lib.typ": *
+#set page(width: auto, height: auto, margin: 1pt)
+
+#let code = ```
+direction: down
+
+moonbit_source: {
+  label: "MoonBit Source"
+  shared: "shared"
+  frontend: "frontend"
+  backend: "backend (native)"
+  cli: "cli (native)"
+}
+
+moonbit_source.shared -> moonbit_source.frontend
+moonbit_source.shared -> moonbit_source.backend
+moonbit_source.shared -> moonbit_source.cli
+
+compiled_output: {
+  label: "Compiled Output"
+  js_bundle: "frontend.js"
+  server_bin: "taskflow server binary"
+  cli_bin: "test client binary"
+}
+
+moonbit_source.frontend -> compiled_output.js_bundle: "moon build --target js"
+moonbit_source.backend -> compiled_output.server_bin: "moon build --target native"
+moonbit_source.cli -> compiled_output.cli_bin: "moon build --target native"
+
+runtime: {
+  label: "Runtime"
+  browser: "Browser"
+  server: "HTTP Server :4006"
+  db: "SQLite taskflow.db"
+}
+
+compiled_output.server_bin -> runtime.server
+runtime.server -> compiled_output.js_bundle: serves
+compiled_output.js_bundle -> runtime.browser
+runtime.browser <-> runtime.server: "JSON REST API"
+runtime.server <-> runtime.db
+compiled_output.cli_bin -> runtime.server: "HTTP requests"
+```.text
+
+#render(code)
