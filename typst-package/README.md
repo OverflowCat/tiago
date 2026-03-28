@@ -8,37 +8,35 @@ The typst package removed embedded fonts and font metrics data from the WASM, an
 
 <table>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/architecture.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/architecture.svg" height="300px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/c4.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/c4.svg" height="280px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/containers.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/containers.svg" height="300px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/architecture.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/architecture.svg" alt="Architecture diagram" height="300px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/c4.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/c4.svg" alt="C4 diagram" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/containers.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/containers.svg" alt="Containers diagram" height="300px"></a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/architecture.typ">architecture.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/c4.typ">c4.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/containers.typ">containers.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/architecture.typ">architecture.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/c4.typ">c4.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/containers.typ">containers.typ</a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/isomorphic.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/isomorphic.svg" height="280px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sequence.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/sequence.svg" height="300px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sql_tables.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/sql_tables.svg" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/isomorphic.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/isomorphic.svg" alt="Isomorphic build pipeline diagram" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sequence.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sequence.svg" alt="Sequence diagram" height="300px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sql_tables.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sql_tables.svg" alt="SQL tables diagram" height="280px"></a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/isomorphic.typ">isomorphic.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sequence.typ">sequence.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/sql_tables.typ">sql_tables.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/isomorphic.typ">isomorphic.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sequence.typ">sequence.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/sql_tables.typ">sql_tables.typ</a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/styles.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/styles.svg" height="280px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/markdown.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/markdown.svg" height="260px"></a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/security.typ"><img src="https://github.com/OverflowCat/tiago/raw/main/typst-package/demo/security.svg" height="260px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/styles.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/styles.svg" alt="Styles diagram" height="280px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/markdown.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/markdown.svg" alt="Markdown diagram" height="260px"></a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/security.typ"><img src="https://github.com/OverflowCat/tiago/raw/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/security.svg" alt="Security diagram" height="260px"></a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/styles.typ">styles.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/markdown.typ">markdown.typ</a></td>
-    <td><a href="https://github.com/OverflowCat/tiago/blob/main/typst-package/demo/security.typ">security.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/styles.typ">styles.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/markdown.typ">markdown.typ</a></td>
+    <td><a href="https://github.com/OverflowCat/tiago/blob/9439932454e3b5283ca403679fa8ab84999460ee/typst-package/demo/security.typ">security.typ</a></td>
   </tr>
-  <tr>
-    <td><a>
 </table>
 
 ## Installation
